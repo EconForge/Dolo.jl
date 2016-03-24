@@ -16,6 +16,39 @@ inf_to_Inf(x::Symbol) = @match x begin
     _ => x
 end
 
+function solve_triangular_system(sm::ASM)
+    solutions = Dict{Symbol,Number}()
+    finished = false
+    dict = sm.calibration
+    N = length(dict)
+    n = 0
+
+    while !(finished || n>N)
+        done_smthg = false
+        n += 1
+        for k in keys(dict)
+            if !haskey(solutions, k)
+                expr = dict[k]
+                try
+                    sol = eval(:(let $([:($x=$y) for (x, y) in solutions]...); $expr end))
+                    solutions[k] = sol
+                    done_smthg = true
+                end
+            end
+        end
+        if done_smthg == false
+            finished = true
+        end
+    end
+
+    if length(solutions) < length(dict)
+        error("Not a triangular system")
+    end
+
+    # reorder solutions to match sm.calibration
+    OrderedDict{Symbol,Number}([(k, solutions[k]) for k in keys(sm.calibration)])
+end
+
 function _handle_arbitrage(arb, controls)
     controls_lb = Expr[]
     controls_ub = Expr[]
@@ -175,10 +208,6 @@ function DTCSCCSymbolicModel(from_yaml::Dict, filename="none")
     out
 end
 
-model_spec(::DTCSCCSymbolicModel) = :dtcscc
-
-# TODO: annotate fields with types
-
 # ----------------------------- #
 # Numeric Model and constructor #
 # ----------------------------- #
@@ -205,12 +234,8 @@ immutable ModelCalibration
     data::OrderedDict{Symbol,Number}
 end
 
-function ModelCalibration(sm::DTCSCCSymbolicModel)
-    # TODO: implement triangular solver to get numerical values from
-    #       calibration
-    # ModelCalibration(triangular_solver(sm))
-    ModelCalibration(OrderedDict{Symbol,Number}(:x => 42.0))
-end
+ModelCalibration(sm::DTCSCCSymbolicModel) =
+    ModelCalibration(solve_triangular_system(sm))
 
 # NOTE: a type parameter is needed so the `functions` field is not abstract
 #       when instances of this type are actually created.
@@ -224,3 +249,10 @@ Base.convert(::Type{DTCSCCModel}, sm::DTCSCCSymbolicModel) =
     DTCSCCModel(sm, DTCSCCfunctions(sm), ModelCalibration(sm))
 
 Base.convert(::Type{DTCSCCSymbolicModel}, m::DTCSCCModel) = m.symbolic
+
+for T in (:DTCSCCModel, :DTCSCCSymbolicModel)
+    @eval begin
+        model_spec(::$(T)) = :dtcscc
+        model_spec(::Type{$(T)}) = :dtcscc
+    end
+end

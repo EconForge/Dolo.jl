@@ -4,13 +4,13 @@
 call_expr(var, n) = n == 0 ? symbol(var) :
                              symbol(string(var, "_", n > 0 ? "_" : "m", abs(n)))
 
-function eq_expr(ex::Expr, targets::Vector{Symbol}=Symbol[])
+function eq_expr(ex::Expr, targets::Union{Vector{Expr},Vector{Symbol}}=Symbol[])
     if isempty(targets)
         return Expr(:call, :(-), _parse(ex.args[2]), _parse(ex.args[1]))
     end
 
     # ensure lhs is in targets
-    if !(symbol(ex.args[1]) in targets)
+    if !(ex.args[1] in targets)
         msg = string("Expected expression of the form `lhs = rhs` ",
                      "where `lhs` is one of $(targets)")
         error(msg)
@@ -22,7 +22,7 @@ end
 _parse(x::Symbol) = symbol(string(x, "_"))
 _parse(x::Number) = x
 
-function _parse(ex::Expr; targets::Vector{Symbol}=Symbol[])
+function _parse(ex::Expr; targets::Union{Vector{Expr},Vector{Symbol}}=Symbol[])
     @match ex begin
         # translate lhs = rhs  to rhs - lhs
         $(Expr(:(=), :__)) => eq_expr(ex, targets)
@@ -45,7 +45,6 @@ _parse(s::AbstractString; kwargs...) = _parse(parse(s); kwargs...)
 # -------- #
 # Compiler #
 # -------- #
-
 function _param_block(sm::ASM)
     params = sm.symbols[:parameters]
     Expr(:block,
@@ -57,9 +56,31 @@ function _aux_block(sm::ASM, shift::Int)
     targets = sm.symbols[symbol(target)]
     exprs = sm.equations[:auxiliary]
 
-    # TODO: implement time shift
-    Expr(:block,
-         [_parse(ex; targets=targets) for ex in exprs]...)
+    if shift == 0
+        return Expr(:block, [_parse(ex; targets=targets) for ex in exprs]...)
+    end
+
+    # aux are strict functions of states and controls at time 1. We can do some
+    # string manipulation of each expr and replace each with the shifted
+    # version
+    string_expr = map(string, exprs)
+
+    # now we have to deal with shift
+    for grp in (:states, :controls, :auxiliaries)
+        for i in 1:length(string_expr)
+            for sym in map(string, sm.symbols[grp])
+                pat = Regex("\\b$(sym)\\b")
+                rep = "$sym($shift)"
+                string_expr[i] = replace(string_expr[i], pat, rep)
+            end
+        end
+    end
+
+    # now adjust targets. Don't need anything fancy b/c we know we have a
+    # symbol
+    targets = [:($(t)($(shift))) for t in targets]
+
+    Expr(:block, [_parse(ex; targets=targets) for ex in string_expr]...)
 end
 
 function _single_arg_block(sm::ASM, arg_name::Symbol, arg_type::Symbol,
@@ -118,20 +139,24 @@ function compile_equation(sm::ASM, func_nm::Symbol)
     targets = target === nothing ? Symbol[] : sm.symbols[symbol(target)]
     eqs = spec[:eqs]  # required, so we don't provide a default
     non_aux = filter(x->x[1] != "auxiliaries", eqs)
-    only_aux = filter(x->x[1] == "auxiliaries", eqs)
     arg_names = Symbol[symbol(x[3]) for x in non_aux]
     arg_types = Symbol[symbol(x[1]) for x in non_aux]
     arg_shifts = Int[x[2] for x in non_aux]
+    only_aux = filter(x->x[1] == "auxiliaries", eqs)
+    aux_shifts = Int[x[2] for x in only_aux]
 
     # build function block by block
     all_arg_blocks = map((a,b,c) -> _single_arg_block(sm, a, b, c),
                          arg_names, arg_types, arg_shifts)
     arg_block = Expr(:block, all_arg_blocks...)
+    all_aux_blocks = map(n -> _aux_block(sm, n), aux_shifts)
+    aux_block = Expr(:block, all_aux_blocks...)
     main_block = _main_body_block(sm, targets, exprs)
 
     # construct the body of the function
     body = quote
         $(arg_block)
+        $(aux_block)
         $(main_block)
         out  # return out
     end
