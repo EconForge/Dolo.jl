@@ -41,12 +41,10 @@ function solve_triangular_system(sm::ASM)
         end
     end
 
-    if length(solutions) < length(dict)
-        error("Not a triangular system")
-    end
+    length(solutions) < length(dict) &&  error("Not a triangular system")
 
     # reorder solutions to match sm.calibration
-    OrderedDict{Symbol,Number}([(k, solutions[k]) for k in keys(sm.calibration)])
+    OrderedDict{Symbol,Number}([(k, solutions[k]) for k in keys(dict)])
 end
 
 function _handle_arbitrage(arb, controls)
