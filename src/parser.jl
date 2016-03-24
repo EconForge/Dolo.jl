@@ -45,6 +45,7 @@ _parse(s::AbstractString; kwargs...) = _parse(parse(s); kwargs...)
 # -------- #
 # Compiler #
 # -------- #
+
 function _param_block(sm::ASM)
     params = sm.symbols[:parameters]
     Expr(:block,
@@ -161,7 +162,6 @@ function compile_equation(sm::ASM, func_nm::Symbol)
         out  # return out
     end
 
-    # TODO: make sure this is what we want
     typed_args = [Expr(:(::), s, :AbstractVector) for s in arg_names]
 
     # build the new type and implement methods on Base.call that we need
@@ -187,14 +187,3 @@ function compile_equation(sm::ASM, func_nm::Symbol)
     code
 
 end
-
-#=
-src = load_file("/Users/sglyon/src/Python/dolo/examples/models/rbc.yaml")
-exprs = src["equations"]["arbitrage"]
-tnm, code = build_equation(:transition, [:foo, :bar], exprs; eq0=true)
-eval(code)
-obj = eval(:($(tnm)()))
-rho_, zbar_, rho_, z_m1_, e_z_, delta_, k_m1_, i_m1_ = rand(8)
-obj(1.0, 2.0, 1.0)
-
-=#

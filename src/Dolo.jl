@@ -22,7 +22,8 @@ const src_path = dirname(@__FILE__)
 const pkg_path = dirname(src_path)
 const RECIPES = _symbol_dict(load_file(joinpath(src_path, "recipes.yaml")))
 
+include("util.jl")
 include("parser.jl")
-include("dtcscc_model.jl")
+include("models.jl")
 
 end # module
