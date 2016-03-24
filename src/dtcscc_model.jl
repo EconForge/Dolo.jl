@@ -175,7 +175,7 @@ function DTCSCCSymbolicModel(from_yaml::Dict, filename="none")
     out
 end
 
-model_sepc(::DTCSCCSymbolicModel) = :dtcscc
+model_spec(::DTCSCCSymbolicModel) = :dtcscc
 
 # TODO: annotate fields with types
 
