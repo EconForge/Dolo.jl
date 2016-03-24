@@ -1,5 +1,4 @@
 using Dolo
-using Base.Test
 
 # write your own tests here
 if VERSION >= v"0.5-"
@@ -10,3 +9,4 @@ else
 end
 
 include("parser.jl")
+include("util.jl")
