@@ -24,6 +24,6 @@ const RECIPES = _symbol_dict(load_file(joinpath(src_path, "recipes.yaml")))
 
 include("util.jl")
 include("parser.jl")
-include("models.jl")
+include("model_types.jl")
 
 end # module
