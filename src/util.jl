@@ -20,7 +20,7 @@ end
 solve_triangular_system(sm::ASM) = solve_triangular_system(sm.calibration)
 
 function solve_triangular_system(dict::Associative)
-    solutions = Dict{Symbol,Number}()
+    solutions = Dict{Symbol,Float64}()
     finished = false
     N = length(dict)
     n = 0
@@ -46,7 +46,7 @@ function solve_triangular_system(dict::Associative)
     length(solutions) < length(dict) &&  error("Not a triangular system")
 
     # reorder solutions to match sm.calibration
-    OrderedDict{Symbol,Number}([(k, solutions[k]) for k in keys(dict)])
+    OrderedDict{Symbol,Float64}([(k, solutions[k]) for k in keys(dict)])
 end
 
 function _handle_arbitrage(arb, controls)
@@ -108,7 +108,7 @@ function _handle_arbitrage(arb, controls)
                 end
             else
                 msg = string("Malformed complementarity condition. ",
-                             "Expected 2 `<=`, found $(n_c-1)")
+                             "Expected 1 or 2 `<=`, found $(n_c-1)")
                 error(msg)
             end
 

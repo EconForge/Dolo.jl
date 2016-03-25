@@ -69,7 +69,7 @@ function _aux_block(sm::ASM, shift::Int)
     # now we have to deal with shift
     for grp in (:states, :controls, :auxiliaries)
         for i in 1:length(string_expr)
-            for sym in map(string, sm.symbols[grp])
+            for sym in sm.symbols[grp]
                 pat = Regex("\\b$(sym)\\b")
                 rep = "$sym($shift)"
                 string_expr[i] = replace(string_expr[i], pat, rep)
@@ -123,11 +123,12 @@ function compile_equation(sm::ASM, func_nm::Symbol)
     if length(exprs) == 0
         # we are not able to use this equation type. Just create a dummy type
         # and function that throws an error explaining what went wrong
-        body = :(error())
+        msg = "Model did not specify functions of type $(func_nm)"
         code = quote
-            immutable $tnm end
+            immutable $tnm <: AbstractDoloFunctor
+            end
             function Base.call(::$tnm, args...)
-                error("Model did not specify functions of type $(func_nm)")
+                error($msg)
             end
 
             $tnm()  # see note below
@@ -166,7 +167,8 @@ function compile_equation(sm::ASM, func_nm::Symbol)
 
     # build the new type and implement methods on Base.call that we need
     code = quote
-        immutable $tnm end
+        immutable $tnm <: AbstractDoloFunctor
+        end
 
         # non-allocating function
         function Base.call(::$tnm, $(typed_args...), out)
