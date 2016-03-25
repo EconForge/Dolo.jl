@@ -24,8 +24,6 @@ dtcscc_:
 
                 middle: ['controls', 0, 's']
 
-
-
         transition:
 
             target: ['states',0,'S']
@@ -117,7 +115,6 @@ dtcscc:
                 - ['shocks',0,'e']
                 - ['parameters', 0, 'p']
 
-
         auxiliary:
 
             target: ['auxiliaries',0,'S']
@@ -126,7 +123,6 @@ dtcscc:
                 - ['states',0,'s']
                 - ['controls',0,'x']
                 - ['parameters', 0, 'p']
-
 
         value:
 
@@ -176,7 +172,7 @@ dtmscc:
 
     model_spec: dtmscc
 
-    symbols: ['markov_states', 'states', 'controls', 'auxiliaries', 'shocks', 'parameters']
+    symbols: ['markov_states', 'states', 'controls', 'auxiliaries', 'shocks', 'parameters', 'values']
 
     specs:
 
@@ -206,7 +202,21 @@ dtmscc:
 
                 middle: ['controls', 0, 's']
 
+        controls_lb:
+            optional: True
+            target: ['controls', 0, 'lb']
+            eqs:
+                - ['markov_states',0,'m']
+                - ['states', 0, 's']
+                - ['parameters', 0, 'p']
 
+        controls_ub:
+            optional: True
+            target: ['controls', 0, 'ub']
+            eqs:
+                - ['markov_states',0,'m']
+                - ['states', 0, 's']
+                - ['parameters', 0, 'p']
 
         transition:
 
@@ -220,7 +230,6 @@ dtmscc:
                 - ['markov_states',0,'M']
                 - ['parameters', 0, 'p']
 
-
         auxiliary:
 
             target: ['auxiliaries',0,'S']
@@ -230,8 +239,6 @@ dtmscc:
                 - ['states',0,'s']
                 - ['controls',0,'x']
                 - ['parameters', 0, 'p']
-
-
 
         value:
 
@@ -291,9 +298,6 @@ dtmscc:
                 - ['controls',0,'x']
                 #- ['auxiliaries',0,'y']
                 - ['parameters', 0, 'p']
-
-
-
 
 
 dtmscc_:
