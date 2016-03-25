@@ -67,7 +67,7 @@ type MockSymbolic <: Dolo.ASM
 end
 
 MockSymbolic(d) = MockSymbolic(d, nothing)
-model_spec(::MockSymbolic) = :dtcscc
+Dolo.model_spec(::MockSymbolic) = :dtcscc
 @testset "compiler" begin
 
     @testset "_param_block" begin
@@ -197,13 +197,13 @@ model_spec(::MockSymbolic) = :dtcscc
         # can't compile this type of equation, so calling throws an error.
         # it is still a dolo functor, however
         obj1 = let
-            eval(compile_equation(sm, :value))
+            eval(Dolo.compile_equation(sm, :value))
         end
         @test_throws ErrorException obj1()
         @test super(typeof(obj1)) == Dolo.AbstractDoloFunctor
 
         obj2 = let
-            eval(compile_equation(sm, :auxiliary))
+            eval(Dolo.compile_equation(sm, :auxiliary))
         end
         @test super(typeof(obj2)) == Dolo.AbstractDoloFunctor
 
