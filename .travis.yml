@@ -14,5 +14,6 @@ script:
     - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
     - julia -e 'Pkg.clone(pwd()); Pkg.build("Dolo"); Pkg.test("Dolo"; coverage=true)'
 after_success:
-    - echo $TRAVIS_JULIA_VERSION
-    - julia -e 'Pkg.add("Coverage"); cd(Pkg.dir("Dolo")); using Coverage; Coveralls.submit(process_folder()); Codecov.submit(process_folder())'
+    - if [ $TRAVIS_JULIA_VERSION = "0.4" ] && [ $TRAVIS_OS_NAME = "linux" ]; then
+         julia -e 'cd(Pkg.dir("Dolo")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder()); Codecov.submit(process_folder());';
+      fi
