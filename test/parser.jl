@@ -45,7 +45,7 @@
         end
 
         @testset "throws errors when unsupported" begin
-            @test_throws ErrorException Dolo._parse("x+y | i <= 100")
+            @test_throws ErrorException Dolo._parse("x+y || i <= 100")
         end
     end
 
@@ -200,12 +200,12 @@ Dolo.model_spec(::MockSymbolic) = :dtcscc
             eval(Dolo.compile_equation(sm, :value))
         end
         @test_throws ErrorException obj1()
-        @test super(typeof(obj1)) == Dolo.AbstractDoloFunctor
+        @test @compat(supertype)(typeof(obj1)) == Dolo.AbstractDoloFunctor
 
         obj2 = let
             eval(Dolo.compile_equation(sm, :auxiliary))
         end
-        @test super(typeof(obj2)) == Dolo.AbstractDoloFunctor
+        @test @compat(supertype)(typeof(obj2)) == Dolo.AbstractDoloFunctor
 
         # now see if the functions were compiled properly
         z = 1.0

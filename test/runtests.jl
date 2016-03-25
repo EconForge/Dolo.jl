@@ -1,4 +1,5 @@
 using Dolo
+using Compat
 
 # write your own tests here
 if VERSION >= v"0.5-"
