@@ -171,13 +171,14 @@ function compile_equation(sm::ASM, func_nm::Symbol)
         end
 
         # non-allocating function
-        function Base.call(::$tnm, $(typed_args...), out)
-            $body  # evaluates equations and populates `out`
+        function evaluate!(::$tnm, $(typed_args...), out)
+            $body  # evaluateuates equations and populates `out`
         end
 
         # allocating version
-        function Base.call(o::$tnm, $(typed_args...))
-            o($(arg_names...), Array(eltype($(arg_names[1])), $(length(exprs))))
+        function evaluate(o::$tnm, $(typed_args...))
+            out = Array(eltype($(arg_names[1])), $(length(exprs)))
+            evaluate!(o, $(arg_names...), out)
         end
 
         # last line of this block is the singleton instance of the type

@@ -191,7 +191,9 @@ for (TF, TM, ms) in [(:DTCSCCfunctions, :DTCSCCModel, :(:dtcscc)),
                              "cannot create functions of type $($TF)")
                 error(msg)
             end
-            $(TF)([eval(compile_equation(sm, fld))
+            $(TF)([let
+                       eval(compile_equation(sm, fld))
+                   end
                    for fld in fieldnames($(TF))]...)
         end
 
