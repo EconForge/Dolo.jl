@@ -108,6 +108,7 @@ model_spec(sm::SymbolicModel) = sm.model_type
 immutable ModelCalibration
     flat::OrderedDict{Symbol,Float64}
     grouped::Dict{Symbol,Vector{Float64}}
+    symbol_table::Dict{Symbol,Tuple{Symbol,Int}}
 end
 
 function ModelCalibration(sm::SymbolicModel)
@@ -117,7 +118,21 @@ function ModelCalibration(sm::SymbolicModel)
         grouped[k] = [flat[nm] for nm in nms]
     end
 
-    ModelCalibration(flat, grouped)
+    symbol_table = Dict{Symbol,Tuple{Symbol,Int}}()
+    for (grp, vals) in sm.symbols
+        for (i, v) in enumerate(vals)
+            symbol_table[v] = (grp, i)
+        end
+    end
+
+    @assert sort(collect(keys(symbol_table))) == sort(collect(keys(flat)))
+
+    ModelCalibration(flat, grouped, symbol_table)
+end
+
+for f in (:copy, :deepcopy)
+    @eval Base.$(f)(mc::ModelCalibration) =
+        ModelCalibration($(f)(mc.flat), $(f)(mc.grouped), $(f)(mc.symbol_table))
 end
 
 # TODO: Decide if we should keep these semantics. Right now I've implemented
@@ -133,6 +148,26 @@ Base.getindex(mc::ModelCalibration, n1::Symbol, nms::Symbol...) =
     [mc[n] for n in vcat(n1, nms...)]
 Base.getindex(mc::ModelCalibration, n1::AbstractString, nms::AbstractString...) =
     Vector{Float64}[mc[n] for n in vcat(n1, nms...)]
+
+# setting a single value
+function Base.setindex!(mc::ModelCalibration, v::Real, k::Symbol)
+    # update in flat
+    mc.flat[k] = convert(Float64, v)
+
+    # update in grouped
+    grp, ix = mc.symbol_table[k]
+    mc.grouped[grp][ix] = v
+end
+
+# setting multiple values
+function Base.setindex!(mc::ModelCalibration, vs::AbstractVector, ks::Symbol...)
+    length(vs) == length(ks) ||
+    for (v, k) in zip(vs, ks)
+        mc[k] = v
+    end
+    mc
+end
+
 
 # tries to replace a symbol if the key is in the calibration, otherwise just
 # keeps the symbol in place

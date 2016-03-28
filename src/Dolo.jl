@@ -3,6 +3,7 @@ module Dolo
 using MacroTools
 using DataStructures: OrderedDict
 using YAML: load_file
+using NLsolve
 
 export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
        AbstractDoloFunctor, SymbolicModel, DTCSCCModel, DTMSCCModel
@@ -29,5 +30,6 @@ include("util.jl")
 include("parser.jl")
 include("model_types.jl")
 
+include("algos/util.jl")
 
 end # module
