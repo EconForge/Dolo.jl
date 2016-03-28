@@ -134,6 +134,16 @@ Base.getindex(mc::ModelCalibration, n1::Symbol, nms::Symbol...) =
 Base.getindex(mc::ModelCalibration, n1::AbstractString, nms::AbstractString...) =
     Vector{Float64}[mc[n] for n in vcat(n1, nms...)]
 
+# tries to replace a symbol if the key is in the calibration, otherwise just
+# keeps the symbol in place
+_replace_me(mc::ModelCalibration, s::Symbol) = get(mc.flat, s, s)
+_replace_me(mc, o) = o
+
+eval_with(mc::ModelCalibration, ex::Expr) =
+    eval(MacroTools.prewalk(s->_replace_me(mc, s), ex))
+
+eval_with(mc::ModelCalibration, s::AbstractString) = eval_with(mc, parse(s))
+
 # -------------------- #
 # Model specific types #
 # -------------------- #
