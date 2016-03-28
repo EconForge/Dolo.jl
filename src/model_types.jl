@@ -208,6 +208,32 @@ end
 
 eval_with(mc::ModelCalibration, s::AbstractString) = eval_with(mc, parse(s))
 
+# ------------- #
+# Approximation #
+# ------------- #
+
+immutable Approximation{kind,N}
+    a::Vec{N,Float64}
+    b::Vec{N,Float64}
+    n::Vec{N,Int}
+end
+
+function Approximation(m::ANM, d=:cubic_spline)
+    if !haskey(m.symbolic.distribution, :Approximation)
+        error("m.symbolic doesn' not have information for Approximation")
+    end
+    a_sym = m.symbolic.distribution[:Approximation][:a]
+    b_sym = m.symbolic.distribution[:Approximation][:b]
+
+    # build a, b, n
+    a = Vec([eval_with(m.calibration, s) for s in a_sym])
+    b = Vec([eval_with(m.calibration, s) for s in b_sym])
+    n = Vec(m.symbolic.distribution[:Approximation][:orders])
+    kind = get(m.symbolic.distribution[:Approximation], :kind, d)
+    Approximation{kind,length(a)}(a, b, n)
+end
+
+
 # -------------------- #
 # Model specific types #
 # -------------------- #

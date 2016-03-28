@@ -4,6 +4,8 @@ using MacroTools
 using DataStructures: OrderedDict
 using YAML: load_file
 using NLsolve
+using Interpolations
+using QuantEcon: gridmake
 
 export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
        AbstractDoloFunctor, SymbolicModel, DTCSCCModel, DTMSCCModel,
@@ -35,5 +37,6 @@ include("parser.jl")
 include("model_types.jl")
 
 include("algos/dtcscc.jl")
+include("numerical/interpolations.jl")
 
 end # module
