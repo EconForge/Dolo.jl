@@ -3,7 +3,7 @@ language: julia
 sudo: false
 os:
   - linux
-  - osx
+  # - osx  # we don't do any binary dependencies or OS specific magic
 julia:
   - release
   - nightly
