@@ -109,6 +109,7 @@ immutable ModelCalibration
     flat::OrderedDict{Symbol,Float64}
     grouped::Dict{Symbol,Vector{Float64}}
     symbol_table::Dict{Symbol,Tuple{Symbol,Int}}
+    symbol_groups::OrderedDict{Symbol,Vector{Symbol}}
 end
 
 function ModelCalibration(sm::SymbolicModel)
@@ -125,14 +126,16 @@ function ModelCalibration(sm::SymbolicModel)
         end
     end
 
+    # make sure we documented where in grouped every symbol is
     @assert sort(collect(keys(symbol_table))) == sort(collect(keys(flat)))
 
-    ModelCalibration(flat, grouped, symbol_table)
+    ModelCalibration(flat, grouped, symbol_table, deepcopy(sm.symbols))
 end
 
 for f in (:copy, :deepcopy)
     @eval Base.$(f)(mc::ModelCalibration) =
-        ModelCalibration($(f)(mc.flat), $(f)(mc.grouped), $(f)(mc.symbol_table))
+        ModelCalibration($(f)(mc.flat), $(f)(mc.grouped),
+                         $(f)(mc.symbol_table), $(f)(mc.symbol_groups))
 end
 
 # TODO: Decide if we should keep these semantics. Right now I've implemented
@@ -144,8 +147,10 @@ Base.getindex(mc::ModelCalibration, n::Symbol) = mc.flat[n]
 Base.getindex(mc::ModelCalibration, n::AbstractString) = mc.grouped[symbol(n)]
 
 # now define methods that let us extract multiple params or groups at a time
-Base.getindex(mc::ModelCalibration, n1::Symbol, nms::Symbol...) =
-    [mc[n] for n in vcat(n1, nms...)]
+Base.getindex(mc::ModelCalibration, nms::Symbol...) = [mc[n] for n in nms]
+
+# define this one with n1, nms... to avoid method ambiguity with previous
+# method above that has just nms::Symbol...
 Base.getindex(mc::ModelCalibration, n1::AbstractString, nms::AbstractString...) =
     Vector{Float64}[mc[n] for n in vcat(n1, nms...)]
 
@@ -161,13 +166,30 @@ end
 
 # setting multiple values
 function Base.setindex!(mc::ModelCalibration, vs::AbstractVector, ks::Symbol...)
-    length(vs) == length(ks) ||
+    if length(vs) != length(ks)
+        error("length of keys and values must be the same")
+    end
+
     for (v, k) in zip(vs, ks)
         mc[k] = v
     end
     mc
 end
 
+# setting a single group
+function Base.setindex!(mc::ModelCalibration, v::AbstractVector, k::AbstractString)
+    ks = mc.symbol_groups[symbol(k)]
+    if length(v) != length(ks)
+        msg = string("Calibration has $(length(ks)) symbols in $k, ",
+                     "but passed $(length(v)) values")
+        error(msg)
+    end
+
+    for (v, k) in zip(v, ks)
+        mc[k] = v
+    end
+    mc
+end
 
 # tries to replace a symbol if the key is in the calibration, otherwise just
 # keeps the symbol in place

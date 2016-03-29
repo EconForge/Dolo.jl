@@ -24,7 +24,7 @@ function solve_steady_state(m::DTCSCCModel, mc::ModelCalibration=m.calibration)
 
     # otherwise set controls
     out = deepcopy(mc)
-    out[m.symbolic.symbols[:states]...] = sol.zero[1:ns]
-    out[m.symbolic.symbols[:controls]...] = sol.zero[ns+1:end]
+    out["states"] = sol.zero[1:ns]
+    out["controls"] = sol.zero[ns+1:end]
     out
 end
