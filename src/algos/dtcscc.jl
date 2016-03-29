@@ -1,20 +1,21 @@
 function solve_steady_state(m::DTCSCCModel, mc::ModelCalibration=m.calibration)
     p, s0, x0 = mc["parameters", "states", "controls"]
-    e = zeros(mc["shocks"])
-    ns = length(s)
-    nx = length(x)
+    e_ = zeros(mc["shocks"])
+    ns = length(s0)
+    nx = length(x0)
 
     function obj!(sx, out)
         s = sub(sx, 1:ns)
-        X = sub(sx, ns+1:ns+nx)
+        x = sub(sx, ns+1:ns+nx)
+        s_out = sub(out, 1:ns)
         x_out = sub(out, ns+1:ns+nx)
 
         # update state part of residual
-        S = evaluate(m.functions.transition, s, x, e, p)
-        out[1:ns] = S-s
+        evaluate!(m.functions.transition, s, x, e_, p, s_out)
+        broadcast!(-, s_out, s_out, s)
 
         # now update control part
-        evaluate!(m.functions.arbitrage, s, x, e, S, X, p, x_out)
+        evaluate!(m.functions.arbitrage, s, x, e_, s, x, p, x_out)
         out
     end
 
