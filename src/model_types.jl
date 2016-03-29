@@ -237,14 +237,14 @@ for (TF, TM, ms) in [(:DTCSCCfunctions, :DTCSCCModel, :(:dtcscc)),
         model_spec(::Type{$(TF)}) = $ms
 
         # function type constructor
-        function $(TF)(sm::SymbolicModel)
+        function $(TF)(sm::SymbolicModel; print_code::Bool=false)
             if model_spec(sm) != model_spec($TF)
                 msg = string("Symbolic model is of type $(model_spec(sm)) ",
                              "cannot create functions of type $($TF)")
                 error(msg)
             end
             $(TF)([let
-                       eval(compile_equation(sm, fld))
+                       eval(compile_equation(sm, fld; print_code=print_code))
                    end
                    for fld in fieldnames($(TF))]...)
         end

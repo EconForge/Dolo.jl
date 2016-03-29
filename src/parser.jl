@@ -110,7 +110,7 @@ function _main_body_block(sm::ASM, targets::Vector{Symbol}, exprs::Vector{Expr})
     func_block = Expr(:block, assignments...)
 end
 
-function compile_equation(sm::ASM, func_nm::Symbol)
+function compile_equation(sm::ASM, func_nm::Symbol; print_code::Bool=false)
     # extract spec from recipe
     spec = RECIPES[model_spec(sm)][:specs][func_nm]
 
@@ -190,6 +190,8 @@ function compile_equation(sm::ASM, func_nm::Symbol)
         $tnm()
         # TODO: can we use broadcast! to get pretty far towards guvectorize?
     end
+
+    print_code && println(code)
 
     code
 
