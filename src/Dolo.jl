@@ -5,6 +5,7 @@ using DataStructures: OrderedDict
 using YAML: load_file
 using NLsolve
 using Interpolations
+using FixedSizeArrays
 using QuantEcon: gridmake
 
 export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,

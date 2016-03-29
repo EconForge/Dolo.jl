@@ -115,10 +115,13 @@ function _handle_arbitrage(arb, controls)
         else
 
             msg = string("Malformed arbitrage equation. ",
-                         "Only have one occurance of `|` allowed.")
+                         "Only one occurance of `|` allowed.")
             error(msg)
         end
 
     end
     controls_lb, controls_ub, arbitrage
 end
+
+linspace_grid(a, b, n) = [linspace(A, B, N) for (A, B, N) in zip(a, b, n)]
+mlinspace(a, b, n) = gridmake(linspace_grid(a, b, n)...)::Matrix{Float64}

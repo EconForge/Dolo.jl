@@ -60,7 +60,7 @@ immutable SymbolicModel <: ASM
             end
         end
 
-        new(_symbols, _eqs, _calib, dist, options, model_type, name, filename)
+        new(_symbols, _eqs, _calib, options, dist, model_type, name, filename)
     end
 end
 
@@ -218,18 +218,23 @@ immutable Approximation{kind,N}
     n::Vec{N,Int}
 end
 
-function Approximation(m::ANM, d=:cubic_spline)
-    if !haskey(m.symbolic.distribution, :Approximation)
-        error("m.symbolic doesn' not have information for Approximation")
+function Approximation(m::ANM, k=:cubic_spline)
+    if !haskey(m.symbolic.options, :Approximation)
+        error("m.symbolic doesn't not have information for Approximation")
     end
-    a_sym = m.symbolic.distribution[:Approximation][:a]
-    b_sym = m.symbolic.distribution[:Approximation][:b]
+
+    approx = m.symbolic.options[:Approximation]
+
+    a_sym = approx[:a]
+    b_sym = approx[:b]
 
     # build a, b, n
     a = Vec([eval_with(m.calibration, s) for s in a_sym])
     b = Vec([eval_with(m.calibration, s) for s in b_sym])
-    n = Vec(m.symbolic.distribution[:Approximation][:orders])
-    kind = get(m.symbolic.distribution[:Approximation], :kind, d)
+    n = Vec(approx[:orders])
+
+    kind = get(approx, :kind, k)
+
     Approximation{kind,length(a)}(a, b, n)
 end
 
