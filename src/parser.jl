@@ -127,7 +127,11 @@ function compile_equation(sm::ASM, func_nm::Symbol)
         code = quote
             immutable $tnm <: AbstractDoloFunctor
             end
-            function Base.call(::$tnm, args...)
+            function evaluate(::$tnm, args...)
+                error($msg)
+            end
+
+            function evaluate!(::$tnm, args...)
                 error($msg)
             end
 

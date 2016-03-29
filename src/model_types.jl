@@ -174,8 +174,15 @@ end
 _replace_me(mc::ModelCalibration, s::Symbol) = get(mc.flat, s, s)
 _replace_me(mc, o) = o
 
-eval_with(mc::ModelCalibration, ex::Expr) =
-    eval(MacroTools.prewalk(s->_replace_me(mc, s), ex))
+function eval_with(mc::ModelCalibration, ex::Expr)
+    # put in let block to allow us to define intermediates in expr and not
+    # have them become globals in `current_module()` at callsite
+    new_ex = MacroTools.prewalk(s->_replace_me(mc, s), ex)
+    eval(:(
+    let
+        $new_ex
+    end))
+end
 
 eval_with(mc::ModelCalibration, s::AbstractString) = eval_with(mc, parse(s))
 

@@ -199,7 +199,7 @@ Dolo.model_spec(::MockSymbolic) = :dtcscc
         obj1 = let
             eval(Dolo.compile_equation(sm, :value))
         end
-        @test_throws ErrorException obj1()
+        @test_throws ErrorException evaluate(obj1)
         @test @compat(supertype)(typeof(obj1)) == Dolo.AbstractDoloFunctor
 
         obj2 = let
@@ -225,15 +225,15 @@ Dolo.model_spec(::MockSymbolic) = :dtcscc
         want = [y, c, rk, w]
         out = zeros(4)
 
-        @test_throws MethodError obj2()
-        @test_throws MethodError obj2(s)
-        @test_throws MethodError obj2(s, x)
+        @test_throws MethodError evaluate(obj2, )
+        @test_throws MethodError evaluate(obj2, s)
+        @test_throws MethodError evaluate(obj2, s, x)
 
         # test allocating version
-        @test @inferred(obj2(s, x, p)) == want
+        @test @inferred(evaluate(obj2, s, x, p)) == want
 
         # test non-allocating version
-        @inferred obj2(s, x, p, out)
+        @inferred evaluate!(obj2, s, x, p, out)
         @test out == want
     end
 
