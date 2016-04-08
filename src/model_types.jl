@@ -60,7 +60,7 @@ immutable SymbolicModel <: ASM
             end
         end
 
-        new(_symbols, _eqs, _calib, dist, options, model_type, name, filename)
+        new(_symbols, _eqs, _calib, options, dist, model_type, name, filename)
     end
 end
 
@@ -289,6 +289,7 @@ end
 _replace_me(mc::ModelCalibration, s::Symbol) = get(mc.flat, s, s)
 _replace_me(mc, o) = o
 
+# eval with will work on
 function eval_with(mc::ModelCalibration, ex::Expr)
     # put in let block to allow us to define intermediates in expr and not
     # have them become globals in `current_module()` at callsite
@@ -299,7 +300,12 @@ function eval_with(mc::ModelCalibration, ex::Expr)
     end))
 end
 
-eval_with(mc::ModelCalibration, s::AbstractString) = eval_with(mc, parse(s))
+eval_with(mc::ModelCalibration, s::AbstractString) = eval_with(mc, _to_expr(s))
+eval_with(mc::ModelCalibration, s::Symbol) = _replace_me(m, s)
+eval_with(mc::ModelCalibration, d::Associative) =
+    Dict{Symbol,Any}([(symbol(k), eval_with(mc, v)) for (k, v) in d])
+eval_with(mc::ModelCalibration, x::Number) = x
+eval_with(mc::ModelCalibration, x::AbstractArray) = map(y->eval_with(mc, y), x)
 
 # -------------------- #
 # Model specific types #
@@ -323,6 +329,8 @@ immutable DTCSCCModel{_T<:DTCSCCfunctions} <: ANM
     symbolic::SymbolicModel
     functions::_T
     calibration::ModelCalibration
+    options::Dict{Symbol,Any}
+    distribution::Dict{Symbol,Any}
 end
 
 immutable DTMSCCfunctions{T1,T2,T3,T4,T5,T6,T7,T8,T9}
@@ -341,6 +349,8 @@ immutable DTMSCCModel{_T<:DTMSCCfunctions} <: ANM
     symbolic::SymbolicModel
     functions::_T
     calibration::ModelCalibration
+    options::Dict{Symbol,Any}
+    distribution::Dict{Symbol,Any}
 end
 
 for (TF, TM, ms) in [(:DTCSCCfunctions, :DTCSCCModel, :(:dtcscc)),
@@ -363,6 +373,7 @@ for (TF, TM, ms) in [(:DTCSCCfunctions, :DTCSCCModel, :(:dtcscc)),
                    end
                    for fld in fieldnames($(TF))]...)
         end
+        Base.convert(::Type{SymbolicModel}, m::$(TM)) = m.symbolic
 
         # model type constructor
         function Base.convert(::Type{$TM}, sm::SymbolicModel)
@@ -371,9 +382,10 @@ for (TF, TM, ms) in [(:DTCSCCfunctions, :DTCSCCModel, :(:dtcscc)),
                              "cannot create model of type $($TM)")
                 error(msg)
             end
-            $(TM)(sm, $(TF)(sm), ModelCalibration(sm))
+            calib = ModelCalibration(sm)
+            options = eval_with(calib, deepcopy(sm.options))
+            dist = eval_with(calib, deepcopy(sm.distribution))
+            $(TM)(sm, $(TF)(sm), calib, options, dist)
         end
-
-        Base.convert(::Type{SymbolicModel}, m::$(TM)) = m.symbolic
     end
 end
