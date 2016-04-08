@@ -106,6 +106,29 @@
             @test [8.5, 0.5] == @inferred getindex(mc, :states)
             @test Vector{Float64}[[8.5, 0.5], [1.1]] == @inferred getindex(mc, :states, :controls)
 
+            # setindex!. Do this on mc3 so as not to change mc. Verify that
+            # arrays in mc are unchanged after this
+            mc3[:k] = 5.0
+
+            @test mc3.flat[:k] == 5.0
+            @test mc3[:states] == [5.0, 0.5]
+            @test mc.flat[:k] == 8.5
+            @test mc[:states] == [8.5, 0.5]
+
+            # try same with mc2 and show that mc[:k] is unchanged,
+            # but mc["states"] is
+            mc2[:k] = 5.0
+            @test mc2.flat[:k] == 5.0
+            @test mc2[:states] == [5.0, 0.5]
+            @test mc.flat[:k] == 8.5
+            @test mc[:states] == [5.0, 0.5]
+
+            # make sure we throw if setindex! doesn't have matching sizes
+            @test_throws DimensionMismatch setindex!(mc3, (1,2,3,4), :k, :i, :z)
+
+            # now get back our original mc
+            mc = new_mc()
+
             # test setindex! for a group
             mc3[:states] = [42.0, 43.0]
             @test [42.0, 43.0] == @inferred getindex(mc3, :states)

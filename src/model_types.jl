@@ -235,22 +235,42 @@ end
 Base.getindex(mc::ModelCalibration, n::Symbol) = mc.grouped[n]
 Base.getindex(mc::ModelCalibration, nms::Symbol...) = [mc[n] for n in nms]
 
-function Base.setindex!(mc::ModelCalibration, v::AbstractVector, k::Symbol)
-    ks = mc.symbol_groups[k]
+function _setindex_group!(mc::ModelCalibration, v::AbstractVector, grp::Symbol)
+    ks = mc.symbol_groups[grp]
     if length(v) != length(ks)
-        msg = string("Calibration has $(length(ks)) symbols in $k, ",
-                     "but passed $(length(v)) values")
+        msg = string("Calibration has $(length(ks)) symbols in $grp, ",
+        "but passed $(length(v)) values")
         throw(DimensionMismatch(msg))
     end
 
     # update grouped
-    mc.grouped[k] = v
+    mc.grouped[grp] = v
 
     # update flat
     for (vi, ki) in zip(v, ks)
         mc.flat[ki] = vi
     end
     mc
+end
+
+function _setindex_flat!(mc::ModelCalibration, v::Real, k::Symbol)
+    # update flat
+    mc.flat[k] = v
+
+    # update grouped
+    grp, ix = mc.symbol_table[k]
+    mc.grouped[grp][ix] = v
+    mc
+end
+
+function Base.setindex!(mc::ModelCalibration, v, k::Symbol)
+    if haskey(mc.symbol_table, k)       # setting a variable
+        _setindex_flat!(mc, v, k)
+    elseif haskey(mc.symbol_groups, k)  # setting a group
+        _setindex_group!(mc, v, k)
+    else
+        throw(KeyError("ModelCalibration has no variable or groupe named $k"))
+    end
 end
 
 function Base.setindex!(mc::ModelCalibration, vs::Tuple, ks::Symbol...)
