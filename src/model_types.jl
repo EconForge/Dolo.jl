@@ -209,18 +209,18 @@ end
 eval_with(mc::ModelCalibration, s::AbstractString) = eval_with(mc, parse(s))
 
 # ------------- #
-# Approximation #
+# ApproximationSpace #
 # ------------- #
 
-immutable Approximation{kind,N}
+immutable ApproximationSpace{kind,N}
     a::Vec{N,Float64}
     b::Vec{N,Float64}
     n::Vec{N,Int}
 end
 
-function Approximation(m::ANM, k=:cubic_spline)
+function ApproximationSpace(m::ANM, default_kind=:cubic_spline)
     if !haskey(m.symbolic.options, :Approximation)
-        error("m.symbolic doesn't not have information for Approximation")
+        error("m.symbolic doesn't not have information for ApproximationSpace")
     end
 
     approx = m.symbolic.options[:Approximation]
@@ -233,9 +233,9 @@ function Approximation(m::ANM, k=:cubic_spline)
     b = Vec([eval_with(m.calibration, s) for s in b_sym])
     n = Vec(approx[:orders])
 
-    kind = get(approx, :kind, k)
+    kind = symbol(get(approx, :kind, default_kind))
 
-    Approximation{kind,length(a)}(a, b, n)
+    ApproximationSpace{kind,length(a)}(a, b, n)
 end
 
 

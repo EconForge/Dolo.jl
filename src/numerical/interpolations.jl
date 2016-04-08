@@ -98,6 +98,16 @@ end
 
 
 # provided API methods on `AbstractDoloInterpoland`
-# TODO: implement the other ones documented above
+# TODO: implement the other ones documented ab  ove
 grid{T<:AbstractDoloInterpoland}(dr::T) = grid(T, dr.a, dr.b, dr.n)
 mgrid{T<:AbstractDoloInterpoland}(dr::T) = mgrid(T, dr.a, dr.b, dr.n)
+
+
+#=
+src = load_file("/Users/sglyon/src/Python/dolo/examples/models/rbc.yaml")
+sm = SymbolicModel(src, :dtcscc)
+m = DTCSCCModel(sm)
+a = Approximation(m)
+dr = CubicSplines(a, randn(a.n...))
+println(typeof(dr))
+=#
