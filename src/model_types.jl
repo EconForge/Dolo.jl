@@ -298,15 +298,15 @@ function eval_with(mc::ModelCalibration, ex::Expr)
 end
 
 eval_with(mc::ModelCalibration, s::AbstractString) = eval_with(mc, _to_expr(s))
-eval_with(mc::ModelCalibration, s::Symbol) = _replace_me(m, s)
+eval_with(mc::ModelCalibration, s::Symbol) = _replace_me(mc, s)
 eval_with(mc::ModelCalibration, d::Associative) =
     Dict{Symbol,Any}([(symbol(k), eval_with(mc, v)) for (k, v) in d])
 eval_with(mc::ModelCalibration, x::Number) = x
 eval_with(mc::ModelCalibration, x::AbstractArray) = map(y->eval_with(mc, y), x)
 
-# -------------------- #
-# Model specific types #
-# -------------------- #
+# ------------------- #
+# Numeric model types #
+# ------------------- #
 # TODO: decide if we really want all 8 type params. It doesn't hurt, it just
 #       looks funny
 immutable DTCSCCfunctions{T1,T2,T3,T4,T5,T6,T7,T8}
@@ -398,6 +398,6 @@ end
 # Other methods #
 # ------------- #
 
-model_type(m::Union{ASM,ANM}) = m.model_type
-filename(m::Union{ASM,ANM}) = m.filename
-name(m::Union{ASM,ANM}) = m.name
+model_type(m::AbstractModel) = m.model_type
+filename(m::AbstractModel) = m.filename
+name(m::AbstractModel) = m.name

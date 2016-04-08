@@ -168,6 +168,16 @@
                 end)
             @test !isdefined(current_module(), :foobar)
 
+            @test eval_with(mc, ["k+1", "k+i"]) == [9.5, 9.6]
+            @test eval_with(mc, 1.0) == 1.0
+            @test eval_with(mc, :k) == 8.5
+            @test eval_with(mc, Dict("hi"=>"i", "low"=>"-i")) ==
+                    Dict{Symbol,Any}(:hi => 1.1, :low => -1.1)
+
+            # make sure it works with any associatives
+            @test eval_with(mc, mc.flat) == mc.flat.d
+            @test eval_with(mc, mc.grouped) == mc.grouped.d
+
         end
     end
 end
