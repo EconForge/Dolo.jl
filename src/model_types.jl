@@ -388,6 +388,12 @@ for (TF, TM, ms) in [(:DTCSCCfunctions, :DTCSCCModel, :(:dtcscc)),
             calib = ModelCalibration(sm)
             options = eval_with(calib, deepcopy(sm.options))
             dist = eval_with(calib, deepcopy(sm.distribution))
+            # hack to parse normal transition matrix into a matrix instead of
+            # a vector of vectors
+            if haskey(dist, :Normal)
+                n = length(calib[:shocks])
+                dist[:Normal] = reshape(vcat(dist[:Normal]...), n, n)
+            end
             $(TM)(sm, $(TF)(sm), calib, options, dist, sm.model_type,
                   sm.name, sm.filename)
         end

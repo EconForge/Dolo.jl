@@ -1,4 +1,68 @@
+
+
 @testset "testing model_types" begin
+    #=
+    I got this by doing
+
+    ```
+    src = load_file("/Users/sglyon/src/Python/dolo/examples/models/rbc.yaml")
+    repr(src)
+    ```
+    And then doing some formatting
+    =#
+
+    rbc_dict = Dict{Any,Any}(
+        "symbols"=>Dict{Any,Any}(
+            "parameters"=>Any["beta","sigma","eta","chi","delta","alpha","rho","zbar","sig_z"],
+            "controls"=>Any["i","n"],
+            "values"=>Any["V"],
+            "auxiliaries"=>Any["y","c","rk","w"],
+            "states"=>Any["z","k"],
+            "shocks"=>Any["e_z"]
+        ),
+        "name"=>"Real Business Cycle",
+        "calibration"=>Dict{Any,Any}(
+            "c"=>"y - i","zbar"=>1,
+            "V"=>"log(c)/(1-beta)",
+            "delta"=>0.025,"sigma"=>1,"chi"=>"w/c^sigma/n^eta",
+            "phi"=>1,"z"=>"zbar",
+            "rk"=>"1/beta-1+delta",
+            "i"=>"delta*k",
+            "y"=>"z*k^alpha*n^(1-alpha)",
+            "sig_z"=>0.016,"w"=>"(1-alpha)*z*(k/n)^(alpha)",
+            "alpha"=>0.33,"k"=>"n/(rk/alpha)^(1/(1-alpha))",
+            "eta"=>1,
+            "rho"=>0.8,
+            "beta"=>0.99,
+            "n"=>0.33
+        ),
+        "options"=>Dict{Any,Any}(
+            "Approximation"=>Dict{Any,Any}(
+                "orders"=>Any[10,50],
+                "b"=>Any["1+2*sig_z","k*1.1"],
+                "a"=>Any["1-2*sig_z","k*0.9"]
+                )
+            ),
+        "equations"=>Dict{Any,Any}(
+            "arbitrage"=>Any[
+                "1 - beta*(c/c(1))^(sigma)*(1-delta+rk(1))   | 0 <= i <= inf",
+                "chi*n^eta*c^sigma - w                       | 0 <= n <= inf"
+            ],
+            "auxiliary"=>Any[
+                "y = z*k^alpha*n^(1-alpha)","c = y - i",
+                "rk = alpha*y/k",
+                "w = (1-alpha)*y/n"
+            ],
+            "value"=>Any["V = log(c) + beta*V(1)"],
+            "transition"=>Any[
+                "z = (1-rho)*zbar + rho*z(-1) + e_z",
+                "k = (1-delta)*k(-1) + i(-1)"
+            ]
+        ),
+        "distribution"=>Dict{Any,Any}(
+            "Normal"=>Any[Any["sig_z**2"]]
+        )
+    )
 
     @testset "ModelCalibration" begin
         function new_mc()
@@ -179,5 +243,61 @@
             @test eval_with(mc, mc.grouped) == mc.grouped.d
 
         end
+    end
+
+    @testset "SymbolicModel" begin
+        sm = SymbolicModel(rbc_dict, :dtcscc, "rbc.yaml")
+
+        @testset "constructor" begin
+
+            # construct the object, and now test to make sure that things are how
+            # they should be
+
+            @test length(keys(sm.symbols)) == 6
+            np, nc, nv, na, ns, nz = 9, 2, 1, 4, 2, 1
+            @test length(sm.symbols[:parameters]) == np
+            @test length(sm.symbols[:controls]) == nc
+            @test length(sm.symbols[:values]) == nv
+            @test length(sm.symbols[:auxiliaries]) == na
+            @test length(sm.symbols[:states]) == ns
+            @test length(sm.symbols[:shocks]) == nz
+
+            # test order of keys
+            @test collect(keys(sm.symbols)) == map(symbol, Dolo.RECIPES[:dtcscc][:symbols])
+
+            # test that we got the right number of equations for each group
+            @test length(sm.equations[:arbitrage]) == nc
+            @test length(sm.equations[:value]) == nv
+            @test length(sm.equations[:transition]) == ns
+            @test length(sm.equations[:auxiliary]) == na
+            @test length(sm.equations[:controls_lb]) == nc
+            @test length(sm.equations[:controls_ub]) == nc
+
+            name_order = vcat([sm.symbols[symbol(k)]
+                              for k in Dolo.RECIPES[:dtcscc][:symbols]]...)
+            @test collect(keys(sm.calibration)) == name_order
+            @test sm.options == Dolo._symbol_dict(rbc_dict["options"])
+            @test sm.distribution == Dolo._symbol_dict(rbc_dict["distribution"])
+        end
+
+        @test model_type(sm) == sm.model_type == :dtcscc
+        @test name(sm) == sm.name == "Real Business Cycle"
+        @test filename(sm) == sm.filename == "rbc.yaml"
+    end
+
+    @testset "NumericModel" begin
+        sm = SymbolicModel(rbc_dict, :dtcscc, "rbc.yaml")
+        m = DTCSCCModel(sm)
+
+        # check that options and distribution were "numericized" properly
+        @test all([isa(x, Number) for x in m.options[:Approximation][:orders]])
+        @test all([isa(x, Number) for x in m.options[:Approximation][:b]])
+        @test all([isa(x, Number) for x in m.options[:Approximation][:a]])
+        @test all([isa(x, Number) for x in m.distribution[:Normal]])
+        @test isa(m.distribution[:Normal], Matrix)
+
+        # TODO: pick up testing with the functions...
+        # TODO: also need to test solve_triangular_system and the ModelCalibration
+        #       constructor that just takes a SymbolicModel
     end
 end
