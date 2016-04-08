@@ -96,9 +96,6 @@ function SymbolicModel(from_yaml::Dict, model_type::Symbol, filename="none")
     out
 end
 
-# add this method to be consistent with `model_type(::ANM)`
-model_spec(sm::SymbolicModel) = sm.model_type
-
 # ----------- #
 # Calibration #
 # ----------- #
@@ -331,6 +328,9 @@ immutable DTCSCCModel{_T<:DTCSCCfunctions} <: ANM
     calibration::ModelCalibration
     options::Dict{Symbol,Any}
     distribution::Dict{Symbol,Any}
+    model_type::Symbol
+    name::UTF8String
+    filename::UTF8String
 end
 
 immutable DTMSCCfunctions{T1,T2,T3,T4,T5,T6,T7,T8,T9}
@@ -351,20 +351,23 @@ immutable DTMSCCModel{_T<:DTMSCCfunctions} <: ANM
     calibration::ModelCalibration
     options::Dict{Symbol,Any}
     distribution::Dict{Symbol,Any}
+    model_type::Symbol
+    name::UTF8String
+    filename::UTF8String
 end
 
 for (TF, TM, ms) in [(:DTCSCCfunctions, :DTCSCCModel, :(:dtcscc)),
                      (:DTMSCCfunctions, :DTMSCCModel, :(:dtmscc))]
     @eval begin
-        model_spec(::$(TM)) = $ms
-        model_spec(::Type{$(TM)}) = $ms
-        model_spec(::$(TF)) = $ms
-        model_spec(::Type{$(TF)}) = $ms
+        model_type(::$(TM)) = $ms
+        model_type(::Type{$(TM)}) = $ms
+        model_type(::$(TF)) = $ms
+        model_type(::Type{$(TF)}) = $ms
 
         # function type constructor
         function $(TF)(sm::SymbolicModel; print_code::Bool=false)
-            if model_spec(sm) != model_spec($TF)
-                msg = string("Symbolic model is of type $(model_spec(sm)) ",
+            if model_type(sm) != model_type($TF)
+                msg = string("Symbolic model is of type $(model_type(sm)) ",
                              "cannot create functions of type $($TF)")
                 error(msg)
             end
@@ -377,15 +380,24 @@ for (TF, TM, ms) in [(:DTCSCCfunctions, :DTCSCCModel, :(:dtcscc)),
 
         # model type constructor
         function Base.convert(::Type{$TM}, sm::SymbolicModel)
-            if model_spec(sm) != model_spec($TM)
-                msg = string("Symbolic model is of type $(model_spec(sm)) ",
+            if model_type(sm) != model_type($TM)
+                msg = string("Symbolic model is of type $(model_type(sm)) ",
                              "cannot create model of type $($TM)")
                 error(msg)
             end
             calib = ModelCalibration(sm)
             options = eval_with(calib, deepcopy(sm.options))
             dist = eval_with(calib, deepcopy(sm.distribution))
-            $(TM)(sm, $(TF)(sm), calib, options, dist)
+            $(TM)(sm, $(TF)(sm), calib, options, dist, sm.model_type,
+                  sm.name, sm.filename)
         end
     end
 end
+
+# ------------- #
+# Other methods #
+# ------------- #
+
+model_type(m::Union{ASM,ANM}) = m.model_type
+filename(m::Union{ASM,ANM}) = m.filename
+name(m::Union{ASM,ANM}) = m.name
