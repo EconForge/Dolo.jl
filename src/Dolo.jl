@@ -7,7 +7,7 @@ using NLsolve
 
 export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
        AbstractDoloFunctor, SymbolicModel, DTCSCCModel, DTMSCCModel,
-       ModelCalibration,
+       FlatCalibration, GroupedCalibration, ModelCalibration,
 
        # functions
        eval_with, evaluate, evaluate!

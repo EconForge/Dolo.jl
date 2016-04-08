@@ -1,6 +1,6 @@
 function solve_steady_state(m::DTCSCCModel, mc::ModelCalibration=m.calibration)
-    p, s0, x0 = mc["parameters", "states", "controls"]
-    e_ = zeros(mc["shocks"])
+    p, s0, x0 = mc[:parameters, :states, :controls]
+    e_ = zeros(mc[:shocks])
     ns = length(s0)
     nx = length(x0)
 
@@ -24,7 +24,7 @@ function solve_steady_state(m::DTCSCCModel, mc::ModelCalibration=m.calibration)
 
     # otherwise set controls
     out = deepcopy(mc)
-    out["states"] = sol.zero[1:ns]
-    out["controls"] = sol.zero[ns+1:end]
+    out[:states] = sol.zero[1:ns]
+    out[:controls] = sol.zero[ns+1:end]
     out
 end

@@ -2,8 +2,8 @@
 
     @testset "ModelCalibration" begin
         function new_mc()
-            flat = OrderedDict{Symbol,Float64}(:k=>8.5, :z=>0.5, :i=>1.1)
-            grouped = Dict{Symbol,Vector{Float64}}(:states=>[8.5, 0.5],
+            flat = FlatCalibration(:k=>8.5, :z=>0.5, :i=>1.1)
+            grouped = GroupedCalibration(:states=>[8.5, 0.5],
                                                    :controls=>[1.1])
             symbol_table = OrderedDict{Symbol,Tuple{Symbol,Int}}()
             symbol_table[:k] = (:states, 1)
@@ -18,6 +18,81 @@
         mc2 = copy(mc)  # shallow copy. underlying arrays are same
         mc3 = deepcopy(mc)  # deep copy. underlying arrays are different
 
+        @testset "FlatCalibration" begin
+            d = OrderedDict(:x=>1.0, :y=>2.0)
+
+            # test constructors
+            fc1 = FlatCalibration(d)
+            fc2 = FlatCalibration(:x=>1.0, :y=>2.0)
+            @test fc1 == fc2
+            @test !(fc1 === fc2)
+
+            # getindex
+            @test 1.0 == @inferred getindex(fc1, :x)
+            @test [1.0, 2.0] == @inferred getindex(fc1, :x, :y)
+
+            # setindex
+            fc1[:z] = 1.0
+            @test fc1[:z] == 1.0
+
+            # conversion to Float64
+            for T in (Float16, Float32, Float64, Int8, Int16, Int32, Int64,
+                      Rational{Int}, BigFloat, BigInt)
+                fc1[:q] = one(T)
+                @test Float64(1.0) == @inferred getindex(fc1, :q)
+            end
+
+            # multiple values from tuple
+            fc1[:a, :b, :c] = 4, 5, 6
+            @test 4.0 == @inferred getindex(fc1, :a)
+            @test 5.0 == @inferred getindex(fc1, :b)
+            @test 6.0 == @inferred getindex(fc1, :c)
+            @test_throws DimensionMismatch setindex!(fc1, (4, 5), :a, :b, :c)
+
+            # multiple values from (poorly typed) Vector
+            fc1[:a, :b, :c] = Any[7, 8, 9]
+            @test 7.0 == @inferred getindex(fc1, :a)
+            @test 8.0 == @inferred getindex(fc1, :b)
+            @test 9.0 == @inferred getindex(fc1, :c)
+            @test_throws DimensionMismatch setindex!(fc1, [7, 8], :a, :b, :c)
+        end
+
+        @testset "GroupedCalibration" begin
+            d = Dict(:x=>[1.0, 2.0], :y=>[2.0, 3.0])
+
+            # test constructors
+            gc1 = GroupedCalibration(d)
+            gc2 = GroupedCalibration(:x=>[1.0, 2.0], :y=>[2.0, 3.0])
+            @test gc1 == gc2
+            @test !(gc1 === gc2)
+
+            # getindex
+            @test [1.0, 2.0] == @inferred getindex(gc1, :x)
+            @test Vector{Float64}[[1.0, 2.0], [2.0, 3.0]] == @inferred getindex(gc1, :x, :y)
+
+            # setindex
+            gc1[:z] = [1.0]
+            @test gc1[:z] == [1.0]
+
+            # existing x has length 2, this is only length 1
+            @test_throws DimensionMismatch setindex!(gc1, [1.0], :x)
+
+            # conversion to Float64
+            for T in (Float16, Float32, Float64, Int8, Int16, Int32, Int64,
+                      Rational{Int}, BigFloat, BigInt)
+                gc1[:q] = [one(T)]
+                @test [Float64(1.0)] == @inferred getindex(gc1, :q)
+            end
+
+            # multiple values from tuple
+            gc1[:a, :b, :c] = [4], [5], [6]
+            @test [4.0] == @inferred getindex(gc1, :a)
+            @test [5.0] == @inferred getindex(gc1, :b)
+            @test [6.0] == @inferred getindex(gc1, :c)
+            @test_throws DimensionMismatch setindex!(gc1, ([4], [5]), :a, :b, :c)
+
+        end
+
         @testset "copy/deepcopy" begin
 
             # triple = effectively checks if two arrays point to same memory
@@ -28,44 +103,48 @@
 
         @testset "getindex/setindex!" begin
             # getindex
-            @test 8.5 == mc[:k] == @inferred getindex(mc, :k)
-            @test 8.5 == mc.flat[:k] == @inferred getindex(mc.flat, :k)
-            @test [8.5, 0.5] == mc["states"] == @inferred getindex(mc, "states")
-            @test [8.5, 0.5] == mc.grouped[:states] == @inferred getindex(mc.grouped, :states)
+            @test [8.5, 0.5] == @inferred getindex(mc, :states)
+            @test Vector{Float64}[[8.5, 0.5], [1.1]] == @inferred getindex(mc, :states, :controls)
 
             # setindex!. Do this on mc3 so as not to change mc. Verify that
             # arrays in mc are unchanged after this
             mc3[:k] = 5.0
 
-            @test mc3[:k] == 5.0
-            @test mc3["states"] == [5.0, 0.5]
-            @test mc[:k] == 8.5
-            @test mc["states"] == [8.5, 0.5]
+            @test mc3.flat[:k] == 5.0
+            @test mc3[:states] == [5.0, 0.5]
+            @test mc.flat[:k] == 8.5
+            @test mc[:states] == [8.5, 0.5]
 
             # try same with mc2 and show that mc[:k] is unchanged,
             # but mc["states"] is
             mc2[:k] = 5.0
-            @test mc2[:k] == 5.0
-            @test mc2["states"] == [5.0, 0.5]
-            @test mc[:k] == 8.5
-            @test mc["states"] == [5.0, 0.5]
+            @test mc2.flat[:k] == 5.0
+            @test mc2[:states] == [5.0, 0.5]
+            @test mc.flat[:k] == 8.5
+            @test mc[:states] == [5.0, 0.5]
 
             # make sure we throw if setindex! doesn't have matching sizes
-            @test_throws ErrorException setindex!(mc3, rand(4), :k, :i, :z)
+            @test_throws DimensionMismatch setindex!(mc3, (1,2,3,4), :k, :i, :z)
 
             # now get back our original mc
             mc = new_mc()
 
-            # test vector version
-            @test [8.5, 1.1] == @inferred getindex(mc, :k, :i)
-            @test Vector{Float64}[[8.5, 0.5], [1.1]] == @inferred getindex(mc, "states", "controls")
-
             # test setindex! for a group
-            mc3["states"] = [42.0, 43.0]
-            @test [42.0, 43.0] == @inferred getindex(mc3, "states")
-            @test 42.0 == mc3[:k]
-            @test 43.0 == mc3[:z]
-            @test_throws ErrorException setindex!(mc3, rand(3), "states")
+            mc3[:states] = [42.0, 43.0]
+            @test [42.0, 43.0] == @inferred getindex(mc3, :states)
+            @test 42.0 == mc3.flat[:k]
+            @test 43.0 == mc3.flat[:z]
+            @test_throws DimensionMismatch setindex!(mc3, rand(3), :states)
+
+            # test setindex! for multiple groups
+            mc3[:states, :controls] = [43.0, 42.0], [1.5]
+            @test [43.0, 42.0] == @inferred getindex(mc3, :states)
+            @test [1.5] == @inferred getindex(mc3, :controls)
+            @test 43.0 == mc3.flat[:k]
+            @test 42.0 == mc3.flat[:z]
+            @test 1.5 == mc3.flat[:i]
+            @test_throws DimensionMismatch setindex!(mc3, (rand(2),), :states, :controls)
+            @test_throws DimensionMismatch setindex!(mc3, (rand(3),rand(1)), :states, :controls)
         end
 
         @testset "eval_with" begin
