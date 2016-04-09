@@ -296,8 +296,57 @@
         @test all([isa(x, Number) for x in m.distribution[:Normal]])
         @test isa(m.distribution[:Normal], Matrix)
 
-        # TODO: pick up testing with the functions...
-        # TODO: also need to test solve_triangular_system and the ModelCalibration
-        #       constructor that just takes a SymbolicModel
+        # we passed in the steady state, so just make sure compiled functions
+        # work out that way
+        mc = m.calibration
+        p, s0, x0, a0, v0 = mc[:parameters, :states, :controls, :auxiliaries, :values]
+        e_ = zeros(mc[:shocks])
+        ns = length(s0)
+        nx = length(x0)
+
+        @test model_type(m) == m.model_type == :dtcscc
+        @test name(m) == m.name == "Real Business Cycle"
+        @test filename(m) == m.filename == "rbc.yaml"
+
+        @testset "DTCSCCfunctions" begin
+
+            funcs = m.functions
+
+            @test maxabs(zeros(x0) - evaluate(funcs.arbitrage, s0, x0, e_, s0, x0, p)) < 1e-13
+            @test maxabs(s0 - evaluate(funcs.transition, s0, x0, e_, p)) < 1e-13
+            @test maxabs(a0 - evaluate(funcs.auxiliary, s0, x0, p)) < 1e-13
+            @test maxabs(v0 - evaluate(funcs.value, s0, x0, s0, x0, v0, p)) < 1e-13
+            @test maxabs([0.0, 0.0] - evaluate(funcs.controls_lb, s0, p)) < 1e-13
+            @test [Inf, Inf] == evaluate(funcs.controls_ub, s0, p)
+
+            # these two aren't implemented for the model above
+            @test_throws ErrorException evaluate(funcs.direct_response, s0, [0.0], p)
+            @test_throws ErrorException evaluate(funcs.expectation, s0, x0, p)
+
+            # Test mutating versions
+            res = ones(x0)
+            evaluate!(funcs.arbitrage, s0, x0, e_, s0, x0, p, res)
+            @test maxabs(zeros(x0) - res) < 1e-13
+
+            s1 = ones(s0)
+            evaluate!(funcs.transition, s0, x0, e_, p, s1)
+            @test maxabs(s0 - s1) < 1e-13
+
+            a1 = ones(a0)
+            evaluate!(funcs.auxiliary, s0, x0, p, a1)
+            @test maxabs(a0 - a1) < 1e-13
+
+            v1 = ones(v0)
+            evaluate!(funcs.value, s0, x0, s0, x0, v0, p, v1)
+            @test maxabs(v0 - v1) < 1e-13
+
+            bounds = ones(x0)
+            evaluate!(funcs.controls_ub, s0, p, bounds)
+            @test bounds == [Inf, Inf]
+
+            evaluate!(funcs.controls_lb, s0, p, bounds)
+            @test bounds == [0.0, 0.0]
+        end
+
     end
 end
