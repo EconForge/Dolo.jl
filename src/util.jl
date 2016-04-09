@@ -34,7 +34,8 @@ function solve_triangular_system(dict::Associative)
             if !haskey(solutions, k)
                 expr = dict[k]
                 try
-                    sol = eval(:(let $([:($x=$y) for (x, y) in solutions]...); $expr end))
+                    sol = eval(Dolo,
+                               :(let $([:($x=$y) for (x, y) in solutions]...); $expr end))
                     solutions[k] = sol
                     done_smthg = true
                 end

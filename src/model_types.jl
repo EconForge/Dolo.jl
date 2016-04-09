@@ -291,7 +291,7 @@ function eval_with(mc::ModelCalibration, ex::Expr)
     # put in let block to allow us to define intermediates in expr and not
     # have them become globals in `current_module()` at callsite
     new_ex = MacroTools.prewalk(s->_replace_me(mc, s), ex)
-    eval(:(
+    eval(Dolo, :(
     let
         $new_ex
     end))
@@ -372,7 +372,7 @@ for (TF, TM, ms) in [(:DTCSCCfunctions, :DTCSCCModel, :(:dtcscc)),
                 error(msg)
             end
             $(TF)([let
-                       eval(compile_equation(sm, fld; print_code=print_code))
+                       eval(Dolo, compile_equation(sm, fld; print_code=print_code))
                    end
                    for fld in fieldnames($(TF))]...)
         end
