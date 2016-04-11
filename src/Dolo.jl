@@ -1,13 +1,17 @@
 module Dolo
 
+using Base.Cartesian
+
 using MacroTools
 using DataStructures: OrderedDict
 using YAML: load_file
 using NLsolve
+import ForwardDiff
+using Calculus
 
 export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
        AbstractDoloFunctor, SymbolicModel, DTCSCCModel, DTMSCCModel,
-       FlatCalibration, GroupedCalibration, ModelCalibration,
+       FlatCalibration, GroupedCalibration, ModelCalibration, TaylorExpansion,
 
        # functions
        eval_with, evaluate, evaluate!, model_type, name, filename
@@ -33,6 +37,8 @@ const RECIPES = _symbol_dict(load_file(joinpath(src_path, "recipes.yaml")))
 include("util.jl")
 include("parser.jl")
 include("model_types.jl")
+
+include("numeric/taylor_series.jl")
 
 include("algos/dtcscc.jl")
 
