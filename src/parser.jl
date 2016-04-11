@@ -185,6 +185,8 @@ function compile_equation(sm::ASM, func_nm::Symbol; print_code::Bool=false)
             evaluate!(o, $(arg_names...), out)
         end
 
+        Base.length(::$tnm) = $(length(exprs))
+
         # last line of this block is the singleton instance of the type
         # This means you should do `obj = eval(code)`
         $tnm()
