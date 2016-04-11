@@ -125,3 +125,29 @@ function _handle_arbitrage(arb, controls)
     end
     controls_lb, controls_ub, arbitrage
 end
+
+# function eval_jacobian(f::AbstractDoloFunctor, before::Tuple, to_diff::Tuple,
+#                        after::Tuple, i::Int)
+#     _f(_) = evaluate(f, before..., to_diff[1:i-1]..., _, to_diff[i+1:end]..., after...)
+#     jacobian(_f, to_diff[i], :forward)::Matrix{Float64}
+# end
+
+function eval_jacobian(f::AbstractDoloFunctor, before::Tuple, to_diff::Tuple,
+                       after::Tuple, i::Int)
+    _f!(out, _) = evaluate!(f, before..., to_diff[1:i-1]..., _, to_diff[i+1:end]..., after..., out)
+    j! = ForwardDiff.jacobian(_f!; mutates=true, output_length=length(f))
+    out = Array(Float64, length(f), length(to_diff[i]))
+    j!(out, to_diff[i])
+    out
+end
+
+
+function eval_jacobians(f::AbstractDoloFunctor, before::Tuple, to_diff::Tuple,
+                        after...)
+    out = map(i->eval_jacobian(f, before, to_diff, after, i), 1:length(to_diff))
+    out::Vector{Matrix{Float64}}
+end
+
+# no arguments before, just pass empty tuple
+eval_jacobians(f::AbstractDoloFunctor, to_diff::Tuple, after...) =
+    eval_jacobians(f, tuple(), to_diff, after...)
