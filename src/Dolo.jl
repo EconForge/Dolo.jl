@@ -1,13 +1,10 @@
 module Dolo
 
-using Base.Cartesian
-
 using MacroTools
 using DataStructures: OrderedDict
 using YAML: load_file
 using NLsolve
 import ForwardDiff
-using Calculus
 
 export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
        AbstractDoloFunctor, SymbolicModel, DTCSCCModel, DTMSCCModel,
