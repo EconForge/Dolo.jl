@@ -1,5 +1,3 @@
-using YAML
-using Requests
 
 function guess_model_type(data)
     if ("shocks" in keys(data["symbols"]))
@@ -18,9 +16,9 @@ function yaml_import(url)
     if match(r"(http|https):.*", url) != nothing
         res = get(url)
         buf = IOBuffer(res.data)
-        data = YAML.load(buf)
+        data = load(buf)
     else
-        data = YAML.load_file(url)
+        data = load_file(url)
     end
 
     fname = basename(url)
