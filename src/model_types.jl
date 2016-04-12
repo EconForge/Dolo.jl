@@ -266,7 +266,7 @@ function Base.setindex!(mc::ModelCalibration, v, k::Symbol)
     elseif haskey(mc.symbol_groups, k)  # setting a group
         _setindex_group!(mc, v, k)
     else
-        throw(KeyError("ModelCalibration has no variable or groupe named $k"))
+        throw(KeyError("ModelCalibration has no variable or group named $k"))
     end
 end
 
