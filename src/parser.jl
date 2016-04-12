@@ -53,7 +53,7 @@ function _param_block(sm::ASM)
 end
 
 function _aux_block(sm::ASM, shift::Int)
-    target = RECIPES[model_spec(sm)][:specs][:auxiliary][:target][1]
+    target = RECIPES[model_type(sm)][:specs][:auxiliary][:target][1]
     targets = sm.symbols[symbol(target)]
     exprs = sm.equations[:auxiliary]
 
@@ -112,7 +112,7 @@ end
 
 function compile_equation(sm::ASM, func_nm::Symbol; print_code::Bool=false)
     # extract spec from recipe
-    spec = RECIPES[model_spec(sm)][:specs][func_nm]
+    spec = RECIPES[model_type(sm)][:specs][func_nm]
 
     # generate a new type name
     tnm = gensym(func_nm)
@@ -141,7 +141,7 @@ function compile_equation(sm::ASM, func_nm::Symbol; print_code::Bool=false)
     end
 
     # extract information from spec
-    target = get(RECIPES[model_spec(sm)][:specs][func_nm], :target, [nothing])[1]
+    target = get(RECIPES[model_type(sm)][:specs][func_nm], :target, [nothing])[1]
     targets = target === nothing ? Symbol[] : sm.symbols[symbol(target)]
     eqs = spec[:eqs]  # required, so we don't provide a default
     non_aux = filter(x->x[1] != "auxiliaries", eqs)

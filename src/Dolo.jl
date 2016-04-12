@@ -10,7 +10,7 @@ export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
        FlatCalibration, GroupedCalibration, ModelCalibration,
 
        # functions
-       eval_with, evaluate, evaluate!
+       eval_with, evaluate, evaluate!, model_type, name, filename
 
 # set up core types
 abstract AbstractModel

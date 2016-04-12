@@ -60,7 +60,7 @@ immutable SymbolicModel <: ASM
             end
         end
 
-        new(_symbols, _eqs, _calib, dist, options, model_type, name, filename)
+        new(_symbols, _eqs, _calib, options, dist, model_type, name, filename)
     end
 end
 
@@ -95,9 +95,6 @@ function SymbolicModel(from_yaml::Dict, model_type::Symbol, filename="none")
     end
     out
 end
-
-# add this method to be consistent with `model_type(::ANM)`
-model_spec(sm::SymbolicModel) = sm.model_type
 
 # ----------- #
 # Calibration #
@@ -289,21 +286,27 @@ end
 _replace_me(mc::ModelCalibration, s::Symbol) = get(mc.flat, s, s)
 _replace_me(mc, o) = o
 
+# eval with will work on
 function eval_with(mc::ModelCalibration, ex::Expr)
     # put in let block to allow us to define intermediates in expr and not
     # have them become globals in `current_module()` at callsite
     new_ex = MacroTools.prewalk(s->_replace_me(mc, s), ex)
-    eval(:(
+    eval(Dolo, :(
     let
         $new_ex
     end))
 end
 
-eval_with(mc::ModelCalibration, s::AbstractString) = eval_with(mc, parse(s))
+eval_with(mc::ModelCalibration, s::AbstractString) = eval_with(mc, _to_expr(s))
+eval_with(mc::ModelCalibration, s::Symbol) = _replace_me(mc, s)
+eval_with(mc::ModelCalibration, d::Associative) =
+    Dict{Symbol,Any}([(symbol(k), eval_with(mc, v)) for (k, v) in d])
+eval_with(mc::ModelCalibration, x::Number) = x
+eval_with(mc::ModelCalibration, x::AbstractArray) = map(y->eval_with(mc, y), x)
 
-# -------------------- #
-# Model specific types #
-# -------------------- #
+# ------------------- #
+# Numeric model types #
+# ------------------- #
 # TODO: decide if we really want all 8 type params. It doesn't hurt, it just
 #       looks funny
 immutable DTCSCCfunctions{T1,T2,T3,T4,T5,T6,T7,T8}
@@ -323,6 +326,11 @@ immutable DTCSCCModel{_T<:DTCSCCfunctions} <: ANM
     symbolic::SymbolicModel
     functions::_T
     calibration::ModelCalibration
+    options::Dict{Symbol,Any}
+    distribution::Dict{Symbol,Any}
+    model_type::Symbol
+    name::UTF8String
+    filename::UTF8String
 end
 
 immutable DTMSCCfunctions{T1,T2,T3,T4,T5,T6,T7,T8,T9}
@@ -341,39 +349,61 @@ immutable DTMSCCModel{_T<:DTMSCCfunctions} <: ANM
     symbolic::SymbolicModel
     functions::_T
     calibration::ModelCalibration
+    options::Dict{Symbol,Any}
+    distribution::Dict{Symbol,Any}
+    model_type::Symbol
+    name::UTF8String
+    filename::UTF8String
 end
 
 for (TF, TM, ms) in [(:DTCSCCfunctions, :DTCSCCModel, :(:dtcscc)),
                      (:DTMSCCfunctions, :DTMSCCModel, :(:dtmscc))]
     @eval begin
-        model_spec(::$(TM)) = $ms
-        model_spec(::Type{$(TM)}) = $ms
-        model_spec(::$(TF)) = $ms
-        model_spec(::Type{$(TF)}) = $ms
+        model_type(::$(TM)) = $ms
+        model_type(::Type{$(TM)}) = $ms
+        model_type(::$(TF)) = $ms
+        model_type(::Type{$(TF)}) = $ms
 
         # function type constructor
         function $(TF)(sm::SymbolicModel; print_code::Bool=false)
-            if model_spec(sm) != model_spec($TF)
-                msg = string("Symbolic model is of type $(model_spec(sm)) ",
+            if model_type(sm) != model_type($TF)
+                msg = string("Symbolic model is of type $(model_type(sm)) ",
                              "cannot create functions of type $($TF)")
                 error(msg)
             end
             $(TF)([let
-                       eval(compile_equation(sm, fld; print_code=print_code))
+                       eval(Dolo, compile_equation(sm, fld; print_code=print_code))
                    end
                    for fld in fieldnames($(TF))]...)
         end
+        Base.convert(::Type{SymbolicModel}, m::$(TM)) = m.symbolic
 
         # model type constructor
         function Base.convert(::Type{$TM}, sm::SymbolicModel)
-            if model_spec(sm) != model_spec($TM)
-                msg = string("Symbolic model is of type $(model_spec(sm)) ",
+            if model_type(sm) != model_type($TM)
+                msg = string("Symbolic model is of type $(model_type(sm)) ",
                              "cannot create model of type $($TM)")
                 error(msg)
             end
-            $(TM)(sm, $(TF)(sm), ModelCalibration(sm))
+            calib = ModelCalibration(sm)
+            options = eval_with(calib, deepcopy(sm.options))
+            dist = eval_with(calib, deepcopy(sm.distribution))
+            # hack to parse normal transition matrix into a matrix instead of
+            # a vector of vectors
+            if haskey(dist, :Normal)
+                n = length(calib[:shocks])
+                dist[:Normal] = reshape(vcat(dist[:Normal]...), n, n)
+            end
+            $(TM)(sm, $(TF)(sm), calib, options, dist, sm.model_type,
+                  sm.name, sm.filename)
         end
-
-        Base.convert(::Type{SymbolicModel}, m::$(TM)) = m.symbolic
     end
 end
+
+# ------------- #
+# Other methods #
+# ------------- #
+
+model_type(m::AbstractModel) = m.model_type
+filename(m::AbstractModel) = m.filename
+name(m::AbstractModel) = m.name

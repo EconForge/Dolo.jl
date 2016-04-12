@@ -1,6 +1,8 @@
+_replace_star_star(s::AbstractString) = replace(s, "**", "^")
+
 _to_expr(x::Expr) = x
 _to_expr(x::Union{Symbol,Number}) = Expr(:block, x)
-_to_expr(x::AbstractString) = _to_expr(parse(x))
+_to_expr(x::AbstractString) = _to_expr(parse(_replace_star_star(x)))
 
 _expr_or_number(x::Union{AbstractString,Symbol,Expr}) = _to_expr(x)
 _expr_or_number(x::Number) = x
@@ -32,7 +34,8 @@ function solve_triangular_system(dict::Associative)
             if !haskey(solutions, k)
                 expr = dict[k]
                 try
-                    sol = eval(:(let $([:($x=$y) for (x, y) in solutions]...); $expr end))
+                    sol = eval(Dolo,
+                               :(let $([:($x=$y) for (x, y) in solutions]...); $expr end))
                     solutions[k] = sol
                     done_smthg = true
                 end
