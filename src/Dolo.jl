@@ -10,7 +10,7 @@ export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
        FlatCalibration, GroupedCalibration, ModelCalibration, RECIPES,
 
        # functions
-       eval_with, evaluate, evaluate!
+       yaml_import, eval_with, evaluate, evaluate!
 
 # set up core types
 abstract AbstractModel
@@ -33,6 +33,7 @@ const RECIPES = _symbol_dict(load_file(joinpath(src_path, "recipes.yaml")))
 include("util.jl")
 include("parser.jl")
 include("model_types.jl")
+include("model_import.jl")
 
 include("algos/dtcscc.jl")
 

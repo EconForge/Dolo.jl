@@ -13,3 +13,4 @@ end
 include("parser.jl")
 include("util.jl")
 include("model_types.jl")
+include("model_import.jl")
