@@ -16,7 +16,8 @@ TaylorExpansion(s0, x0, x_1, x_2, x_3) =
     TaylorExpansion{3}(s0, x0, x_1, x_2, x_3)
 
 
-function _check_call(ts::TaylorExpansion, points, out)
+function _check_call(ts::TaylorExpansion, points::AbstractVector,
+                     out::AbstractVector)
     ns = length(ts.s0)
     nx = length(ts.x0)
 
@@ -39,8 +40,8 @@ end
 # points should be a vector of observations of all state variables at one time
 # period
 function Base.call(ts::TaylorExpansion{1}, points::AbstractVector,
-                   out::AbstractVector=similar(ts.x0))
-    _check_call(ts, points, out)
+                   out::AbstractVector=similar(ts.x0), chk::Bool=true)
+    chk && _check_call(ts, points, out)
     s0, x0, x_1 = ts.s0, ts.x0, ts.x_1
     ns = length(s0)
     nx = length(x0)
@@ -56,8 +57,8 @@ function Base.call(ts::TaylorExpansion{1}, points::AbstractVector,
 end
 
 function Base.call(ts::TaylorExpansion{2}, points::AbstractVector,
-                   out::AbstractVector=similar(ts.x0))
-    _check_call(ts, points, out)
+                   out::AbstractVector=similar(ts.x0), chk::Bool=true)
+    chk && _check_call(ts, points, out)
     s0, x0, x_1, x_2 = ts.s0, ts.x0, ts.x_1, ts.x_2
     ns = length(s0)
     nx = length(x0)
@@ -78,8 +79,8 @@ function Base.call(ts::TaylorExpansion{2}, points::AbstractVector,
 end
 
 function Base.call(ts::TaylorExpansion{3}, points::AbstractVector,
-                   out::AbstractVector=similar(ts.x0))
-    _check_call(ts, points, out)
+                   out::AbstractVector=similar(ts.x0), chk::Bool=true)
+    chk && _check_call(ts, points, out)
     s0, x0, x_1, x_2, x_3 = ts.s0, ts.x0, ts.x_1, ts.x_2, ts.x_3
     ns = size(points, 1)
     nx = size(x0, 1)
@@ -103,12 +104,29 @@ function Base.call(ts::TaylorExpansion{3}, points::AbstractVector,
     out
 end
 
-# Each column is an observation of all the state variables
+# Each row is an observation of all the state variables
 function Base.call(ts::TaylorExpansion, points::AbstractMatrix,
-                   out::AbstractMatrix=Array(Float64, length(ts.x0), size(points, 2)))
-    _check_call(ts, points, out)
-    for n in 1:size(points, 2)
-        ts(sub(points, :, n), sub(out, :, n))
+                   out::AbstractMatrix=Array(Float64, size(points, 1), length(ts.x0)))
+    ns = length(ts.s0)
+    nx = length(ts.x0)
+
+    if size(points, 2) != ns
+        msg = "Points should have $(ns) columns, found $(size(points, 2))"
+        throw(DimensionMismatch(msg))
+    end
+
+    if size(out, 2) != nx
+        msg = "out should have $(nx) columns, found $(size(out, 2))"
+        throw(DimensionMismatch(msg))
+    end
+
+    if size(out, 1) != size(points, 1)
+        msg = "Out should have same number of rows as points"
+        throw(DimensionMismatch(msg))
+    end
+
+    for n in 1:size(points, 1)
+        ts(slice(points, n, :), slice(out, n, :), false)
     end
     out
 end
