@@ -23,11 +23,11 @@ function yaml_import(url)
         data = YAML.load_file(url)
     end
 
-    # fname = basename(url)
+    fname = basename(url)
 
     model_type = guess_model_type(data)
 
-    sym_model = SymbolicModel(data, model_type, "filename")
+    sym_model = SymbolicModel(data, model_type, fname)
 
     if model_type == :dtcscc
         return DTCSCCModel(sym_model)
