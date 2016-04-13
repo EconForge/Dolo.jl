@@ -92,14 +92,12 @@ dtcscc:
 
         controls_lb:
             optional: True
-            target: ['controls', 0, 'lb']
             eqs:
                 - ['states', 0, 's']
                 - ['parameters', 0, 'p']
 
         controls_ub:
             optional: True
-            target: ['controls', 0, 'ub']
             eqs:
                 - ['states', 0, 's']
                 - ['parameters', 0, 'p']
