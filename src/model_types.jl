@@ -379,7 +379,7 @@ for (TF, TM, ms) in [(:DTCSCCfunctions, :DTCSCCModel, :(:dtcscc)),
         Base.convert(::Type{SymbolicModel}, m::$(TM)) = m.symbolic
 
         # model type constructor
-        function Base.convert(::Type{$TM}, sm::SymbolicModel)
+        function ($TM)(sm::SymbolicModel; print_code::Bool=false)
             if model_type(sm) != model_type($TM)
                 msg = string("Symbolic model is of type $(model_type(sm)) ",
                              "cannot create model of type $($TM)")
@@ -394,7 +394,8 @@ for (TF, TM, ms) in [(:DTCSCCfunctions, :DTCSCCModel, :(:dtcscc)),
                 n = length(calib[:shocks])
                 dist[:Normal] = reshape(vcat(dist[:Normal]...), n, n)
             end
-            $(TM)(sm, $(TF)(sm), calib, options, dist, sm.model_type,
+            funcs = $(TF)(sm; print_code=print_code)
+            $(TM)(sm, funcs, calib, options, dist, sm.model_type,
                   sm.name, sm.filename)
         end
     end

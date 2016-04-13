@@ -38,10 +38,17 @@
 
         @testset "more args" begin
             for i=3:10
-                ex = Expr(:call, :(+), [:(x($j)) for j in 1:i]...)
-                want = Expr(:call, :(+), [symbol("x__", j, "_") for j in 1:i]...)
+                ex = Expr(:call, :my_func, [:(x($j)) for j in 1:i]...)
+                want = Expr(:call, :my_func, [symbol("x__", j, "_") for j in 1:i]...)
                 @test Dolo._parse(ex) == want
             end
+        end
+
+        @testset "arithmetic" begin
+            @test Dolo._parse(:(a(1) + b + c(2) + d(-1))) == :(((a__1_ .+ b_) .+ c__2_) .+ d_m1_)
+            @test Dolo._parse(:(a(1) * b * c(2) * d(-1))) == :(((a__1_ .* b_) .* c__2_) .* d_m1_)
+            @test Dolo._parse(:(a(1) - b - c(2) - d(-1))) == :(((a__1_ .- b_) .- c__2_) .- d_m1_)
+            @test Dolo._parse(:(a(1) ^ b)) == :(a__1_ .^ b_)
         end
 
         @testset "throws errors when unsupported" begin
@@ -51,7 +58,7 @@
 
     @testset "Expr(:(=), ...)" begin
         @testset "without targets" begin
-            @test Dolo._parse(:(x = y)) == :(y_ - x_)
+            @test Dolo._parse(:(x = y)) == :(y_ .- x_)
         end
 
         @testset "with targets" begin
@@ -74,9 +81,9 @@ Dolo.model_type(::MockSymbolic) = :dtcscc
         sm = MockSymbolic(Dict(:parameters => [:a, :b, :foobar]))
         have = Dolo._param_block(sm)
         @test have.head == :block
-        @test have.args[1] == :(@inbounds a_ = p[1])
-        @test have.args[2] == :(@inbounds b_ = p[2])
-        @test have.args[3] == :(@inbounds foobar_ = p[3])
+        @test have.args[1] == :(a_ = _unpack_var(p, 1))
+        @test have.args[2] == :(b_ = _unpack_var(p, 2))
+        @test have.args[3] == :(foobar_ = _unpack_var(p, 3))
     end
 
     @testset "_single_arg_block" begin
@@ -85,28 +92,28 @@ Dolo.model_type(::MockSymbolic) = :dtcscc
         @testset "no shift" begin
             have = Dolo._single_arg_block(sm, :s, :states, 0)
             @test have.head == :block
-            @test have.args[1] == :(@inbounds z_ = s[1])
-            @test have.args[2] == :(@inbounds k_ = s[2])
+            @test have.args[1] == :(z_ = _unpack_var(s, 1))
+            @test have.args[2] == :(k_ = _unpack_var(s, 2))
         end
 
         @testset "positive shift" begin
             have = Dolo._single_arg_block(sm, :s, :states, 1)
             @test have.head == :block
-            @test have.args[1] == :(@inbounds z__1_ = s[1])
-            @test have.args[2] == :(@inbounds k__1_ = s[2])
+            @test have.args[1] == :(z__1_ = _unpack_var(s, 1))
+            @test have.args[2] == :(k__1_ = _unpack_var(s, 2))
         end
 
         @testset "negative shift" begin
             have = Dolo._single_arg_block(sm, :s, :states, -1)
             @test have.head == :block
-            @test have.args[1] == :(@inbounds z_m1_ = s[1])
-            @test have.args[2] == :(@inbounds k_m1_ = s[2])
+            @test have.args[1] == :(z_m1_ = _unpack_var(s, 1))
+            @test have.args[2] == :(k_m1_ = _unpack_var(s, 2))
         end
     end
 
     @testset "_assign_single_el" begin
-        @test Dolo._assign_single_el(:out, Inf, 1) == :(out[1] = $Inf)
-        @test Dolo._assign_single_el(:z__m_1, 0, :foo) == :(z__m_1[foo]=0)
+        @test Dolo._assign_var_expr(:out, Inf, 1) == :(_assign_var(out, $Inf, 1))
+        @test Dolo._assign_var_expr(:z__m_1, 0, :foo) == :(_assign_var(z__m_1, 0, foo))
     end
 
     @testset "_main_body_block" begin
@@ -116,9 +123,12 @@ Dolo.model_type(::MockSymbolic) = :dtcscc
             exprs = [:(x = sin(42.0)), :(y = x(-1) + cos(42.0)), :(z = tan(x))]
             have = Dolo._main_body_block(sm, targets, exprs)
             @test have.head == :block
-            @test have.args[1] == :(out[1] = x_ = sin(42.0))
-            @test have.args[2] == :(out[2] = y_ = x_m1_ + cos(42.0))
-            @test have.args[3] == :(out[3] = z_ = tan(x_))
+            @test have.args[1] == :(x_ = sin(42.0))
+            @test have.args[2] == :(y_ = x_m1_ .+ cos(42.0))
+            @test have.args[3] == :(z_ = tan(x_))
+            @test have.args[4] == :(_assign_var(out, x_, 1))
+            @test have.args[5] == :(_assign_var(out, y_, 2))
+            @test have.args[6] == :(_assign_var(out, z_, 3))
         end
 
         @testset "throws proper errors" begin
@@ -142,54 +152,61 @@ Dolo.model_type(::MockSymbolic) = :dtcscc
             exprs = [:(x = sin(42.0)), :(y = x(-1)+cos(42.0)), :(z+y = tan(x))]
             have = Dolo._main_body_block(sm, targets, exprs)
             @test have.head == :block
-            @test have.args[1] == :(out[1] = sin(42.0) - x_)
-            @test have.args[2] == :(out[2] = x_m1_ + cos(42.0) - y_)
-            @test have.args[3] == :(out[3] = tan(x_) - (z_ + y_))
+            @test have.args[1] == :(_assign_var(out, sin(42.0) .- x_, 1))
+            @test have.args[2] == :(_assign_var(out, x_m1_ .+ cos(42.0) .- y_, 2))
+            @test have.args[3] == :(_assign_var(out, tan(x_) .- (z_ .+ y_), 3))
         end
     end
 
     # the next two testsets use this data
+    # NOTE: I know that transition specifies equations in the wrong order.
+    # NOTE: I know that the functions for expecation have too many variables
+    #       these are part of the tests below
     exprs = [parse("y = z*k^alpha*n^(1-alpha)"),
              parse("c = y - i"),
              parse("rk = alpha*y/k"),
              parse("w = (1-alpha)*y/n")]
-    sm = MockSymbolic(Dict(:auxiliaries => [:y, :rk, :w, :c],
+    sm = MockSymbolic(Dict(:auxiliaries => [:y, :c, :rk, :w],
                            :states => [:z, :k],
+                           :shocks => [:ɛz],
                            :controls => [:i, :n],
+                           :expectations => [:Ez],
                            :parameters => [:fizz, :buzz, :alpha]),
-                      Dict(:auxiliary => exprs, :value => Expr[]))
+                      Dict(:auxiliary => exprs, :value => Expr[],
+                           :transition => [:(k = k(-1) + 1), :(z = z(-1))],
+                           :expectation => [:(Ez = z(1)), :(Ek = k(1))]))
 
     @testset "_aux_block" begin
         @testset "without shift" begin
             have = Dolo._aux_block(sm, 0)
             @test have.head == :block
-            @test have.args[1] == :(y_ = z_*k_^alpha_*n_^(1-alpha_))
-            @test have.args[2] == :(c_ = y_ - i_)
-            @test have.args[3] == :(rk_ = alpha_*y_/k_)
-            @test have.args[4] == :(w_ = (1-alpha_)*y_/n_)
+            @test have.args[1] == :(y_ = z_.*k_.^alpha_.*n_.^(1.-alpha_))
+            @test have.args[2] == :(c_ = y_ .- i_)
+            @test have.args[3] == :(rk_ = alpha_.*y_./k_)
+            @test have.args[4] == :(w_ = (1.-alpha_).*y_./n_)
         end
 
         @testset "positive shift" begin
             have = Dolo._aux_block(sm, 1)
             @test have.head == :block
-            @test have.args[1] == :(y__1_ = z__1_*k__1_^alpha_*n__1_^(1-alpha_))
-            @test have.args[2] == :(c__1_ = y__1_ - i__1_)
+            @test have.args[1] == :(y__1_ = z__1_.*k__1_.^alpha_.*n__1_.^(1.-alpha_))
+            @test have.args[2] == :(c__1_ = y__1_ .- i__1_)
 
             # notice below that we have k and rk, but that the single shift was
             # properly applied one time to each of them. Had we not used regex
             # in _aux_block and just searched for the state, then control, then
             # auxiliary name we would have gotten rk(1)(1) instead of rk(1)
-            @test have.args[3] == :(rk__1_ = alpha_*y__1_/k__1_)
-            @test have.args[4] == :(w__1_ = (1-alpha_)*y__1_/n__1_)
+            @test have.args[3] == :(rk__1_ = alpha_.*y__1_./k__1_)
+            @test have.args[4] == :(w__1_ = (1.-alpha_).*y__1_./n__1_)
         end
 
         @testset "negative shift" begin
             have = Dolo._aux_block(sm, -2)
             @test have.head == :block
-            @test have.args[1] == :(y_m2_ = z_m2_*k_m2_^alpha_*n_m2_^(1-alpha_))
-            @test have.args[2] == :(c_m2_ = y_m2_ - i_m2_)
-            @test have.args[3] == :(rk_m2_ = alpha_*y_m2_/k_m2_)
-            @test have.args[4] == :(w_m2_ = (1-alpha_)*y_m2_/n_m2_)
+            @test have.args[1] == :(y_m2_ = z_m2_.*k_m2_.^alpha_.*n_m2_.^(1.-alpha_))
+            @test have.args[2] == :(c_m2_ = y_m2_ .- i_m2_)
+            @test have.args[3] == :(rk_m2_ = alpha_.*y_m2_./k_m2_)
+            @test have.args[4] == :(w_m2_ = (1.-alpha_).*y_m2_./n_m2_)
         end
     end
 
@@ -201,6 +218,13 @@ Dolo.model_type(::MockSymbolic) = :dtcscc
         end
         @test_throws ErrorException evaluate(obj1)
         @test @compat(supertype)(typeof(obj1)) == Dolo.AbstractDoloFunctor
+
+        # the transition equations were given in the wrong order. Check that
+        # we throw an error here
+        @test_throws ErrorException Dolo.compile_equation(sm, :transition)
+
+        # we specified one expecation variable, but two expectation eqns
+        @test_throws ErrorException Dolo.compile_equation(sm, :expectation)
 
         obj2 = let
             eval(Dolo, Dolo.compile_equation(sm, :auxiliary))
@@ -235,6 +259,25 @@ Dolo.model_type(::MockSymbolic) = :dtcscc
         # test non-allocating version
         @inferred evaluate!(obj2, s, x, p, out)
         @test out == want
+
+        # test vectorized version
+        out_mat = zeros(5, 4)
+        want_mat = [want want want want want]'
+        @test @inferred(evaluate(obj2, [s s s s s]', x, p)) == want_mat
+        @test @inferred(evaluate(obj2, s, [x x x x x]', p)) == want_mat
+
+        # non-allocating vectorized version
+        @inferred evaluate!(obj2, s, [x x x x x]', p, out_mat)
+        @test out_mat == want_mat
+
+        # non-allocating vectorized version
+        @inferred evaluate!(obj2, [s s s s s]', x, p, out_mat)
+        @test out_mat == want_mat
+
+        # test errors for wrong size of out
+        @test_throws DimensionMismatch evaluate!(obj2, s, x, p, zeros(3))
+        @test_throws DimensionMismatch evaluate!(obj2, s, x, p, zeros(5))
+        @test_throws DimensionMismatch evaluate!(obj2, [s s s]', x, p, zeros(2, 4))
     end
 
 end

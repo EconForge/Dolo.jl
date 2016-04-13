@@ -10,6 +10,7 @@ import ForwardDiff
 export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
        AbstractDoloFunctor, SymbolicModel, DTCSCCModel, DTMSCCModel,
        FlatCalibration, GroupedCalibration, ModelCalibration, TaylorExpansion,
+       RECIPES,
 
        # functions
        yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename

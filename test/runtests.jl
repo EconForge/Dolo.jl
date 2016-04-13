@@ -9,8 +9,11 @@ else
     const Test = BaseTestNext
 end
 
-include("numeric.jl")
-include("parser.jl")
-include("util.jl")
-include("model_types.jl")
-include("model_import.jl")
+tests = length(ARGS) > 0 ? ARGS : ["numeric",
+                                   "parser",
+                                   "util",
+                                   "model_types",
+                                   "model_import"]
+for t in tests
+    include("$(t).jl")
+end
