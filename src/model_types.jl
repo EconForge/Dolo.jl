@@ -70,6 +70,11 @@ function Base.show(io::IO, sm::SymbolicModel)
     """)
 end
 
+"""
+Returns an object of type `SymbolicModel` which essentially
+consists of set of symbols, calibration and functions representing
+the various equation types of the model.
+"""
 function SymbolicModel(from_yaml::Dict, model_type::Symbol, filename="none")
     # verify that we have all the required fields
     for k in ("symbols", "equations", "calibration")
@@ -107,12 +112,25 @@ end
 FlatCalibration(pairs::Pair{Symbol,Float64}...) =
     FlatCalibration(OrderedDict(pairs))
 
+"""
+An ordered dictionary which provides values for parameters and variables.
+Flat calibrations takes only scalars as values.
+
+### Example:
+```flat = FlatCalibration(:k=>8.5, :z=>0.5, :i=>1.1)```
+"""
 FlatCalibration() = FlatCalibration(OrderedDict{Symbol,Float64}())
 
 immutable GroupedCalibration <: Associative{Symbol,Vector{Float64}}
     d::Dict{Symbol,Vector{Float64}}
 end
 
+"""
+A dictionary which provides values for parameters and variables.
+Grouped calibrations takes only scalars and vectors as values.
+### Example:
+```grouped = GroupedCalibration(:states=>[8.5, 0.5],:controls=>[1.1])```
+"""
 GroupedCalibration() = GroupedCalibration(Dict{Symbol,Vector{Float64}}())
 
 GroupedCalibration(pairs::Pair{Symbol,Vector{Float64}}...) =
@@ -202,6 +220,9 @@ immutable ModelCalibration
     symbol_groups::OrderedDict{Symbol,Vector{Symbol}}
 end
 
+"""
+Constructor for `ModelCalibration` which takes as input `SymbolicModel`.
+"""
 function ModelCalibration(sm::SymbolicModel)
     flat = FlatCalibration(solve_triangular_system(sm))
     grouped = GroupedCalibration()
