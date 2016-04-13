@@ -12,7 +12,8 @@ end
 tests = length(ARGS) > 0 ? ARGS : ["numeric",
                                    "parser",
                                    "util",
-                                   "model_types"]
+                                   "model_types",
+                                   "model_import"]
 for t in tests
     include("$(t).jl")
 end
