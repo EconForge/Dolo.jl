@@ -11,7 +11,7 @@ function guess_model_type(data)
     end
 end
 
-function yaml_import(url)
+function yaml_import(url; print_code::Bool=false)
 
     if match(r"(http|https):.*", url) != nothing
         res = get(url)
@@ -28,9 +28,9 @@ function yaml_import(url)
     sym_model = SymbolicModel(data, model_type, fname)
 
     if model_type == :dtcscc
-        return DTCSCCModel(sym_model)
+        return DTCSCCModel(sym_model; print_code=print_code)
     elseif model_type == :dtmscc
-        return DTMSCCModel(sym_model)
+        return DTMSCCModel(sym_model; print_code=print_code)
     else
         throw(Exception)
     end
