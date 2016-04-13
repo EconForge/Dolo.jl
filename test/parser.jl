@@ -81,9 +81,9 @@ Dolo.model_type(::MockSymbolic) = :dtcscc
         sm = MockSymbolic(Dict(:parameters => [:a, :b, :foobar]))
         have = Dolo._param_block(sm)
         @test have.head == :block
-        @test have.args[1] == :(@inbounds a_ = _unpack_var(p, 1))
-        @test have.args[2] == :(@inbounds b_ = _unpack_var(p, 2))
-        @test have.args[3] == :(@inbounds foobar_ = _unpack_var(p, 3))
+        @test have.args[1] == :(a_ = _unpack_var(p, 1))
+        @test have.args[2] == :(b_ = _unpack_var(p, 2))
+        @test have.args[3] == :(foobar_ = _unpack_var(p, 3))
     end
 
     @testset "_single_arg_block" begin
@@ -92,22 +92,22 @@ Dolo.model_type(::MockSymbolic) = :dtcscc
         @testset "no shift" begin
             have = Dolo._single_arg_block(sm, :s, :states, 0)
             @test have.head == :block
-            @test have.args[1] == :(@inbounds z_ = _unpack_var(s, 1))
-            @test have.args[2] == :(@inbounds k_ = _unpack_var(s, 2))
+            @test have.args[1] == :(z_ = _unpack_var(s, 1))
+            @test have.args[2] == :(k_ = _unpack_var(s, 2))
         end
 
         @testset "positive shift" begin
             have = Dolo._single_arg_block(sm, :s, :states, 1)
             @test have.head == :block
-            @test have.args[1] == :(@inbounds z__1_ = _unpack_var(s, 1))
-            @test have.args[2] == :(@inbounds k__1_ = _unpack_var(s, 2))
+            @test have.args[1] == :(z__1_ = _unpack_var(s, 1))
+            @test have.args[2] == :(k__1_ = _unpack_var(s, 2))
         end
 
         @testset "negative shift" begin
             have = Dolo._single_arg_block(sm, :s, :states, -1)
             @test have.head == :block
-            @test have.args[1] == :(@inbounds z_m1_ = _unpack_var(s, 1))
-            @test have.args[2] == :(@inbounds k_m1_ = _unpack_var(s, 2))
+            @test have.args[1] == :(z_m1_ = _unpack_var(s, 1))
+            @test have.args[2] == :(k_m1_ = _unpack_var(s, 2))
         end
     end
 

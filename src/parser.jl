@@ -63,7 +63,7 @@ _parse(s::AbstractString; kwargs...) = _parse(parse(s); kwargs...)
 function _param_block(sm::ASM)
     params = sm.symbols[:parameters]
     Expr(:block,
-         [:(@inbounds $(_parse(params[i])) = _unpack_var(p, $i)) for i in 1:length(params)]...)
+         [:($(_parse(params[i])) = _unpack_var(p, $i)) for i in 1:length(params)]...)
 end
 
 function _aux_block(sm::ASM, shift::Int)
@@ -108,7 +108,7 @@ function _single_arg_block(sm::ASM, arg_name::Symbol, arg_type::Symbol,
     nms = sm.symbols[arg_type]
     # TODO: extract columns at a time when Ndim > 1
     Expr(:block,
-         [:(@inbounds $(_parse("$(nms[i])($(shift))")) = _unpack_var($(arg_name),$i))
+         [:($(_parse("$(nms[i])($(shift))")) = _unpack_var($(arg_name),$i))
             for i in 1:length(nms)]...)
 end
 
@@ -248,9 +248,9 @@ function compile_equation(sm::ASM, func_nm::Symbol; print_code::Bool=false)
     # build function block by block
     all_arg_blocks = map((a,b,c) -> _single_arg_block(sm, a, b, c),
                          arg_names, arg_types, arg_shifts)
-    arg_block = Expr(:block, all_arg_blocks...)
+    arg_block = Expr(:block, vcat([b.args for b in all_arg_blocks]...)...)
     all_aux_blocks = map(n -> _aux_block(sm, n), aux_shifts)
-    aux_block = Expr(:block, all_aux_blocks...)
+    aux_block = Expr(:block, vcat([b.args for b in all_aux_blocks]...)...)
     main_block = _main_body_block(sm, targets, exprs)
 
     # construct the body of the function
