@@ -1,64 +1,5 @@
-using QuantEcon: gridmake
-
 using Optim
-
 using Interpolations
-using splines # temporary
-
-#####
-# helper functions/types (to be moved/removed)
-#####
-
-mlinspace(a,b,dims) = gridmake([linspace(a[i],b[i],dims[i]) for i=1:length(dims)]...)
-
-
-type MarkovChain
-    P::Array{Float64, 2}
-    Q::Array{Float64, 2}
-end
-
-type ApproximationSpace
-  a:: Array{Float64, 1}
-  b:: Array{Float64, 1}
-  dims:: Array{Int64, 1}
-end
-
-###
-# Object to represent a decision rule/policy which depends on a discrete state
-###
-
-type MixedDecisionRule
-    n_mc:: Int64
-    a:: Array{Float64, 1}
-    b:: Array{Float64, 1}
-    dims:: Array{Int64, 1}
-    values:: Array{Float64, 3}
-    interpolants:: Any
-    function MixedDecisionRule(n_mc, a, b, dims)
-        d = length(dims)
-        values = zeros(0,0,0)
-        interpolant = Union{}
-        return new(n_mc, a, b, dims, values, interpolant)
-    end
-end
-
-function set_values(mdr::MixedDecisionRule, values)
-    n_mc = mdr.n_mc
-    dims = mdr.dims
-    n_x = size(values)[end]
-    d = length(mdr.dims)
-    knots = [linspace(mdr.a[i], mdr.b[i], mdr.dims[i]) for i=1:d]
-    mdr.interpolants = [ scale(interpolate(copy(reshape(slice(values,i_mc,:,i_x),dims...)), BSpline(Linear()), OnGrid()), knots...) for i_mc in 1:n_mc, i_x in 1:n_x  ]
-end
-
-function evaluate(mdr::MixedDecisionRule, i::Int64, s::Array{Float64,1})
-    n_x = size(mdr.interpolants,2)
-    return Float64[mdr.interpolants[i,j][s...] for j=1:n_x ]
-end
-
-function evaluate(mdr::MixedDecisionRule, i::Int64, s::Array{Float64,2})
-    return cat(1, [evaluate(mdr, i, copy(slice(s,n,:)))' for n=1:size(s,1)]... )
-end
 
 ####
 # residuals
@@ -77,17 +18,10 @@ end
 
 residuals(model::DTMSCCModel) = residuals(model, model.calibration)
 
-####
-# construction of initial guess
-####
+###
+# stupid initial guess
+###
 
-type MixedConstantPolicy
-    x:: Array{Float64,1}
-end
-
-evaluate(mdr::MixedConstantPolicy, i, s::AbstractArray{Float64,1}) = mdr.x
-evaluate(mdr::MixedConstantPolicy, i, s::AbstractArray{Float64,2}) = repmat(mdr.x',size(s,1),1)
-#
 constant_guess(model::DTMSCCModel) = MixedConstantPolicy(model.calibration[:controls])
 
 ###
@@ -321,14 +255,12 @@ function solve_policy(model::DTMSCCModel, policy, values_0, options=Dict())
     P = markov_chain.P
     Q = markov_chain.Q
 
-    symbols = model.symbolic.symbols
     calibration = model.calibration
 
     N = size(grid,1)
     n_mc = size(markov_chain.P,1)
     n_s = size(grid,2)
-    n_x = length(symbols[:controls])
-    p = calibration
+    n_x = length(calibration[:controls])
     controls = zeros(n_mc,N,n_x)
     value = zeros(n_mc,N)
     p = calibration[:parameters]
