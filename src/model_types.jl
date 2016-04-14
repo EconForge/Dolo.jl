@@ -127,7 +127,7 @@ end
 
 """
 A dictionary which provides values for parameters and variables.
-Grouped calibrations takes only scalars and vectors as values.
+Grouped calibrations takes only vectors as values.
 ### Example:
 ```grouped = GroupedCalibration(:states=>[8.5, 0.5],:controls=>[1.1])```
 """
