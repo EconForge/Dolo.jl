@@ -333,7 +333,7 @@ immutable DTCSCCModel{_T<:DTCSCCfunctions} <: ANM
     filename::UTF8String
 end
 
-immutable DTMSCCfunctions{T1,T2,T3,T4,T5,T6,T7,T8,T9}
+immutable DTMSCCfunctions{T1,T2,T3,T4,T5,T6,T7,T8,T9,T10}
     arbitrage::T1
     transition::T2
     auxiliary::T3
@@ -343,6 +343,7 @@ immutable DTMSCCfunctions{T1,T2,T3,T4,T5,T6,T7,T8,T9}
     controls_lb::T7
     controls_ub::T8
     arbitrage_2::T9
+    felicity::T10
 end
 
 immutable DTMSCCModel{_T<:DTMSCCfunctions} <: ANM
