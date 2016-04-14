@@ -13,7 +13,10 @@ export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
        RECIPES,
 
        # functions
-       yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename
+       yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename,
+
+       # defined in dtmscc
+       mlinspace, constant_guess, evaluate_policy, solve_policy, residuals, time_iteration
 
 # set up core types
 abstract AbstractModel
@@ -39,7 +42,9 @@ include("model_types.jl")
 include("model_import.jl")
 
 include("numeric/taylor_series.jl")
+include("numeric/serial.jl")
 
 include("algos/dtcscc.jl")
+include("algos/dtmscc.jl")
 
 end # module
