@@ -424,7 +424,17 @@ end
 # ------------- #
 # Other methods #
 # ------------- #
-
+"""
+Returns the `model_type` object for the specified `AbstractModel` `m`.
+"""
 model_type(m::AbstractModel) = m.model_type
+
+"""
+Returns the name of the file in which the `AbstractModel` `m` is stored.
+"""
 filename(m::AbstractModel) = m.filename
+
+"""
+Returns the name of the `AbstractModel` `m`.
+"""
 name(m::AbstractModel) = m.name

@@ -11,6 +11,10 @@ function guess_model_type(data)
     end
 end
 
+"""
+Imports the model from a yaml file specified by the `url` input
+parameter, and returns the corresponding `Dolo` model object.
+"""
 function yaml_import(url)
 
     if match(r"(http|https):.*", url) != nothing
