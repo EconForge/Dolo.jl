@@ -5,6 +5,8 @@ using DataStructures: OrderedDict
 using YAML: load_file, load
 using Requests: get
 using NLsolve
+using QuantEcon
+using Distributions: MvNormal
 import ForwardDiff
 
 export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
@@ -24,6 +26,7 @@ typealias ASM AbstractSymbolicModel
 typealias ANM AbstractNumericModel
 
 abstract AbstractDoloFunctor
+abstract AbstractDecisionRule
 
 _symbol_dict(x) = x
 _symbol_dict(d::Associative) =
@@ -39,6 +42,7 @@ include("model_types.jl")
 include("model_import.jl")
 
 include("numeric/taylor_series.jl")
+include("numeric/simulations.jl")
 
 include("algos/dtcscc.jl")
 

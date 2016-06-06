@@ -1,4 +1,4 @@
-immutable TaylorExpansion{order}
+immutable TaylorExpansion{order} <: AbstractDecisionRule
     s0::Vector{Float64}
     x0::Vector{Float64}
     x_1::Array{Float64,2}
@@ -14,7 +14,6 @@ TaylorExpansion(s0, x0, x_1, x_2) =
 
 TaylorExpansion(s0, x0, x_1, x_2, x_3) =
     TaylorExpansion{3}(s0, x0, x_1, x_2, x_3)
-
 
 function _check_call(ts::TaylorExpansion, points::AbstractVector,
                      out::AbstractVector)
