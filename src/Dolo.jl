@@ -21,7 +21,7 @@ abstract AbstractSymbolicModel <: AbstractModel
 abstract AbstractNumericModel <: AbstractModel
 
 typealias ASM AbstractSymbolicModel
-typealias ANM AbstractSymbolicModel
+typealias ANM AbstractNumericModel
 
 abstract AbstractDoloFunctor
 
