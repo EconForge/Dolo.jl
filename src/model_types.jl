@@ -304,6 +304,13 @@ eval_with(mc::ModelCalibration, d::Associative) =
 eval_with(mc::ModelCalibration, x::Number) = x
 eval_with(mc::ModelCalibration, x::AbstractArray) = map(y->eval_with(mc, y), x)
 
+
+# function convert
+_to_Float64(x::Number) = convert(Float64, x)
+_to_Float64(x::AbstractArray) = map(Float64, x)
+_to_Float64(d::Associative) =
+    Dict{Symbol,Any}([(symbol(k), _to_Float64(v)) for (k, v) in d])
+
 # ------------------- #
 # Numeric model types #
 # ------------------- #
@@ -386,7 +393,7 @@ for (TF, TM, ms) in [(:DTCSCCfunctions, :DTCSCCModel, :(:dtcscc)),
                 error(msg)
             end
             calib = ModelCalibration(sm)
-            options = eval_with(calib, deepcopy(sm.options))
+            options = _to_Float64(eval_with(calib, deepcopy(sm.options)))
             dist = eval_with(calib, deepcopy(sm.distribution))
             # hack to parse normal transition matrix into a matrix instead of
             # a vector of vectors
@@ -394,6 +401,7 @@ for (TF, TM, ms) in [(:DTCSCCfunctions, :DTCSCCModel, :(:dtcscc)),
                 n = length(calib[:shocks])
                 dist[:Normal] = reshape(vcat(dist[:Normal]...), n, n)
             end
+            dist = _to_Float64(dist)
             funcs = $(TF)(sm; print_code=print_code)
             $(TM)(sm, funcs, calib, options, dist, sm.model_type,
                   sm.name, sm.filename)
