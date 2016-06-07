@@ -10,23 +10,33 @@ using Distributions: MvNormal
 import ForwardDiff
 
 export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
-       AbstractDoloFunctor, SymbolicModel, DTCSCCModel, DTMSCCModel,
+       SymbolicModel, DTCSCCModel, DTMSCCModel,
        FlatCalibration, GroupedCalibration, ModelCalibration, TaylorExpansion,
        RECIPES,
 
-       # functions
+       # model functions
+       arbitrage, transition, auxiliary, value, expectation, direct_response,
+       controls_lb, controls_ub, arbitrage_2,
+
+       # mutating version of model functions
+       arbitrage!, transition!, auxiliary!, value!, expectation!,
+       direct_response, controls_lb!, controls_ub!, arbitrage_2!,
+
+       # dolo functions
        yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename,
-       linear_solve, simulate
+       linear_solve, simulate, id
 
 # set up core types
-abstract AbstractModel
-abstract AbstractSymbolicModel <: AbstractModel
-abstract AbstractNumericModel <: AbstractModel
+abstract AbstractModel{ID,kind}
+abstract AbstractSymbolicModel{ID,kind} <: AbstractModel{ID,kind}
+abstract AbstractNumericModel{ID,kind} <: AbstractModel{ID,kind}
+
+id{ID}(::AbstractModel{ID}) = ID
+model_type{_,kind}(::AbstractModel{_,kind}) = kind
 
 typealias ASM AbstractSymbolicModel
 typealias ANM AbstractNumericModel
 
-abstract AbstractDoloFunctor
 abstract AbstractDecisionRule
 
 _symbol_dict(x) = x

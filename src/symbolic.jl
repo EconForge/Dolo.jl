@@ -1,4 +1,4 @@
-immutable SymbolicModel <: ASM
+immutable SymbolicModel{ID,kind} <: ASM{ID,kind}
     symbols::OrderedDict{Symbol,Vector{Symbol}}
     equations::OrderedDict{Symbol,Vector{Expr}}
     calibration::OrderedDict{Symbol,Union{Expr,Symbol,Number}}
@@ -76,13 +76,17 @@ function SymbolicModel(from_yaml::Dict, model_type::Symbol, filename="none")
 
     d = deepcopy(from_yaml)
     recipe = RECIPES[model_type]
-    out = SymbolicModel(recipe, pop!(d, "symbols"),
-                        pop!(d, "equations"),
-                        pop!(d, "calibration"),
-                        _symbol_dict(pop!(d, "options", Dict())),
-                        _symbol_dict(pop!(d, "distribution", Dict())),
-                        pop!(d, "name", "modeldoesnotwork"),
-                        filename)
+    name = pop!(d, "name", "modeldoesnotwork")
+    id = gensym(name)
+    options = _symbol_dict(pop!(d, "options", Dict()))
+    distribution = _symbol_dict(pop!(d, "distribution", Dict()))
+    out = SymbolicModel{id,model_type}(recipe, pop!(d, "symbols"),
+                                       pop!(d, "equations"),
+                                       pop!(d, "calibration"),
+                                       options,
+                                       distribution,
+                                       name,
+                                       filename)
 
     if !isempty(d)
         m = string("Fields $(join(keys(d), ", ", ", and ")) from yaml file ",

@@ -290,18 +290,19 @@
         m = DTCSCCModel(sm)
 
         # check that options and distribution were "numericized" properly
-        @test all([isa(x, Number) for x in m.options[:Approximation][:orders]])
-        @test all([isa(x, Number) for x in m.options[:Approximation][:b]])
-        @test all([isa(x, Number) for x in m.options[:Approximation][:a]])
-        @test all([isa(x, Number) for x in m.distribution[:Normal]])
-        @test isa(m.distribution[:Normal], Matrix)
+        @test all([isa(x, Float64) for x in m.options[:Approximation][:orders]])
+        @test all([isa(x, Float64) for x in m.options[:Approximation][:b]])
+        @test all([isa(x, Float64) for x in m.options[:Approximation][:a]])
+        @test all([isa(x, Float64) for x in m.distribution[:Normal]])
+        @test isa(m.distribution[:Normal], Matrix{Float64})
 
         @test model_type(m) == m.model_type == :dtcscc
         @test name(m) == m.name == "Real Business Cycle"
         @test filename(m) == m.filename == "rbc.yaml"
+        @test id(sm) == id(m)
     end
 
-    @testset "DTCSCCfunctions" begin
+    @testset "compiled functions" begin
         sm = SymbolicModel(rbc_dict, :dtcscc, "rbc.yaml")
         m = DTCSCCModel(sm)
 
@@ -313,41 +314,39 @@
         ns = length(s0)
         nx = length(x0)
 
-        funcs = m.functions
-
-        @test maxabs(zeros(x0) - evaluate(funcs.arbitrage, s0, x0, e_, s0, x0, p)) < 1e-13
-        @test maxabs(s0 - evaluate(funcs.transition, s0, x0, e_, p)) < 1e-13
-        @test maxabs(a0 - evaluate(funcs.auxiliary, s0, x0, p)) < 1e-13
-        @test maxabs(v0 - evaluate(funcs.value, s0, x0, s0, x0, v0, p)) < 1e-13
-        @test maxabs([0.0, 0.0] - evaluate(funcs.controls_lb, s0, p)) < 1e-13
-        @test [Inf, Inf] == evaluate(funcs.controls_ub, s0, p)
+        @test maxabs(zeros(x0) - arbitrage(m, s0, x0, e_, s0, x0, p)) < 1e-13
+        @test maxabs(s0 - transition(m, s0, x0, e_, p)) < 1e-13
+        @test maxabs(a0 - auxiliary(m, s0, x0, p)) < 1e-13
+        @test maxabs(v0 - value(m, s0, x0, s0, x0, v0, p)) < 1e-13
+        @test maxabs([0.0, 0.0] - controls_lb(m, s0, p)) < 1e-13
+        @test [Inf, Inf] == controls_ub(m, s0, p)
 
         # these two aren't implemented for the model above
-        @test_throws ErrorException evaluate(funcs.direct_response, s0, [0.0], p)
-        @test_throws ErrorException evaluate(funcs.expectation, s0, x0, p)
+        @test_throws ErrorException direct_response(m, s0, [0.0], p)
+        @test_throws ErrorException expectation(m, s0, x0, p)
 
         # Test mutating versions
         res = ones(x0)
-        evaluate!(funcs.arbitrage, s0, x0, e_, s0, x0, p, res)
+        arbitrage!(res, m, s0, x0, e_, s0, x0, p)
         @test maxabs(zeros(x0) - res) < 1e-13
 
         s1 = ones(s0)
-        evaluate!(funcs.transition, s0, x0, e_, p, s1)
+        transition!(s1, m, s0, x0, e_, p)
         @test maxabs(s0 - s1) < 1e-13
 
         a1 = ones(a0)
-        evaluate!(funcs.auxiliary, s0, x0, p, a1)
+        auxiliary!(a1, m, s0, x0, p)
         @test maxabs(a0 - a1) < 1e-13
 
         v1 = ones(v0)
-        evaluate!(funcs.value, s0, x0, s0, x0, v0, p, v1)
+        value!(v1, m, s0, x0, s0, x0, v0, p)
         @test maxabs(v0 - v1) < 1e-13
 
         bounds = ones(x0)
-        evaluate!(funcs.controls_ub, s0, p, bounds)
+        controls_ub!(bounds, m, s0, p)
         @test bounds == [Inf, Inf]
 
-        evaluate!(funcs.controls_lb, s0, p, bounds)
+        controls_lb!(bounds, m, s0, p)
         @test bounds == [0.0, 0.0]
     end
 
