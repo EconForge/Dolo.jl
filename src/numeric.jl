@@ -26,19 +26,6 @@ _numeric_mod_type{ID}(::ASM{ID,:dtmscc}) = DTMSCCModel{ID}
 
 for TM in (:DTCSCCModel, :DTMSCCModel)
     @eval begin
-        # # function type constructor
-        # function $(TF)(sm::SymbolicModel; print_code::Bool=false)
-        #     if model_type(sm) != model_type($TF)
-        #         msg = string("Symbolic model is of type $(model_type(sm)) ",
-        #                      "cannot create functions of type $($TF)")
-        #         error(msg)
-        #     end
-        #     $(TF)([let
-        #                eval(Dolo, compile_equation(sm, fld; print_code=print_code))
-        #            end
-        #            for fld in fieldnames($(TF))]...)
-        # end
-
         Base.convert(::Type{SymbolicModel}, m::$(TM)) = m.symbolic
 
         # model type constructor
