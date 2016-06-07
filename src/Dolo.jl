@@ -1,3 +1,5 @@
+__precompile__()
+
 module Dolo
 
 using MacroTools
@@ -46,6 +48,15 @@ _symbol_dict(d::Associative) =
 const src_path = dirname(@__FILE__)
 const pkg_path = dirname(src_path)
 const RECIPES = _symbol_dict(load_file(joinpath(src_path, "recipes.yaml")))
+
+# define these _functions_ so users can add their own _methods_ to extend them
+for f in [:arbitrage, :transition, :auxiliary, :value, :expectation,
+          :direct_response, :controls_lb, :controls_ub, :arbitrage_2,
+          :arbitrage!, :transition!, :auxiliary!, :value!, :expectation!,
+          :direct_response, :controls_lb!, :controls_ub!, :arbitrage_2!]
+    eval(Expr(:function, f))
+end
+
 
 include("util.jl")
 include("parser.jl")
