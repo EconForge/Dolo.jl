@@ -38,6 +38,8 @@ const RECIPES = _symbol_dict(load_file(joinpath(src_path, "recipes.yaml")))
 
 include("util.jl")
 include("parser.jl")
+include("symbolic_model.jl")
+include("calibration.jl")
 include("model_types.jl")
 include("model_import.jl")
 
