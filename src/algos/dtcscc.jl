@@ -63,7 +63,7 @@ function _check_bk_conditions(eigval, tol, n_expected)
     true
 end
 
-function linear_solve(m::DTCSCCModel, calib::ModelCalibration=m.calibration;
+function linear_solve(m::AbstractDTCSCC, calib::ModelCalibration=m.calibration;
                       verbose::Bool=false, eigtol::Float64=1.0+1e-6)
     p, s, x, e = calib[:parameters, :states, :controls, :shocks]
     ns = length(s)

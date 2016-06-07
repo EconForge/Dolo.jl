@@ -33,13 +33,16 @@ abstract AbstractModel{ID,kind}
 abstract AbstractSymbolicModel{ID,kind} <: AbstractModel{ID,kind}
 abstract AbstractNumericModel{ID,kind} <: AbstractModel{ID,kind}
 
-id{ID}(::AbstractModel{ID}) = ID
-model_type{_,kind}(::AbstractModel{_,kind}) = kind
+typealias AbstractDTCSCC{ID} AbstractNumericModel{ID,:dtcscc}
+typealias AbstractDTMSCC{ID} AbstractNumericModel{ID,:dtmscc}
 
 typealias ASM AbstractSymbolicModel
 typealias ANM AbstractNumericModel
 
 abstract AbstractDecisionRule
+
+id{ID}(::AbstractModel{ID}) = ID
+model_type{_,kind}(::AbstractModel{_,kind}) = kind
 
 _symbol_dict(x) = x
 _symbol_dict(d::Associative) =
