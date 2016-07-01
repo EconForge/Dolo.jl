@@ -3,14 +3,13 @@ immutable SymbolicModel{ID,kind} <: ASM{ID,kind}
     equations::OrderedDict{Symbol,Vector{Expr}}
     calibration::OrderedDict{Symbol,Union{Expr,Symbol,Number}}
     options::Dict{Symbol,Any}
-    distribution::Dict{Symbol,Any}
     model_type::Symbol
     name::UTF8String
     filename::UTF8String
 
     function SymbolicModel(recipe::Associative, symbols::Associative,
                            eqs::Associative, calib::Associative,
-                           options::Associative, dist::Associative,
+                           options::Associative,
                            name="modeldoesnotwork", filename="none")
         # prep symbols
         model_type = symbol(recipe[:model_spec])
@@ -56,7 +55,7 @@ immutable SymbolicModel{ID,kind} <: ASM{ID,kind}
             end
         end
 
-        new(_symbols, _eqs, _calib, options, dist, model_type, name, filename)
+        new(_symbols, _eqs, _calib, options, model_type, name, filename)
     end
 end
 
@@ -79,12 +78,10 @@ function SymbolicModel(from_yaml::Dict, model_type::Symbol, filename="none")
     name = pop!(d, "name", "modeldoesnotwork")
     id = gensym(name)
     options = _symbol_dict(pop!(d, "options", Dict()))
-    distribution = _symbol_dict(pop!(d, "distribution", Dict()))
     out = SymbolicModel{id,model_type}(recipe, pop!(d, "symbols"),
                                        pop!(d, "equations"),
                                        pop!(d, "calibration"),
                                        options,
-                                       distribution,
                                        name,
                                        filename)
 
