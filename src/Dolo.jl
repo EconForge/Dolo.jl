@@ -10,6 +10,7 @@ using NLsolve
 using QuantEcon
 using Distributions: MvNormal
 import ForwardDiff
+import YAML
 
 export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
        SymbolicModel, DTCSCCModel, DTMSCCModel,

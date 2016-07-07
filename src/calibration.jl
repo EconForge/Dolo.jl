@@ -201,14 +201,17 @@ end
 
 eval_with(mc::ModelCalibration, s::AbstractString) = eval_with(mc, _to_expr(s))
 eval_with(mc::ModelCalibration, s::Symbol) = _replace_me(mc, s)
-eval_with(mc::ModelCalibration, d::Associative) =
-    Dict{Symbol,Any}([(symbol(k), eval_with(mc, v)) for (k, v) in d])
 eval_with(mc::ModelCalibration, x::Number) = x
 eval_with(mc::ModelCalibration, x::AbstractArray) = map(y->eval_with(mc, y), x)
-
-
-# function convert
-_to_Float64(x::Number) = convert(Float64, x)
-_to_Float64(x::AbstractArray) = map(Float64, x)
-_to_Float64(d::Associative) =
-    Dict{Symbol,Any}([(symbol(k), _to_Float64(v)) for (k, v) in d])
+function eval_with(mc::ModelCalibration, d::Associative)
+    out = Dict{Symbol,Any}()
+    for (k, v) in d
+        sk = symbol(k)
+        if sk == :kind
+            out[sk] = v
+        else
+            out[sk] = eval_with(mc, v)
+        end
+    end
+    out
+end
