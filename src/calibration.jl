@@ -215,9 +215,3 @@ function eval_with(mc::ModelCalibration, d::Associative)
     end
     out
 end
-
-# function convert
-_to_Float64(x::Number) = convert(Float64, x)
-_to_Float64(x::AbstractArray) = map(Float64, x)
-_to_Float64(d::Associative) =
-    Dict{Symbol,Any}([(symbol(k), _to_Float64(v)) for (k, v) in d])
