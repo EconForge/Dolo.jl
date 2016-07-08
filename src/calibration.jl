@@ -111,11 +111,17 @@ function ModelCalibration(sm::SymbolicModel)
         grouped[k] = Float64[flat[nm] for nm in nms]
     end
 
+    grouped[:definitions] = Float64[flat[nm] for nm in keys(sm.definitions)]
+
     symbol_table = Dict{Symbol,Tuple{Symbol,Int}}()
     for (grp, vals) in sm.symbols
         for (i, v) in enumerate(vals)
             symbol_table[v] = (grp, i)
         end
+    end
+
+    for (i, v) in enumerate(keys(sm.definitions))
+        symbol_table[v] = (:definitions, i)
     end
 
     # make sure we documented where in grouped every symbol is

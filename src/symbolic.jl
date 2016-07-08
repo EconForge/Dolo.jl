@@ -51,6 +51,9 @@ immutable SymbolicModel{ID,kind} <: ASM{ID,kind}
         haskey(eqs, :arbitrage_exp) && error("Don't know how to do this yet")
         _eqs[:arbitrage_exp] = Expr[]
 
+        # parse defs so values are Expr
+        _defs = OrderedDict{Symbol,Expr}([k=>_to_expr(v) for (k, v) in defs])
+
         # prep calib: parse to Expr, Symbol, or Number
         _calib  = OrderedDict{Symbol,Union{Expr,Symbol,Number}}()
         for k in keys(_symbols)
@@ -63,7 +66,10 @@ immutable SymbolicModel{ID,kind} <: ASM{ID,kind}
             end
         end
 
-        _defs = OrderedDict{Symbol,Expr}([k=>_to_expr(v) for (k, v) in defs])
+        # add calibration for definitions
+        for k in keys(_defs)
+            _calib[k] = _expr_or_number(calib[k])
+        end
 
         new(_symbols, _eqs, _calib, options, _defs, model_type, name, filename)
     end

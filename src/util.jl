@@ -19,6 +19,9 @@ inf_to_Inf(x::Expr) = @match x begin
     f_(a__) => Expr(:call, f, map(inf_to_Inf, a)...)
 end
 
+_to_Float64(x::Real) = convert(Float64, x)
+_to_Float64(x::AbstractArray) = map(Float64, x)
+
 solve_triangular_system(sm::ASM) = solve_triangular_system(sm.calibration)
 
 function solve_triangular_system(dict::Associative)
@@ -35,7 +38,11 @@ function solve_triangular_system(dict::Associative)
                 expr = dict[k]
                 try
                     sol = eval(Dolo,
-                               :(let $([:($x=$y) for (x, y) in solutions]...); $expr end))
+                               :(let
+                                    $([:($x=$y) for (x, y) in solutions]...);
+                                    $expr
+                                 end)
+                               )
                     solutions[k] = sol
                     done_smthg = true
                 end
