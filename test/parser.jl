@@ -71,23 +71,97 @@ end
 type MockSymbolic{ID,kind} <: Dolo.ASM{ID,kind}
     symbols
     equations
+    calibration
+    definitions
 end
 
-MockSymbolic(d, eq) = MockSymbolic{:foobar,:dtcscc}(d, eq)
-MockSymbolic(d) = MockSymbolic(d, nothing)
+MockSymbolic(;syms=nothing, eq=nothing, c=nothing, defs=nothing) =
+    MockSymbolic{:foobar,:dtcscc}(syms, eq, c, defs)
+
+function Dolo.Options(sm::MockSymbolic, calib::Dolo.ModelCalibration)
+    Dolo.Options(Dolo.Cartesian([1.0], [1.0], [1]), Dolo.Normal(eye(2)),
+                 Dict{Symbol,Any}())
+end
+
 function Dolo.DTCSCCModel{id}(sm::MockSymbolic{id})
     calib = ModelCalibration(FlatCalibration(Dolo.OrderedDict()),
                              GroupedCalibration(Dict()),
                              Dict(),
                              OrderedDict())
-    d = Dict{Symbol,Any}()
-    DTCSCCModel{id}(sm, calib, d, d, :dtcscc, "foobar", "boo.yaml")
+    opts = Dolo.Options(sm, calib)
+    DTCSCCModel{id}(sm, calib, opts, :dtcscc, "foobar", "boo.yaml")
+end
+
+@testset "Applying definitions" begin
+
+    sm = MockSymbolic(;syms=Dict(:states => [:z, :k, :n, :i]),
+                       eq=Dict(:transition => [:(y + z*(rk - w)), :(y/z)]),
+                       c=Dict(:a=>1.0, :b=>2.0),
+                       defs=Dict(:y => parse("z*k^alpha*n^(1-alpha)"),
+                                 :c => parse("y - i"),
+                                 :rk => parse("alpha*y/k"),
+                                 :w => parse("(1-alpha)*y/n")))
+
+    @testset "_is_time_shift" begin
+        @test !Dolo._is_time_shift(sm, :(sin(1)))
+        @test !Dolo._is_time_shift(sm, :(x(2)))
+        @test !Dolo._is_time_shift(sm, :(a(b)))
+        @test !Dolo._is_time_shift(sm, :(a(1.0)))
+        @test Dolo._is_time_shift(sm, :(a(1)))
+
+        @test Dolo._is_time_shift(:(sin(1)))
+        @test Dolo._is_time_shift(:(x(2)))
+        @test !Dolo._is_time_shift(:(a(b)))
+        @test !Dolo._is_time_shift(:(a(1.0)))
+        @test Dolo._is_time_shift(:(a(1)))
+    end
+
+    @testset "_replace_with_shift" begin
+        rws = Dolo._replace_with_shift
+
+        @test rws(sm, 1, :c, 1) == 1
+        @test rws(sm, 1, :c, 1432143) == 1
+        @test rws(sm, :c, :c, 1) == :(c(1))
+        @test rws(sm, :c, :c, -1) == :(c(-1))
+        @test rws(sm, :x, :c, 1) == :x
+        @test rws(sm, :(a*y - a), :a, 1) == :(a(1)*y - a(1))
+        @test rws(sm, :(a*y - a), :y, -1) == :(a*y(-1) - a)
+        @test rws(sm, :(a*y - a), :b, 10) == :(a*y - a)
+    end
+
+    @testset "_call_definition" begin
+        _cd = Dolo._call_definition
+
+        want = :(z(0) * k(0) ^ alpha * n(0) ^ (1 - alpha))
+        @test _cd(sm, sm.definitions[:y], 0) == want
+
+        want = :(z(-1) * k(-1) ^ alpha * n(-1) ^ (1 - alpha))
+        @test _cd(sm, sm.definitions[:y], -1) == want
+
+        # test recursive application
+        want = :(z(0) * k(0) ^ alpha * n(0) ^ (1 - alpha) - i(0))
+        @test _cd(sm, sm.definitions[:c], 0) == want
+
+        want = :(z(-1) * k(-1) ^ alpha * n(-1) ^ (1 - alpha) - i(-1))
+        @test _cd(sm, sm.definitions[:c], -1) == want
+    end
+
+    @testset "_apply_definitions" begin
+        _ad = Dolo._apply_definitions
+
+        want1 = :(z(0) * k(0) ^ alpha * n(0) ^ (1 - alpha) + z * ((alpha * (z(0) * k(0) ^ alpha * n(0) ^ (1 - alpha))) / k(0) - ((1 - alpha) * (z(0) * k(0) ^ alpha * n(0) ^ (1 - alpha))) / n(0)))
+        want2 = :((z(0) * k(0) ^ alpha * n(0) ^ (1 - alpha)) / z)
+
+        @test _ad(sm, sm.equations[:transition][1]) == want1
+        @test _ad(sm, sm.equations[:transition][2]) == want2
+        @test _ad(sm, sm.equations[:transition]) == [want1, want2]
+    end
 end
 
 @testset "compiler" begin
 
     @testset "_param_block" begin
-        sm = MockSymbolic(Dict(:parameters => [:a, :b, :foobar]))
+        sm = MockSymbolic(;syms=Dict(:parameters => [:a, :b, :foobar]))
         have = Dolo._param_block(sm)
         @test have.head == :block
         @test have.args[1] == :(a_ = _unpack_var(p, 1))
@@ -96,7 +170,7 @@ end
     end
 
     @testset "_single_arg_block" begin
-        sm = MockSymbolic(Dict(:states => [:z, :k]))
+        sm = MockSymbolic(;syms=Dict(:states => [:z, :k]))
 
         @testset "no shift" begin
             have = Dolo._single_arg_block(sm, :s, :states, 0)
@@ -126,7 +200,7 @@ end
     end
 
     @testset "_main_body_block" begin
-        sm = MockSymbolic(Dict())
+        sm = MockSymbolic(;syms=Dict())
         @testset "with targets" begin
             targets = [:x, :y, :z]
             exprs = [:(x = sin(42.0)), :(y = x(-1) + cos(42.0)), :(z = tan(x))]
@@ -171,55 +245,23 @@ end
     # NOTE: I know that transition specifies equations in the wrong order.
     # NOTE: I know that the functions for expecation have too many variables
     #       these are part of the tests below
-    exprs = [parse("y = z*k^alpha*n^(1-alpha)"),
-             parse("c = y - i"),
-             parse("rk = alpha*y/k"),
-             parse("w = (1-alpha)*y/n")]
-    sm = MockSymbolic(Dict(:auxiliaries => [:y, :c, :rk, :w],
-                           :states => [:z, :k],
-                           :shocks => [:ɛz],
-                           :controls => [:i, :n],
-                           :expectations => [:Ez],
-                           :parameters => [:fizz, :buzz, :alpha]),
-                      Dict(:auxiliary => exprs, :value => Expr[],
-                           :transition => [:(k = k(-1) + 1), :(z = z(-1))],
-                           :expectation => [:(Ez = z(1)), :(Ek = k(1))]))
+    defs = Dict(:y => parse("z*k^alpha*n^(1-alpha)"),
+                :c => parse("y - i"),
+                :rk => parse("alpha*y/k"),
+                :w => parse("(1-alpha)*y/n"))
+    sm = MockSymbolic(;syms=Dict(:states => [:z, :k],
+                                 :shocks => [:ɛz],
+                                 :controls => [:i, :n],
+                                 :expectations => [:Ez],
+                                 :parameters => [:fizz, :buzz, :alpha]),
+                      eq=Dict(:value => Expr[],
+                              :arbitrage => [:(1 - fizz*(c/c(1))^(buzz)*(1-alpha+rk(1))),
+                                             :(z*n^fizz*c^buzz - w)],
+                              :transition => [:(k = k(-1) + 1), :(z = z(-1))],
+                              :expectation => [:(Ez = z(1)), :(Ek = k(1))]),
+                      defs=defs)
 
     m = DTCSCCModel(sm)
-
-    @testset "_aux_block" begin
-        @testset "without shift" begin
-            have = Dolo._aux_block(sm, 0)
-            @test have.head == :block
-            @test have.args[1] == :(y_ = z_.*k_.^alpha_.*n_.^(1.-alpha_))
-            @test have.args[2] == :(c_ = y_ .- i_)
-            @test have.args[3] == :(rk_ = alpha_.*y_./k_)
-            @test have.args[4] == :(w_ = (1.-alpha_).*y_./n_)
-        end
-
-        @testset "positive shift" begin
-            have = Dolo._aux_block(sm, 1)
-            @test have.head == :block
-            @test have.args[1] == :(y__1_ = z__1_.*k__1_.^alpha_.*n__1_.^(1.-alpha_))
-            @test have.args[2] == :(c__1_ = y__1_ .- i__1_)
-
-            # notice below that we have k and rk, but that the single shift was
-            # properly applied one time to each of them. Had we not used regex
-            # in _aux_block and just searched for the state, then control, then
-            # auxiliary name we would have gotten rk(1)(1) instead of rk(1)
-            @test have.args[3] == :(rk__1_ = alpha_.*y__1_./k__1_)
-            @test have.args[4] == :(w__1_ = (1.-alpha_).*y__1_./n__1_)
-        end
-
-        @testset "negative shift" begin
-            have = Dolo._aux_block(sm, -2)
-            @test have.head == :block
-            @test have.args[1] == :(y_m2_ = z_m2_.*k_m2_.^alpha_.*n_m2_.^(1.-alpha_))
-            @test have.args[2] == :(c_m2_ = y_m2_ .- i_m2_)
-            @test have.args[3] == :(rk_m2_ = alpha_.*y_m2_./k_m2_)
-            @test have.args[4] == :(w_m2_ = (1.-alpha_).*y_m2_./n_m2_)
-        end
-    end
 
     @testset "compiled equations" begin
         # the function gets compiled, but can't be called
@@ -234,55 +276,64 @@ end
         # we specified one expecation variable, but two expectation eqns
         @test_throws ErrorException Dolo.compile_equation(sm, :expectation)
 
-        eval(Dolo, Dolo.compile_equation(sm, :auxiliary))
-
         # now see if the functions were compiled properly
+        eval(Dolo, Dolo.compile_equation(sm, :arbitrage))
+
         z = 1.0
         k = 0.25
         i = 100.0
         n = 10.0
         alpha = 0.33
+        fizz = 1.1
+        buzz = 2
         s = [z, k]
         x = [i, n]
-        p = [0.0, 0.0, alpha]
+        E = [0.0]
+        S = s
+        X = x
+        p = [fizz, buzz, alpha]
 
         y = z*k^alpha*n^(1-alpha)
         c = y-i
         rk = alpha*y/k
         w = (1-alpha)*y/n
 
-        want = [y, c, rk, w]
-        out = zeros(4)
+        want = [1 - fizz*(c/c)^(buzz)*(1-alpha+rk),
+                z*n^fizz*c^buzz - w]
+        out = zeros(2)
 
-        @test_throws MethodError auxiliary(m)
-        @test_throws MethodError auxiliary(m, s)
-        @test_throws MethodError auxiliary(m, s, x)
+        @test_throws MethodError arbitrage(m)
+        @test_throws MethodError arbitrage(m, s)
+        @test_throws MethodError arbitrage(m, s, x)
+        @test_throws MethodError arbitrage(m, s, x, E)
+        @test_throws MethodError arbitrage(m, s, x, E, S)
+        @test_throws MethodError arbitrage(m, s, x, E, S, X)
 
         # test allocating version
-        @test @inferred(auxiliary(m, s, x, p)) == want
+        @test @inferred(arbitrage(m, s, x, E, S, X, p)) == want
 
         # test non-allocating version
-        @inferred auxiliary!(out, m, s, x, p)
+        @inferred arbitrage!(out, m, s, x, E, S, X, p)
         @test out == want
 
         # test vectorized version
-        out_mat = zeros(5, 4)
+        out_mat = zeros(5, 2)
         want_mat = [want want want want want]'
-        @test @inferred(auxiliary(m, [s s s s s]', x, p)) == want_mat
-        @test @inferred(auxiliary(m, s, [x x x x x]', p)) == want_mat
+        @test @inferred(arbitrage(m, [s s s s s]', x, E, S, X, p)) == want_mat
+        @test @inferred(arbitrage(m, s, [x x x x x]', E, S, X, p)) == want_mat
 
         # non-allocating vectorized version
-        @inferred auxiliary!(out_mat, m, s, [x x x x x]', p)
+        @inferred arbitrage!(out_mat, m, s, [x x x x x]', E, S, X, p)
         @test out_mat == want_mat
 
         # non-allocating vectorized version
-        @inferred auxiliary!(out_mat, m, [s s s s s]', x, p)
+        @inferred arbitrage!(out_mat, m, [s s s s s]', x, E, S, X, p)
         @test out_mat == want_mat
 
         # test errors for wrong size of out
-        @test_throws DimensionMismatch auxiliary!(zeros(3), m, s, x, p)
-        @test_throws DimensionMismatch auxiliary!(zeros(5), m, s, x, p)
-        @test_throws DimensionMismatch auxiliary!(zeros(2, 4), m, [s s s]', x, p)
+        @test_throws DimensionMismatch arbitrage!(zeros(3), m, s, x, E, S, X, p)
+        @test_throws DimensionMismatch arbitrage!(zeros(5), m, s, x, E, S, X, p)
+        @test_throws DimensionMismatch arbitrage!(zeros(2, 4), m, [s s s]', x, E, S, X, p)
     end
 
 end

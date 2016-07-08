@@ -5,8 +5,13 @@
     I got this by doing
 
     ```
-    src = load_file("/Users/sglyon/src/Python/dolo/examples/models/rbc.yaml")
-    repr(src)
+    using YAML: load_file
+    using Dolo
+    funcs = Dict("!Cartesian" => (c, n) -> Dolo.construct_type_map(:Cartesian, c, n),
+             "!Normal" => (c, n) -> Dolo.construct_type_map(:Normal, c, n))
+    src = load_file("/Users/sglyon/src/Python/dolo/examples/models/rbc.yaml",
+                    funcs)
+    print(repr(src))
     ```
     And then doing some formatting
     =#
@@ -16,51 +21,53 @@
             "parameters"=>Any["beta","sigma","eta","chi","delta","alpha","rho","zbar","sig_z"],
             "controls"=>Any["i","n"],
             "values"=>Any["V"],
-            "auxiliaries"=>Any["y","c","rk","w"],
             "states"=>Any["z","k"],
             "shocks"=>Any["e_z"]
         ),
         "name"=>"Real Business Cycle",
         "calibration"=>Dict{Any,Any}(
-            "c"=>"y - i","zbar"=>1,
+            "c"=>"y - i",
+            "zbar"=>1,
             "V"=>"log(c)/(1-beta)",
-            "delta"=>0.025,"sigma"=>1,"chi"=>"w/c^sigma/n^eta",
-            "phi"=>1,"z"=>"zbar",
+            "c_i"=>1.5,
+            "delta"=>0.025,
+            "sigma"=>1,
+            "chi"=>"w/c^sigma/n^eta",
+            "phi"=>1,
+            "z"=>"zbar",
             "rk"=>"1/beta-1+delta",
             "i"=>"delta*k",
             "y"=>"z*k^alpha*n^(1-alpha)",
-            "sig_z"=>0.016,"w"=>"(1-alpha)*z*(k/n)^(alpha)",
-            "alpha"=>0.33,"k"=>"n/(rk/alpha)^(1/(1-alpha))",
+            "sig_z"=>0.016,
+            "w"=>"(1-alpha)*z*(k/n)^(alpha)",
+            "alpha"=>0.33,
+            "k"=>"n/(rk/alpha)^(1/(1-alpha))",
             "eta"=>1,
             "rho"=>0.8,
             "beta"=>0.99,
-            "n"=>0.33
-        ),
+            "c_y"=>0.5,
+            "n"=>0.33),
         "options"=>Dict{Any,Any}(
-            "Approximation"=>Dict{Any,Any}(
-                "orders"=>Any[10,50],
-                "b"=>Any["1+2*sig_z","k*1.1"],
-                "a"=>Any["1-2*sig_z","k*0.9"]
-                )
-            ),
-        "equations"=>Dict{Any,Any}(
-            "arbitrage"=>Any[
-                "1 - beta*(c/c(1))^(sigma)*(1-delta+rk(1))   | 0 <= i <= inf",
-                "chi*n^eta*c^sigma - w                       | 0 <= n <= inf"
-            ],
-            "auxiliary"=>Any[
-                "y = z*k^alpha*n^(1-alpha)","c = y - i",
-                "rk = alpha*y/k",
-                "w = (1-alpha)*y/n"
-            ],
-            "value"=>Any["V = log(c) + beta*V(1)"],
-            "transition"=>Any[
-                "z = (1-rho)*zbar + rho*z(-1) + e_z",
-                "k = (1-delta)*k(-1) + i(-1)"
-            ]
+            "distribution"=>Dict{Symbol,Any}(
+                :sigma=>Any[Any["sig_z**2"]],
+                :kind=>:Normal),
+            "grid"=>Dict{Symbol,Any}(
+                :orders=>Any[10,50],
+                :b=>Any["1+2*sig_z","k*1.1"],
+                :a=>Any["1-2*sig_z","k*0.9"],
+                :kind=>:Cartesian)
         ),
-        "distribution"=>Dict{Any,Any}(
-            "Normal"=>Any[Any["sig_z**2"]]
+        "equations"=>Dict{Any,Any}(
+            "arbitrage"=>Any["1 - beta*(c/c(1))^(sigma)*(1-delta+rk(1))  | 0 <= i <= inf","chi*n^eta*c^sigma - w                      | 0 <= n <= inf"],
+            "value"=>Any["V = log(c) + beta*V(1)"],
+            "transition"=>Any["z = (1-rho)*zbar + rho*z(-1) + e_z","k = (1-delta)*k(-1) + i(-1)"]
+        ),
+        "model_type"=>"dtcscc",
+        "definitions"=>Dict{Any,Any}(
+            "c"=>"y - i",
+            "w"=>"(1-alpha)*y/n",
+            "rk"=>"alpha*y/k",
+            "y"=>"z*k^alpha*n^(1-alpha)"
         )
     )
 
@@ -253,14 +260,15 @@
             # construct the object, and now test to make sure that things are how
             # they should be
 
-            @test length(keys(sm.symbols)) == 6
+            @test length(keys(sm.symbols)) == 7
             np, nc, nv, na, ns, nz = 9, 2, 1, 4, 2, 1
             @test length(sm.symbols[:parameters]) == np
             @test length(sm.symbols[:controls]) == nc
             @test length(sm.symbols[:values]) == nv
-            @test length(sm.symbols[:auxiliaries]) == na
             @test length(sm.symbols[:states]) == ns
             @test length(sm.symbols[:shocks]) == nz
+            @test length(sm.symbols[:rewards]) == 0
+            @test length(sm.symbols[:expectations]) == 0
 
             # test order of keys
             @test collect(keys(sm.symbols)) == map(symbol, Dolo.RECIPES[:dtcscc][:symbols])
@@ -269,15 +277,15 @@
             @test length(sm.equations[:arbitrage]) == nc
             @test length(sm.equations[:value]) == nv
             @test length(sm.equations[:transition]) == ns
-            @test length(sm.equations[:auxiliary]) == na
             @test length(sm.equations[:controls_lb]) == nc
             @test length(sm.equations[:controls_ub]) == nc
+            @test !haskey(sm.equations, :rewards)
+            @test !haskey(sm.equations, :expectations)
 
             name_order = vcat([sm.symbols[symbol(k)]
-                              for k in Dolo.RECIPES[:dtcscc][:symbols]]...)
+                              for k in Dolo.RECIPES[:dtcscc][:symbols]]...,
+                              collect(keys(sm.definitions)))
             @test collect(keys(sm.calibration)) == name_order
-            @test sm.options == Dolo._symbol_dict(rbc_dict["options"])
-            @test sm.distribution == Dolo._symbol_dict(rbc_dict["distribution"])
         end
 
         @test model_type(sm) == sm.model_type == :dtcscc
@@ -288,13 +296,6 @@
     @testset "NumericModel" begin
         sm = SymbolicModel(rbc_dict, :dtcscc, "rbc.yaml")
         m = DTCSCCModel(sm)
-
-        # check that options and distribution were "numericized" properly
-        @test all([isa(x, Float64) for x in m.options[:Approximation][:orders]])
-        @test all([isa(x, Float64) for x in m.options[:Approximation][:b]])
-        @test all([isa(x, Float64) for x in m.options[:Approximation][:a]])
-        @test all([isa(x, Float64) for x in m.distribution[:Normal]])
-        @test isa(m.distribution[:Normal], Matrix{Float64})
 
         @test model_type(m) == m.model_type == :dtcscc
         @test name(m) == m.name == "Real Business Cycle"
@@ -309,14 +310,13 @@
         # we passed in the steady state, so just make sure compiled functions
         # work out that way
         mc = m.calibration
-        p, s0, x0, a0, v0 = mc[:parameters, :states, :controls, :auxiliaries, :values]
+        p, s0, x0, v0 = mc[:parameters, :states, :controls, :values]
         e_ = zeros(mc[:shocks])
         ns = length(s0)
         nx = length(x0)
 
         @test maxabs(zeros(x0) - arbitrage(m, s0, x0, e_, s0, x0, p)) < 1e-13
         @test maxabs(s0 - transition(m, s0, x0, e_, p)) < 1e-13
-        @test maxabs(a0 - auxiliary(m, s0, x0, p)) < 1e-13
         @test maxabs(v0 - value(m, s0, x0, s0, x0, v0, p)) < 1e-13
         @test maxabs([0.0, 0.0] - controls_lb(m, s0, p)) < 1e-13
         @test [Inf, Inf] == controls_ub(m, s0, p)
@@ -333,10 +333,6 @@
         s1 = ones(s0)
         transition!(s1, m, s0, x0, e_, p)
         @test maxabs(s0 - s1) < 1e-13
-
-        a1 = ones(a0)
-        auxiliary!(a1, m, s0, x0, p)
-        @test maxabs(a0 - a1) < 1e-13
 
         v1 = ones(v0)
         value!(v1, m, s0, x0, s0, x0, v0, p)
