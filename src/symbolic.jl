@@ -25,7 +25,7 @@ immutable SymbolicModel{ID,kind} <: ASM{ID,kind}
         for k in keys(recipe[:specs])
 
             # we handle these separately
-            (k in [:arbitrage, :arbitrage_exp]) && continue
+            (k in [:arbitrage,]) && continue
 
             these_eq = get(eqs, k, [])
 
