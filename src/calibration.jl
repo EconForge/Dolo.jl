@@ -197,7 +197,7 @@ _replace_me(mc, o) = o
 # eval with will work on
 function eval_with(mc::ModelCalibration, ex::Expr)
     # put in let block to allow us to define intermediates in expr and not
-    # have them become globals in `current_module()` at callsite
+    # have them become globals in `Dolo`
     new_ex = MacroTools.prewalk(s->_replace_me(mc, s), ex)
     eval(Dolo, :(
     let
@@ -209,11 +209,12 @@ eval_with(mc::ModelCalibration, s::AbstractString) = eval_with(mc, _to_expr(s))
 eval_with(mc::ModelCalibration, s::Symbol) = _replace_me(mc, s)
 eval_with(mc::ModelCalibration, x::Number) = x
 eval_with(mc::ModelCalibration, x::AbstractArray) = map(y->eval_with(mc, y), x)
+
 function eval_with(mc::ModelCalibration, d::Associative)
     out = Dict{Symbol,Any}()
     for (k, v) in d
         sk = symbol(k)
-        if sk == :kind
+        if sk == :tag
             out[sk] = v
         else
             out[sk] = eval_with(mc, v)

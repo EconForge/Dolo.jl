@@ -1,4 +1,4 @@
-__precompile__()
+# __precompile__()
 
 module Dolo
 
@@ -45,6 +45,8 @@ abstract AbstractDecisionRule
 id{ID}(::AbstractModel{ID}) = ID
 model_type{_,kind}(::AbstractModel{_,kind}) = kind
 
+# recursively make all keys at any layer of nesting a symbol
+# included here instead of util.jl so we can call it on RECIPES below
 _symbol_dict(x) = x
 _symbol_dict(d::Associative) =
     Dict{Symbol,Any}([(symbol(k), _symbol_dict(v)) for (k, v) in d])
@@ -66,11 +68,13 @@ include("util.jl")
 include("parser.jl")
 include("symbolic.jl")
 include("calibration.jl")
+include("minilang.jl")
 include("numeric.jl")
 include("model_import.jl")
 
 include("numeric/taylor_series.jl")
 include("numeric/simulations.jl")
+include("numeric/derivatives.jl")
 
 include("algos/dtcscc.jl")
 

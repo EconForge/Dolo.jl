@@ -167,7 +167,6 @@ _apply_definitions(sm::ASM, eqs::Vector{Expr}) =
 # -------- #
 # Compiler #
 # -------- #
-
 @inline _unpack_var(x::AbstractVector, i::Integer) = x[i]
 @inline _unpack_var(x::AbstractMatrix, i::Integer) = sub(x, :, i)
 

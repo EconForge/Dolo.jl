@@ -50,12 +50,12 @@
         "options"=>Dict{Any,Any}(
             "distribution"=>Dict{Symbol,Any}(
                 :sigma=>Any[Any["sig_z**2"]],
-                :kind=>:Normal),
+                :tag=>:Normal),
             "grid"=>Dict{Symbol,Any}(
                 :orders=>Any[10,50],
                 :b=>Any["1+2*sig_z","k*1.1"],
                 :a=>Any["1-2*sig_z","k*0.9"],
-                :kind=>:Cartesian)
+                :tag=>:Cartesian)
         ),
         "equations"=>Dict{Any,Any}(
             "arbitrage"=>Any["1 - beta*(c/c(1))^(sigma)*(1-delta+rk(1))  | 0 <= i <= inf","chi*n^eta*c^sigma - w                      | 0 <= n <= inf"],
