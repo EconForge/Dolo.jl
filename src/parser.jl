@@ -1,8 +1,8 @@
 # ----------------- #
 # Parsing utilities #
 # ----------------- #
-call_expr(var, n) = n == 0 ? symbol(var) :
-                             symbol(string(var, "_", n > 0 ? "_" : "m", abs(n)))
+call_expr(var, n) = n == 0 ? Symbol(var) :
+                             Symbol(string(var, "_", n > 0 ? "_" : "m", abs(n)))
 
 function eq_expr(ex::Expr, targets::Union{Vector{Expr},Vector{Symbol}}=Symbol[])
     if isempty(targets)
@@ -19,7 +19,7 @@ function eq_expr(ex::Expr, targets::Union{Vector{Expr},Vector{Symbol}}=Symbol[])
     Expr(:(=), _parse(ex.args[1]), _parse(ex.args[2]))
 end
 
-_parse(x::Symbol) = symbol(string(x, "_"))
+_parse(x::Symbol) = Symbol(string(x, "_"))
 _parse(x::Number) = x
 
 function _parse(ex::Expr; targets::Union{Vector{Expr},Vector{Symbol}}=Symbol[])
@@ -289,7 +289,7 @@ function compile_equation(sm::ASM, func_nm::Symbol; print_code::Bool=false)
 
     numeric_mod = _numeric_mod_type(sm)
 
-    bang_func_nm = symbol(string(func_nm), "!")
+    bang_func_nm = Symbol(string(func_nm), "!")
 
     if length(exprs) == 0
         msg = "Model did not specify functions of type $(func_nm)"
@@ -312,15 +312,15 @@ function compile_equation(sm::ASM, func_nm::Symbol; print_code::Bool=false)
     target = get(spec, :target, [nothing])[1]
     eqs = spec[:eqs]  # required, so we don't provide a default
     non_aux = filter(x->x[1] != "auxiliaries", eqs)
-    arg_names = Symbol[symbol(x[3]) for x in non_aux]
-    arg_types = Symbol[symbol(x[1]) for x in non_aux]
+    arg_names = Symbol[Symbol(x[3]) for x in non_aux]
+    arg_types = Symbol[Symbol(x[1]) for x in non_aux]
     arg_shifts = Int[x[2] for x in non_aux]
     only_aux = filter(x->x[1] == "auxiliaries", eqs)
     aux_shifts = Int[x[2] for x in only_aux]
 
     # extract targets and make sure they appear in the correct order in exprs
     has_targets = !(target === nothing)
-    targets = has_targets ? sm.symbols[symbol(target)] : Symbol[]
+    targets = has_targets ? sm.symbols[Symbol(target)] : Symbol[]
     has_targets && _check_targets(exprs, targets, func_nm)
 
     # build function block by block

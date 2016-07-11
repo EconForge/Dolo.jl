@@ -17,7 +17,7 @@ immutable SymbolicModel{ID,kind} <: ASM{ID,kind}
                            options::Associative, defs::Associative,
                            name="modeldoesnotwork", filename="none")
         # prep symbols
-        model_type = symbol(recipe[:model_spec])
+        model_type = Symbol(recipe[:model_spec])
         _symbols = OrderedDict{Symbol,Vector{Symbol}}()
         for _ in recipe[:symbols]
             k = Symbol(_)

@@ -49,7 +49,7 @@ model_type{_,kind}(::AbstractModel{_,kind}) = kind
 # included here instead of util.jl so we can call it on RECIPES below
 _symbol_dict(x) = x
 _symbol_dict(d::Associative) =
-    Dict{Symbol,Any}([(symbol(k), _symbol_dict(v)) for (k, v) in d])
+    Dict{Symbol,Any}([(Symbol(k), _symbol_dict(v)) for (k, v) in d])
 
 const src_path = dirname(@__FILE__)
 const pkg_path = dirname(src_path)

@@ -9,7 +9,7 @@ end
 function guess_model_type(data)
     # if the yaml file has the model type key, use what is given there.
     if haskey(data, "model_type")
-        return symbol(data["model_type"])
+        return Symbol(data["model_type"])
     end
 
     # othewise we need to do a bit more guesswork

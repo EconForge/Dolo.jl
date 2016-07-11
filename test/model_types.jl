@@ -282,7 +282,7 @@
             @test !haskey(sm.equations, :rewards)
             @test !haskey(sm.equations, :expectations)
 
-            name_order = vcat([sm.symbols[symbol(k)]
+            name_order = vcat([sm.symbols[Symbol(k)]
                               for k in Dolo.RECIPES[:dtcscc][:symbols]]...,
                               collect(keys(sm.definitions)))
             @test collect(keys(sm.calibration)) == name_order

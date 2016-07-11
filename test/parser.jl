@@ -9,7 +9,7 @@
     @testset "symbols" begin
         for i=1:10
             s = gensym()
-            @test Dolo._parse(s) == symbol(string(s), "_")
+            @test Dolo._parse(s) == Symbol(string(s), "_")
         end
     end
 
