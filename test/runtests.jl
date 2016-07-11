@@ -1,3 +1,5 @@
+module DoloTests
+
 using Dolo
 using Compat
 using DataStructures
@@ -17,3 +19,5 @@ tests = length(ARGS) > 0 ? ARGS : ["numeric",
 for t in tests
     include("$(t).jl")
 end
+
+end  # module

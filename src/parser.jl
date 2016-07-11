@@ -204,28 +204,23 @@ function compile_equation(sm::ASM, func_nm::Symbol; print_code::Bool=false)
     # extract spec from recipe
     spec = RECIPES[model_type(sm)][:specs][func_nm]
 
-    # generate a new type name
-    tnm = gensym(func_nm)
-
     # get expressions from symbolic model
     exprs = sm.equations[func_nm]
 
+    numeric_mod = _numeric_mod_type(sm)
+
+    bang_func_nm = symbol(string(func_nm), "!")
+
     if length(exprs) == 0
-        # we are not able to use this equation type. Just create a dummy type
-        # and function that throws an error explaining what went wrong
         msg = "Model did not specify functions of type $(func_nm)"
         code = quote
-            immutable $tnm <: AbstractDoloFunctor
-            end
-            function evaluate(::$tnm, args...)
+            function $(func_nm)(::$(numeric_mod), args...)
                 error($msg)
             end
 
-            function evaluate!(::$tnm, args...)
+            function $(bang_func_nm)(::$(numeric_mod), args...)
                 error($msg)
             end
-
-            $tnm()  # see note below
         end
         return code
     end
@@ -266,11 +261,8 @@ function compile_equation(sm::ASM, func_nm::Symbol; print_code::Bool=false)
 
     # build the new type and implement methods on Base.call that we need
     code = quote
-        immutable $tnm <: AbstractDoloFunctor
-        end
-
         # non-allocating function
-        function evaluate!(::$tnm, $(typed_args...), out)
+        function $(bang_func_nm)(out, ::$(numeric_mod), $(typed_args...))
             expected_size = _output_size($(length(exprs)), $(arg_names...))
             if size(out) != expected_size
                 msg = "Expected out to be size $(expected_size), found $(size(out))"
@@ -280,17 +272,12 @@ function compile_equation(sm::ASM, func_nm::Symbol; print_code::Bool=false)
         end
 
         # allocating version
-        function evaluate(o::$tnm, $(typed_args...))
+        function $(func_nm)(mod::$(numeric_mod), $(typed_args...))
             out = _allocate_out(eltype($(arg_names[1])),
                                 $(length(exprs)), $(arg_names...))
-            evaluate!(o, $(arg_names...), out)
+            $(bang_func_nm)(out, mod, $(arg_names...))
         end
 
-        Base.length(::$tnm) = $(length(exprs))
-
-        # last line of this block is the singleton instance of the type
-        # This means you should do `obj = eval(code)`
-        $tnm()
         # TODO: can we use broadcast! to get pretty far towards guvectorize?
     end
 

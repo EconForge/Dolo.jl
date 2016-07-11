@@ -11,11 +11,11 @@ function solve_steady_state(m::DTCSCCModel, mc::ModelCalibration=m.calibration)
         x_out = sub(out, ns+1:ns+nx)
 
         # update state part of residual
-        evaluate!(m.functions.transition, s, x, e_, p, s_out)
+        transition!(s_out, m, s, x, e_, p)
         broadcast!(-, s_out, s_out, s)
 
         # now update control part
-        evaluate!(m.functions.arbitrage, s, x, e_, s, x, p, x_out)
+        arbitrage!(x_out, m, s, x, e_, s, x, p)
         out
     end
 
@@ -63,11 +63,8 @@ function _check_bk_conditions(eigval, tol, n_expected)
     true
 end
 
-function linear_solve(m::DTCSCCModel, calib::ModelCalibration=m.calibration;
+function linear_solve(m::AbstractDTCSCC, calib::ModelCalibration=m.calibration;
                       verbose::Bool=false, eigtol::Float64=1.0+1e-6)
-    f = m.functions.arbitrage
-    g = m.functions.transition
-
     p, s, x, e = calib[:parameters, :states, :controls, :shocks]
     ns = length(s)
     nx = length(x)
@@ -75,8 +72,9 @@ function linear_solve(m::DTCSCCModel, calib::ModelCalibration=m.calibration;
     nv = ns + nx
 
     # evaluate Jacobians and stack into A,B matrix for qz
-    g_s, g_x, g_e = eval_jacobians(g, (s, x, e), p)
-    f_s, f_x, f_e, f_S, f_X = eval_jacobians(f, (s, x, e, s, x), p)
+    g_s, g_x, g_e = eval_jacobians(m, transition!, ns, (s, x, e), p)
+    f_s, f_x, f_e, f_S, f_X = eval_jacobians(m, arbitrage!, nx,
+                                             (s, x, e, s, x), p)
 
     A = [eye(ns) zeros(ns, nx)
          -f_S     -f_X]

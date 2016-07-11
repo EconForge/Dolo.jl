@@ -1,3 +1,5 @@
+__precompile__()
+
 module Dolo
 
 using MacroTools
@@ -8,25 +10,40 @@ using NLsolve
 using QuantEcon
 using Distributions: MvNormal
 import ForwardDiff
+import YAML
 
 export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
-       AbstractDoloFunctor, SymbolicModel, DTCSCCModel, DTMSCCModel,
+       SymbolicModel, DTCSCCModel, DTMSCCModel,
        FlatCalibration, GroupedCalibration, ModelCalibration, TaylorExpansion,
        RECIPES,
 
-       # functions
-       yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename
+       # model functions
+       arbitrage, transition, auxiliary, value, expectation, direct_response,
+       controls_lb, controls_ub, arbitrage_2,
+
+       # mutating version of model functions
+       arbitrage!, transition!, auxiliary!, value!, expectation!,
+       direct_response, controls_lb!, controls_ub!, arbitrage_2!,
+
+       # dolo functions
+       yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename,
+       linear_solve, simulate, id
 
 # set up core types
-abstract AbstractModel
-abstract AbstractSymbolicModel <: AbstractModel
-abstract AbstractNumericModel <: AbstractModel
+abstract AbstractModel{ID,kind}
+abstract AbstractSymbolicModel{ID,kind} <: AbstractModel{ID,kind}
+abstract AbstractNumericModel{ID,kind} <: AbstractModel{ID,kind}
+
+typealias AbstractDTCSCC{ID} AbstractNumericModel{ID,:dtcscc}
+typealias AbstractDTMSCC{ID} AbstractNumericModel{ID,:dtmscc}
 
 typealias ASM AbstractSymbolicModel
 typealias ANM AbstractNumericModel
 
-abstract AbstractDoloFunctor
 abstract AbstractDecisionRule
+
+id{ID}(::AbstractModel{ID}) = ID
+model_type{_,kind}(::AbstractModel{_,kind}) = kind
 
 _symbol_dict(x) = x
 _symbol_dict(d::Associative) =
@@ -36,9 +53,20 @@ const src_path = dirname(@__FILE__)
 const pkg_path = dirname(src_path)
 const RECIPES = _symbol_dict(load_file(joinpath(src_path, "recipes.yaml")))
 
+# define these _functions_ so users can add their own _methods_ to extend them
+for f in [:arbitrage, :transition, :auxiliary, :value, :expectation,
+          :direct_response, :controls_lb, :controls_ub, :arbitrage_2,
+          :arbitrage!, :transition!, :auxiliary!, :value!, :expectation!,
+          :direct_response, :controls_lb!, :controls_ub!, :arbitrage_2!]
+    eval(Expr(:function, f))
+end
+
+
 include("util.jl")
 include("parser.jl")
-include("model_types.jl")
+include("symbolic.jl")
+include("calibration.jl")
+include("numeric.jl")
 include("model_import.jl")
 
 include("numeric/taylor_series.jl")

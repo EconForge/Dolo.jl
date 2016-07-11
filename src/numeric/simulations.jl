@@ -79,7 +79,7 @@ end
 
 
 #=
-url = "https://raw.githubusercontent.com/EconForge/dolo/master/examples/models/rbc.yaml"
+url = "https://raw.githubusercontent.com/EconForge/dolo/c8bd2e3f2f5402f687beb7949d49deefda6a5fc6/examples/models/rbc.yaml"
 m = yaml_import(url)
 dr = linear_solve(m)
 sim = simulate(m, dr)

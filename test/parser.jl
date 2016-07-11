@@ -68,13 +68,22 @@
     end
 end
 
-type MockSymbolic <: Dolo.ASM
+type MockSymbolic{ID,kind} <: Dolo.ASM{ID,kind}
     symbols
     equations
 end
 
+MockSymbolic(d, eq) = MockSymbolic{:foobar,:dtcscc}(d, eq)
 MockSymbolic(d) = MockSymbolic(d, nothing)
-Dolo.model_type(::MockSymbolic) = :dtcscc
+function Dolo.DTCSCCModel{id}(sm::MockSymbolic{id})
+    calib = ModelCalibration(FlatCalibration(Dolo.OrderedDict()),
+                             GroupedCalibration(Dict()),
+                             Dict(),
+                             OrderedDict())
+    d = Dict{Symbol,Any}()
+    DTCSCCModel{id}(sm, calib, d, d, :dtcscc, "foobar", "boo.yaml")
+end
+
 @testset "compiler" begin
 
     @testset "_param_block" begin
@@ -176,6 +185,8 @@ Dolo.model_type(::MockSymbolic) = :dtcscc
                            :transition => [:(k = k(-1) + 1), :(z = z(-1))],
                            :expectation => [:(Ez = z(1)), :(Ek = k(1))]))
 
+    m = DTCSCCModel(sm)
+
     @testset "_aux_block" begin
         @testset "without shift" begin
             have = Dolo._aux_block(sm, 0)
@@ -210,14 +221,11 @@ Dolo.model_type(::MockSymbolic) = :dtcscc
         end
     end
 
-    @testset "compile_equation" begin
-        # can't compile this type of equation, so calling throws an error.
-        # it is still a dolo functor, however
-        obj1 = let
-            eval(Dolo, Dolo.compile_equation(sm, :value))
-        end
-        @test_throws ErrorException evaluate(obj1)
-        @test @compat(supertype)(typeof(obj1)) == Dolo.AbstractDoloFunctor
+    @testset "compiled equations" begin
+        # the function gets compiled, but can't be called
+        eval(Dolo, Dolo.compile_equation(sm, :value))
+
+        @test_throws ErrorException value(m)
 
         # the transition equations were given in the wrong order. Check that
         # we throw an error here
@@ -226,10 +234,7 @@ Dolo.model_type(::MockSymbolic) = :dtcscc
         # we specified one expecation variable, but two expectation eqns
         @test_throws ErrorException Dolo.compile_equation(sm, :expectation)
 
-        obj2 = let
-            eval(Dolo, Dolo.compile_equation(sm, :auxiliary))
-        end
-        @test @compat(supertype)(typeof(obj2)) == Dolo.AbstractDoloFunctor
+        eval(Dolo, Dolo.compile_equation(sm, :auxiliary))
 
         # now see if the functions were compiled properly
         z = 1.0
@@ -249,35 +254,35 @@ Dolo.model_type(::MockSymbolic) = :dtcscc
         want = [y, c, rk, w]
         out = zeros(4)
 
-        @test_throws MethodError evaluate(obj2, )
-        @test_throws MethodError evaluate(obj2, s)
-        @test_throws MethodError evaluate(obj2, s, x)
+        @test_throws MethodError auxiliary(m)
+        @test_throws MethodError auxiliary(m, s)
+        @test_throws MethodError auxiliary(m, s, x)
 
         # test allocating version
-        @test @inferred(evaluate(obj2, s, x, p)) == want
+        @test @inferred(auxiliary(m, s, x, p)) == want
 
         # test non-allocating version
-        @inferred evaluate!(obj2, s, x, p, out)
+        @inferred auxiliary!(out, m, s, x, p)
         @test out == want
 
         # test vectorized version
         out_mat = zeros(5, 4)
         want_mat = [want want want want want]'
-        @test @inferred(evaluate(obj2, [s s s s s]', x, p)) == want_mat
-        @test @inferred(evaluate(obj2, s, [x x x x x]', p)) == want_mat
+        @test @inferred(auxiliary(m, [s s s s s]', x, p)) == want_mat
+        @test @inferred(auxiliary(m, s, [x x x x x]', p)) == want_mat
 
         # non-allocating vectorized version
-        @inferred evaluate!(obj2, s, [x x x x x]', p, out_mat)
+        @inferred auxiliary!(out_mat, m, s, [x x x x x]', p)
         @test out_mat == want_mat
 
         # non-allocating vectorized version
-        @inferred evaluate!(obj2, [s s s s s]', x, p, out_mat)
+        @inferred auxiliary!(out_mat, m, [s s s s s]', x, p)
         @test out_mat == want_mat
 
         # test errors for wrong size of out
-        @test_throws DimensionMismatch evaluate!(obj2, s, x, p, zeros(3))
-        @test_throws DimensionMismatch evaluate!(obj2, s, x, p, zeros(5))
-        @test_throws DimensionMismatch evaluate!(obj2, [s s s]', x, p, zeros(2, 4))
+        @test_throws DimensionMismatch auxiliary!(zeros(3), m, s, x, p)
+        @test_throws DimensionMismatch auxiliary!(zeros(5), m, s, x, p)
+        @test_throws DimensionMismatch auxiliary!(zeros(2, 4), m, [s s s]', x, p)
     end
 
 end
