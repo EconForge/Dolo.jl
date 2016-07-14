@@ -15,52 +15,58 @@ using DataStructures
 function modfile_parser(mod_file_name)
   f = open(mod_file_name)
   lines = readlines(f)  # reads in line by line
+  close(f)
 
-
-  # Remove lines beginning with comments
+  # Remove lines beginning with comments (%, //, /*, \*)
   filter!(x -> ~ismatch(r"^\s*%", x), lines)
-  filter!(x -> ~ismatch(r"^\s*//", x), lines)
+  filter!(x -> ~ismatch(r"^\s*\/\/", x), lines)
+  filter!(x -> ~ismatch(r"^\s*\/\*", x), lines)
 
-  # Remove lines with comments after text
+
+  # Remove end-of-line comments
   for ln = 1:length(lines)
-    lines[ln] = split(lines[ln], r"%.*$")[1]
+    lines[ln] = split(lines[ln], r"%.*$")[1]    # %  comments
+    lines[ln] = split(lines[ln], r"\/\/.*$")[1]  # \\ comments
+    lines[ln] = split(lines[ln], r"/\*.*$")[1]   # \* comments
   end
 
-  # Remove lines that are empty
-  filter!(x -> (x != "\n"), lines)
-
-  # Remove new lines
-  for ln = 1:length(lines)
-    lines[ln] = strip(lines[ln])
-  end
 
   # Smoosh text back together
   text = join(lines)
 
+  # Remove new lines, spaces, carriage returns,
+  text = replace(text, "\t", " ")
+  text = replace(text, "\r", " ")
+  text = replace(text, "\n", " ")
 
   # Get variable names
   tmp = match(r"var (.*?);", text)
   variables = split(tmp[1], " ")
+  filter!(x -> ismatch(r"\S", x), variables) # Remove lines if no chars present
 
   # Get exogenous variable names
   tmp = match(r"varexo (.*?);", text)
   exogenous = split(tmp[1], " ")
+  filter!(x -> ismatch(r"\S", x), exogenous) # Remove lines if no chars present
 
   # Get parameter names
   tmp = match(r"parameters (.*?);", text)
   parameters = split(tmp[1], " ")
+  filter!(x -> ismatch(r"\S", x), parameters) # Remove lines if no chars present
 
   # get equations, fill a list
   tmp  = match(r"model;(.*?)end;", text)
   equations = split(tmp[1], ";")
-  equations = filter!(x -> length(x)>0, equations)
-
+  filter!(x -> ismatch(r"\S", x), equations) # Remove lines if no chars present
+  for ln = 1:length(equations)
+    equations[ln] = strip(equations[ln])
+  end
 
   # Get calibration values, fill a dictionary
   calibration = OrderedDict()
   tmp  = match(r"parameters(.*?);(.*)model", text)
   tmp = split(tmp[2], ";")
-  tmp = filter!(x -> length(x)>0, tmp)
+  filter!(x -> ismatch(r"\S", x), tmp) # Remove lines if no chars present
   for ln = 1:length(tmp)
     key = strip(match(r"(.*)=", tmp[ln])[1])
     entry = strip(match(r"=(.*)", tmp[ln])[1])
@@ -69,10 +75,10 @@ function modfile_parser(mod_file_name)
 
   # Get initial values, fill a dictionary
   initval = OrderedDict()
-  if contains(text, "initval")
-    tmp  = match(r"initval;(.*?)end;", text)
+  tmp  = match(r"initval;(.*?)end;", text)
+  if tmp != nothing
     tmp = split(tmp[1], ";")
-    tmp = filter!(x -> length(x)>0, tmp)
+    filter!(x -> ismatch(r"\S", x), tmp) # Remove lines if no chars present
     for ln = 1:length(tmp)
       key = strip(match(r"(.*)=", tmp[ln])[1])
       entry = strip(match(r"=(.*)", tmp[ln])[1])
@@ -80,12 +86,14 @@ function modfile_parser(mod_file_name)
     end
   end
 
+
+
   # Get end values, fill a dictionary
   endval = OrderedDict()
-  if contains(text, "endval")
-    tmp  = match(r"endval;(.*?)end;", text)
+  tmp  = match(r"endval;(.*?)end;", text)
+  if tmp != nothing
     tmp = split(tmp[1], ";")
-    tmp = filter!(x -> length(x)>0, tmp)
+    filter!(x -> ismatch(r"\S", x), tmp) # Remove lines if no chars present
     for ln = 1:length(tmp)
       key = strip(match(r"(.*)=", tmp[ln])[1])
       entry = strip(match(r"=(.*)", tmp[ln])[1])
@@ -94,11 +102,13 @@ function modfile_parser(mod_file_name)
   end
 
   # Get the calibrated shock values
-  if contains(text, "shocks")
-    tmp = match(r"shocks;(.*?)(.*?)end;", text)
+  tmp = match(r"shocks;(.*?)(.*?)end;", text)
+  if tmp != nothing
     if contains(tmp[2], "stderr")
       shocks = fill("0", length(exogenous), length(exogenous))
-      tmp = filter!(x-> (x != ""), split(tmp[2], ";"))
+      tmp = split(tmp[2], ";")
+      filter!(x -> ismatch(r"\S", x), tmp) # Remove lines if no chars present
+      # tmp = filter!(x-> (x != ""), split(tmp[2], ";"))
       cnt = 1
       for ln = 1:length(tmp)
         if contains(tmp[ln], "stderr")
@@ -116,9 +126,6 @@ function modfile_parser(mod_file_name)
       end
     end
   end
-
-
-  close(f)
 
   return variables, exogenous, parameters, calibration, equations, initval, endval, shocks
 
