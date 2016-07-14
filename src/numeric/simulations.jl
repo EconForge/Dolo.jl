@@ -13,8 +13,7 @@ function QuantEcon.simulate(m::AbstractNumericModel, dr::AbstractDecisionRule,
     ny = length(calib[:auxiliaries])
     has_aux = ny > 0
 
-    # TODO: will be changed to go inside options
-    sigma = m.distribution[:Normal]
+    sigma = m.options.distribution.sigma
 
     # calculate initial controls using decision rule
     x0 = dr(s0)

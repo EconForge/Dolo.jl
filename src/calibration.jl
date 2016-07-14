@@ -51,7 +51,7 @@ let
     Base.merge!{T<:Calib}(c::T, others::T...) =
         T(merge!(c.d, [o.d for o in others]...))
     Base.show(io::IO, c::Calib) = show(io, c.d)
-    Base.showdict(io::IO, c::Calib) = Base.showdict(io, c.d)
+    # Base.showdict(io::IO, c::Calib) = Base.showdict(io, c.d)
     Base.copy{T<:Calib}(c::T) = T(copy(c.d))
     Base.deepcopy{T<:Calib}(c::T) = T(deepcopy(c.d))
 end
@@ -111,11 +111,17 @@ function ModelCalibration(sm::SymbolicModel)
         grouped[k] = Float64[flat[nm] for nm in nms]
     end
 
+    grouped[:definitions] = Float64[flat[nm] for nm in keys(sm.definitions)]
+
     symbol_table = Dict{Symbol,Tuple{Symbol,Int}}()
     for (grp, vals) in sm.symbols
         for (i, v) in enumerate(vals)
             symbol_table[v] = (grp, i)
         end
+    end
+
+    for (i, v) in enumerate(keys(sm.definitions))
+        symbol_table[v] = (:definitions, i)
     end
 
     # make sure we documented where in grouped every symbol is
@@ -191,7 +197,7 @@ _replace_me(mc, o) = o
 # eval with will work on
 function eval_with(mc::ModelCalibration, ex::Expr)
     # put in let block to allow us to define intermediates in expr and not
-    # have them become globals in `current_module()` at callsite
+    # have them become globals in `Dolo`
     new_ex = MacroTools.prewalk(s->_replace_me(mc, s), ex)
     eval(Dolo, :(
     let
@@ -203,11 +209,12 @@ eval_with(mc::ModelCalibration, s::AbstractString) = eval_with(mc, _to_expr(s))
 eval_with(mc::ModelCalibration, s::Symbol) = _replace_me(mc, s)
 eval_with(mc::ModelCalibration, x::Number) = x
 eval_with(mc::ModelCalibration, x::AbstractArray) = map(y->eval_with(mc, y), x)
+
 function eval_with(mc::ModelCalibration, d::Associative)
     out = Dict{Symbol,Any}()
     for (k, v) in d
-        sk = symbol(k)
-        if sk == :kind
+        sk = Symbol(k)
+        if sk == :tag
             out[sk] = v
         else
             out[sk] = eval_with(mc, v)
