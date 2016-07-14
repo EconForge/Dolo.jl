@@ -10,7 +10,7 @@ This file reads Dynare .mod files, and extracts the following information:
   shocks
 =#
 
-import DataStructures
+using DataStructures
 
 function modfile_parser(mod_file_name)
   f = open(mod_file_name)
@@ -19,6 +19,7 @@ function modfile_parser(mod_file_name)
 
   # Remove lines beginning with comments
   filter!(x -> ~ismatch(r"^\s*%", x), lines)
+  filter!(x -> ~ismatch(r"^\s*//", x), lines)
 
   # Remove lines with comments after text
   for ln = 1:length(lines)
@@ -43,7 +44,7 @@ function modfile_parser(mod_file_name)
 
   # Get exogenous variable names
   tmp = match(r"varexo (.*?);", text)
-  exo_variables = split(tmp[1], " ")
+  exogenous = split(tmp[1], " ")
 
   # Get parameter names
   tmp = match(r"parameters (.*?);", text)
@@ -56,7 +57,7 @@ function modfile_parser(mod_file_name)
 
 
   # Get calibration values, fill a dictionary
-  calibration = Dict()
+  calibration = OrderedDict()
   tmp  = match(r"parameters(.*?);(.*)model", text)
   tmp = split(tmp[2], ";")
   tmp = filter!(x -> length(x)>0, tmp)
@@ -67,8 +68,8 @@ function modfile_parser(mod_file_name)
   end
 
   # Get initial values, fill a dictionary
-  if contains(text, "endval")
-    initval = Dict()
+  initval = OrderedDict()
+  if contains(text, "initval")
     tmp  = match(r"initval;(.*?)end;", text)
     tmp = split(tmp[1], ";")
     tmp = filter!(x -> length(x)>0, tmp)
@@ -80,8 +81,8 @@ function modfile_parser(mod_file_name)
   end
 
   # Get end values, fill a dictionary
+  endval = OrderedDict()
   if contains(text, "endval")
-    endval = Dict()
     tmp  = match(r"endval;(.*?)end;", text)
     tmp = split(tmp[1], ";")
     tmp = filter!(x -> length(x)>0, tmp)
@@ -93,18 +94,32 @@ function modfile_parser(mod_file_name)
   end
 
   # Get the calibrated shock values
-  shocks = Dict()
-  tmp  = match(r"shocks;var(.*?)(.*)end;", text)
-  tmp = split(tmp[2], ";")
-  tmp = filter!(x -> length(x)>0, tmp)
-  for ln = 1:length(tmp)
-    key = strip(match(r"(.*)=", tmp[ln])[1])
-    entry = strip(match(r"=(.*)", tmp[ln])[1])
-    shocks[key] =  entry
+  if contains(text, "shocks")
+    tmp = match(r"shocks;(.*?)(.*?)end;", text)
+    if contains(tmp[2], "stderr")
+      shocks = fill("0", length(exogenous), length(exogenous))
+      tmp = filter!(x-> (x != ""), split(tmp[2], ";"))
+      cnt = 1
+      for ln = 1:length(tmp)
+        if contains(tmp[ln], "stderr")
+          shock_val = match(r"stderr (.*)", tmp[ln])[1]
+          shocks[cnt, cnt] = shock_val
+          cnt += 1
+        end
+      end
+    else
+      shocks = []
+      tmp = filter!(x-> (x != ""), split(tmp[2], ";"))
+      for ln = 1:length(tmp)
+        shock_val = match(r"=(.*)", tmp[ln])[1]
+        push!(shocks, shock_val)
+      end
+    end
   end
 
 
   close(f)
-  return variables, exo_variables, parameters, equations, initval, endval, shocks
+
+  return variables, exogenous, parameters, calibration, equations, initval, endval, shocks
 
 end
