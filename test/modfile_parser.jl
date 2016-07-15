@@ -40,22 +40,22 @@ function modfile_parser(mod_file_name)
   text = replace(text, "\n", " ")
 
   # Get variable names
-  tmp = match(r"var (.*?);", text)
+  tmp = match(r"var\s(.*?);", text)
   variables = split(tmp[1], " ")
   filter!(x -> ismatch(r"\S", x), variables) # Remove lines if no chars present
 
   # Get exogenous variable names
-  tmp = match(r"varexo (.*?);", text)
-  exogenous = split(tmp[1], " ")
-  filter!(x -> ismatch(r"\S", x), exogenous) # Remove lines if no chars present
+  tmp = match(r"varexo\s(.*?);", text)
+  shocks = split(tmp[1], " ")
+  filter!(x -> ismatch(r"\S", x), shocks) # Remove lines if no chars present
 
   # Get parameter names
-  tmp = match(r"parameters (.*?);", text)
+  tmp = match(r"parameters\s(.*?);", text)
   parameters = split(tmp[1], " ")
   filter!(x -> ismatch(r"\S", x), parameters) # Remove lines if no chars present
 
   # get equations, fill a list
-  tmp  = match(r"model;(.*?)end;", text)
+  tmp  = match(r"model;\s(.*?)end;", text)
   equations = split(tmp[1], ";")
   filter!(x -> ismatch(r"\S", x), equations) # Remove lines if no chars present
   for ln = 1:length(equations)
@@ -63,14 +63,14 @@ function modfile_parser(mod_file_name)
   end
 
   # Get calibration values, fill a dictionary
-  calibration = OrderedDict()
-  tmp  = match(r"parameters(.*?);(.*)model", text)
+  parameter_values = OrderedDict()
+  tmp  = match(r"parameters\s(.*?);(.*)model", text)
   tmp = split(tmp[2], ";")
   filter!(x -> ismatch(r"\S", x), tmp) # Remove lines if no chars present
   for ln = 1:length(tmp)
     key = strip(match(r"(.*)=", tmp[ln])[1])
     entry = strip(match(r"=(.*)", tmp[ln])[1])
-    calibration[key] =  entry
+    parameter_values[key] =  entry
   end
 
   # Get initial values, fill a dictionary
@@ -101,32 +101,50 @@ function modfile_parser(mod_file_name)
     end
   end
 
-  # Get the calibrated shock values
+
+
+  # Get the calibrated shock values, fill matrix
+  shockvaldict = Dict()
+  shock_matrix = fill("0", length(shocks), length(shocks))
   tmp = match(r"shocks;(.*?)(.*?)end;", text)
   if tmp != nothing
     if contains(tmp[2], "stderr")
-      shocks = fill("0", length(exogenous), length(exogenous))
-      tmp = split(tmp[2], ";")
-      filter!(x -> ismatch(r"\S", x), tmp) # Remove lines if no chars present
-      # tmp = filter!(x-> (x != ""), split(tmp[2], ";"))
-      cnt = 1
-      for ln = 1:length(tmp)
-        if contains(tmp[ln], "stderr")
-          shock_val = match(r"stderr (.*)", tmp[ln])[1]
-          shocks[cnt, cnt] = shock_val
-          cnt += 1
-        end
+      tmpkey = matchall(r"var(.*?);", tmp[2])
+      tmpentry = matchall(r"stderr(.*?);", tmp[2])
+      for ln = 1:length(tmpkey)
+       key = strip(match(r"var\s(.*)", tmpkey[ln])[1])
+       key = match(r"(.*);", key)[1]
+       entry = strip(match(r"stderr\s(.*)", tmpentry[ln])[1])
+       entry = match(r"(.*);", entry)[1]
+       shockvaldict[key] =  entry
       end
     else
-      shocks = []
-      tmp = filter!(x-> (x != ""), split(tmp[2], ";"))
+      tmp = split(tmp[2], ";")
+      filter!(x -> ismatch(r"\S", x), tmp) # Remove lines if no chars present
       for ln = 1:length(tmp)
-        shock_val = match(r"=(.*)", tmp[ln])[1]
-        push!(shocks, shock_val)
+        key = match(r"var\s(.*)\s=", tmp[ln])[1]
+        entry = match(r"=\s(.*)", tmp[ln])[1]
+        shockvaldict[key] =  entry
+      end
+    end
+    # Fill matrix in order of shocks in "shocks" dictionary
+    for ln = 1:length(shocks)
+      if haskey(shockvaldict, shocks[ln])
+        shock_matrix[ln, ln] = shockvaldict[shocks[ln]]
+      else
+        shock_matrix[ln, ln] = "0.0"
       end
     end
   end
 
-  return variables, exogenous, parameters, calibration, equations, initval, endval, shocks
+  data = Dict()
+  data["symbols"] = Dict("variables"=>variables, "shocks"=>shocks, "parameters"=>parameters)
+  data["equations"] = equations
+  data["calibration"] = merge(parameter_values, initval)
+  distribution = Dict("tag"=>"Normal", "sigma"=>shock_matrix)
+  data["options"] = Dict("distribution"=>distribution)
+  data["optional"] = Dict("endval"=>endval)
+
+  return data
 
 end
