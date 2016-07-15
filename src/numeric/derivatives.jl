@@ -18,7 +18,7 @@ f!(out, m, before..., to_diff[1:i-1]..., to_diff[i] ,to_diff[i+1:end]...,
 """
 function eval_jacobian(m::ANM, f!::Function, n::Int, before::Tuple,
                        to_diff::Tuple, after::Tuple, i::Int)
-    _f!(out, _) = f!(out, m, before..., to_diff[1:i-1]..., _,
+    _f!(out, _) = f!(m, out, before..., to_diff[1:i-1]..., _,
                      to_diff[i+1:end]..., after...)
     j! = ForwardDiff.jacobian(_f!; mutates=true, output_length=n)
     out = Array(Float64, n, length(to_diff[i]))

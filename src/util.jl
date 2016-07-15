@@ -1,9 +1,3 @@
-_replace_star_star(s::AbstractString) = replace(s, "**", "^")
-
-_to_expr(x::Expr) = x
-_to_expr(x::Union{Symbol,Number}) = Expr(:block, x)
-_to_expr(x::AbstractString) = _to_expr(parse(_replace_star_star(x)))
-
 _expr_or_number(x::Union{AbstractString,Symbol,Expr}) = _to_expr(x)
 _expr_or_number(x::Number) = x
 

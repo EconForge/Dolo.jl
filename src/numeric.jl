@@ -56,6 +56,35 @@ end
 _numeric_mod_type{ID}(::ASM{ID,:dtcscc}) = DTCSCCModel{ID}
 _numeric_mod_type{ID}(::ASM{ID,:dtmscc}) = DTMSCCModel{ID}
 
+function compile_equation(sm::ASM, func_nm::Symbol; print_code::Bool=false)
+    # extract spec from recipe
+    spec = RECIPES[model_type(sm)][:specs][func_nm]
+
+    # get expressions from symbolic model
+    exprs = sm.equations[func_nm]
+
+    numeric_mod = _numeric_mod_type(sm)
+
+    bang_func_nm = Symbol(string(func_nm), "!")
+
+    if length(exprs) == 0
+        msg = "Model did not specify functions of type $(func_nm)"
+        code = quote
+            function $(func_nm)(::$(numeric_mod), args...)
+                error($msg)
+            end
+
+            function $(bang_func_nm)(::$(numeric_mod), args...)
+                error($msg)
+            end
+        end
+    else
+        code = make_method(FunctionFactory(sm, func_nm))
+    end
+    print_code && println(code)
+    code
+end
+
 for TM in (:DTCSCCModel, :DTMSCCModel)
     @eval begin
         Base.convert(::Type{SymbolicModel}, m::$(TM)) = m.symbolic

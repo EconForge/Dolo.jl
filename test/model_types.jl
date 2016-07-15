@@ -327,22 +327,22 @@
 
         # Test mutating versions
         res = ones(x0)
-        arbitrage!(res, m, s0, x0, e_, s0, x0, p)
+        arbitrage!(m, res, s0, x0, e_, s0, x0, p)
         @test maxabs(zeros(x0) - res) < 1e-13
 
         s1 = ones(s0)
-        transition!(s1, m, s0, x0, e_, p)
+        transition!(m, s1, s0, x0, e_, p)
         @test maxabs(s0 - s1) < 1e-13
 
         v1 = ones(v0)
-        value!(v1, m, s0, x0, s0, x0, v0, p)
+        value!(m, v1, s0, x0, s0, x0, v0, p)
         @test maxabs(v0 - v1) < 1e-13
 
         bounds = ones(x0)
-        controls_ub!(bounds, m, s0, p)
+        controls_ub!(m, bounds, s0, p)
         @test bounds == [Inf, Inf]
 
-        controls_lb!(bounds, m, s0, p)
+        controls_lb!(m, bounds, s0, p)
         @test bounds == [0.0, 0.0]
     end
 
