@@ -31,7 +31,7 @@ function yaml_import(::Type{SymbolicModel}, url; print_code::Bool=false)
     if match(r"(http|https):.*", url) != nothing
         res = get(url)
         buf = IOBuffer(res.data)
-        data = load(buf, funcs)
+        data = _symbol_dict(load(buf, funcs))
     else
         data = _symbol_dict(load_file(url, funcs))
     end
@@ -44,17 +44,8 @@ function yaml_import(::Type{SymbolicModel}, url; print_code::Bool=false)
 end
 
 function yaml_import(url; print_code::Bool=false)
-
     sm = yaml_import(SymbolicModel, url; print_code=print_code)
-
-    if sm.model_type == :dtcscc
-        return DTCSCCModel(sm; print_code=print_code)
-    elseif sm.model_type == :dtmscc
-        return DTMSCCModel(sm; print_code=print_code)
-    else
-        throw(Exception)
-    end
-
+    NumericModel(sm; print_code=print_code)
 end
 
 function _extract_calib_block(text, regex)

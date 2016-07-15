@@ -71,6 +71,8 @@
         )
     )
 
+    rbc_dict = Dolo._symbol_dict(rbc_dict)
+
     @testset "ModelCalibration" begin
         function new_mc()
             flat = FlatCalibration(:k=>8.5, :z=>0.5, :i=>1.1)
@@ -295,7 +297,7 @@
 
     @testset "NumericModel" begin
         sm = SymbolicModel(rbc_dict, :dtcscc, "rbc.yaml")
-        m = DTCSCCModel(sm)
+        m = NumericModel(sm)
 
         @test model_type(m) == m.model_type == :dtcscc
         @test name(m) == m.name == "Real Business Cycle"
@@ -305,7 +307,7 @@
 
     @testset "compiled functions" begin
         sm = SymbolicModel(rbc_dict, :dtcscc, "rbc.yaml")
-        m = DTCSCCModel(sm)
+        m = NumericModel(sm)
 
         # we passed in the steady state, so just make sure compiled functions
         # work out that way

@@ -15,7 +15,7 @@ import ForwardDiff
 import YAML
 
 export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
-       SymbolicModel, DTCSCCModel, DTMSCCModel,
+       SymbolicModel, NumericModel,
        FlatCalibration, GroupedCalibration, ModelCalibration, TaylorExpansion,
        RECIPES,
 

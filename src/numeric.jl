@@ -35,8 +35,8 @@ end
 
 # TODO: given that fields are exactly the same should we make just a single
 #       NumericModel and distinguish between DTCSCC and DTMSCC via type params?
-immutable DTCSCCModel{ID} <: ANM{ID,:dtcscc}
-    symbolic::ASM
+immutable NumericModel{ID,kind} <: ANM{ID,kind}
+    symbolic::SymbolicModel{ID,kind}
     calibration::ModelCalibration
     options::Options
     model_type::Symbol
@@ -44,19 +44,15 @@ immutable DTCSCCModel{ID} <: ANM{ID,:dtcscc}
     filename::UTF8String
 end
 
-immutable DTMSCCModel{ID} <: ANM{ID,:dtmscc}
-    symbolic::ASM
-    calibration::ModelCalibration
-    options::Options
-    model_type::Symbol
-    name::UTF8String
-    filename::UTF8String
-end
+typealias DTCSCCModel{ID} NumericModel{ID,:dtcscc}
+typealias DTMSCCModel{ID} NumericModel{ID,:dtmscc}
+typealias DynareModel{ID} NumericModel{ID,:dynare}
 
 _numeric_mod_type{ID}(::ASM{ID,:dtcscc}) = DTCSCCModel{ID}
 _numeric_mod_type{ID}(::ASM{ID,:dtmscc}) = DTMSCCModel{ID}
+_numeric_mod_type{ID}(::ASM{ID,:dynare}) = DynareModel{ID}
 
-function compile_equation(sm::ASM, func_nm::Symbol; print_code::Bool=false)
+function compile_equation(sm::SymbolicModel, func_nm::Symbol; print_code::Bool=false)
     # extract spec from recipe
     spec = RECIPES[model_type(sm)][:specs][func_nm]
 
@@ -85,26 +81,19 @@ function compile_equation(sm::ASM, func_nm::Symbol; print_code::Bool=false)
     code
 end
 
-for TM in (:DTCSCCModel, :DTMSCCModel)
-    @eval begin
-        Base.convert(::Type{SymbolicModel}, m::$(TM)) = m.symbolic
+Base.convert(::Type{SymbolicModel}, m::NumericModel) = m.symbolic
 
-        # model type constructor
-        function ($TM){ID}(sm::SymbolicModel{ID}; print_code::Bool=false)
-            # compile all equations
-            for eqn in keys(sm.equations)
-                eval(Dolo, compile_equation(sm, eqn; print_code=print_code))
-            end
-
-            # get numerical calibration and options
-            calib = ModelCalibration(sm)
-            options = Options(sm, calib)
-
-
-            $(TM){ID}(sm, calib, options, sm.model_type,
-                      sm.name, sm.filename)
-        end
+function NumericModel{ID,kind}(sm::SymbolicModel{ID,kind}; print_code::Bool=false)
+    # compile all equations
+    for eqn in keys(sm.equations)
+        eval(Dolo, compile_equation(sm, eqn; print_code=print_code))
     end
+
+    # get numerical calibration and options
+    calib = ModelCalibration(sm)
+    options = Options(sm, calib)
+
+    NumericModel(sm, calib, options, sm.model_type, sm.name, sm.filename)
 end
 
 # ------------- #
