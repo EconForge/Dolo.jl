@@ -65,8 +65,8 @@ function dynare_import(url; print_code::Bool=false)
     sm = dynare_import(SymbolicModel, url; print_code=print_code)
     m = NumericModel(sm; print_code=print_code)
     # also need to compile first and second derivative for dynare model
-    make_method(Der{1}, m.factories[:dynare])
-    make_method(Der{2}, m.factories[:dynare], mutating=false)
+    eval(Dolo, make_method(Der{1}, m.factories[:dynare]))
+    eval(Dolo, make_method(Der{2}, m.factories[:dynare], mutating=false))
     m
 end
 
