@@ -51,10 +51,6 @@ immutable SymbolicModel{ID,kind} <: ASM{ID,kind}
             _eqs[:controls_ub] = c_ub
         end
 
-        # TODO: fixme. For now this throws or inserts a stub
-        haskey(eqs, :arbitrage_exp) && error("Don't know how to do this yet")
-        _eqs[:arbitrage_exp] = Expr[]
-
         # parse defs so values are Expr
         _defs = OrderedDict{Symbol,Expr}([k=>_to_expr(v) for (k, v) in defs])
 
@@ -87,9 +83,9 @@ end
 
 function SymbolicModel(data::Dict, model_type::Symbol, filename="none")
     # verify that we have all the required fields
-    for k in ("symbols", "equations", "calibration")
+    for k in (:symbols, :equations, :calibration)
         if !haskey(data, k)
-            error("Yaml file must define section $k for DTCSCC model")
+            error("Yaml file must define section $k for $(model_type) model")
         end
     end
 
