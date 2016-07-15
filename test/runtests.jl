@@ -12,7 +12,6 @@ else
 end
 
 tests = length(ARGS) > 0 ? ARGS : ["numeric",
-                                   "parser",
                                    "util",
                                    "model_types",
                                    "model_import"]

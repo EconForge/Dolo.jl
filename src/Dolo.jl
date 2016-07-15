@@ -9,6 +9,8 @@ using Requests: get
 using NLsolve
 using QuantEcon
 using Distributions: MvNormal
+using Dolang
+using Dolang: _to_expr
 import ForwardDiff
 import YAML
 
@@ -65,7 +67,6 @@ end
 
 
 include("util.jl")
-include("parser.jl")
 include("symbolic.jl")
 include("calibration.jl")
 include("minilang.jl")

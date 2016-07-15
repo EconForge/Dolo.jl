@@ -56,13 +56,6 @@
         end
     end
 
-    @testset "_to_expr" begin
-        @test Dolo._to_expr("foo") == Expr(:block, :foo)
-        @test Dolo._to_expr(100) == Expr(:block, 100)
-        @test Dolo._to_expr(:bar) == Expr(:block, :bar)
-        @test Dolo._to_expr(:(x+y)) == :(x+y)
-    end
-
     @testset "_expr_or_number" begin
         @test Dolo._expr_or_number(100) == 100
         @test Dolo._expr_or_number(:(x+1)) == :(x+1)

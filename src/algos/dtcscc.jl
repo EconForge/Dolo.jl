@@ -11,11 +11,11 @@ function solve_steady_state(m::DTCSCCModel, mc::ModelCalibration=m.calibration)
         x_out = sub(out, ns+1:ns+nx)
 
         # update state part of residual
-        transition!(s_out, m, s, x, e_, p)
+        transition!(m, s_out, s, x, e_, p)
         broadcast!(-, s_out, s_out, s)
 
         # now update control part
-        arbitrage!(x_out, m, s, x, e_, s, x, p)
+        arbitrage!(m, x_out, s, x, e_, s, x, p)
         out
     end
 

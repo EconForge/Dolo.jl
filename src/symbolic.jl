@@ -122,6 +122,41 @@ function SymbolicModel(data::Dict, model_type::Symbol, filename="none")
     out
 end
 
+# assume dolo style model is default, special case others
+function _get_args(sm::SymbolicModel, spec)
+    # get args
+    args = OrderedDict{Symbol,Vector{Tuple{Symbol,Int}}}()
+    for (grp, shift, nm) in spec[:eqs]
+        grp == "parameters" && continue
+
+        syms = sm.symbols[Symbol(grp)]
+        args[Symbol(nm)] = Tuple{Symbol,Int}[(v, shift) for v in syms]
+    end
+    args
+end
+
+function _get_args{T}(sm::SymbolicModel{T,:dynare}, spec)
+    error("Need to implement still")
+end
+
+function Dolang.FunctionFactory(sm::SymbolicModel, func_nm::Symbol)
+    spec = RECIPES[model_type(sm)][:specs][func_nm]
+    eqs = sm.equations[func_nm]
+
+    # get targets
+    target = get(spec, :target, [nothing])[1]
+    has_targets = !(target === nothing)
+    targets = has_targets ? sm.symbols[Symbol(target)] : Symbol[]
+
+    # get other stuff
+    args = _get_args(sm, spec)
+    params = sm.symbols[:parameters]
+    dispatch = _numeric_mod_type(sm)
+
+    FunctionFactory(dispatch, eqs, args, params, targets=targets,
+                    defs=sm.definitions, funname=func_nm)
+end
+
 # ----- #
 # Tools #
 # ----- #
