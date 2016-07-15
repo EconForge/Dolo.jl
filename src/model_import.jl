@@ -1,14 +1,19 @@
-Normal(;sigma=zeros(0, 0)) = Normal(sigma)
-Cartesian(;a=[], b=[], orders=[]) = Cartesian(a, b, orders)
-
-function construct_type_map(t::Symbol, constructor::YAML.Constructor, node::YAML.Node)
+# used for constructing appropraite dict from YAML object.
+function construct_type_map(t::Symbol, constructor::YAML.Constructor,
+                            node::YAML.Node)
     mapping = _symbol_dict(YAML.construct_mapping(constructor, node))
-    mapping[:kind] = t
+    mapping[:tag] = t
     mapping
 end
 
 function guess_model_type(data)
-    if ("shocks" in keys(data["symbols"]))
+    # if the yaml file has the model type key, use what is given there.
+    if haskey(data, "model_type")
+        return Symbol(data["model_type"])
+    end
+
+    # othewise we need to do a bit more guesswork
+    if haskey(data["symbols"], "shocks")
         if typeof(data["equations"]) == Dict{Any,Any}
             return :dtcscc
         else
@@ -19,8 +24,7 @@ function guess_model_type(data)
     end
 end
 
-function yaml_import(url; print_code::Bool=false)
-
+function yaml_import(::Type{SymbolicModel}, url; print_code::Bool=false)
     funcs = Dict("!Cartesian" => (c, n) -> construct_type_map(:Cartesian, c, n),
                  "!Normal" => (c, n) -> construct_type_map(:Normal, c, n))
 
@@ -36,12 +40,17 @@ function yaml_import(url; print_code::Bool=false)
 
     model_type = guess_model_type(data)
 
-    sym_model = SymbolicModel(data, model_type, fname)
+    SymbolicModel(data, model_type, fname)
+end
 
-    if model_type == :dtcscc
-        return DTCSCCModel(sym_model; print_code=print_code)
-    elseif model_type == :dtmscc
-        return DTMSCCModel(sym_model; print_code=print_code)
+function yaml_import(url; print_code::Bool=false)
+
+    sm = yaml_import(SymbolicModel, url; print_code=print_code)
+
+    if sm.model_type == :dtcscc
+        return DTCSCCModel(sm; print_code=print_code)
+    elseif sm.model_type == :dtmscc
+        return DTMSCCModel(sm; print_code=print_code)
     else
         throw(Exception)
     end

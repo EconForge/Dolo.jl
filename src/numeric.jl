@@ -1,55 +1,3 @@
-# ---------- #
-# Grid types #
-# ---------- #
-
-abstract AbstractGrid
-
-immutable Cartesian <: AbstractGrid
-    a::Vector{Float64}
-    b::Vector{Float64}
-    orders::Vector{Int}
-end
-
-function Cartesian(stuff::Associative)
-    kind = get(stuff, :kind, nothing)
-    if kind != :Cartesian
-        error("Can't build Cartesian from dict with kind $(kind)")
-    end
-
-    Cartesian(stuff[:a], stuff[:b], stuff[:orders])
-end
-
-function _build_grid(data::Associative)
-    if data[:kind] == :Cartesian
-        return Cartesian(data)
-    else
-        m = "don't know how to handle grid of type $(data[:kind])"
-        error(m)
-    end
-end
-
-# ------------------ #
-# Distribution types #
-# ------------------ #
-
-abstract AbstractDistribution
-
-immutable Normal <: AbstractDistribution
-    sigma::Matrix{Float64}
-end
-
-function _build_dist(data::Associative, calib::ModelCalibration)
-    if data[:kind] == :Normal
-        n = length(calib[:shocks])
-        sigma = reshape(vcat(data[:sigma]...), n, n)
-        return Normal(_to_Float64(sigma))
-    else
-        m = "don't know how to handle distribution of type $(data[:kind])"
-        error(m)
-    end
-end
-
-
 # ------------------- #
 # Numeric model types #
 # ------------------- #
@@ -85,6 +33,8 @@ function Options(sm::AbstractSymbolicModel, calib::ModelCalibration)
     Options(;_opts..., other=other)
 end
 
+# TODO: given that fields are exactly the same should we make just a single
+#       NumericModel and distinguish between DTCSCC and DTMSCC via type params?
 immutable DTCSCCModel{ID} <: ANM{ID,:dtcscc}
     symbolic::ASM
     calibration::ModelCalibration

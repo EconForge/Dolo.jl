@@ -1,8 +1,8 @@
 # ----------------- #
 # Parsing utilities #
 # ----------------- #
-call_expr(var, n) = n == 0 ? symbol(var) :
-                             symbol(string(var, "_", n > 0 ? "_" : "m", abs(n)))
+call_expr(var, n) = n == 0 ? Symbol(var) :
+                             Symbol(string(var, "_", n > 0 ? "_" : "m", abs(n)))
 
 function eq_expr(ex::Expr, targets::Union{Vector{Expr},Vector{Symbol}}=Symbol[])
     if isempty(targets)
@@ -19,7 +19,7 @@ function eq_expr(ex::Expr, targets::Union{Vector{Expr},Vector{Symbol}}=Symbol[])
     Expr(:(=), _parse(ex.args[1]), _parse(ex.args[2]))
 end
 
-_parse(x::Symbol) = symbol(string(x, "_"))
+_parse(x::Symbol) = Symbol(string(x, "_"))
 _parse(x::Number) = x
 
 function _parse(ex::Expr; targets::Union{Vector{Expr},Vector{Symbol}}=Symbol[])
@@ -53,10 +53,120 @@ end
 
 _parse(s::AbstractString; kwargs...) = _parse(parse(s); kwargs...)
 
+# -------------------- #
+# Handling Definitions #
+# -------------------- #
+
+"Returns `true` if `ex` has the form `x(i::Int)` -- false otherwise"
+_is_time_shift(ex::Expr) = ex.head == :call &&
+                           length(ex.args) == 2 &&
+                           isa(ex.args[2], Int)
+
+"""
+Returns `true` if `ex` has the form `x(i::Int)` and `x` is a variable in `sm`
+-- false otherwise
+"""
+_is_time_shift(sm::ASM, ex::Expr) = _is_time_shift(ex) &&
+                                    haskey(sm.calibration, ex.args[1])
+
+"""
+in `ex` replace all occurances of `sym(i)` with `sym(i+shift)`
+
+If `sym` is found on its own, replace it with `sym(shift)`
+"""
+function _replace_with_shift(sm::ASM, ex::Expr, sym::Symbol, shift::Int)
+    # if this is a time shift itself, apply additional shift
+    if _is_time_shift(sm, ex)
+        sym, pre_shift = eq.args
+        return Expr(:call, sym, pre_shift+shift)
+    end
+
+    # otherwise just go through the rest of the args
+    Expr(ex.head, [_replace_with_shift(sm, _, sym, shift) for _ in ex.args]...)
+end
+
+"Numbers just go through"
+_replace_with_shift(sm::ASM, n::Number, sym::Symbol, shift::Int) = n
+
+"If the symbol is what we're looking for, add shift, otherwise pass through"
+_replace_with_shift(sm::ASM, input::Symbol, sym::Symbol, shift::Int) =
+    input == sym ? Expr(:call, sym, shift) : input
+
+"""
+Replace an occurance of `def(i)` with the body of the definition `def` at time
+shift `i`.
+"""
+_call_definition(sm::ASM, defn::Expr, shift::Int=0) =
+    Expr(defn.head, [_call_definition(sm, _, shift) for _ in defn.args]...)
+
+"""
+`_call_definition(sm::ASM, sym::Symbol, shift::Int=0)`
+
+Do one of 3 things:
+
+1. If `sym` is in `sm.definitions`, then apply the shift to the contents of
+`sm.definitions[sym]`.
+2. if `sym` is somewhere in `sm.symbols` (excluding sm.symbol[:sparameters]) apply
+the time sift.
+3. If it is any other symbol, just let it through
+"""
+function _call_definition(sm::ASM, sym::Symbol, shift::Int=0)
+    if haskey(sm.definitions, sym)
+        return _call_definition(sm, sm.definitions[sym], shift)
+    end
+
+    for grp in keys(sm.symbols)
+        grp == :parameters && continue
+        for v in sm.symbols[grp]
+            sym == v && return :($(v)($shift))
+        end
+    end
+
+    # otherwise just return the symbol
+    return sym
+end
+
+"Let numbers through"
+_call_definition(sm::ASM, x::Number, shift::Int) = x
+
+"the bottom, just let everything else through"
+_apply_definitions(sm::ASM, x) = x
+
+"If `sym` is a definition, recursively resolve, otherwise let `sym` through"
+_apply_definitions(sm::ASM, sym::Symbol) =
+    haskey(sm.definitions, sym) ? _call_definition(sm, sm.definitions[sym]): sym
+
+"""
+`_apply_definitions(sm::ASM, eq::Expr)`
+
+Do one of two things:
+
+1. if `eq` is of the form `def(i::Int)` and `def` is a key in `sm.definitions`:
+apply a time shifted version of `sm.definitions[def]`
+2. Otherwise, construct the exact same expression, recursively calling this
+function for all items in `eq.args`
+"""
+function _apply_definitions(sm::ASM, eq::Expr)
+    if _is_time_shift(eq)
+        sym = eq.args[1]
+        shift = eq.args[2]
+        if haskey(sm.definitions, sym)
+            defn = sm.definitions[sym]
+            return _call_definition(sm, defn, shift)
+        end
+    end
+
+    # in all other cases (including other :call exprs) just apply to all args
+    Expr(eq.head, [_apply_definitions(sm, _) for _ in eq.args]...)
+end
+
+"Map `_apply_definitions` to each element in the vector"
+_apply_definitions(sm::ASM, eqs::Vector{Expr}) =
+    map(_ -> _apply_definitions(sm, _), eqs)
+
 # -------- #
 # Compiler #
 # -------- #
-
 @inline _unpack_var(x::AbstractVector, i::Integer) = x[i]
 @inline _unpack_var(x::AbstractMatrix, i::Integer) = sub(x, :, i)
 
@@ -64,38 +174,6 @@ function _param_block(sm::ASM)
     params = sm.symbols[:parameters]
     Expr(:block,
          [:($(_parse(params[i])) = _unpack_var(p, $i)) for i in 1:length(params)]...)
-end
-
-function _aux_block(sm::ASM, shift::Int)
-    target = RECIPES[model_type(sm)][:specs][:auxiliary][:target][1]
-    targets = sm.symbols[symbol(target)]
-    exprs = sm.equations[:auxiliary]
-
-    if shift == 0
-        return Expr(:block, [_parse(ex; targets=targets) for ex in exprs]...)
-    end
-
-    # aux are strict functions of states and controls at time 1. We can do some
-    # string manipulation of each expr and replace each with the shifted
-    # version
-    string_expr = map(string, exprs)
-
-    # now we have to deal with shift
-    for grp in (:states, :controls, :auxiliaries)
-        for i in 1:length(string_expr)
-            for sym in sm.symbols[grp]
-                pat = Regex("\\b$(sym)\\b")
-                rep = "$sym($shift)"
-                string_expr[i] = replace(string_expr[i], pat, rep)
-            end
-        end
-    end
-
-    # now adjust targets. Don't need anything fancy b/c we know we have a
-    # symbol
-    targets = [:($(t)($(shift))) for t in targets]
-
-    Expr(:block, [_parse(ex; targets=targets) for ex in string_expr]...)
 end
 
 function _single_arg_block(sm::ASM, arg_name::Symbol, arg_type::Symbol,
@@ -170,6 +248,7 @@ function _check_targets(exprs, targets, func_nm)
 end
 
 _output_size(n_expr::Int, args::AbstractVector...) = (n_expr,)
+
 function _output_size(n_expr::Int, args...)
     n_row = 0
     # get maximum number of rows among matrix arguments
@@ -195,6 +274,7 @@ function _output_size(n_expr::Int, args...)
 end
 
 _allocate_out(T::Type, n_expr::Int, args::AbstractVector...) = Array(T, n_expr)
+
 function _allocate_out(T::Type, n_expr::Int, args...)
     sz = _output_size(n_expr, args...)
     Array(T, sz[1], sz[2])
@@ -209,7 +289,7 @@ function compile_equation(sm::ASM, func_nm::Symbol; print_code::Bool=false)
 
     numeric_mod = _numeric_mod_type(sm)
 
-    bang_func_nm = symbol(string(func_nm), "!")
+    bang_func_nm = Symbol(string(func_nm), "!")
 
     if length(exprs) == 0
         msg = "Model did not specify functions of type $(func_nm)"
@@ -225,19 +305,22 @@ function compile_equation(sm::ASM, func_nm::Symbol; print_code::Bool=false)
         return code
     end
 
+    # first apply definitions
+    exprs = _apply_definitions(sm, exprs)
+
     # extract information from spec
     target = get(spec, :target, [nothing])[1]
     eqs = spec[:eqs]  # required, so we don't provide a default
     non_aux = filter(x->x[1] != "auxiliaries", eqs)
-    arg_names = Symbol[symbol(x[3]) for x in non_aux]
-    arg_types = Symbol[symbol(x[1]) for x in non_aux]
+    arg_names = Symbol[Symbol(x[3]) for x in non_aux]
+    arg_types = Symbol[Symbol(x[1]) for x in non_aux]
     arg_shifts = Int[x[2] for x in non_aux]
     only_aux = filter(x->x[1] == "auxiliaries", eqs)
     aux_shifts = Int[x[2] for x in only_aux]
 
     # extract targets and make sure they appear in the correct order in exprs
     has_targets = !(target === nothing)
-    targets = has_targets ? sm.symbols[symbol(target)] : Symbol[]
+    targets = has_targets ? sm.symbols[Symbol(target)] : Symbol[]
     has_targets && _check_targets(exprs, targets, func_nm)
 
     # build function block by block
