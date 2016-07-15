@@ -48,6 +48,28 @@ function yaml_import(url; print_code::Bool=false)
     NumericModel(sm; print_code=print_code)
 end
 
+function dynare_import(::Type{SymbolicModel}, url; print_code::Bool=false)
+    funcs = Dict("!Cartesian" => (c, n) -> construct_type_map(:Cartesian, c, n),
+                 "!Normal" => (c, n) -> construct_type_map(:Normal, c, n))
+
+    if match(r"(http|https):.*", url) != nothing
+        res = get(url)
+        buf = IOBuffer(res.data)
+        data = dynare_parser(readlines(buf), basename(url))
+    else
+        data = load_modfile(url)
+    end
+end
+
+function dynare_import(url; print_code::Bool=false)
+    sm = dynare_import(SymbolicModel, url; print_code=print_code)
+    m = NumericModel(sm; print_code=print_code)
+    # also need to compile first and second derivative for dynare model
+    make_method(Der{1}, m.factories[:dynare])
+    make_method(Der{2}, m.factories[:dynare], mutating=false)
+    m
+end
+
 function _extract_calib_block(text, regex)
     out = OrderedDict{Symbol,Union{Expr,Symbol,Number}}()
     tmp  = match(regex, text)
@@ -69,11 +91,12 @@ function _extract_variable_group(text, regex)
     map(Symbol, out)
 end
 
-function modfile_parser(mod_file_name)
-    f = open(mod_file_name)
-    lines = readlines(f)  # reads in line by line
-    close(f)
+function load_modfile(modfile_name::String)
+    lines = open(readlines, modfile_name)
+    dynare_parser(lines, modfile_name)
+end
 
+function dynare_parser(lines::Vector, modfile_name="nofile")
     # Remove lines beginning with comments (%, //, /*, \*)
     filter!(x -> !ismatch(r"^\s*%", x), lines)
     filter!(x -> !ismatch(r"^\s*\/\/", x), lines)
@@ -150,7 +173,7 @@ function modfile_parser(mod_file_name)
                                                 :parameters => parameters)
     eqs = OrderedDict{Symbol,Vector{Expr}}(:dynare => equations)
     calib = merge(param_values, initval)
-    distribution = Dict(:tag => "!Normal", :sigma => shock_matrix)
+    distribution = Dict(:tag => :Normal, :sigma => shock_matrix)
     options = Dict{Symbol,Any}(:distribution => distribution, :endval => endval)
     defs = Dict()
     recipe = RECIPES[:dynare]
@@ -164,9 +187,9 @@ function modfile_parser(mod_file_name)
         end
     end
 
-    _name = string(split(basename(mod_file_name), ".mod")[1])
+    _name = string(split(basename(modfile_name), ".mod")[1])
     _id = gensym(Symbol(_name))
 
     SymbolicModel{_id,:dynare}(recipe, symbols, eqs, calib, options, defs,
-                               _name, mod_file_name)
+                               _name, modfile_name)
 end

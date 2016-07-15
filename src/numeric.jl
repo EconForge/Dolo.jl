@@ -2,7 +2,7 @@
 # Numeric model types #
 # ------------------- #
 
-immutable Options{TD<:AbstractDistribution, TG<:AbstractGrid}
+immutable Options{TD<:Union{Void,AbstractDistribution}, TG<:Union{Void,AbstractGrid}}
     grid::TG
     distribution::TD
     other::Dict{Symbol,Any}  # TODO: shouldn't need. Just keeps stuff around
@@ -42,6 +42,7 @@ immutable NumericModel{ID,kind} <: ANM{ID,kind}
     model_type::Symbol
     name::UTF8String
     filename::UTF8String
+    factories::Dict{Symbol,FunctionFactory}
 end
 
 typealias DTCSCCModel{ID} NumericModel{ID,:dtcscc}
@@ -52,48 +53,51 @@ _numeric_mod_type{ID}(::ASM{ID,:dtcscc}) = DTCSCCModel{ID}
 _numeric_mod_type{ID}(::ASM{ID,:dtmscc}) = DTMSCCModel{ID}
 _numeric_mod_type{ID}(::ASM{ID,:dynare}) = DynareModel{ID}
 
-function compile_equation(sm::SymbolicModel, func_nm::Symbol; print_code::Bool=false)
-    # extract spec from recipe
-    spec = RECIPES[model_type(sm)][:specs][func_nm]
-
-    # get expressions from symbolic model
-    exprs = sm.equations[func_nm]
-
-    numeric_mod = _numeric_mod_type(sm)
-
-    bang_func_nm = Symbol(string(func_nm), "!")
-
-    if length(exprs) == 0
-        msg = "Model did not specify functions of type $(func_nm)"
-        code = quote
-            function $(func_nm)(::$(numeric_mod), args...)
-                error($msg)
-            end
-
-            function $(bang_func_nm)(::$(numeric_mod), args...)
-                error($msg)
-            end
-        end
-    else
-        code = make_method(FunctionFactory(sm, func_nm))
-    end
-    print_code && println(code)
-    code
-end
-
 Base.convert(::Type{SymbolicModel}, m::NumericModel) = m.symbolic
 
 function NumericModel{ID,kind}(sm::SymbolicModel{ID,kind}; print_code::Bool=false)
     # compile all equations
-    for eqn in keys(sm.equations)
-        eval(Dolo, compile_equation(sm, eqn; print_code=print_code))
+    recipe = RECIPES[model_type(sm)]
+    numeric_mod = _numeric_mod_type(sm)
+
+    factories = Dict{Symbol,FunctionFactory}()
+
+    # compile equations
+    for func_nm in keys(sm.equations)
+        # extract spec from recipe
+        spec = recipe[:specs][func_nm]
+
+        # get expressions from symbolic model
+        exprs = sm.equations[func_nm]
+        bang_func_nm = Symbol(string(func_nm), "!")
+
+        if length(exprs) == 0
+            msg = "Model did not specify functions of type $(func_nm)"
+            code = quote
+                function $(func_nm)(::$(numeric_mod), args...)
+                    error($msg)
+                end
+
+                function $(bang_func_nm)(::$(numeric_mod), args...)
+                    error($msg)
+                end
+            end
+        else
+            ff = FunctionFactory(sm, func_nm)
+            code = make_method(ff)
+            factories[func_nm] = ff
+        end
+
+        print_code && println(code)
+        eval(Dolo, code)
     end
 
     # get numerical calibration and options
     calib = ModelCalibration(sm)
     options = Options(sm, calib)
 
-    NumericModel(sm, calib, options, sm.model_type, sm.name, sm.filename)
+    NumericModel(sm, calib, options, sm.model_type, sm.name, sm.filename,
+                 factories)
 end
 
 # ------------- #

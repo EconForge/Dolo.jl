@@ -222,7 +222,7 @@ model;
 // Definition of Modelbase Variables in Terms of Original Model Variables //*
 
 interest   = 100*((E_INOM+1)^4-interestq_exog^4)/interestq_exog^4;                //*
-inflation = (1/4)*(inflationq+inflationq(-1)+inflationq(-2)+inflationq(-3));      //*
+inflation = (1/2)*(inflationq+inflationq(-1));      //*
 inflationq = 100*(4*E_PHIC+1-inflationannual_exog)/inflationannual_exog;          //*
 outputgap  = 100*E_LYGAP;                                                         //*
 fispol = E_EPS_G;                                                                 //*
@@ -235,27 +235,27 @@ fispol = E_EPS_G;                                                               
 // Monetary Policy                                                       //*
                                                                          //*
 interest = cofintintb1*interest(-1)                                      //*
-           + cofintintb2*interest(-2)                                    //*
-           + cofintintb3*interest(-3)                                    //*
-           + cofintintb4*interest(-4)                                    //*
+          //  + cofintintb2*interest(-2)                                    //*
+          //  + cofintintb3*interest(-3)                                    //*
+          //  + cofintintb4*interest(-4)                                    //*
            + cofintinf0*inflationq                                       //*
            + cofintinfb1*inflationq(-1)                                  //*
-           + cofintinfb2*inflationq(-2)                                  //*
-           + cofintinfb3*inflationq(-3)                                  //*
-           + cofintinfb4*inflationq(-4)                                  //*
+          //  + cofintinfb2*inflationq(-2)                                  //*
+          //  + cofintinfb3*inflationq(-3)                                  //*
+          //  + cofintinfb4*inflationq(-4)                                  //*
            + cofintinff1*inflationq(+1)                                  //*
-           + cofintinff2*inflationq(+2)                                  //*
-           + cofintinff3*inflationq(+3)                                  //*
-           + cofintinff4*inflationq(+4)                                  //*
+          //  + cofintinff2*inflationq(+2)                                  //*
+          //  + cofintinff3*inflationq(+3)                                  //*
+          //  + cofintinff4*inflationq(+4)                                  //*
            + cofintout*outputgap                                         //*
            + cofintoutb1*outputgap(-1)                                   //*
-           + cofintoutb2*outputgap(-2)                                   //*
-           + cofintoutb3*outputgap(-3)                                   //*
-           + cofintoutb4*outputgap(-4)                                   //*
+          //  + cofintoutb2*outputgap(-2)                                   //*
+          //  + cofintoutb3*outputgap(-3)                                   //*
+          //  + cofintoutb4*outputgap(-4)                                   //*
            + cofintoutf1*outputgap(+1)                                   //*
-           + cofintoutf2*outputgap(+2)                                   //*
-           + cofintoutf3*outputgap(+3)                                   //*
-           + cofintoutf4*outputgap(+4)                                   //*
+          //  + cofintoutf2*outputgap(+2)                                   //*
+          //  + cofintoutf3*outputgap(+3)                                   //*
+          //  + cofintoutf4*outputgap(+4)                                   //*
            + std_r_ * interest_;                                         //*
                                                                          //*
 // Discretionary Government Spending                                     //*
@@ -466,7 +466,9 @@ E_ZEPS_L = RHOLE*E_ZEPS_L(-1)+E_EPS_L;                                          
 //Monetary policy shock
 E_ZEPS_M = E_EPS_M;                                                                                // 59: E_ZEPS_M
 
-E_ZEPS_PPI = RHOPPI1*E_ZEPS_PPI(-1)+RHOPPI2*E_ZEPS_PPI(-2)+RHOPPI3*E_ZEPS_PPI(-3)+RHOPPI4*E_ZEPS_PPI(-4)+E_EPS_PPI;  //  60: ZEPS_PPI
+// E_ZEPS_PPI = RHOPPI1*E_ZEPS_PPI(-1)+RHOPPI2*E_ZEPS_PPI(-2)+RHOPPI3*E_ZEPS_PPI(-3)+RHOPPI4*E_ZEPS_PPI(-4)+E_EPS_PPI;  //  60: ZEPS_PPI
+
+E_ZEPS_PPI = 0;
 
 E_ZEPS_RPREME = RHORPE*E_ZEPS_RPREME(-1)+E_EPS_RPREME;                                             //  61: E_ZEPS_RPREME
 
@@ -727,10 +729,3 @@ var fiscal_;    // taken from E_EPS_G shock
 stderr  0.0048;
 
 end;
-
-//steady;
-//check;
-
-
-//stoch_simul inflation interest outputgap;
-//stoch_simul(order=1) E_INOM E_PHIC E_LYGAP;

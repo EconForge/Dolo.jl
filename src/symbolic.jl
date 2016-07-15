@@ -131,8 +131,24 @@ function _get_args(sm::SymbolicModel, spec)
     args
 end
 
-function _get_args{T}(sm::SymbolicModel{T,:dynare}, spec)
-    error("Need to implement still")
+function _get_args{ID}(sm::SymbolicModel{ID,:dynare}, spec)
+    # for dynare models, we need flat args with shocks at time 0 and variables
+    # at time -1, 0, and 1
+    args = Array(Tuple{Symbol,Int}, 3*length(sm.symbols[:variables]) +
+                                      length(sm.symbols[:shocks]))
+    ix = 0
+    for v in sm.symbols[:variables]
+        args[ix+=1] = (v, 1)
+        args[ix+=1] = (v, 0)
+        args[ix+=1] = (v, -1)
+    end
+
+    for e in sm.symbols[:shocks]
+        args[ix+=1] = (e, 0)
+    end
+
+    @assert ix == length(args)
+    args
 end
 
 function Dolang.FunctionFactory(sm::SymbolicModel, func_nm::Symbol)

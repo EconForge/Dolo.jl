@@ -13,6 +13,7 @@ using Dolang
 using Dolang: _to_expr
 import ForwardDiff
 import YAML
+using Compat: String
 
 export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
        SymbolicModel, NumericModel,
