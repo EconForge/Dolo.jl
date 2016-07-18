@@ -139,7 +139,11 @@ function _get_args{ID}(sm::SymbolicModel{ID,:dynare}, spec)
     ix = 0
     for v in sm.symbols[:variables]
         args[ix+=1] = (v, 1)
+    end
+    for v in sm.symbols[:variables]
         args[ix+=1] = (v, 0)
+    end
+    for v in sm.symbols[:variables]
         args[ix+=1] = (v, -1)
     end
 

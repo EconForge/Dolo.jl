@@ -169,8 +169,8 @@ function dynare_parser(lines::Vector, modfile_name="nofile")
     end
 
     symbols = OrderedDict{Symbol,Vector{Symbol}}(:variables => variables,
-                                                :shocks => shocks,
-                                                :parameters => parameters)
+                                                 :shocks => shocks,
+                                                 :parameters => parameters)
     eqs = OrderedDict{Symbol,Vector{Expr}}(:dynare => equations)
     calib = merge(param_values, initval)
     distribution = Dict(:tag => :Normal, :sigma => shock_matrix)

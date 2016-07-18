@@ -4,7 +4,7 @@ const ff = Dolang.FunctionFactory(sm, :dynare)
 
 # functions we will benchmark
 regex_create_symbolic_model(path) = Dolo.load_modfile(path)
-parse_normalize(sm) = Dolang._parse(sm.equations[:dynare])
+parse_normalize(sm) = Dolang.normalize(sm.equations[:dynare])
 build_function_factory(sm) = Dolang.FunctionFactory(sm, :dynare)
 build_levels_func_body(ff) = Dolang.func_body(ff, Dolang.Der{0})
 compute_jacobian_derivatives(ff) = Dolang._jacobian_expr_mat(ff)
