@@ -112,10 +112,11 @@ function dynare_parser(lines::Vector, modfile_name="nofile")
     # Smoosh text back together
     text = join(lines)
 
-    # Remove new lines, spaces, carriage returns,
+    # Remove new lines, spaces, commas, carriage returns,
     text = replace(text, "\t", " ")
     text = replace(text, "\r", " ")
     text = replace(text, "\n", " ")
+    text = replace(text, ",", " ")
 
     # Get variable names
     variables = _extract_variable_group(text, r"var\s(.*?);")
