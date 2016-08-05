@@ -36,17 +36,11 @@ end
 
 abstract AbstractDistribution
 
-immutable Normal <: AbstractDistribution
-    sigma::Matrix{Float64}
-end
-
-Normal(;sigma=zeros(0, 0)) = Normal(sigma)
-
 function _build_dist(data::Associative, calib::ModelCalibration)
     if data[:tag] == :Normal
         n = length(calib[:shocks])
         sigma = reshape(vcat(data[:sigma]...), n, n)
-        return Normal(_to_Float64(sigma))
+        return MvNormal(_to_Float64(sigma))
     else
         m = "don't know how to handle distribution of type $(data[:tag])"
         error(m)

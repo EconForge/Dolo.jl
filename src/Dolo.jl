@@ -8,7 +8,7 @@ using YAML: load_file, load
 using Requests: get
 using NLsolve
 using QuantEcon
-using Distributions: MvNormal
+using Distributions: MvNormal, Distribution
 using Dolang
 using Dolang: _to_expr
 import ForwardDiff
@@ -22,11 +22,11 @@ export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
 
        # model functions
        dynare, arbitrage, transition, auxiliary, value, expectation,
-       direct_response, controls_lb, controls_ub, arbitrage_2,
+       direct_response, controls_lb, controls_ub, arbitrage_2, felicity,
 
        # mutating version of model functions
        dynare!, arbitrage!, transition!, auxiliary!, value!, expectation!,
-       direct_response, controls_lb!, controls_ub!, arbitrage_2!,
+       direct_response, controls_lb!, controls_ub!, arbitrage_2!, felicity!,
 
        # dolo functions
        yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename,
