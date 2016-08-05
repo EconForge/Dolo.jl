@@ -137,7 +137,7 @@ function dynare_parser(lines::Vector, modfile_name="nofile")
     # Get the calibrated shock values, fill matrix
     shockvaldict = Dict()
     shock_matrix = Array(Any, length(shocks), length(shocks))
-    fill!(shock_matrix, 0)
+    fill!(shock_matrix, 0.0)
     tmp = match(r"shocks;(.*?)(.*?)end;", text)
     if tmp != nothing
         if contains(tmp[2], "stderr")
@@ -145,7 +145,7 @@ function dynare_parser(lines::Vector, modfile_name="nofile")
             tmpentry = matchall(r"stderr(.*?);", tmp[2])
             for ln = 1:length(tmpkey)
                 key = strip(match(r"var\s(.*)", tmpkey[ln])[1])
-                key = match(r"(.*);", key)[1]
+                key = Symbol(match(r"(.*);", key)[1])
                 entry = strip(match(r"stderr\s(.*)", tmpentry[ln])[1])
                 entry = match(r"(.*);", entry)[1]
                 shockvaldict[key] =  entry
@@ -164,7 +164,7 @@ function dynare_parser(lines::Vector, modfile_name="nofile")
             if haskey(shockvaldict, shocks[ln])
                 shock_matrix[ln, ln] = parse(shockvaldict[shocks[ln]])
             else
-                shock_matrix[ln, ln] = 0.0
+                shock_matrix[ln, ln] = eps()
             end
         end
     end

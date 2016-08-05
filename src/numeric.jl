@@ -2,7 +2,7 @@
 # Numeric model types #
 # ------------------- #
 
-immutable Options{TD<:Union{Void,AbstractDistribution}, TG<:Union{Void,AbstractGrid}}
+immutable Options{TD<:Union{Void,Distribution}, TG<:Union{Void,AbstractGrid}}
     grid::TG
     distribution::TD
     other::Dict{Symbol,Any}  # TODO: shouldn't need. Just keeps stuff around
