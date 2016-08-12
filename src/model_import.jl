@@ -26,7 +26,8 @@ end
 
 function yaml_import(::Type{SymbolicModel}, url; print_code::Bool=false)
     funcs = Dict("!Cartesian" => (c, n) -> construct_type_map(:Cartesian, c, n),
-                 "!Normal" => (c, n) -> construct_type_map(:Normal, c, n))
+                 "!Normal" => (c, n) -> construct_type_map(:Normal, c, n),
+                 "!MarkovChain" => (c, n) -> construct_type_map(:MarkovChain, c, n))
 
     if match(r"(http|https):.*", url) != nothing
         res = get(url)

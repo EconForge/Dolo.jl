@@ -138,6 +138,19 @@ dtmscc:
 
                 middle: ['controls', 0, 's']
 
+        controls_lb:
+            optional: True
+            eqs:
+                - ['markov_states',0,'m']
+                - ['states', 0, 's']
+                - ['parameters', 0, 'p']
+
+        controls_ub:
+            optional: True
+            eqs:
+                - ['markov_states',0,'m']
+                - ['states', 0, 's']
+                - ['parameters', 0, 'p']
 
         transition:
 

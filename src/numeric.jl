@@ -2,14 +2,20 @@
 # Numeric model types #
 # ------------------- #
 
-immutable Options{TD<:Union{Void,Distribution}, TG<:Union{Void,AbstractGrid}}
+immutable Options{TD<:Union{Void,Distribution}, TG<:Union{Void,AbstractGrid},
+                  TT<:Union{Void,MarkovChain}}
     grid::TG
     distribution::TD
+    discrete_transition::TT
     other::Dict{Symbol,Any}  # TODO: shouldn't need. Just keeps stuff around
 end
 
-Options(;grid=nothing, distribution=nothing, other=Dict{Symbol,Any}()) =
-    Options(grid, distribution, other)
+function Options(;grid=nothing,
+                 distribution=nothing,
+                 discrete_transition=nothing,
+                 other=Dict{Symbol,Any}())
+    Options(grid, distribution, discrete_transition, other)
+end
 
 function Options(sm::AbstractSymbolicModel, calib::ModelCalibration)
     # numericize options
@@ -22,9 +28,11 @@ function Options(sm::AbstractSymbolicModel, calib::ModelCalibration)
     for k in keys(_options)
         data = pop!(_options, k)
         if k == :grid
-            _opts[:grid] = _build_grid(data)
+            _opts[:grid] = _build_grid(data, calib)
         elseif k == :distribution
             _opts[:distribution] = _build_dist(data, calib)
+        elseif k == :discrete_transition
+            _opts[k] = _build_discrete_transition(data, calib)
         else
             other[k] = data
         end
@@ -52,6 +60,12 @@ typealias DynareModel{ID} NumericModel{ID,:dynare}
 _numeric_mod_type{ID}(::ASM{ID,:dtcscc}) = DTCSCCModel{ID}
 _numeric_mod_type{ID}(::ASM{ID,:dtmscc}) = DTMSCCModel{ID}
 _numeric_mod_type{ID}(::ASM{ID,:dynare}) = DynareModel{ID}
+
+function Base.show{ID,kind}(io::IO, sm::NumericModel{ID,kind})
+    println(io, """NumericModel($kind)
+    - name: $(sm.name)
+    """)
+end
 
 Base.convert(::Type{SymbolicModel}, m::NumericModel) = m.symbolic
 
