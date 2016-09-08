@@ -16,39 +16,73 @@ end
 _to_Float64(x::Real) = convert(Float64, x)
 _to_Float64(x::AbstractArray) = map(Float64, x)
 
-solve_triangular_system(sm::ASM) = solve_triangular_system(sm.calibration)
+function solution_order(d::OrderedDict, it::Dolang.IncidenceTable)
+    # unpack some data
+    vars = collect(keys(d))
+    n = length(d)
 
-function solve_triangular_system(dict::Associative)
-    solutions = Dict{Symbol,Float64}()
-    finished = false
-    N = length(dict)
-    n = 0
+    # allocate
+    out = zeros(Int, length(d))
 
-    while !(finished || n>N)
-        done_smthg = false
-        n += 1
-        for k in keys(dict)
-            if !haskey(solutions, k)
-                expr = dict[k]
-                try
-                    sol = eval(Dolo,
-                               :(let
-                                    $([:($x=$y) for (x, y) in solutions]...);
-                                    $expr
-                                 end)
-                               )
-                    solutions[k] = sol
-                    done_smthg = true
+    # Start with indices for equations that are purely numerical
+    front = setdiff(1:n, keys(it.by_eq))
+    out[front] = 1:length(front)
+    solved = vars[front]
+    to_solve = deepcopy(it.by_eq)
+
+    # now start stepping through equations
+    ix = length(front)
+    for _ in 2:n
+        for (eq, eq_vars) in to_solve
+            can_solve = true
+            for (var, dates) in eq_vars
+                if !in(var, solved)
+                    can_solve = false
+                    break
                 end
             end
-        end
-        if done_smthg == false
-            finished = true
+            if can_solve
+                out[eq] = ix+=1
+                push!(solved, vars[eq])
+                pop!(to_solve, eq)
+            end
         end
     end
 
-    length(solutions) < length(dict) &&  error("Not a triangular system")
+    !isempty(to_solve) && error("Not triangular system")
 
-    # reorder solutions to match sm.calibration
-    OrderedDict{Symbol,Float64}([(k, solutions[k]) for k in keys(dict)])
+    return sortperm(out)
+end
+
+
+function solution_order(_d::Associative)
+    d = OrderedDict(_d)
+    it = Dolang.IncidenceTable(collect(values(d)))
+    solution_order(d, it)
+end
+
+solve_triangular_system(sm::ASM) = solve_triangular_system(sm.calibration)
+solve_triangular_system(d::Associative) = solve_triangular_system(OrderedDict(d))
+
+function solve_triangular_system(d::OrderedDict)
+    sol_order = solution_order(d)
+
+    # extract expressions and variable names in proper order
+    nms = collect(keys(d))[sol_order]
+    exprs = collect(values(d))[sol_order]
+
+    # build expression to evaluate system in correct order
+    to_eval = Expr(:block)
+    to_eval.args = [:($(i[1])=$(i[2])) for i in zip(nms, exprs)]
+
+    # add one line to return a tuple of all data
+    ret = Expr(:tuple); ret.args = nms
+
+    # now evaluate and get data
+    data = eval(Dolo, :(let
+                        $to_eval;
+                        $ret
+                        end))
+
+    OrderedDict(zip(nms, data))
 end
