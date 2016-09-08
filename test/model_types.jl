@@ -273,7 +273,7 @@
             @test length(sm.symbols[:expectations]) == 0
 
             # test order of keys
-            @test collect(keys(sm.symbols)) == map(symbol, Dolo.RECIPES[:dtcscc][:symbols])
+            @test collect(keys(sm.symbols)) == map(Symbol, Dolo.RECIPES[:dtcscc][:symbols])
 
             # test that we got the right number of equations for each group
             @test length(sm.equations[:arbitrage]) == nc

@@ -48,8 +48,8 @@ immutable NumericModel{ID,kind} <: ANM{ID,kind}
     calibration::ModelCalibration
     options::Options
     model_type::Symbol
-    name::UTF8String
-    filename::UTF8String
+    name::String
+    filename::String
     factories::Dict{Symbol,FunctionFactory}
 end
 

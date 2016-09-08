@@ -9,8 +9,8 @@ immutable SymbolicModel{ID,kind} <: ASM{ID,kind}
     options::Dict{Symbol,Any}
     definitions::OrderedDict{Symbol,Expr}
     model_type::Symbol
-    name::UTF8String
-    filename::UTF8String
+    name::String
+    filename::String
 
     function SymbolicModel(recipe::Associative, symbols::Associative,
                            eqs::Associative, calib::Associative,
@@ -52,7 +52,7 @@ immutable SymbolicModel{ID,kind} <: ASM{ID,kind}
         end
 
         # parse defs so values are Expr
-        _defs = OrderedDict{Symbol,Expr}([k=>_to_expr(v) for (k, v) in defs])
+        _defs = OrderedDict{Symbol,Expr}(k=>_to_expr(v) for (k, v) in defs)
 
         # prep calib: parse to Expr, Symbol, or Number
         _calib  = OrderedDict{Symbol,Union{Expr,Symbol,Number}}()

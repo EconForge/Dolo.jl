@@ -13,7 +13,7 @@ using Dolang
 using Dolang: _to_expr
 import ForwardDiff
 import YAML
-using Compat: String
+using Compat; import Compat: String, view
 
 export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
        SymbolicModel, NumericModel,
@@ -51,8 +51,8 @@ model_type{_,kind}(::AbstractModel{_,kind}) = kind
 # recursively make all keys at any layer of nesting a symbol
 # included here instead of util.jl so we can call it on RECIPES below
 _symbol_dict(x) = x
-_symbol_dict(d::Associative) =
-    Dict{Symbol,Any}([(Symbol(k), _symbol_dict(v)) for (k, v) in d])
+@compat _symbol_dict(d::Associative) =
+    Dict{Symbol,Any}(Symbol(k) => _symbol_dict(v) for (k, v) in d)
 
 const src_path = dirname(@__FILE__)
 const pkg_path = dirname(src_path)

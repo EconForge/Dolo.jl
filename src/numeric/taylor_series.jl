@@ -38,8 +38,9 @@ end
 
 # points should be a vector of observations of all state variables at one time
 # period
-function Base.call(ts::TaylorExpansion{1}, points::AbstractVector,
-                   out::AbstractVector=similar(ts.x0), chk::Bool=true)
+@compat function (ts::TaylorExpansion{1})(points::AbstractVector,
+                                          out::AbstractVector=similar(ts.x0),
+                                          chk::Bool=true)
     chk && _check_call(ts, points, out)
     s0, x0, x_1 = ts.s0, ts.x0, ts.x_1
     ns = length(s0)
@@ -55,8 +56,9 @@ function Base.call(ts::TaylorExpansion{1}, points::AbstractVector,
     out
 end
 
-function Base.call(ts::TaylorExpansion{2}, points::AbstractVector,
-                   out::AbstractVector=similar(ts.x0), chk::Bool=true)
+@compat function (ts::TaylorExpansion{2})(points::AbstractVector,
+                                          out::AbstractVector=similar(ts.x0),
+                                          chk::Bool=true)
     chk && _check_call(ts, points, out)
     s0, x0, x_1, x_2 = ts.s0, ts.x0, ts.x_1, ts.x_2
     ns = length(s0)
@@ -77,8 +79,9 @@ function Base.call(ts::TaylorExpansion{2}, points::AbstractVector,
     out
 end
 
-function Base.call(ts::TaylorExpansion{3}, points::AbstractVector,
-                   out::AbstractVector=similar(ts.x0), chk::Bool=true)
+@compat function (ts::TaylorExpansion{3})(points::AbstractVector,
+                                          out::AbstractVector=similar(ts.x0),
+                                          chk::Bool=true)
     chk && _check_call(ts, points, out)
     s0, x0, x_1, x_2, x_3 = ts.s0, ts.x0, ts.x_1, ts.x_2, ts.x_3
     ns = size(points, 1)
@@ -104,8 +107,8 @@ function Base.call(ts::TaylorExpansion{3}, points::AbstractVector,
 end
 
 # Each row is an observation of all the state variables
-function Base.call(ts::TaylorExpansion, points::AbstractMatrix,
-                   out::AbstractMatrix=Array(Float64, size(points, 1), length(ts.x0)))
+@compat function (ts::TaylorExpansion)(points::AbstractMatrix,
+                                       out::AbstractMatrix=Array(Float64, size(points, 1), length(ts.x0)))
     ns = length(ts.s0)
     nx = length(ts.x0)
 
@@ -125,7 +128,7 @@ function Base.call(ts::TaylorExpansion, points::AbstractMatrix,
     end
 
     for n in 1:size(points, 1)
-        ts(slice(points, n, :), slice(out, n, :), false)
+        ts(view(points, n, :), view(out, n, :), false)
     end
     out
 end
