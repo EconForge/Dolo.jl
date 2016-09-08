@@ -131,7 +131,7 @@ function dynare_parser(lines::Vector, modfile_name="nofile")
     tmp  = match(r"model;\s(.*?)end;", text)
     equations = split(tmp[1], ";")
     filter!(x -> ismatch(r"\S", x), equations) # Remove lines if no chars present
-    equations = map(parse, equations)
+    equations = map(_->Dolang._filter_lines!(parse(_)), equations)
 
     # Get calibration values, fill some dicts
     param_values = _extract_calib_block(text, r"parameters\s(?:.*?);(.*)model")

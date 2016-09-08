@@ -165,7 +165,7 @@ function Dolang.FunctionFactory(sm::SymbolicModel, func_nm::Symbol)
     targets = has_targets ? sm.symbols[Symbol(target)] : Symbol[]
 
     # get other stuff
-    args = _get_args(sm, spec)
+    args = Dolo._get_args(sm, spec)
     params = sm.symbols[:parameters]
     dispatch = _numeric_mod_type(sm)
 
