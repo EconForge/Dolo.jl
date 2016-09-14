@@ -55,11 +55,9 @@ end
 
 typealias DTCSCCModel{ID} NumericModel{ID,:dtcscc}
 typealias DTMSCCModel{ID} NumericModel{ID,:dtmscc}
-typealias DynareModel{ID} NumericModel{ID,:dynare}
 
 _numeric_mod_type{ID}(::ASM{ID,:dtcscc}) = DTCSCCModel{ID}
 _numeric_mod_type{ID}(::ASM{ID,:dtmscc}) = DTMSCCModel{ID}
-_numeric_mod_type{ID}(::ASM{ID,:dynare}) = DynareModel{ID}
 
 function Base.show{ID,kind}(io::IO, sm::NumericModel{ID,kind})
     println(io, """NumericModel($kind)

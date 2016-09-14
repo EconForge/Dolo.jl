@@ -21,11 +21,11 @@ export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
        RECIPES,
 
        # model functions
-       dynare, arbitrage, transition, auxiliary, value, expectation,
+       arbitrage, transition, auxiliary, value, expectation,
        direct_response, controls_lb, controls_ub, arbitrage_2, felicity,
 
        # mutating version of model functions
-       dynare!, arbitrage!, transition!, auxiliary!, value!, expectation!,
+       arbitrage!, transition!, auxiliary!, value!, expectation!,
        direct_response, controls_lb!, controls_ub!, arbitrage_2!, felicity!,
 
        # dolo functions
