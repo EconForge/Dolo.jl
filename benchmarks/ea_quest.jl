@@ -30,5 +30,5 @@ for (f, arg) in [(regex_create_symbolic_model, path),
                  ]
     # remove `DoloBenchmarks` module prefix before each function name
     k = Symbol(split(string(f), ".")[2])
-    suite["eaquest"][k]= @benchmarkable $(f)($(arg))
+    suite["eaquest"][k]= @benchmarkable $(f)($(arg)) seconds=10
 end
