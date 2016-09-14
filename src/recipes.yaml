@@ -1,7 +1,7 @@
 dtcc:
     model_spec: dtcc
 
-    symbols: ['exogenous', states', 'controls', 'rewards', 'expectations', 'values', 'shocks', 'parameters']
+    symbols: [exogenous, states, controls, rewards, expectations, values, shocks, parameters]
 
     specs:
         arbitrage:

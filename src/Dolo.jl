@@ -33,12 +33,9 @@ export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
        linear_solve, simulate, id
 
 # set up core types
-abstract AbstractModel{ID,kind}
-abstract AbstractSymbolicModel{ID,kind} <: AbstractModel{ID,kind}
-abstract AbstractNumericModel{ID,kind} <: AbstractModel{ID,kind}
-
-typealias AbstractDTCSCC{ID} AbstractNumericModel{ID,:dtcscc}
-typealias AbstractDTMSCC{ID} AbstractNumericModel{ID,:dtmscc}
+abstract AbstractModel{ID}
+abstract AbstractSymbolicModel{ID} <: AbstractModel{ID}
+abstract AbstractNumericModel{ID} <: AbstractModel{ID}
 
 typealias ASM AbstractSymbolicModel
 typealias ANM AbstractNumericModel
@@ -46,7 +43,6 @@ typealias ANM AbstractNumericModel
 abstract AbstractDecisionRule
 
 id{ID}(::AbstractModel{ID}) = ID
-model_type{_,kind}(::AbstractModel{_,kind}) = kind
 
 # recursively make all keys at any layer of nesting a symbol
 # included here instead of util.jl so we can call it on RECIPES below
@@ -66,7 +62,6 @@ for f in [:arbitrage, :transition, :auxiliary, :value, :expectation,
     eval(Expr(:function, f))
 end
 
-
 include("util.jl")
 include("symbolic.jl")
 include("calibration.jl")
@@ -78,6 +73,6 @@ include("numeric/taylor_series.jl")
 include("numeric/simulations.jl")
 include("numeric/derivatives.jl")
 
-include("algos/dtcscc.jl")
+# include("algos/dtcscc.jl")
 
 end # module

@@ -9,19 +9,10 @@ end
 const yaml_types = let
     pairs = [("!Cartesian", :Cartesian),
              ("!Normal", :Normal),
-             ("!MarkovChain", :MarkovChain)]
-    Dict{String,Function}([t => (c, n) -> construct_type_map(s, c, n)
+             ("!MarkovChain", :MarkovChain),
+             ("!AR1", :AR1)]
+    Dict{String,Function}([(t, (c, n) -> construct_type_map(s, c, n))
                            for (t, s) in pairs])
-end
-
-function guess_model_type(data)
-    # if the yaml file has the model type key, use what is given there.
-    if haskey(data, :model_type)
-        return Symbol(data[:model_type])
-    end
-
-    # othewise we need to do a bit more guesswork
-    haskey(data[:symbols], :shocks) ? :dtcscc : :dtmscc
 end
 
 function yaml_import(::Type{SymbolicModel}, url; print_code::Bool=false)
@@ -35,9 +26,7 @@ function yaml_import(::Type{SymbolicModel}, url; print_code::Bool=false)
 
     fname = basename(url)
 
-    model_type = guess_model_type(data)
-
-    SymbolicModel(data, model_type, fname)
+    SymbolicModel(data, fname)
 end
 
 function yaml_import(url; print_code::Bool=false)
