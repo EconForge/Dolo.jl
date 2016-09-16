@@ -53,7 +53,7 @@ immutable SymbolicModel{ID} <: ASM{ID}
         end
 
         # parse defs so values are Expr
-        _defs = OrderedDict{Symbol,Expr}(k=>_to_expr(v) for (k, v) in defs)
+        _defs = OrderedDict{Symbol,Expr}([(k, _to_expr(v)) for (k, v) in defs])
 
         # prep calib: parse to Expr, Symbol, or Number
         _calib  = OrderedDict{Symbol,Union{Expr,Symbol,Number}}()
