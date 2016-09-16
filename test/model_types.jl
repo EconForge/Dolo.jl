@@ -1,5 +1,4 @@
 
-
 @testset "testing model_types" begin
     #=
     I got this by doing
@@ -21,9 +20,10 @@
             "parameters"=>Any["beta","sigma","eta","chi","delta","alpha","rho","zbar","sig_z"],
             "controls"=>Any["i","n"],
             "values"=>Any["V"],
-            "states"=>Any["z","k"],
-            "shocks"=>Any["e_z"]
+            "states"=>Any["k"],
+            "exogenous"=>Any["z"]
         ),
+        "model_type"=>"dtcc",
         "name"=>"Real Business Cycle",
         "calibration"=>Dict{Any,Any}(
             "c"=>"y - i",
@@ -47,22 +47,29 @@
             "beta"=>0.99,
             "c_y"=>0.5,
             "n"=>0.33),
+
+        "exogenous"=>Dict{Any,Any}(
+            "z"=>Dict{Any,Any}(
+              :rho => 0.9,
+              :sigma => "sig_z",
+              :tag => :AR1
+              ),
+            ),
         "options"=>Dict{Any,Any}(
-            "distribution"=>Dict{Symbol,Any}(
-                :sigma=>Any[Any["sig_z**2"]],
-                :tag=>:Normal),
+            # "distribution"=>Dict{Symbol,Any}(
+            #     :sigma=>Any[Any["sig_z**2"]],
+            #     :tag=>:Normal),
             "grid"=>Dict{Symbol,Any}(
-                :orders=>Any[10,50],
-                :b=>Any["1+2*sig_z","k*1.1"],
-                :a=>Any["1-2*sig_z","k*0.9"],
+                :orders=>Any[10],
+                :b=>Any["k*1.1"],
+                :a=>Any["k*0.9"],
                 :tag=>:Cartesian)
         ),
         "equations"=>Dict{Any,Any}(
             "arbitrage"=>Any["1 - beta*(c/c(1))^(sigma)*(1-delta+rk(1))  | 0 <= i <= inf","chi*n^eta*c^sigma - w                      | 0 <= n <= inf"],
             "value"=>Any["V = log(c) + beta*V(1)"],
-            "transition"=>Any["z = (1-rho)*zbar + rho*z(-1) + e_z","k = (1-delta)*k(-1) + i(-1)"]
+            "transition"=>Any["k = (1-delta)*k(-1) + i(-1)"]
         ),
-        "model_type"=>"dtcscc",
         "definitions"=>Dict{Any,Any}(
             "c"=>"y - i",
             "w"=>"(1-alpha)*y/n",
@@ -255,25 +262,25 @@
     end
 
     @testset "SymbolicModel" begin
-        sm = SymbolicModel(rbc_dict, :dtcscc, "rbc.yaml")
+        sm = SymbolicModel(rbc_dict, "rbc_dtcc.yaml")
 
         @testset "constructor" begin
 
             # construct the object, and now test to make sure that things are how
             # they should be
 
-            @test length(keys(sm.symbols)) == 7
-            np, nc, nv, na, ns, nz = 9, 2, 1, 4, 2, 1
+            @test length(keys(sm.symbols)) == 8
+            np, nc, nv, na, ns, nz = 9, 2, 1, 1, 1, 1
             @test length(sm.symbols[:parameters]) == np
             @test length(sm.symbols[:controls]) == nc
             @test length(sm.symbols[:values]) == nv
             @test length(sm.symbols[:states]) == ns
-            @test length(sm.symbols[:shocks]) == nz
+            @test length(sm.symbols[:exogenous]) == nz
             @test length(sm.symbols[:rewards]) == 0
             @test length(sm.symbols[:expectations]) == 0
 
             # test order of keys
-            @test collect(keys(sm.symbols)) == map(Symbol, Dolo.RECIPES[:dtcscc][:symbols])
+            @test collect(keys(sm.symbols)) == map(Symbol, Dolo.RECIPES[:dtcc][:symbols])
 
             # test that we got the right number of equations for each group
             @test length(sm.equations[:arbitrage]) == nc
@@ -285,66 +292,63 @@
             @test !haskey(sm.equations, :expectations)
 
             name_order = vcat([sm.symbols[Symbol(k)]
-                              for k in Dolo.RECIPES[:dtcscc][:symbols]]...,
+                              for k in Dolo.RECIPES[:dtcc][:symbols]]...,
                               collect(keys(sm.definitions)))
             @test collect(keys(sm.calibration)) == name_order
         end
 
-        @test model_type(sm) == sm.model_type == :dtcscc
         @test name(sm) == sm.name == "Real Business Cycle"
-        @test filename(sm) == sm.filename == "rbc.yaml"
+        @test filename(sm) == sm.filename == "rbc_dtcc.yaml"
     end
 
     @testset "NumericModel" begin
-        sm = SymbolicModel(rbc_dict, :dtcscc, "rbc.yaml")
+        sm = SymbolicModel(rbc_dict, "rbc_dtcc.yaml")
         m = NumericModel(sm)
 
-        @test model_type(m) == m.model_type == :dtcscc
         @test name(m) == m.name == "Real Business Cycle"
-        @test filename(m) == m.filename == "rbc.yaml"
+        @test filename(m) == m.filename == "rbc_dtcc.yaml"
         @test id(sm) == id(m)
     end
 
     @testset "compiled functions" begin
-        sm = SymbolicModel(rbc_dict, :dtcscc, "rbc.yaml")
+        sm = SymbolicModel(rbc_dict, "rbc_dtcc.yaml")
         m = NumericModel(sm)
 
         # we passed in the steady state, so just make sure compiled functions
         # work out that way
         mc = m.calibration
-        p, s0, x0, v0 = mc[:parameters, :states, :controls, :values]
-        e_ = zeros(mc[:shocks])
+        p, s0, x0, v0 , e_= mc[:parameters, :states, :controls, :values, :exogenous]
         ns = length(s0)
         nx = length(x0)
 
-        @test maxabs(zeros(x0) - arbitrage(m, s0, x0, e_, s0, x0, p)) < 1e-13
-        @test maxabs(s0 - transition(m, s0, x0, e_, p)) < 1e-13
-        @test maxabs(v0 - value(m, s0, x0, s0, x0, v0, p)) < 1e-13
-        @test maxabs([0.0, 0.0] - controls_lb(m, s0, p)) < 1e-13
-        @test [Inf, Inf] == controls_ub(m, s0, p)
+        @test maxabs(zeros(x0) - arbitrage(m, e_, s0, x0, e_, s0, x0, p)) < 1e-13
+        @test maxabs(s0 - transition(m, e_, s0, x0, e_, p)) < 1e-13
+        @test maxabs(v0 - value(m, e_, s0, x0, v0, e_, s0, x0, v0, p)) < 1e-13
+        @test maxabs([0.0, 0.0] - controls_lb(m, e_, s0, p)) < 1e-13
+        @test [Inf, Inf] == controls_ub(m, e_, s0, p)
 
         # these two aren't implemented for the model above
-        @test_throws ErrorException direct_response(m, s0, [0.0], p)
-        @test_throws ErrorException expectation(m, s0, x0, p)
+        @test_throws ErrorException direct_response(m, e_, s0, [0.0], p)
+        @test_throws ErrorException expectation(m, e_, s0, x0, p)
 
         # Test mutating versions
         res = ones(x0)
-        arbitrage!(m, res, s0, x0, e_, s0, x0, p)
+        arbitrage!(m, res, e_, s0, x0, e_, s0, x0, p)
         @test maxabs(zeros(x0) - res) < 1e-13
 
         s1 = ones(s0)
-        transition!(m, s1, s0, x0, e_, p)
+        transition!(m, s1, e_, s0, x0, e_, p)
         @test maxabs(s0 - s1) < 1e-13
 
         v1 = ones(v0)
-        value!(m, v1, s0, x0, s0, x0, v0, p)
+        value!(m, v1, e_, s0, x0, v0, e_, s0, x0, v0, p)
         @test maxabs(v0 - v1) < 1e-13
 
         bounds = ones(x0)
-        controls_ub!(m, bounds, s0, p)
+        controls_ub!(m, bounds, e_, s0, p)
         @test bounds == [Inf, Inf]
 
-        controls_lb!(m, bounds, s0, p)
+        controls_lb!(m, bounds, e_, s0, p)
         @test bounds == [0.0, 0.0]
     end
 

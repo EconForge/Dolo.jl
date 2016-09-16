@@ -15,6 +15,8 @@ notifications:
 # uncomment the following lines to override the default test script
 script:
     - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+    - julia -e 'Pkg.clone("https://github.com/dcjones/YAML.jl.git","YAML"); Pkg.checkout("YAML","tags")'
+    - julia -e 'Pkg.clone("https://github.com/EconForge/Dolang.git")'
     - julia -e 'Pkg.clone(pwd()); Pkg.build("Dolo"); Pkg.test("Dolo"; coverage=true)'
 after_success:
     - echo $TRAVIS_JULIA_VERSION
