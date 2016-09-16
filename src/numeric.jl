@@ -2,76 +2,55 @@
 # Numeric model types #
 # ------------------- #
 
-immutable Options{TD<:Union{Void,Distribution}, TG<:Union{Void,AbstractGrid},
-                  TT<:Union{Void,MarkovChain}}
+immutable Options{TG<:Union{Void,AbstractGrid}}
     grid::TG
-    distribution::TD
-    discrete_transition::TT
     other::Dict{Symbol,Any}  # TODO: shouldn't need. Just keeps stuff around
-end
-
-function Options(;grid=nothing,
-                 distribution=nothing,
-                 discrete_transition=nothing,
-                 other=Dict{Symbol,Any}())
-    Options(grid, distribution, discrete_transition, other)
 end
 
 function Options(sm::AbstractSymbolicModel, calib::ModelCalibration)
     # numericize options
     _options = eval_with(calib, deepcopy(sm.options))
 
-    _opts = Dict{Symbol,Any}()
-    other = Dict{Symbol,Any}()
-
-    # now construct Options object
-    for k in keys(_options)
-        data = pop!(_options, k)
-        if k == :grid
-            _opts[:grid] = _build_grid(data, calib)
-        elseif k == :distribution
-            _opts[:distribution] = _build_dist(data, calib)
-        elseif k == :discrete_transition
-            _opts[k] = _build_discrete_transition(data, calib)
-        else
-            other[k] = data
-        end
+    if haskey(_options, :grid)
+        # pop! grid off _options so _options becomes _other
+        grid = _build_grid(pop!(_options, :grid), calib)
+    else
+        grid = nothing
     end
-
-    Options(;_opts..., other=other)
+    Options(grid, _options)
 end
 
-# TODO: given that fields are exactly the same should we make just a single
-#       NumericModel and distinguish between DTCSCC and DTMSCC via type params?
-immutable NumericModel{ID,kind} <: ANM{ID,kind}
-    symbolic::SymbolicModel{ID,kind}
+immutable NumericModel{ID,Texog} <: ANM{ID}
+    symbolic::SymbolicModel{ID}
     calibration::ModelCalibration
+    exogenous::Texog
     options::Options
-    model_type::Symbol
     name::String
     filename::String
     factories::Dict{Symbol,FunctionFactory}
 end
 
-typealias DTCSCCModel{ID} NumericModel{ID,:dtcscc}
-typealias DTMSCCModel{ID} NumericModel{ID,:dtmscc}
-typealias DynareModel{ID} NumericModel{ID,:dynare}
+# TODO: implement these
+function is_dtcscc(nm)
+end
 
-_numeric_mod_type{ID}(::ASM{ID,:dtcscc}) = DTCSCCModel{ID}
-_numeric_mod_type{ID}(::ASM{ID,:dtmscc}) = DTMSCCModel{ID}
-_numeric_mod_type{ID}(::ASM{ID,:dynare}) = DynareModel{ID}
+function is_dtmscc(nm)
+end
 
-function Base.show{ID,kind}(io::IO, sm::NumericModel{ID,kind})
-    println(io, """NumericModel($kind)
-    - name: $(sm.name)
+_numeric_mod_type{ID}(::ASM{ID}) = NumericModel{ID}
+
+function Base.show{ID}(io::IO, m::NumericModel{ID})
+    println(io,
+    """NumericModel
+      - name: $(m.name)
     """)
 end
 
 Base.convert(::Type{SymbolicModel}, m::NumericModel) = m.symbolic
 
-function NumericModel{ID,kind}(sm::SymbolicModel{ID,kind}; print_code::Bool=false)
+function NumericModel{ID}(sm::SymbolicModel{ID}; print_code::Bool=false)
     # compile all equations
-    recipe = RECIPES[model_type(sm)]
+    recipe = RECIPES[:dtcc]
     numeric_mod = _numeric_mod_type(sm)
 
     factories = Dict{Symbol,FunctionFactory}()
@@ -109,9 +88,9 @@ function NumericModel{ID,kind}(sm::SymbolicModel{ID,kind}; print_code::Bool=fals
     # get numerical calibration and options
     calib = ModelCalibration(sm)
     options = Options(sm, calib)
+    exog = tuple([_build_exogenous_entry(v, calib) for v in values(sm.exogenous)]...)
 
-    NumericModel(sm, calib, options, sm.model_type, sm.name, sm.filename,
-                 factories)
+    NumericModel(sm, calib, exog, options, sm.name, sm.filename, factories)
 end
 
 # ------------- #

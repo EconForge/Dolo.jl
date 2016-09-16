@@ -2,18 +2,19 @@
 # Symbolic Model #
 # -------------- #
 
-immutable SymbolicModel{ID,kind} <: ASM{ID,kind}
+immutable SymbolicModel{ID} <: ASM{ID}
     symbols::OrderedDict{Symbol,Vector{Symbol}}
     equations::OrderedDict{Symbol,Vector{Expr}}
     calibration::OrderedDict{Symbol,Union{Expr,Symbol,Number}}
+    exogenous::OrderedDict{Symbol,Associative}
     options::Dict{Symbol,Any}
     definitions::OrderedDict{Symbol,Expr}
-    model_type::Symbol
     name::String
     filename::String
 
     function SymbolicModel(recipe::Associative, symbols::Associative,
                            eqs::Associative, calib::Associative,
+                           exog::Associative,
                            options::Associative, defs::Associative,
                            name="modeldoesnotwork", filename="none")
         # prep symbols
@@ -52,7 +53,7 @@ immutable SymbolicModel{ID,kind} <: ASM{ID,kind}
         end
 
         # parse defs so values are Expr
-        _defs = OrderedDict{Symbol,Expr}(k=>_to_expr(v) for (k, v) in defs)
+        _defs = OrderedDict{Symbol,Expr}([(k, _to_expr(v)) for (k, v) in defs])
 
         # prep calib: parse to Expr, Symbol, or Number
         _calib  = OrderedDict{Symbol,Union{Expr,Symbol,Number}}()
@@ -71,7 +72,7 @@ immutable SymbolicModel{ID,kind} <: ASM{ID,kind}
             _calib[k] = _expr_or_number(calib[k])
         end
 
-        new(_symbols, _eqs, _calib, options, _defs, model_type, name, filename)
+        new(_symbols, _eqs, _calib, exog, options, _defs, name, filename)
     end
 end
 
@@ -81,34 +82,32 @@ function Base.show(io::IO, sm::SymbolicModel)
     """)
 end
 
-function SymbolicModel(data::Dict, model_type::Symbol, filename="none")
+function SymbolicModel(data::Dict, filename="none")
     # verify that we have all the required fields
-    for k in (:symbols, :equations, :calibration)
+    for k in (:symbols, :equations, :calibration, :exogenous)
         if !haskey(data, k)
-            error("Yaml file must define section $k for $(model_type) model")
+            error("Yaml file must define section $k for dtcc model")
         end
     end
 
     d = _symbol_dict(deepcopy(data))
-    if haskey(d, :model_type)
-        model_type_data = pop!(d, :model_type)
-        if string(model_type_data) != string(model_type)
-            error(string("Supplied model type $(model_type) does not match ",
-                         "model_type from data $(model_type_data)"))
-        end
-    end
-    recipe = RECIPES[model_type]
+    mt = pop!(d, :model_type, :dtcc)
+    Symbol(mt) == :dtcc || error("Only support dtcc models now")
+
+    recipe = RECIPES[:dtcc]
     nm = pop!(d, :name, "modeldoesnotwork")
     id = gensym(nm)
-    options = _symbol_dict(pop!(d, :options, Dict()))
-    defs = _symbol_dict(pop!(d, :definitions, Dict()))
-    out = SymbolicModel{id,model_type}(recipe, pop!(d, :symbols),
-                                       pop!(d, :equations),
-                                       pop!(d, :calibration),
-                                       options,
-                                       defs,
-                                       nm,
-                                       filename)
+    options = pop!(d, :options, Dict{Symbol,Any}())
+    defs = pop!(d, :definitions, Dict{Symbol,Any}())
+    exog = pop!(d, :exogenous, Dict{Symbol,Any}())
+    out = SymbolicModel{id}(recipe, pop!(d, :symbols),
+                            pop!(d, :equations),
+                            pop!(d, :calibration),
+                            exog,
+                            options,
+                            defs,
+                            nm,
+                            filename)
 
     if !isempty(d)
         m = string("Fields $(join(keys(d), ", ", ", and ")) from yaml file ",
@@ -131,32 +130,8 @@ function _get_args(sm::SymbolicModel, spec)
     args
 end
 
-function _get_args{ID}(sm::SymbolicModel{ID,:dynare}, spec)
-    # for dynare models, we need flat args with shocks at time 0 and variables
-    # at time -1, 0, and 1
-    args = Array(Tuple{Symbol,Int}, 3*length(sm.symbols[:variables]) +
-                                      length(sm.symbols[:shocks]))
-    ix = 0
-    for v in sm.symbols[:variables]
-        args[ix+=1] = (v, 1)
-    end
-    for v in sm.symbols[:variables]
-        args[ix+=1] = (v, 0)
-    end
-    for v in sm.symbols[:variables]
-        args[ix+=1] = (v, -1)
-    end
-
-    for e in sm.symbols[:shocks]
-        args[ix+=1] = (e, 0)
-    end
-
-    @assert ix == length(args)
-    args
-end
-
 function Dolang.FunctionFactory(sm::SymbolicModel, func_nm::Symbol)
-    spec = RECIPES[model_type(sm)][:specs][func_nm]
+    spec = RECIPES[:dtcc][:specs][func_nm]
     eqs = sm.equations[func_nm]
 
     # get targets

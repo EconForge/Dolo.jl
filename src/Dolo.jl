@@ -21,11 +21,11 @@ export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
        RECIPES,
 
        # model functions
-       dynare, arbitrage, transition, auxiliary, value, expectation,
+       arbitrage, transition, auxiliary, value, expectation,
        direct_response, controls_lb, controls_ub, arbitrage_2, felicity,
 
        # mutating version of model functions
-       dynare!, arbitrage!, transition!, auxiliary!, value!, expectation!,
+       arbitrage!, transition!, auxiliary!, value!, expectation!,
        direct_response, controls_lb!, controls_ub!, arbitrage_2!, felicity!,
 
        # dolo functions
@@ -33,12 +33,9 @@ export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
        linear_solve, simulate, id
 
 # set up core types
-abstract AbstractModel{ID,kind}
-abstract AbstractSymbolicModel{ID,kind} <: AbstractModel{ID,kind}
-abstract AbstractNumericModel{ID,kind} <: AbstractModel{ID,kind}
-
-typealias AbstractDTCSCC{ID} AbstractNumericModel{ID,:dtcscc}
-typealias AbstractDTMSCC{ID} AbstractNumericModel{ID,:dtmscc}
+abstract AbstractModel{ID}
+abstract AbstractSymbolicModel{ID} <: AbstractModel{ID}
+abstract AbstractNumericModel{ID} <: AbstractModel{ID}
 
 typealias ASM AbstractSymbolicModel
 typealias ANM AbstractNumericModel
@@ -46,13 +43,12 @@ typealias ANM AbstractNumericModel
 abstract AbstractDecisionRule
 
 id{ID}(::AbstractModel{ID}) = ID
-model_type{_,kind}(::AbstractModel{_,kind}) = kind
 
 # recursively make all keys at any layer of nesting a symbol
 # included here instead of util.jl so we can call it on RECIPES below
 _symbol_dict(x) = x
 @compat _symbol_dict(d::Associative) =
-    Dict{Symbol,Any}(Symbol(k) => _symbol_dict(v) for (k, v) in d)
+    Dict{Symbol,Any}([(Symbol(k), _symbol_dict(v)) for (k, v) in d])
 
 const src_path = dirname(@__FILE__)
 const pkg_path = dirname(src_path)
@@ -66,7 +62,6 @@ for f in [:arbitrage, :transition, :auxiliary, :value, :expectation,
     eval(Expr(:function, f))
 end
 
-
 include("util.jl")
 include("symbolic.jl")
 include("calibration.jl")
@@ -78,6 +73,6 @@ include("numeric/taylor_series.jl")
 include("numeric/simulations.jl")
 include("numeric/derivatives.jl")
 
-include("algos/dtcscc.jl")
+# include("algos/dtcscc.jl")
 
 end # module

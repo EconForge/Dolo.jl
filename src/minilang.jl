@@ -50,11 +50,27 @@ function _build_dist(data::Associative, calib::ModelCalibration)
     end
 end
 
+abstract AbstractExogenous
+abstract DiscreteExogenous <: AbstractExogenous
+abstract ContinuousExogenous <: AbstractExogenous
+
+# TOOD: generalize to non-scalar...
+immutable AR1 <: ContinuousExogenous
+    rho::Float64
+    sigma::Float64
+    N::Int
+end
+
+immutable MarkovChain{T} <: DiscreteExogenous
+    Π::Matrix{Float64}
+    state_values::Vector{T}
+end
+
 # ------------------------- #
 # Discrete Transition types #
 # ------------------------- #
 
-function _build_discrete_transition(data::Associative, calib::ModelCalibration)
+function _build_exogenous_entry(data::Associative, calib::ModelCalibration)
     if data[:tag] == :MarkovChain
         # need to extract/clean up P and Q
         state_values = map(Vector{Float64}, eval_with(calib, data[:P]))
@@ -65,8 +81,13 @@ function _build_discrete_transition(data::Associative, calib::ModelCalibration)
             Π[i, :] = Q[i]
         end
         return MarkovChain(Π, state_values)
-    else
-        m = "don't know how to handle discrete_transition of type $(data[:tag])"
-        error(m)
+    elseif data[:tag] == :AR1
+        # need to extract rho an dsigma
+        rho = eval_with(calib, data[:rho])
+        sigma = eval_with(calib, data[:sigma])
+        N = eval_with(calib, get(data, :N, 10))  # TODO: should default be 10??
+        return AR1(rho, sigma, N)
     end
+    m = "don't know how to handle discrete_transition of type $(data[:tag])"
+    error(m)
 end
