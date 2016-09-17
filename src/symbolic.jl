@@ -6,7 +6,7 @@ immutable SymbolicModel{ID} <: ASM{ID}
     symbols::OrderedDict{Symbol,Vector{Symbol}}
     equations::OrderedDict{Symbol,Vector{Expr}}
     calibration::OrderedDict{Symbol,Union{Expr,Symbol,Number}}
-    exogenous::OrderedDict{Symbol,Associative}
+    exogenous::Dict{Symbol,Any}
     options::Dict{Symbol,Any}
     definitions::OrderedDict{Symbol,Expr}
     name::String
@@ -84,7 +84,7 @@ end
 
 function SymbolicModel(data::Dict, filename="none")
     # verify that we have all the required fields
-    for k in (:symbols, :equations, :calibration, :exogenous)
+    for k in (:symbols, :equations, :calibration)
         if !haskey(data, k)
             error("Yaml file must define section $k for dtcc model")
         end
@@ -99,7 +99,11 @@ function SymbolicModel(data::Dict, filename="none")
     id = gensym(nm)
     options = pop!(d, :options, Dict{Symbol,Any}())
     defs = pop!(d, :definitions, Dict{Symbol,Any}())
-    exog = pop!(d, :exogenous, Dict{Symbol,Any}())
+    # exog = pop!(d, :exogenous, Dict{Symbol,Any}())
+    exog = get(options, :exogenous, Dict{Symbol,Any}())
+    if exog == Dict{Symbol,Any}()
+      error("Yaml file must define section 'exogenous' for dtcc model")
+    end
     out = SymbolicModel{id}(recipe, pop!(d, :symbols),
                             pop!(d, :equations),
                             pop!(d, :calibration),
