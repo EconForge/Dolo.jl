@@ -81,34 +81,34 @@ end
 # Discrete Transition types #
 # ------------------------- #
 
+to_vector(tab::Int) = reshape(Array{Int}([tab]),1)
+to_vector(tab::Float64) = reshape(Array{Float64}([tab]),1)
+to_matrix(tab::Int) = reshape(Array{Int}([tab]),1,1)
+to_matrix(tab::Float64) = reshape(Array{Float64}([tab]),1,1)
+to_matrix(tab::Array{Any}) = hcat([Array{Float64}(e) for e in tab]...)
 
 function _build_exogenous_entry(data::Associative, calib::ModelCalibration)
+
     if data[:tag] == :MarkovChain
         # need to extract/clean up P and Q
-
         P = eval_with(calib, data[:P])
-        n = length(P)
-        state_values = Array(Float64, n, n)
-        for i in 1:n
-            state_values[i, :] = P[i]
-        end
-
-        # n = length(state_values)
+        states_values = to_matrix(P)
         Q = eval_with(calib, data[:Q])
-        Π = Array(Float64, n, n)
-        for i in 1:n
-            Π[i, :] = Q[i]
-        end
+        Π = to_matrix(Q)
         return MarkovChain(Π, state_values)
     elseif data[:tag] == :AR1
         # need to extract rho an dsigma
         rho = eval_with(calib, data[:rho])
         sigma = eval_with(calib, data[:sigma])
         N = eval_with(calib, get(data, :N, 10))  # TODO: should default be 10??
+        rho = to_matrix(rho)
+        sigma = to_matrix(sigma)
+        N = to_vector(N)
         return AR1(rho, sigma, N)
     elseif data[:tag] == :Normal
         # need to extract rho an dsigma
         sigma = eval_with(calib, data[:sigma])
+        sigma = to_matrix(sigma)
         return Normal(sigma)
     end
     m = "don't know how to handle exogenous process of type $(data[:tag])"
