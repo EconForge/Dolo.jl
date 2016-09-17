@@ -48,22 +48,21 @@
             "c_y"=>0.5,
             "n"=>0.33),
 
-        "exogenous"=>Dict{Any,Any}(
-            "z"=>Dict{Any,Any}(
-              :rho => 0.9,
-              :sigma => "sig_z",
-              :tag => :AR1
-              ),
-            ),
         "options"=>Dict{Any,Any}(
             # "distribution"=>Dict{Symbol,Any}(
+            "exogenous"=>Dict{Any,Any}(
+                :rho => 0.9,
+                :sigma => "sig_z",
+                :tag => :AR1
+              ),
             #     :sigma=>Any[Any["sig_z**2"]],
             #     :tag=>:Normal),
             "grid"=>Dict{Symbol,Any}(
                 :orders=>Any[10],
                 :b=>Any["k*1.1"],
                 :a=>Any["k*0.9"],
-                :tag=>:Cartesian)
+                :tag=>:Cartesian
+              )
         ),
         "equations"=>Dict{Any,Any}(
             "arbitrage"=>Any["1 - beta*(c/c(1))^(sigma)*(1-delta+rk(1))  | 0 <= i <= inf","chi*n^eta*c^sigma - w                      | 0 <= n <= inf"],
