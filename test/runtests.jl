@@ -11,10 +11,12 @@ else
     const Test = BaseTestNext
 end
 
-tests = length(ARGS) > 0 ? ARGS : ["numeric",
-                                   "util",
-                                   "model_types",
-                                   "model_import"]
+# tests = length(ARGS) > 0 ? ARGS : ["numeric",
+#                                    "util",
+#                                    "model_types",
+#                                    "model_import"]
+tests = length(ARGS) > 0 ? ARGS : ["model_types"]
+
 for t in tests
     include("$(t).jl")
 end
