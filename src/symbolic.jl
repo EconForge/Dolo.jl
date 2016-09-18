@@ -92,10 +92,13 @@ function SymbolicModel(data::Dict, filename="none")
 
     d = _symbol_dict(deepcopy(data))
     mt = pop!(d, :model_type, :dtcc)
-    Symbol(mt) == :dtcc || Symbol(mt) == :dtmscc || error("Only support dtcc and dtmscc models now")
+    Symbol(mt) in (:dtcc, :dtmscc, :dtcscc)  || error("Only support dtcc, dtmscc and dtcscc models now.")
     if Symbol(mt) == :dtmscc
       d[:symbols][:exogenous] = pop!(d[:symbols],:markov_states,nothing)
       d[:options][:exogenous] = pop!(d[:options],:discrete_transition,nothing)
+    elseif Symbol(mt) == :dtcscc
+      d[:symbols][:exogenous] = pop!(d[:symbols],:shocks,nothing)
+      d[:options][:exogenous] = pop!(d[:options],:distribution,nothing)
     end
     recipe = RECIPES[:dtcc]
     nm = pop!(d, :name, "modeldoesnotwork")
