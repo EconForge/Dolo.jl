@@ -11,7 +11,8 @@ end
     @test import_model(Pkg.dir("Dolo", "examples", "models", "rbc_dtcc_ar1.yaml"))
     @test import_model(Pkg.dir("Dolo", "examples", "models", "rbc_dtcc_mc.yaml"))
     @test import_model(Pkg.dir("Dolo", "examples", "models", "rbc_dtcc_iid.yaml"))
-    @test import_model(Pkg.dir("Dolo", "examples", "models", "rbc_dtmscc.yaml"))
+    @test import_model(Pkg.dir("Dolo", "examples", "models", "compat",  "rbc_dtmscc.yaml"))
+    @test import_model(Pkg.dir("Dolo", "examples", "models", "compat",  "rbc_dtcscc.yaml"))
 
     # TODO: re-enable once we can build objects of type MarkovChain
     # @test import_model("https://raw.githubusercontent.com/EconForge/dolo/144965224f432c9f467f0e667bc0cc4d77caf629/examples/models/sudden_stop.yaml")
