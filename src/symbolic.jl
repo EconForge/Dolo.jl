@@ -94,11 +94,11 @@ function SymbolicModel(data::Dict, filename="none")
     mt = pop!(d, :model_type, :dtcc)
     Symbol(mt) in (:dtcc, :dtmscc, :dtcscc)  || error("Only support dtcc, dtmscc and dtcscc models now.")
     if Symbol(mt) == :dtmscc
-      d[:symbols][:exogenous] = pop!(d[:symbols],:markov_states,nothing)
-      d[:options][:exogenous] = pop!(d[:options],:discrete_transition,nothing)
+        d[:symbols][:exogenous] = pop!(d[:symbols],:markov_states,nothing)
+        d[:options][:exogenous] = pop!(d[:options],:discrete_transition,nothing)
     elseif Symbol(mt) == :dtcscc
-      d[:symbols][:exogenous] = pop!(d[:symbols],:shocks,nothing)
-      d[:options][:exogenous] = pop!(d[:options],:distribution,nothing)
+        d[:symbols][:exogenous] = pop!(d[:symbols],:shocks,nothing)
+        d[:options][:exogenous] = pop!(d[:options],:distribution,nothing)
     end
     recipe = RECIPES[:dtcc]
     nm = pop!(d, :name, "modeldoesnotwork")
@@ -108,7 +108,7 @@ function SymbolicModel(data::Dict, filename="none")
     # exog = pop!(d, :exogenous, Dict{Symbol,Any}())
     exog = get(options, :exogenous, Dict{Symbol,Any}())
     if exog == Dict{Symbol,Any}()
-      error("Yaml file must define section 'exogenous' for dtcc model")
+        error("Yaml file must define section 'exogenous' for dtcc model")
     end
     out = SymbolicModel{id}(recipe, pop!(d, :symbols),
                             pop!(d, :equations),
