@@ -88,7 +88,8 @@ function NumericModel{ID}(sm::SymbolicModel{ID}; print_code::Bool=false)
     # get numerical calibration and options
     calib = ModelCalibration(sm)
     options = Options(sm, calib)
-    exog = tuple([_build_exogenous_entry(v, calib) for v in values(sm.exogenous)]...)
+
+    exog = _build_exogenous_entry(sm.exogenous, calib)
 
     NumericModel(sm, calib, exog, options, sm.name, sm.filename, factories)
 end

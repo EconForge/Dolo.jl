@@ -53,41 +53,64 @@ end
 abstract AbstractExogenous
 abstract DiscreteExogenous <: AbstractExogenous
 abstract ContinuousExogenous <: AbstractExogenous
+abstract IIDExogenous <: AbstractExogenous
 
 # TOOD: generalize to non-scalar...
-immutable AR1 <: ContinuousExogenous
-    rho::Float64
-    sigma::Float64
-    N::Int
+
+immutable Normal <: IIDExogenous
+    sigma::Matrix{Float64}
 end
 
+Normal(sigma::Float64) = Normal(reshape([sigma],1,1))
+
+immutable VAR1 <: ContinuousExogenous
+    rho::Matrix{Float64}
+    sigma::Matrix{Float64}
+    N::Vector{Int}
+end
+
+AR1(rho,sigma,N) = VAR1(rho,sigma,N)
+AR1(rho::Float64, sigma::Float64, N::Int) = VAR1(reshape([rho],1,1),reshape([sigma],1,1),reshape([N],1))
+
 immutable MarkovChain{T} <: DiscreteExogenous
-    Π::Matrix{Float64}
-    state_values::Vector{T}
+    transitions::Matrix{T}
+    values::Matrix{T}
 end
 
 # ------------------------- #
 # Discrete Transition types #
 # ------------------------- #
 
+to_vector(tab::Int) = reshape(Array{Int}([tab]),1)
+to_vector(tab::Float64) = reshape(Array{Float64}([tab]),1)
+to_matrix(tab::Int) = reshape(Array{Int}([tab]),1,1)
+to_matrix(tab::Float64) = reshape(Array{Float64}([tab]),1,1)
+to_matrix(tab::Array{Any}) = hcat([Array{Float64}(e) for e in tab]...)
+
 function _build_exogenous_entry(data::Associative, calib::ModelCalibration)
+
     if data[:tag] == :MarkovChain
         # need to extract/clean up P and Q
-        state_values = map(Vector{Float64}, eval_with(calib, data[:P]))
-        n = length(state_values)
-        Π = Array(Float64, n, n)
+        P = eval_with(calib, data[:P])
+        states_values = to_matrix(P)
         Q = eval_with(calib, data[:Q])
-        for i in 1:n
-            Π[i, :] = Q[i]
-        end
+        Π = to_matrix(Q)
         return MarkovChain(Π, state_values)
     elseif data[:tag] == :AR1
         # need to extract rho an dsigma
         rho = eval_with(calib, data[:rho])
         sigma = eval_with(calib, data[:sigma])
         N = eval_with(calib, get(data, :N, 10))  # TODO: should default be 10??
+        rho = to_matrix(rho)
+        sigma = to_matrix(sigma)
+        N = to_vector(N)
         return AR1(rho, sigma, N)
+    elseif data[:tag] == :Normal
+        # need to extract rho an dsigma
+        sigma = eval_with(calib, data[:sigma])
+        sigma = to_matrix(sigma)
+        return Normal(sigma)
     end
-    m = "don't know how to handle discrete_transition of type $(data[:tag])"
+    m = "don't know how to handle exogenous process of type $(data[:tag])"
     error(m)
 end

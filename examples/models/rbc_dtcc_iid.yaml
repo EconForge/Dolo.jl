@@ -61,14 +61,16 @@ calibration:
     V: log(c)/(1-beta)
     u: c^(1-sigma)/(1-sigma) - chi*n^(1+eta)/(1+eta)
 
-exogenous:
-    z: !AR1
-        rho: 0.9
-        sigma: sig_z
-        N: 5
 
 options:
+
+    exogenous: !Normal
+        sigma: sig_z**2
+
     grid: !Cartesian
         a: [k*0.9]
         b: [k*1.1]
         orders: [50]
+
+    random:
+        any: 0.1
