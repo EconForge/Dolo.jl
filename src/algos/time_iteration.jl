@@ -42,7 +42,7 @@ function stack(x::Array{Array{Float64,2},1})
 end
 
 
-function time_iteration(model, process, init_dr; verbose=true, maxit=100)
+function time_iteration(model, process, init_dr; verbose=true, maxit=100, tol=1e-8)
 
     # get grid for endogenous
     gg = model.options.grid
@@ -79,9 +79,9 @@ function time_iteration(model, process, init_dr; verbose=true, maxit=100)
 
 
     # loop option
-    tol = 1e-8
+
     it = 0
-    err = 1
+    err = 1.0
     maxit_inner = 20
 
     while it<maxit && err>tol
@@ -109,13 +109,18 @@ function time_iteration(model, process, init_dr; verbose=true, maxit=100)
 end
 
 # get stupid initial rule
-function time_iteration(model, process; verbose=true)
+function time_iteration(model, process::AbstractExogenous; kwargs...)
     init_dr = ConstantDecisionRule(model.calibration[:controls])
-    return time_iteration(model, process, init_dr, verbose=verbose)
+    return time_iteration(model, process, init_dr;  kwargs...)
 end
 
-function time_iteration(model; verbose=true)
+function time_iteration(model, init_dr::AbstractDecisionRule; kwargs...)
+    process = model.exogenous
+    return time_iteration(model, process, init_dr; kwargs...)
+end
+
+function time_iteration(model; kwargs...)
     process = model.exogenous
     init_dr = ConstantDecisionRule(model.calibration[:controls])
-    return time_iteration(model, process, init_dr, verbose=verbose)
+    return time_iteration(model, process, init_dr; kwargs...)
 end

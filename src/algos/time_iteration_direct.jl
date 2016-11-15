@@ -1,6 +1,6 @@
 import Dolo
 
-function time_iteration_direct(model, process; verbose=true, maxit=100)
+function time_iteration_direct(model, process, init_dr; verbose=true, maxit=100, tol=1e-8)
 
   # Grid
   gg = model.options.grid
@@ -15,7 +15,6 @@ function time_iteration_direct(model, process; verbose=true, maxit=100)
 
   p = model.calibration[:parameters] :: Vector{Float64}
 
-  init_dr = ConstantDecisionRule(model.calibration[:controls])
   # initial guess for controls
   x0 = [evaluate(init_dr, i, endo_nodes) for i=1:nsd]
 
@@ -33,9 +32,8 @@ function time_iteration_direct(model, process; verbose=true, maxit=100)
   s=deepcopy(endo_nodes);
 
   # loop option
-  tol = 1e-8
   it = 0
-  err = 1
+  err = 1.0
 
   ###############################   Iteration loop
 
@@ -87,9 +85,20 @@ function time_iteration_direct(model, process; verbose=true, maxit=100)
 end
 
 
+function time_iteration_direct(model, process::AbstractExogenous; kwargs...)
+    init_dr = ConstantDecisionRule(model.calibration[:controls])
+    return time_iteration_direct(model, process, init_dr; kwargs...)
+end
 
-function time_iteration_direct(model; verbose=true)
+
+function time_iteration_direct(model, init_dr::AbstractDecisionRule; kwargs...)
+    process = model.exogenous
+    return time_iteration_direct(model, process, init_dr; kwargs...)
+end
+
+
+function time_iteration_direct(model; kwargs...)
     process = model.exogenous
     init_dr = ConstantDecisionRule(model.calibration[:controls])
-    return time_iteration_direct(model, process; verbose=verbose, maxit = 100)
+    return time_iteration_direct(model, process, init_dr; kwargs...)
 end
