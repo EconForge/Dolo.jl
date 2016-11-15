@@ -81,6 +81,7 @@ include("model_import.jl")
 
 include("algos/steady_state.jl")
 include("algos/time_iteration.jl")
+include("algos/time_iteration_direct.jl")
 include("algos/value_iteration.jl")
 
 
