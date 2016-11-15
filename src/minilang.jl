@@ -50,32 +50,32 @@ function _build_dist(data::Associative, calib::ModelCalibration)
     end
 end
 
-abstract AbstractExogenous
-abstract DiscreteExogenous <: AbstractExogenous
-abstract ContinuousExogenous <: AbstractExogenous
-abstract IIDExogenous <: AbstractExogenous
-
-# TOOD: generalize to non-scalar...
-
-immutable Normal <: IIDExogenous
-    sigma::Matrix{Float64}
-end
-
-Normal(sigma::Float64) = Normal(reshape([sigma],1,1))
-
-immutable VAR1 <: ContinuousExogenous
-    rho::Matrix{Float64}
-    sigma::Matrix{Float64}
-    N::Vector{Int}
-end
-
-AR1(rho,sigma,N) = VAR1(rho,sigma,N)
-AR1(rho::Float64, sigma::Float64, N::Int) = VAR1(reshape([rho],1,1),reshape([sigma],1,1),reshape([N],1))
-
-immutable MarkovChain{T} <: DiscreteExogenous
-    transitions::Matrix{T}
-    values::Matrix{T}
-end
+# abstract AbstractExogenous
+# abstract DiscreteExogenous <: AbstractExogenous
+# abstract ContinuousExogenous <: AbstractExogenous
+# abstract IIDExogenous <: AbstractExogenous
+#
+# # TOOD: generalize to non-scalar...
+#
+# immutable Normal <: IIDExogenous
+#     sigma::Matrix{Float64}
+# end
+#
+# Normal(sigma::Float64) = Normal(reshape([sigma],1,1))
+#
+# immutable VAR1 <: ContinuousExogenous
+#     rho::Matrix{Float64}
+#     sigma::Matrix{Float64}
+#     N::Vector{Int}
+# end
+#
+# AR1(rho,sigma,N) = VAR1(rho,sigma,N)
+# AR1(rho::Float64, sigma::Float64, N::Int) = VAR1(reshape([rho],1,1),reshape([sigma],1,1),reshape([N],1))
+#
+# immutable MarkovChain{T} <: DiscreteExogenous
+#     transitions::Matrix{T}
+#     values::Matrix{T}
+# end
 
 # ------------------------- #
 # Discrete Transition types #
@@ -86,6 +86,7 @@ to_vector(tab::Float64) = reshape(Array{Float64}([tab]),1)
 to_matrix(tab::Int) = reshape(Array{Int}([tab]),1,1)
 to_matrix(tab::Float64) = reshape(Array{Float64}([tab]),1,1)
 to_matrix(tab::Array{Any}) = hcat([Array{Float64}(e) for e in tab]...)
+to_matrix(tab::Array{Array{Float64,1},1}) = cat(1, [e' for e in tab]...)
 
 function _build_exogenous_entry(data::Associative, calib::ModelCalibration)
 
@@ -95,7 +96,7 @@ function _build_exogenous_entry(data::Associative, calib::ModelCalibration)
         states_values = to_matrix(P)
         Q = eval_with(calib, data[:Q])
         Π = to_matrix(Q)
-        return MarkovChain(Π, state_values)
+        return MarkovChain(Π, states_values)
     elseif data[:tag] == :AR1
         # need to extract rho an dsigma
         rho = eval_with(calib, data[:rho])
@@ -104,7 +105,7 @@ function _build_exogenous_entry(data::Associative, calib::ModelCalibration)
         rho = to_matrix(rho)
         sigma = to_matrix(sigma)
         N = to_vector(N)
-        return AR1(rho, sigma, N)
+        return AR1(rho, sigma)
     elseif data[:tag] == :Normal
         # need to extract rho an dsigma
         sigma = eval_with(calib, data[:sigma])

@@ -15,22 +15,23 @@ import ForwardDiff
 import YAML
 using Compat; import Compat: String, view
 
-export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
-       SymbolicModel, NumericModel,
-       FlatCalibration, GroupedCalibration, ModelCalibration, TaylorExpansion,
-       RECIPES,
+# export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
+#        SymbolicModel, NumericModel,
+#        FlatCalibration, GroupedCalibration, ModelCalibration, TaylorExpansion,
+#        RECIPES,
 
        # model functions
-       arbitrage, transition, auxiliary, value, expectation,
+export arbitrage, transition, auxiliary, value, expectation,
        direct_response, controls_lb, controls_ub, arbitrage_2, felicity,
 
        # mutating version of model functions
        arbitrage!, transition!, auxiliary!, value!, expectation!,
-       direct_response, controls_lb!, controls_ub!, arbitrage_2!, felicity!,
+       direct_response, controls_lb!, controls_ub!, arbitrage_2!, felicity!
 
        # dolo functions
-       yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename,
-       linear_solve, simulate, id
+export yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename, id
+
+export time_iteration, value_iteration, steady_state_residuals
 
 # set up core types
 abstract AbstractModel{ID}
@@ -62,6 +63,15 @@ for f in [:arbitrage, :transition, :auxiliary, :value, :expectation,
     eval(Expr(:function, f))
 end
 
+
+include("numeric/newton.jl")
+include("numeric/grids.jl")
+include("numeric/processes.jl")
+include("numeric/decision_rules.jl")
+include("numeric/taylor_series.jl")
+include("numeric/simulations.jl")
+include("numeric/derivatives.jl")
+
 include("util.jl")
 include("symbolic.jl")
 include("calibration.jl")
@@ -69,10 +79,9 @@ include("minilang.jl")
 include("numeric.jl")
 include("model_import.jl")
 
-include("numeric/taylor_series.jl")
-include("numeric/simulations.jl")
-include("numeric/derivatives.jl")
+include("algos/steady_state.jl")
+include("algos/time_iteration.jl")
+include("algos/value_iteration.jl")
 
-# include("algos/dtcscc.jl")
 
 end # module

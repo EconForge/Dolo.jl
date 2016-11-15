@@ -20,8 +20,11 @@ function Options(sm::AbstractSymbolicModel, calib::ModelCalibration)
     Options(grid, _options)
 end
 
+
+# Not clear whether we still want Texog, to parameterize the model type.
 immutable NumericModel{ID,Texog} <: ANM{ID}
     symbolic::SymbolicModel{ID}
+    symbols::OrderedDict{Symbol,Array{Symbol,1}}
     calibration::ModelCalibration
     exogenous::Texog
     options::Options
@@ -30,12 +33,6 @@ immutable NumericModel{ID,Texog} <: ANM{ID}
     factories::Dict{Symbol,FunctionFactory}
 end
 
-# TODO: implement these
-function is_dtcscc(nm)
-end
-
-function is_dtmscc(nm)
-end
 
 _numeric_mod_type{ID}(::ASM{ID}) = NumericModel{ID}
 
@@ -90,8 +87,7 @@ function NumericModel{ID}(sm::SymbolicModel{ID}; print_code::Bool=false)
     options = Options(sm, calib)
 
     exog = _build_exogenous_entry(sm.exogenous, calib)
-
-    NumericModel(sm, calib, exog, options, sm.name, sm.filename, factories)
+    NumericModel(sm, sm.symbols, calib, exog, options, sm.name, sm.filename, factories)
 end
 
 # ------------- #
