@@ -6,7 +6,7 @@ path = Pkg.dir("Dolo")
 filename = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
 model_mc = Dolo.yaml_import(filename)
 @time dr = Dolo.time_iteration(model_mc, verbose=true)
-@time drv = Dolo.evaluate_policy(model, dr, verbose=true)
+@time drv = Dolo.evaluate_policy(model_mc, dr, verbose=true)
 
 
 # this one needs a lower value of beta or a better initial guess
@@ -18,5 +18,8 @@ model = Dolo.yaml_import(filename)
 # does not work yet
 filename = joinpath(path,"examples","models","rbc_dtcc_ar1.yaml")
 model = Dolo.yaml_import(filename)
+
+Dolo.discretize(model.exogenous)
+
 @time dr = Dolo.time_iteration(model)
 @time drv = Dolo.evaluate_policy(model, dr, verbose=true)

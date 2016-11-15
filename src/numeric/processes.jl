@@ -151,8 +151,8 @@ end
 function discretize(VAR_info::VAR1, n_states::Array{Int64,1}, n_integration::Array{Int64,1}; n_std::Int64=3, μ::Int64=0)
 
       ###############################################################################
-      n  = size(VAR_info.M,1);
 
+      n  = size(VAR_info.M,1);
       # State space
       # Collect all the state values for each variable in VAR
       states = collect(zeros(n_states[ii]) for ii in 1:n);
@@ -190,19 +190,38 @@ function discretize(VAR_info::VAR1, n_states::Array{Int64,1}, n_integration::Arr
       Eⁱʲ_c = collect(Base.product([Eⁱʲ[i] for i in 1:size(Eⁱʲ,1)]...))
       #Compute future states for endogenous variables
       # kron([n_integration[i] for i in 1:n]...) computes the possible combination of states of innovations
-      yⁱʲ  = zeros(kron([n_integration[i] for i in 1:n]...),n,kron([n_states[i] for i in 1:n]...));
-      for ii in 1:kron([n_states[i] for i in 1:n]...)
-          [ yⁱʲ[ss,:,ii] = VAR_info.M + VAR_info.R*collect(yⁱ[ii])+collect(Eⁱʲ_c[ss]) for ss = 1:kron([n_integration[i] for i in 1:n]...) ]
+      if n>2
+        yⁱʲ  = zeros(kron([n_integration[i] for i in 1:n]...),n,kron([n_states[i] for i in 1:n]...));
+
+        for ii in 1:kron([n_states[i] for i in 1:n]...)
+
+            [ yⁱʲ[ss,:,ii] = VAR_info.M + VAR_info.R*collect(yⁱ[ii])+collect(Eⁱʲ_c[ss]) for ss = 1:kron([n_integration[i] for i in 1:n]...) ]
+
+        end
+        integration_nodes = collect(yⁱʲ[:,:,ii] for ii in 1:kron([n_states[i] for i in 1:n]...))
+
+        # Get transition probabilities
+
+        integration_weights = repmat(kron([w[i] for i in 1:n]...),1,kron([n_integration[i] for i in 1:n]...))
+        integration_weights =collect(integration_weights[:,ii] for ii in 1:kron([n_integration[i] for i in 1:n]...))
+      else
+        yⁱʲ  = zeros(n_integration[n],n,n_states[n]);
+
+        for ii in 1:n_states[n]
+            [ yⁱʲ[ss,:,ii] = VAR_info.M + VAR_info.R*collect(yⁱ[ii])+collect(Eⁱʲ_c[ss]) for ss = 1:n_integration[n]]
+
+        end
+        integration_nodes = collect(yⁱʲ[:,:,ii] for ii in 1:n_states[n])
+
+        # Get transition probabilities
+
+        integration_weights = w[n]
+        integration_weights =[integration_weights]
       end
-
-      integration_nodes = collect(yⁱʲ[:,:,ii] for ii in 1:kron([n_states[i] for i in 1:n]...))
-
-      # Get transition probabilities
-      integration_weights = repmat(kron([w[i] for i in 1:n]...),1,kron([n_states[i] for i in 1:n]...))
-      integration_weights =collect(integration_weights[:,ii] for ii in 1:kron([n_states[i] for i in 1:n]...))
 #  return nodes, integration_nodes, integration_weights
     return DiscretizedProcess(nodes, integration_nodes,integration_weights)
 end
+
 
 
 function simulate_var(VAR_info::VAR1, T::Int64, N::Int64)
