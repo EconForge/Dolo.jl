@@ -6,7 +6,7 @@ symbols:
 
    exogenous: [z]
    states: [k]
-   controls: [n,i]
+   controls: [n, i]
    expectations: [m]
    values: [V]
    parameters: [beta, sigma, eta, chi, delta, alpha, rho, zbar, sig_z]
@@ -23,6 +23,7 @@ equations:
     arbitrage:
         - chi*n^eta*c^sigma - w                      | 0.0 <= n <= inf
         - 1 - beta*(c/c(1))^(sigma)*(1-delta+rk(1))  | 0.0 <= i <= inf
+
 
     transition:
         - k = (1-delta)*k(-1) + i(-1)
