@@ -29,11 +29,10 @@ ivec_d = [Dolo.evaluate(drd,1,[k])[2] for k in kvec]
 # this one needs a lower value of beta or a better initial guess
 filename = joinpath(path,"examples","models","rbc_dtcc_iid.yaml")
 model = Dolo.yaml_import(filename)
-@time dr = Dolo.time_iteration_direct(model, verbose=true)
 @time dr = Dolo.time_iteration(model, verbose=true)
-@time drv = Dolo.evaluate_policy(model, dr, verbose=true)
-
+@time dr = Dolo.time_iteration_direct(model, verbose=true)
 @time dr = Dolo.time_iteration_direct(model, dr, verbose=true)
+@time drv = Dolo.evaluate_policy(model, dr, verbose=true)
 
 kvec = linspace(dr.grid.min[1],dr.grid.max[1],10)
 nvec = [Dolo.evaluate(dr,1,[k])[1] for k in kvec]

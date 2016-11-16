@@ -15,12 +15,15 @@ function time_iteration_direct(model, process, init_dr; verbose=true, maxit=100,
 
   p = model.calibration[:parameters] :: Vector{Float64}
 
+  function stack(x::Array{Array{Float64,2},1})
+    return cat(1,x...)
+  end
   # initial guess for controls
   x0 = [evaluate(init_dr, i, endo_nodes) for i=1:nsd]
+  # set the bound for the controls to check during the iterations not to violate them
+  x_lb = Array{Float64,2}[cat(1,[Dolo.controls_lb(model,node(dprocess,i) ,endo_nodes[n,:],p)' for n=1:N]...) for i=1:nsd]
+  x_ub = Array{Float64,2}[cat(1,[Dolo.controls_ub(model,node(dprocess,i),endo_nodes[n,:],p)' for n=1:N]...) for i=1:nsd]
 
-  function stack(x::Array{Array{Float64,2},1})
-       return cat(1,x...)
-  end
 
   absmax(x) = max([maximum(abs(x[i])) for i=1:length(x)]...)
 
@@ -68,6 +71,8 @@ function time_iteration_direct(model, process, init_dr; verbose=true, maxit=100,
            x1[i][n,:] = Dolo.direct_response(model, m, s[n,:], E_f[i][n,:], p)
         end
     end
+
+    x1 = [max(min(x1[i],x_ub[i]),x_lb[i]) for i in 1:size(x1,1)]
 
     xx1 = stack(x1)
 
