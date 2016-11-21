@@ -93,7 +93,7 @@ function time_iteration(model, process, init_dr; verbose=true, maxit=100, tol=1e
 
         xx0 = stack(x0)
         fobj(u) = residual(model, dprocess, endo_nodes, u, p, dr)
-        xx1, nit = serial_solver(fobj, xx0, maxit=maxit_inner, verbose=false, a=lb, b=ub)
+        xx1, nit = serial_solver(fobj, xx0, lb, ub, maxit=maxit_inner, verbose=false)
         x1 = destack(xx1, nsd)
 
         err = maximum(abs(xx1 - xx0))
