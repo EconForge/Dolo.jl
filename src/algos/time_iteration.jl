@@ -82,7 +82,12 @@ function time_iteration(model, process, init_dr; verbose=true, maxit=100, tol=1e
 
     it = 0
     err = 1.0
-    maxit_inner = 20
+    err_0 = err
+    maxit_inner = 10
+
+
+    init_res = residual(model, dprocess, endo_nodes, x0, p, dr)
+    println("Initial Residual: ", maximum(abs(stack(init_res))))
 
     while it<maxit && err>tol
 
@@ -98,10 +103,11 @@ function time_iteration(model, process, init_dr; verbose=true, maxit=100, tol=1e
 
         err = maximum(abs(xx1 - xx0))
         x0 = x1
-
+        gain = err/err_0
         if verbose
-            println("It: ", it, " ; SA: ", err, " ; nit: ", nit)
+            println("It: ", it, " ; SA: ", err, " ; gain: ", gain, " ; nit: ", nit)
         end
+        err_0 = err
     end
 
     return dr

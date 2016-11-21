@@ -81,7 +81,7 @@ function discretize(mvn::MvNormal)
     # x,w = QE.qnwnorm([3 3], [0.0, 0.0], eye(2))
 
     if ndims(x) == 1
-        x = x'
+        x = x''
     end
     # h = zeros(0,size(x,2))
     return DiscretizedIIDProcess(x, w)

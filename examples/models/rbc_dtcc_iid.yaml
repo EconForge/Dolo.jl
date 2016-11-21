@@ -29,7 +29,7 @@ equations:
         - k = (1-delta)*k(-1) + i(-1)
 
     value:
-        - V = log(c) + beta*V(1)
+        - V = c^(1-sigma)/(1-sigma) - chi*n^(1+eta)/(1+eta) + beta*V(1)
 
     felicity:
         - u =  c^(1-sigma)/(1-sigma) - chi*n^(1+eta)/(1+eta)
@@ -44,12 +44,12 @@ equations:
 calibration:
 
     # parameters
-    beta : 0.5
+    beta : 0.99
     phi: 1
     delta : 0.025
     alpha : 0.33
     rho : 0.8
-    sigma: 1.5
+    sigma: 5
     eta: 1
     sig_z: 0.016
     zbar: 0
@@ -77,8 +77,8 @@ options:
         sigma: sig_z**2
 
     grid: !Cartesian
-        a: [k*0.9]
-        b: [k*1.1]
+        a: [k*0.5]
+        b: [k*1.5]
         orders: [50]
 
     random:
