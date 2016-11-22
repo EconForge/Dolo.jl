@@ -1,6 +1,6 @@
 path = Pkg.dir("Dolo")
 
-
+Pkg.build("QuantEcon")
 import Dolo
 
 filename = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
