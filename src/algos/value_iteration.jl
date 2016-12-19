@@ -1,5 +1,17 @@
 using Optim
 
+
+"""
+#TODO: Is evaluate_policy the best name for this? Seems that we are evaluating the value function, or evaluating a current decision rule.
+
+Evaluate the value function under the given decision rule, `dr` (i.e. evaluating under the current guess for the policy function). Then, using the evaluated value function, construct a new interpolation object for the value function.
+
+# Arguments
+* `model::NumericModel`: Model object that describes the current model environment.
+* `dr::`: Current guess for the decision rule.
+# Returns
+* `drv::`: Value function.
+"""
 function evaluate_policy(model, dr; verbose=true, maxit=100, )
 
     β = model.calibration.flat[:beta]
@@ -91,7 +103,23 @@ function evaluate_policy(model, dr; verbose=true, maxit=100, )
 end
 
 
+"""
+Evaluate a value function object `drv` at a particular combination of values for states, controls, and exogenous variable(s).
+
+# Arguments
+* `model::NumericModel`: Model object that describes the current model environment.
+* `β::Float64`: Value of the discount factor.
+* `dprocess::`: Discretized exogenous process.
+* `drv::`: Current guess for the value function object.
+* `i::Int64`: Index of node for exogeous variable(s).
+* `s::Vector{Float64}`: Current state variables.
+* `x::Vector{Float64}`: Current control variables.
+* `p::Vector{Float64}`: Model parameters.
+# Returns
+* `E_V::`: Evaluated value function.
+"""
 function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64}, x0::Vector{Float64}, p::Vector{Float64})
+
     m = node(dprocess,i)  ::Vector{Float64}
     E_V = 0.0
     for j=1:n_inodes(dprocess,i)
@@ -105,6 +133,17 @@ function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64}, 
     return E_V
 end
 
+
+"""
+Solve for the value function and associated decision rule using value function iteration.
+
+# Arguments
+* `model::NumericModel`: Model object that describes the current model environment.
+* `dr::`: Initial guess for the decision rule.
+# Returns
+* `dr::`: Solved decision rule object.
+* `drv::`: Solved value function object.
+"""
 function solve_policy(model, dr; verbose=true, maxit=5000, )
 
     β = model.calibration.flat[:beta]

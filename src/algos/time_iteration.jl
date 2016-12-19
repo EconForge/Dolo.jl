@@ -1,3 +1,22 @@
+
+"""
+Computes the residuals of the arbitrage equations. The general form of the arbitrage equation is
+
+    `0 = E_t [f(m, s, x, M, S, X; p)]`
+
+where `m` are current exogenous variables, `s` are current states,
+`x` are current controls, `M` are next period's exogenous variables, `S` are next period's states, `X` are next period's controls, and `p` are the model parameters. This function evaluates the right hand side of the arbitrage equation for the given inputs.
+
+# Arguments
+* `model::NumericModel`: Model object that describes the current model environment.
+* `dprocess::`: Discretized exogenous process.
+* `s::Vector{Float64}`: Current state variables.
+* `x::Array{Array{Float64,2},1}`: Current control variables.
+* `p::Vector{Float64}`: Model parameters.
+* `dr::`: Current guess for the decision rule.
+# Returns
+* `res::`: Residuals of the arbitrage equation.
+"""
 function residual(model, dprocess, s, x::Array{Array{Float64,2},1}, p, dr)
     N = size(s,1)
     res = [zeros(size(x[1])) for i=1:length(x)]
@@ -23,7 +42,11 @@ end
 
 using NLsolve
 
+"""
+Computes the residuals of the arbitrage equations.
 
+Reformats the current controls, `x`, if they are provided as a two-dimensional array.
+"""
 function residual(model, dprocess, s, x::Array{Float64,2}, p, dr)
     n_m = max(1,n_nodes(dprocess))
     xx = destack(x,n_m)
@@ -31,17 +54,36 @@ function residual(model, dprocess, s, x::Array{Float64,2}, p, dr)
     return stack(res)
 end
 
+
+"""
+#TODO
+"""
 function destack(x::Array{Float64,2},n_m::Int)
     N = div(size(x,1),n_m)
     xx = reshape(x,N,n_m,size(x,2))
     return Array{Float64,2}[xx[:,i,:] for i=1:n_m]
 end
 
+
+"""
+#TODO
+"""
 function stack(x::Array{Array{Float64,2},1})
      return cat(1,x...)
 end
 
 
+"""
+Computes a global solution for a model via backward time iteration.
+The time iteration is applied to the residuals of the arbitrage equations.
+
+# Arguments
+* `model::NumericModel`: Model object that describes the current model environment.
+* `process::`: The stochastic process associated with the exogenous variables in the model.
+* `init_dr::`: Initial guess for the decision rule.
+# Returns
+* `dr::`: Solved decision rule.
+"""
 function time_iteration(model, process, init_dr; verbose=true, maxit=100, tol=1e-8)
 
     # get grid for endogenous
@@ -114,17 +156,39 @@ function time_iteration(model, process, init_dr; verbose=true, maxit=100, tol=1e
 
 end
 
+
 # get stupid initial rule
+"""
+Computes a global solution for a model via backward time iteration.
+The time iteration is applied to the residuals of the arbitrage equations.
+
+If the initial guess for the decision rule is not explicitly provided, the initial guess is provided by `ConstantDecisionRule`.
+"""
 function time_iteration(model, process::AbstractExogenous; kwargs...)
     init_dr = ConstantDecisionRule(model.calibration[:controls])
     return time_iteration(model, process, init_dr;  kwargs...)
 end
 
+
+"""
+Computes a global solution for a model via backward time iteration.
+The time iteration is applied to the residuals of the arbitrage equations.
+
+If the stochastic process for the model is not explicitly provided, the process is taken from the default provided by the model object, `model.exogenous`
+"""
 function time_iteration(model, init_dr::AbstractDecisionRule; kwargs...)
     process = model.exogenous
     return time_iteration(model, process, init_dr; kwargs...)
 end
 
+
+"""
+Computes a global solution for a model via backward time iteration.
+The time iteration is applied to the residuals of the arbitrage equations.
+
+If the stochastic process for the model is not explicitly provided, the process is taken from the default provided by the model object, `model.exogenous`.
+Additionally, if the initial guess for the decision rule is not explicitly provided, the initial guess is provided by `ConstantDecisionRule`.
+"""
 function time_iteration(model; kwargs...)
     process = model.exogenous
     init_dr = ConstantDecisionRule(model.calibration[:controls])
