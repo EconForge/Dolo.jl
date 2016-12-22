@@ -5,12 +5,15 @@ import Dolo
 Computes a global solution for a model via backward time iteration.
 The time iteration is  applied directly to the decision rule of the model.
 
+If the initial guess for the decision rule is not explicitly provided, the initial guess is provided by `ConstantDecisionRule`.
+If the stochastic process for the model is not explicitly provided, the process is taken from the default provided by the model object, `model.exogenous`.
+
 # Arguments
 * `model::NumericModel`: Model object that describes the current model environment.
-* `process::`: The stochastic process associated with the exogenous variables in the model.
-* `init_dr::`: Initial guess for the decision rule.
+* `process`: The stochastic process associated with the exogenous variables in the model.
+* `init_dr`: Initial guess for the decision rule.
 # Returns
-* `dr::`: Solved decision rule.
+* `dr`: Solved decision rule.
 """
 function time_iteration_direct(model, process, init_dr; verbose=true, maxit=100, tol=1e-8)
 
@@ -102,36 +105,18 @@ function time_iteration_direct(model, process, init_dr; verbose=true, maxit=100,
 end
 
 
-"""
-Computes a global solution for a model via backward time iteration.
-The time iteration is applied directly to the decision rule of the model.
-
-If the initial guess for the decision rule is not explicitly provided, the initial guess is provided by `ConstantDecisionRule`.
-"""
 function time_iteration_direct(model, process::AbstractExogenous; kwargs...)
     init_dr = ConstantDecisionRule(model.calibration[:controls])
     return time_iteration_direct(model, process, init_dr; kwargs...)
 end
 
 
-"""
-Computes a global solution for a model via backward time iteration.
-The time iteration is applied directly to the decision rule of the model.
-
-If the stochastic process for the model is not explicitly provided, the process is taken from the default provided by the model object, `model.exogenous`
-"""
 function time_iteration_direct(model, init_dr::AbstractDecisionRule; kwargs...)
     process = model.exogenous
     return time_iteration_direct(model, process, init_dr; kwargs...)
 end
 
-"""
-Computes a global solution for a model via backward time iteration.
-The time iteration is applied directly to the decision rule of the model.
 
-If the stochastic process for the model is not explicitly provided, the process is taken from the default provided by the model object, `model.exogenous`.
-Additionally, if the initial guess for the decision rule is not explicitly provided, the initial guess is provided by `ConstantDecisionRule`.
-"""
 function time_iteration_direct(model; kwargs...)
     process = model.exogenous
     init_dr = ConstantDecisionRule(model.calibration[:controls])

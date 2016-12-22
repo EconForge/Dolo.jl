@@ -2,15 +2,13 @@ using Optim
 
 
 """
-#TODO: Is evaluate_policy the best name for this? Seems that we are evaluating the value function, or evaluating a current decision rule.
-
-Evaluate the value function under the given decision rule, `dr` (i.e. evaluating under the current guess for the policy function). Then, using the evaluated value function, construct a new interpolation object for the value function.
+Evaluate the value function under the given decision rule.
 
 # Arguments
 * `model::NumericModel`: Model object that describes the current model environment.
-* `dr::`: Current guess for the decision rule.
+* `dr`: Current guess for the decision rule.
 # Returns
-* `drv::`: Value function.
+* `drv`: Value function.
 """
 function evaluate_policy(model, dr; verbose=true, maxit=100, )
 
@@ -104,19 +102,19 @@ end
 
 
 """
-Evaluate a value function object `drv` at a particular combination of values for states, controls, and exogenous variable(s).
+Evaluate the right hand side of the value function at given values of states, controls, and exogenous variables.
 
 # Arguments
 * `model::NumericModel`: Model object that describes the current model environment.
 * `β::Float64`: Value of the discount factor.
 * `dprocess::`: Discretized exogenous process.
-* `drv::`: Current guess for the value function object.
+* `drv`: Current guess for the value function object.
 * `i::Int64`: Index of node for exogeous variable(s).
-* `s::Vector{Float64}`: Current state variables.
-* `x::Vector{Float64}`: Current control variables.
+* `s::ListOfPoints`: List of state variables.
+* `x0::ListOfListOfPoints`: List of control variables.
 * `p::Vector{Float64}`: Model parameters.
 # Returns
-* `E_V::`: Evaluated value function.
+* `E_V::`: Right hand side of the value function.
 """
 function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64}, x0::Vector{Float64}, p::Vector{Float64})
 
@@ -139,10 +137,10 @@ Solve for the value function and associated decision rule using value function i
 
 # Arguments
 * `model::NumericModel`: Model object that describes the current model environment.
-* `dr::`: Initial guess for the decision rule.
+* `dr`: Initial guess for the decision rule.
 # Returns
-* `dr::`: Solved decision rule object.
-* `drv::`: Solved value function object.
+* `dr`: Solved decision rule object.
+* `drv`: Solved value function object.
 """
 function solve_policy(model, dr; verbose=true, maxit=5000, )
 
