@@ -1,6 +1,6 @@
 using Optim
 
-function evaluate_policy(model, dr; verbose=true, maxit=100, )
+function evaluate_policy(model, dr, verbose=true, maxit=100, )
 
     β = model.calibration.flat[:beta]
 
@@ -49,7 +49,7 @@ function evaluate_policy(model, dr; verbose=true, maxit=100, )
 
     #Preparation for a loop
     tol = 1e-6
-    err=10
+    err = 10.0
     Err=zeros(maxit)
     it = 0
 
@@ -60,13 +60,13 @@ function evaluate_policy(model, dr; verbose=true, maxit=100, )
         # Interpolate v0 on the grid
         # Compute value function
         for i=1:size(res,1)
-            m = node(dprocess,i)  ::Vector{Float64}
+            m = node(dprocess,i)::Vector{Float64}
             for j=1:n_inodes(dprocess,i)
-                M = inodes(dprocess,i,j) ::Vector{Float64}
-                w = iweights(dprocess,i,j) ::Float64
+                M = inodes(dprocess,i, j)::Vector{Float64}
+                w = iweights(dprocess, i, j)::Float64
                  # Update the states
                  for n=1:N
-                     S[n,:] = Dolo.transition(model, m, s[n,:], x[i][n,:], M, p)
+                     S[n, :] = Dolo.transition(model, m, s[n, :], x[i][n, :], M, p)
                  end
                  # Update value function
                  for n=1:N
@@ -78,13 +78,13 @@ function evaluate_policy(model, dr; verbose=true, maxit=100, )
         v = u + β.*E_V
         err = absmax(v-v0)
         v0 = deepcopy(v)
-        E_V *= 0
+        fill!(E_V, 0)
 
         if verbose
             println("It: ", it, " ; SA: ", err, " ; nit: ", it)
         end
 
-        set_values(drv,v0)
+        set_values(drv, v0)
     end
 
     return drv
