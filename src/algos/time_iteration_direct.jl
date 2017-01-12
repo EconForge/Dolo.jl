@@ -44,7 +44,7 @@ function time_iteration_direct(model, process, init_dr; verbose=true, maxit=100,
 
     it+=1
     # dr = DecisionRule(process, grid, x0)
-    set_values(dr, x0)
+    set_values!(dr, x0)
     xx0 = stack(x0)
     # Compute expectations function E_f and states of tomorrow
     E_f = [zeros(N,1) for i=1:number_of_smooth_drs(dprocess)]

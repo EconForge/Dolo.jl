@@ -88,13 +88,14 @@ function time_iteration(model, process, init_dr; verbose::Bool=true,
     err_0 = err
 
     verbose && @printf "%-6s%-12s%-12s%-5s\n" "It" "SA" "gain" "nit"
+    verbose && println(repeat("-", 35))
     verbose && @printf "%-6i%-12.2e%-12.2e%-5i\n" 0 err NaN 0
 
     while it<maxit && err>tol
 
         it += 1
 
-        set_values(dr, x0)
+        set_values!(dr, x0)
 
         xx0 = stack(x0)
         fobj(u) = residual(model, dprocess, endo_nodes, u, p, dr)

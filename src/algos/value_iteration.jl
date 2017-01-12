@@ -84,7 +84,7 @@ function evaluate_policy(model, dr, verbose=true, maxit=100, )
             println("It: ", it, " ; SA: ", err, " ; nit: ", it)
         end
 
-        set_values(drv, v0)
+        set_values!(drv, v0)
     end
 
     return drv
@@ -226,7 +226,7 @@ function solve_policy(model, dr; verbose=true, maxit=5000, )
             end
         end
 
-        set_values(drv,v0)
+        set_values!(drv,v0)
 
     end
 
