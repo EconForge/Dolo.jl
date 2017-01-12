@@ -21,10 +21,10 @@ end
 type ConstantDecisionRule <: AbstractDecisionRule
     values::Array{Float64,1}
 end
-evaluate(dr::ConstantDecisionRule, x::Array{Float64,1}) = dr.values
-evaluate(dr::ConstantDecisionRule, x::Array{Float64,2}) = repmat(dr.values',size(x,1),1)
-evaluate(dr::ConstantDecisionRule, i::Int, x::Union{Vector,Matrix}) =  evaluate(dr, x)
-evaluate(dr::ConstantDecisionRule, i::Int, j::Int, x::Union{Vector, Matrix}) = evaluate(dr, x)
+(dr::ConstantDecisionRule)(x::Array{Float64,1}) = dr.values
+(dr::ConstantDecisionRule)(x::Array{Float64,2}) = repmat(dr.values',size(x,1),1)
+(dr::ConstantDecisionRule)(i::Int, x::Union{Vector,Matrix}) =  dr(x)
+(dr::ConstantDecisionRule)(i::Int, j::Int, x::Union{Vector, Matrix}) = dr(x)
 
 
 
@@ -63,7 +63,7 @@ function DecisionRule(mc::DiscreteMarkovProcess, grid::CartesianGrid, values::Ar
     return dr
 end
 
-function evaluate(dr::MCDecisionRule, i::Int, x::Array{Float64,2})
+function (dr::MCDecisionRule)(i::Int, x::Array{Float64,2})
     a = dr.grid.min
     b = dr.grid.max
     n = dr.grid.n
@@ -72,8 +72,8 @@ function evaluate(dr::MCDecisionRule, i::Int, x::Array{Float64,2})
     return res
 end
 
-evaluate(dr::MCDecisionRule, i::Int, x::Array{Float64,1}) =  evaluate(dr, i, x')[:]
-evaluate(dr::MCDecisionRule, i::Int, j::Int, x::Union{Vector, Matrix}) = evaluate(dr, j, x)
+(dr::MCDecisionRule)(i::Int, x::Array{Float64,1}) =  dr(i, x')[:]
+(dr::MCDecisionRule)(i::Int, j::Int, x::Union{Vector, Matrix}) = dr(j, x)
 
 
 # Decision Rule on IID Process
@@ -117,7 +117,7 @@ function DecisionRule(proc::MvNormal, grid::CartesianGrid, values::Array{Float64
     return DecisionRule(proc, grid, [values])
 end
 
-function evaluate(dr::IDecisionRule, x::Array{Float64,2})
+function (dr::IDecisionRule)(x::Array{Float64,2})
     a = dr.grid.min
     b = dr.grid.max
     n = dr.grid.n
@@ -125,10 +125,10 @@ function evaluate(dr::IDecisionRule, x::Array{Float64,2})
     res = splines.eval_UC_multi_spline(a,b,n,cc,x)'
     return res
 end
-evaluate(dr::IDecisionRule, x::Array{Float64,1}) = evaluate(dr, x')[:]
-evaluate(dr::IDecisionRule, i::Int, x::Array{Float64,2}) = evaluate(dr, x)
-evaluate(dr::IDecisionRule, i::Int, x::Array{Float64,1}) =  evaluate(dr, x)
-evaluate(dr::IDecisionRule, i::Int, j::Int, x::Union{Vector, Matrix}) = evaluate(dr, x)
+(dr::IDecisionRule)(x::Array{Float64,1}) = dr(x')[:]
+(dr::IDecisionRule)(i::Int, x::Array{Float64,2}) = dr(x)
+(dr::IDecisionRule)(i::Int, x::Array{Float64,1}) =  dr(x)
+(dr::IDecisionRule)(i::Int, j::Int, x::Union{Vector, Matrix}) = dr(x)
 
 
 
@@ -191,7 +191,7 @@ function DecisionRule(dp::DiscretizedProcess, grid::CartesianGrid, values::Array
     return dr
 end
 
-function evaluate(dr::CPDecisionRule, z::Array{Float64,2})
+function (dr::CPDecisionRule)(z::Array{Float64,2})
     a = dr.grid.min
     b = dr.grid.max
     n = dr.grid.n
@@ -200,10 +200,10 @@ function evaluate(dr::CPDecisionRule, z::Array{Float64,2})
     return res
 end
 
-evaluate(dr::CPDecisionRule, z::Vector) = evaluate(dr,z')[:]
+(dr::CPDecisionRule)(z::Vector) = dr(z')[:]
 
 
-function evaluate(dr::CPDecisionRule, i::Int64, x::Array{Float64,2})
+function (dr::CPDecisionRule)(i::Int64, x::Array{Float64,2})
     a = dr.grid.min
     b = dr.grid.max
     n = dr.grid.n
@@ -217,7 +217,7 @@ end
 
 
 
-function evaluate(dr::CPDecisionRule, i::Int64, j::Int64, x::Array{Float64,2})
+function (dr::CPDecisionRule)(i::Int64, j::Int64, x::Array{Float64,2})
     a = dr.grid.min
     b = dr.grid.max
     n = dr.grid.n
@@ -231,5 +231,5 @@ end
 
 
 
-evaluate(dr::CPDecisionRule, i::Int64, x::Vector) = evaluate(dr,i,x')[:]
-evaluate(dr::CPDecisionRule, i::Int64, j::Int64, x::Vector) = evaluate(dr,i,j,x')[:]
+(dr::CPDecisionRule)(i::Int64, x::Vector) = dr(i,x')[:]
+(dr::CPDecisionRule)(i::Int64, j::Int64, x::Vector) = dr(i,j,x')[:]

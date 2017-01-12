@@ -35,7 +35,7 @@ function evaluate_policy(model, dr; verbose=true, maxit=100, )
     S =  copy(endo_nodes)
 
     # Controls at time t
-    x= [evaluate(dr, i, endo_nodes) for i=1:number_of_smooth_drs(dprocess)]
+    x= [dr(i, endo_nodes) for i=1:number_of_smooth_drs(dprocess)]
     s = deepcopy(endo_nodes)
     for i=1:size(res,1)
         m = node(dprocess,i)  ::Vector{Float64}
@@ -70,7 +70,7 @@ function evaluate_policy(model, dr; verbose=true, maxit=100, )
                  end
                  # Update value function
                  for n=1:N
-                     E_V[i][n,1] += w*evaluate(drv,i, j, S[n,:])[1]
+                     E_V[i][n,1] += w*drv(i, j, S[n,:])[1]
                  end
             end
         end
@@ -98,7 +98,7 @@ function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64}, 
         M = inodes(dprocess,i,j) ::Vector{Float64}
         w = iweights(dprocess,i,j) ::Float64
         S = Dolo.transition(model, m, s, x0, M, p)
-        E_V += w*evaluate(drv, i, j, S)[1]
+        E_V += w*drv(i, j, S)[1]
     end
     u = Dolo.felicity(model, m, s, x0, p)[1]
     E_V = u + β.*E_V
@@ -118,7 +118,7 @@ function solve_policy(model, dr; verbose=true, maxit=5000, )
 
     # compute the value function
     absmax(x) = max([maximum(abs(x[i])) for i=1:length(x)]...)
-    p = model.calibration[:parameters] :: Vector{Float64}
+    p = model.calibration[:parameters]
 
     endo_nodes = nodes(grid)
     # Number of endogenous nodes
@@ -143,7 +143,7 @@ function solve_policy(model, dr; verbose=true, maxit=5000, )
     S =  copy(endo_nodes)
 
     # Controls at time t
-    x= [evaluate(dr, i, endo_nodes) for i=1:number_of_smooth_drs(dprocess)]
+    x = [dr(i, endo_nodes) for i=1:number_of_smooth_drs(dprocess)]
     x0 = deepcopy(x)
 
     if verbose
@@ -154,13 +154,13 @@ function solve_policy(model, dr; verbose=true, maxit=5000, )
       println("Evaluating initial policy (done)")
     end
 
-    v0 = [evaluate(drv, i, endo_nodes) for i=1:number_of_smooth_drs(dprocess)]
+    v0 = [drv(i, endo_nodes) for i=1:number_of_smooth_drs(dprocess)]
     v = deepcopy(v0)
     #Preparation for a loop
     tol = 1e-6
-    err=10
+    err = 10
     err_x = 10
-    Err=zeros(maxit)
+    Err = zeros(maxit)
     it = 0
 
     n_eval = 50
@@ -193,7 +193,7 @@ function solve_policy(model, dr; verbose=true, maxit=5000, )
                     lower[lower.<-1000000] = -1000000.0
                     initial_x = x0[i][n,:]
                     # try
-                    results = optimize(DifferentiableFunction(fobj), initial_x, lower, upper, Fminbox(), optimizer = NelderMead)
+                    @time results = optimize(DifferentiableFunction(fobj), initial_x, lower, upper, Fminbox(), optimizer = NelderMead)
                     # results = optimize(DifferentiableFunction(fobj), initial_x, NelderMead())
                     # println(results)
                     xn = Optim.minimizer(results)

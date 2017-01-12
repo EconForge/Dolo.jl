@@ -1,11 +1,9 @@
 path = Pkg.dir("Dolo")
 
-Pkg.build("QuantEcon")
 import Dolo
 
-filename = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
-# filename = joinpath(path,"examples","models","sudden_stop.yaml")
-model_mc = Dolo.yaml_import(filename)
+fn = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
+model_mc = Dolo.yaml_import(fn)
 
 drc = Dolo.ConstantDecisionRule(model_mc.calibration[:controls])
 @time dr0, drv0 = Dolo.solve_policy(model_mc, drc, verbose=true, maxit=10000 )
@@ -18,17 +16,17 @@ drc = Dolo.ConstantDecisionRule(model_mc.calibration[:controls])
 
 # compare with prerecorded values
 kvec = linspace(dr.grid.min[1],dr.grid.max[1],10)
-nvec = [Dolo.evaluate(dr,1,[k])[1] for k in kvec]
-ivec = [Dolo.evaluate(dr,1,[k])[2] for k in kvec]
+nvec = [dr(1,[k])[1] for k in kvec]
+ivec = [dr(1,[k])[2] for k in kvec]
 # compare  time_iteration_direct
-nvec_d = [Dolo.evaluate(drd,1,[k])[1] for k in kvec]
-ivec_d = [Dolo.evaluate(drd,1,[k])[2] for k in kvec]
-@assert maximum(abs(nvec_d-nvec))<1e-
+nvec_d = [drd(1,[k])[1] for k in kvec]
+ivec_d = [drd(1,[k])[2] for k in kvec]
+@assert maxabs(nvec_d-nvec)<1e-4
 
 # compare  vfi
-nvec_0 = [Dolo.evaluate(dr0,1,[k])[1] for k in kvec]
-ivec_0 = [Dolo.evaluate(dr0,1,[k])[2] for k in kvec]
-@assert maximum(abs(nvec_0-nvec))<1e-4
+nvec_0 = [dr0(1,[k])[1] for k in kvec]
+ivec_0 = [dr0(1,[k])[2] for k in kvec]
+@assert maxabs(nvec_0-nvec)<1e-4
 
 
 # let's redo when model is stable !
@@ -39,8 +37,8 @@ ivec_0 = [Dolo.evaluate(dr0,1,[k])[2] for k in kvec]
 
 
 # this one needs a lower value of beta or a better initial guess
-filename = joinpath(path,"examples","models","rbc_dtcc_iid.yaml")
-model = Dolo.yaml_import(filename)
+fn = joinpath(path,"examples","models","rbc_dtcc_iid.yaml")
+model = Dolo.yaml_import(fn)
 
 drc = Dolo.ConstantDecisionRule(model.calibration[:controls])
 @time dr0, drv0 = Dolo.solve_policy(model, drc, verbose=true, maxit=1000 )
@@ -52,22 +50,22 @@ drc = Dolo.ConstantDecisionRule(model.calibration[:controls])
 @time drv = Dolo.evaluate_policy(model, dr, verbose=true)
 
 kvec = linspace(dr.grid.min[1],dr.grid.max[1],10)
-nvec = [Dolo.evaluate(dr,1,[k])[1] for k in kvec]
-ivec = [Dolo.evaluate(dr,1,[k])[2] for k in kvec]
-nvec_d = [Dolo.evaluate(drd,1,[k])[1] for k in kvec]
-ivec_d = [Dolo.evaluate(drd,1,[k])[2] for k in kvec]
-nvec_0 = [Dolo.evaluate(dr0,1,[k])[1] for k in kvec]
-ivec_0 = [Dolo.evaluate(dr0,1,[k])[2] for k in kvec]
+nvec = [dr(1,[k])[1] for k in kvec]
+ivec = [dr(1,[k])[2] for k in kvec]
+nvec_d = [drd(1,[k])[1] for k in kvec]
+ivec_d = [drd(1,[k])[2] for k in kvec]
+nvec_0 = [dr0(1,[k])[1] for k in kvec]
+ivec_0 = [dr0(1,[k])[2] for k in kvec]
 
-@assert maximum(abs(nvec_d-nvec))<1e-5
-@assert maximum(abs(nvec_0-nvec))<1e-5 # not satisfied right now (see tol. of optimizer)
+@assert maxabs(nvec_d-nvec)<1e-5
+@assert maxabs(nvec_0-nvec)<1e-5 # not satisfied right now (see tol. of optimizer)
 
 
 
 
 # does not work yet
-filename = joinpath(path,"examples","models","rbc_dtcc_ar1.yaml")
-model = Dolo.yaml_import(filename)
+fn = joinpath(path,"examples","models","rbc_dtcc_ar1.yaml")
+model = Dolo.yaml_import(fn)
 
 Dolo.discretize(model.exogenous)
 

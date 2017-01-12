@@ -14,9 +14,9 @@ vv = [values for i=1:size(mc.values,1)]
 dr = DecisionRule(mc, grid, vv)
 set_values(dr,vv) # filter coefficients
 
-evaluate(dr, 1, [0.1 0.5])
+dr(1, [0.1 0.5])
 s0 = [0.2, 0.5]'
-res =  evaluate(dr, 1, s0)
+res =  dr(1, s0)
 
 
 grid = CartesianGrid([0.0,1.0], [0.1, 0.4], [5,4])
@@ -27,5 +27,5 @@ vv = [values]
 dr = DecisionRule(mvn, grid, vv)
 set_values(dr, values) # filter coefficients
 s0 = [0.2, 0.5]'
-res =  evaluate(dr, 1, s0)
-evaluate(dr, 1, [0.1 0.5])
+res =  dr(1, s0)
+dr(1, [0.1 0.5])
