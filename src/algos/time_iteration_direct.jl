@@ -19,7 +19,7 @@ function time_iteration_direct(model, process, init_dr; verbose=true, maxit=100,
     return cat(1,x...)
   end
   # initial guess for controls
-  x0 = [evaluate(init_dr, i, endo_nodes) for i=1:nsd]
+  x0 = [init_dr(i, endo_nodes) for i=1:nsd]
   # set the bound for the controls to check during the iterations not to violate them
   x_lb = Array{Float64,2}[cat(1,[Dolo.controls_lb(model,node(dprocess,i) ,endo_nodes[n,:],p)' for n=1:N]...) for i=1:nsd]
   x_ub = Array{Float64,2}[cat(1,[Dolo.controls_ub(model,node(dprocess,i),endo_nodes[n,:],p)' for n=1:N]...) for i=1:nsd]
@@ -60,7 +60,7 @@ function time_iteration_direct(model, process, init_dr; verbose=true, maxit=100,
                 S[n,:] = Dolo.transition(model, m, s[n,:], x0[i][n,:], M, p)
             end
             # interpolate controles conditional states of tomorrow
-            X = evaluate(dr, i, j, S)
+            X = dr(i, j, S)
             # Compute expectations as a weited average of the exo states w_j
             for n=1:N
                 E_f[i][n,:] += w*Dolo.expectation(model, M, S[n,:], X[n,:], p)

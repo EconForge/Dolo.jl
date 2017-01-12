@@ -43,5 +43,5 @@ using Gadfly
 kvec = linspace(8,12,100)
 
 drv_answer.grid
-yvec = [evaluate(drv_answer,1,[k])[1] for k in kvec]
+yvec = [drv_answer(1,[k])[1] for k in kvec]
 plot(x=kvec, y=yvec, Geom.line)
