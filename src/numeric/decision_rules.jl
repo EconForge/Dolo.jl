@@ -1,7 +1,7 @@
 import splines
 
 abstract AbstractDecisionRule
-
+abstract AbtsractCubicSplineDR <: AbstractDecisionRule
 
 # temporary
 
@@ -11,7 +11,7 @@ function filter_mcoeffs(a::Array{Float64,1},b::Array{Float64,1},n::Array{Int64,1
     coeffs = zeros(n_x, (n+2)...)
     ii = [Colon() for i=1:(ndims(vals)-1)]
     for i_x in 1:n_x
-        tmp = splines.filter_coeffs(a,b,n,vals[ii...,i_x])
+        tmp = splines.filter_coeffs(a, b, n, vals[ii..., i_x])
         coeffs[i_x, ii...] = tmp
     end
     return coeffs
@@ -21,16 +21,29 @@ end
 type ConstantDecisionRule <: AbstractDecisionRule
     values::Array{Float64,1}
 end
-evaluate(dr::ConstantDecisionRule, x::Array{Float64,1}) = dr.values
-evaluate(dr::ConstantDecisionRule, x::Array{Float64,2}) = repmat(dr.values',size(x,1),1)
-evaluate(dr::ConstantDecisionRule, i::Int, x::Union{Vector,Matrix}) =  evaluate(dr, x)
-evaluate(dr::ConstantDecisionRule, i::Int, j::Int, x::Union{Vector, Matrix}) = evaluate(dr, x)
+(dr::ConstantDecisionRule)(x::Array{Float64,1}) = dr.values
+(dr::ConstantDecisionRule)(x::Array{Float64,2}) = repmat(dr.values', size(x, 1), 1)
+(dr::ConstantDecisionRule)(i::Int, x::Union{Vector,Matrix}) =  dr(x)
+(dr::ConstantDecisionRule)(i::Int, j::Int, x::Union{Vector, Matrix}) = dr(x)
 
 
+## Cubic spline decision rules
+
+function set_values!(dr::AbtsractCubicSplineDR, values::Array{Array{Float64,2},1})
+    grid = dr.grid
+    a = grid.min
+    b = grid.max
+    orders = grid.n
+    dr.coefficients = [filter_mcoeffs(a, b, orders, v) for v in values]
+end
+
+function set_values!(dr::AbtsractCubicSplineDR, values::Array{Float64,2})
+    set_values!(dr, [values])
+end
 
 # Decision Rule on Markov Process
 
-type MCDecisionRule <: AbstractDecisionRule
+type MCDecisionRule <: AbtsractCubicSplineDR
     process::DiscreteProcess
     grid::CartesianGrid
     n_x::Int # number of values
@@ -41,75 +54,52 @@ function DecisionRule(mc::DiscreteMarkovProcess, grid::CartesianGrid, n_x::Int)
     a = grid.min
     b = grid.max
     orders = grid.n
-    n_ms = size(mc.values,1)
-    coeffs = [zeros(n_x,(orders+2)...) for v in 1:n_ms]
+    n_ms = size(mc.values, 1)
+    coeffs = [zeros(n_x, (orders+2)...) for v in 1:n_ms]
     return MCDecisionRule(mc, grid, n_x,  coeffs)
-end
-
-function set_values(dr::MCDecisionRule, values::Array{Array{Float64,2},1})
-    grid = dr.grid
-    proc = dr.process
-    a = grid.min
-    b = grid.max
-    orders = grid.n
-    coeffs = [filter_mcoeffs(a, b, orders, v) for v in values]
-    dr.coefficients = coeffs
 end
 
 function DecisionRule(mc::DiscreteMarkovProcess, grid::CartesianGrid, values::Array{Array{Float64,2}})
     n_x = size(values[1], 2)
     dr = DecisionRule(mc, grid, n_x)
-    set_values(dr, values)
+    set_values!(dr, values)
     return dr
 end
 
-function evaluate(dr::MCDecisionRule, i::Int, x::Array{Float64,2})
+function (dr::MCDecisionRule)(i::Int, x::Array{Float64,2})
     a = dr.grid.min
     b = dr.grid.max
     n = dr.grid.n
     cc = dr.coefficients[i]
-    res = splines.eval_UC_multi_spline(a,b,n,cc,x)'
+    res = splines.eval_UC_multi_spline(a, b, n, cc, x)'
     return res
 end
 
-evaluate(dr::MCDecisionRule, i::Int, x::Array{Float64,1}) =  evaluate(dr, i, x')[:]
-evaluate(dr::MCDecisionRule, i::Int, j::Int, x::Union{Vector, Matrix}) = evaluate(dr, j, x)
+(dr::MCDecisionRule)(i::Int, x::Array{Float64,1}) =  dr(i, x')[:]
+(dr::MCDecisionRule)(i::Int, j::Int, x::Union{Vector, Matrix}) = dr(j, x)
 
 
 # Decision Rule on IID Process
 
-type IDecisionRule <: AbstractDecisionRule
+type IDecisionRule <: AbtsractCubicSplineDR
     process::IIDExogenous
     grid::CartesianGrid
     n_x::Int # number of values
-    coefficients::Array
+    coefficients::Vector{Array{Float64}}
 end
 
 function DecisionRule(proc::MvNormal, grid::CartesianGrid, n_x::Int)
     a = grid.min
     b = grid.max
     orders = grid.n
-
-    coeffs = [zeros(n_x,(orders+2)...)]
+    coeffs = [zeros(n_x, (orders+2)...)]
     return IDecisionRule(proc, grid, n_x,  coeffs)
 end
 
-function set_values(dr::IDecisionRule, values::Array{Array{Float64,2},1})
-    grid = dr.grid
-    proc = dr.process
-    a = grid.min
-    b = grid.max
-    orders = grid.n
-    coeffs = [filter_mcoeffs(a, b, orders, v) for v in values]
-    dr.coefficients = coeffs
-end
-
-set_values(dr::IDecisionRule, values::Array{Float64,2}) = set_values(dr, [values])
-
 function DecisionRule(proc::MvNormal, grid::CartesianGrid, values::Array{Array{Float64,2},1})
-    n_x = size(values[1],2)
+    n_x = size(values[1], 2)
     dr = DecisionRule(proc, grid, n_x)
-    set_values(dr, values)
+    set_values!(dr, values)
     return dr
 end
 
@@ -117,21 +107,18 @@ function DecisionRule(proc::MvNormal, grid::CartesianGrid, values::Array{Float64
     return DecisionRule(proc, grid, [values])
 end
 
-function evaluate(dr::IDecisionRule, x::Array{Float64,2})
+function (dr::IDecisionRule)(x::Array{Float64,2})
     a = dr.grid.min
     b = dr.grid.max
     n = dr.grid.n
     cc = dr.coefficients[1]
-    res = splines.eval_UC_multi_spline(a,b,n,cc,x)'
+    res = splines.eval_UC_multi_spline(a, b, n, cc, x)'
     return res
 end
-evaluate(dr::IDecisionRule, x::Array{Float64,1}) = evaluate(dr, x')[:]
-evaluate(dr::IDecisionRule, i::Int, x::Array{Float64,2}) = evaluate(dr, x)
-evaluate(dr::IDecisionRule, i::Int, x::Array{Float64,1}) =  evaluate(dr, x)
-evaluate(dr::IDecisionRule, i::Int, j::Int, x::Union{Vector, Matrix}) = evaluate(dr, x)
 
-
-
+(dr::IDecisionRule)(x::Array{Float64,1}) = dr(x')[:]
+(dr::IDecisionRule)(i::Int, x::Union{Vector, Matrix}) = dr(x)
+(dr::IDecisionRule)(i::Int, j::Int, x::Union{Vector, Matrix}) = dr(x)
 
 
 ### drs on VAR1
@@ -139,7 +126,7 @@ evaluate(dr::IDecisionRule, i::Int, j::Int, x::Union{Vector, Matrix}) = evaluate
 # Decision Rule on ContinuousProcess Process
 
 
-type CPDecisionRule <: AbstractDecisionRule
+type CPDecisionRule <: AbtsractCubicSplineDR
     process::DiscretizedProcess
     grid_exo::CartesianGrid
     grid_endo::CartesianGrid
@@ -151,9 +138,9 @@ end
 function DecisionRule(dp::DiscretizedProcess, grid_endo::CartesianGrid, n_x::Int)
     # this assumes the discretized process
     # was discretized on a cartesian grid
-    a_exo = minimum(dp.nodes,1)[:]
-    b_exo = maximum(dp.nodes,1)[:]
-    o_exo = Int64[length(unique(dp.nodes[:,i])) for i=1:size(dp.nodes,2)]
+    a_exo = minimum(dp.nodes, 1)[:]
+    b_exo = maximum(dp.nodes, 1)[:]
+    o_exo = Int64[length(unique(dp.nodes[:, i])) for i=1:size(dp.nodes, 2)]
     grid_exo = CartesianGrid(a_exo, b_exo, o_exo)
     grid = CartesianGrid(
             cat(1, grid_exo.min, grid_endo.min),
@@ -163,73 +150,57 @@ function DecisionRule(dp::DiscretizedProcess, grid_endo::CartesianGrid, n_x::Int
     a = grid.min
     b = grid.max
     orders = grid.n
-    # n_ms = size(dp.values,1)
-    coeffs = [zeros(n_x,(orders+2)...)]
+    # n_ms = size(dp.values, 1)
+    coeffs = [zeros(n_x, (orders+2)...)]
     return CPDecisionRule(dp, grid_exo, grid_endo, grid, n_x, coeffs)
-end
-
-
-
-function set_values(dr::CPDecisionRule, values::Array{Array{Float64,2},1})
-    grid = dr.grid
-    proc = dr.process
-    a = grid.min
-    b = grid.max
-    orders = grid.n
-    coeffs = [filter_mcoeffs(a, b, orders, v) for v in values]
-    dr.coefficients = coeffs
-end
-
-function set_values(dr::CPDecisionRule, values::Array{Float64,2})
-    set_values(dr, [values])
 end
 
 function DecisionRule(dp::DiscretizedProcess, grid::CartesianGrid, values::Array{Array{Float64,2}})
     n_x = size(values[1], 2)
     dr = DecisionRule(dp, grid, n_x)
-    set_values(dr, values)
+    set_values!(dr, values)
     return dr
 end
 
-function evaluate(dr::CPDecisionRule, z::Array{Float64,2})
+function (dr::CPDecisionRule)(z::Array{Float64,2})
     a = dr.grid.min
     b = dr.grid.max
     n = dr.grid.n
     cc = dr.coefficients[1]
-    res = splines.eval_UC_multi_spline(a,b,n,cc,z)'
+    res = splines.eval_UC_multi_spline(a, b, n, cc, z)'
     return res
 end
 
-evaluate(dr::CPDecisionRule, z::Vector) = evaluate(dr,z')[:]
+(dr::CPDecisionRule)(z::Vector) = dr(z')[:]
 
 
-function evaluate(dr::CPDecisionRule, i::Int64, x::Array{Float64,2})
+function (dr::CPDecisionRule)(i::Int64, x::Array{Float64,2})
     a = dr.grid.min
     b = dr.grid.max
     n = dr.grid.n
     cc = dr.coefficients[1]
-    N = size(x,1)
-    e = dr.process.nodes[i,:]
-    z = cat(2, repmat(e',N,1), x)
-    res = splines.eval_UC_multi_spline(a,b,n,cc,z)'
-    return res
-end
-
-
-
-function evaluate(dr::CPDecisionRule, i::Int64, j::Int64, x::Array{Float64,2})
-    a = dr.grid.min
-    b = dr.grid.max
-    n = dr.grid.n
-    cc = dr.coefficients[1]
-    N = size(x,1)
-    e = dr.process.integration_nodes[i][j,:]
-    z = cat(2, repmat(e',N,1), x)
-    res = splines.eval_UC_multi_spline(a,b,n,cc,z)'
+    N = size(x, 1)
+    e = dr.process.nodes[i, :]
+    z = cat(2, repmat(e', N, 1), x)
+    res = splines.eval_UC_multi_spline(a, b, n, cc, z)'
     return res
 end
 
 
 
-evaluate(dr::CPDecisionRule, i::Int64, x::Vector) = evaluate(dr,i,x')[:]
-evaluate(dr::CPDecisionRule, i::Int64, j::Int64, x::Vector) = evaluate(dr,i,j,x')[:]
+function (dr::CPDecisionRule)(i::Int64, j::Int64, x::Array{Float64,2})
+    a = dr.grid.min
+    b = dr.grid.max
+    n = dr.grid.n
+    cc = dr.coefficients[1]
+    N = size(x, 1)
+    e = dr.process.integration_nodes[i][j, :]
+    z = cat(2, repmat(e', N, 1), x)
+    res = splines.eval_UC_multi_spline(a, b, n, cc, z)'
+    return res
+end
+
+
+
+(dr::CPDecisionRule)(i::Int64, x::Vector) = dr(i, x')[:]
+(dr::CPDecisionRule)(i::Int64, j::Int64, x::Vector) = dr(i, j,x')[:]

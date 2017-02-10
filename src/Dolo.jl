@@ -7,6 +7,7 @@ using DataStructures: OrderedDict
 using YAML: load_file, load
 using Requests: get
 using NLsolve
+using Optim
 using QuantEcon
 using Distributions: MvNormal, Distribution
 using Dolang
