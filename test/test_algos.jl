@@ -3,7 +3,8 @@ path = Pkg.dir("Dolo")
 Pkg.build("QuantEcon")
 import Dolo
 
-filename = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
+
+filename = joinpath(path,"examples","models","rbc_dtcc_ar1.yaml")
 # filename = joinpath(path,"examples","models","sudden_stop.yaml")
 model_mc = Dolo.yaml_import(filename)
 
