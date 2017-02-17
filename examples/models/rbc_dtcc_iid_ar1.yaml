@@ -5,7 +5,7 @@ model_type: dtcc
 symbols:
 
    exogenous: [e_z]
-   states: [k, z]
+   states: [z, k]
    controls: [n, i]
    expectations: [m]
    values: [V]
@@ -26,8 +26,8 @@ equations:
 
 
     transition:
-        - k = (1-delta)*k(-1) + i(-1)
         - z = rho*z(-1) + e_z
+        - k = (1-delta)*k(-1) + i(-1)
 
     value:
         - V = c^(1-sigma)/(1-sigma) - chi*n^(1+eta)/(1+eta) + beta*V(1)
@@ -50,7 +50,7 @@ calibration:
     delta : 0.025
     alpha : 0.33
     rho : 0.8
-    sigma: 5
+    sigma: 0.1
     eta: 1
     sig_z: 0.016
     zbar: 0
@@ -78,9 +78,9 @@ options:
         sigma: sig_z**2
 
     grid: !Cartesian
-        a: [k*0.5, 1-2*sig_z]
-        b: [k*1.5, 1+2*sig_z]
-        orders: [50, 10]
+        a: [-sig_z, k*0.5]
+        b: [+sig_z, k*1.5]
+        orders: [10, 50]
 
     random:
         any: 0.1
