@@ -83,8 +83,7 @@ for t in 2:horizon
 
     if t < horizon
       ss = copy(view(s_simul, :, :, t+1))
-
-      ss = Dolo.transition!(model, s[1:ns],  [epsilons[1]], s[1:ns], x[1:nx], [epsilons[t+1]], params)
+      ss = Dolo.transition!(model, s[1:ns],  [epsilons[t]], s[1:ns], x[1:nx], [epsilons[t+1]], params)
 
       s_simul[:, :, t+1] = ss
       # verbose && @printf "%-8s%-10s%-10s%-10s%-5s\n"  t round(ss[1],2) round(ss[2],2) round(xx[1],2) round(xx[2],2)
