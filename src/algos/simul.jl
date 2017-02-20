@@ -49,10 +49,6 @@ for i in 1:n_exp
 end
 # NOTE: this will be empty if ny is zero. That's ok. Our call to `cat`  #       below will work either way  y_simul = Array(Float64, n_exp, ny, horizon)
 
-    # extract functions that we'll use
-#f = m.functions.arbitrage
-g = Dolo.transition
-#a = m.functions.auxiliary
 
 srand(seed)
 
@@ -63,15 +59,12 @@ epsilons = rand(d,horizon)
 #ϵ_dist = Dolo.MvNormal(sigma)
 #epsilons = rand(ϵ_dist, n_exp)'
 
-
-verbose=true
-
-
-verbose && @printf "%-8s%-10s%-10s%-10s%-5s\n" "t" model.symbols[:states][1] model.symbols[:states][2] model.symbols[:controls][1] model.symbols[:controls][2]
-verbose && println(repeat("-", 35))
+#verbose=true
+#verbose && @printf "%-8s%-10s%-10s%-10s%-5s\n" "t" model.symbols[:states][1] model.symbols[:states][2] model.symbols[:controls][1] model.symbols[:controls][2]
+#verbose && println(repeat("-", 35))
 
 
-for t in 1:horizon
+for t in 2:horizon
     #if irf
     #  if !isempty(forcing_shocks) && t < size(forcing_shocks, 2)
     #      epsilons = forcing_shocks[t, :]'
@@ -83,21 +76,18 @@ for t in 1:horizon
     #end
 
     #s = view(s_simul, :, :, t)
-    s = s_simul[:, :, t]
-    x = x_simul[:, :, t]
+    s = copy(view(s_simul, :, :, t))
+    x = copy(view(x_simul, :, :, t))
     x = dr(s)
-
+    x_simul[:, :, t] = x
 
     if t < horizon
-      ss = view(s_simul, :, :, t+1)
-      ss = Dolo.transition(model, zeros(size(sigma, 1), 1), s, x, [epsilons[t]], params)
-      xx = x_simul[:, :, t+1]
-      xx = dr(ss)
+      ss = copy(view(s_simul, :, :, t+1))
 
-      # I though it should be automatic, buts_simul doesn't take the values of ss
+      ss = Dolo.transition!(model, s[1:ns],  [epsilons[1]], s[1:ns], x[1:nx], [epsilons[t+1]], params)
+
       s_simul[:, :, t+1] = ss
-      x_simul[:, :, t+1] = xx
-      verbose && @printf "%-8s%-10s%-10s%-10s%-5s\n"  t round(ss[1],2) round(ss[2],2) round(xx[1],2) round(xx[2],2)
+      # verbose && @printf "%-8s%-10s%-10s%-10s%-5s\n"  t round(ss[1],2) round(ss[2],2) round(xx[1],2) round(xx[2],2)
     end
 
 
