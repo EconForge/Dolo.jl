@@ -2,11 +2,14 @@ path = Pkg.dir("Dolo")
 
 import Dolo
 
+
 fn = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
 model_mc = Dolo.yaml_import(fn)
 
+typeof(model_mc.exogenous)
+
 drc = Dolo.ConstantDecisionRule(model_mc.calibration[:controls])
-@time dr0, drv0 = Dolo.solve_policy(model_mc, drc, verbose=true, maxit=10000 )
+@time dr0, drv0 = Dolo.solve_policy(model_mc, drc) #, verbose=true, maxit=10000 )
 
 
 @time dr = Dolo.time_iteration(model_mc, verbose=true, maxit=10000)
@@ -41,7 +44,7 @@ fn = joinpath(path,"examples","models","rbc_dtcc_iid.yaml")
 model = Dolo.yaml_import(fn)
 
 drc = Dolo.ConstantDecisionRule(model.calibration[:controls])
-@time dr0, drv0 = Dolo.solve_policy(model, drc, verbose=true, maxit=1000 )
+@time dr0, drv0 = Dolo.solve_policy(model, drc) #;, verbose=true, maxit=1000 )
 
 
 @time dr = Dolo.time_iteration(model, maxit=1000, verbose=true)
@@ -62,12 +65,19 @@ ivec_0 = [dr0(1,[k])[2] for k in kvec]
 
 
 
-
+import Dolo
 # does not work yet
-fn = joinpath(path,"examples","models","rbc_dtcc_ar1.yaml")
+fn = Pkg.dir("Dolo","examples","models","rbc_dtcc_ar1.yaml")
 model = Dolo.yaml_import(fn)
 
-Dolo.discretize(model.exogenous)
+model.exogenous
+
+dpe = Dolo.discretize(model.exogenous)
+Dolo.nodes(dpe.grid)
+
+
+
+
 
 @time dr = Dolo.time_iteration(model)
 @time drv = Dolo.evaluate_policy(model, dr, verbose=true)

@@ -62,6 +62,7 @@ function time_iteration(model, process, init_dr; verbose::Bool=true,
 
     p = model.calibration[:parameters]
 
+    xxxx0 = init_dr(1,endo_nodes)
     x0 = [init_dr(i, endo_nodes) for i=1:nsd]
 
     n_x = length(model.calibration[:controls])
@@ -79,7 +80,7 @@ function time_iteration(model, process, init_dr; verbose::Bool=true,
     end
 
     # create decision rule (which interpolates x0)
-    dr = DecisionRule(process, grid, x0)
+    dr = DecisionRule(dprocess, grid, x0)
 
     # loop option
     init_res = residual(model, dprocess, endo_nodes, x0, p, dr)

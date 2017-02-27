@@ -1,5 +1,27 @@
-include("tmp_module.jl")
-#
+import Dolo
+import Distributions
+
+
+# test IID-Normal
+mu = [0.0, 0.0]
+Sigma = [1.0 0.0; 0.0 2.0]
+d = Dolo.MvNormal(mu, Sigma)
+sim = Dolo.simulate(d, 5, 200)
+dp = Dolo.discretize(d)
+
+
+# test VAR
+var = Dolo.VAR1([0.0,0.0],[0.99 0.0; 0.0 0.08],eye(2)*0.01)
+sim = Dolo.simulate(var, 5, 200)
+dp = Dolo.discretize(var)
+
+
+
+
+
+
+
+
 import temp
 
 

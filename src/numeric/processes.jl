@@ -1,5 +1,7 @@
 import QuantEcon
 const QE = QuantEcon
+import Distributions:rand
+import Distributions
 
 abstract AbstractExogenous
 
@@ -8,24 +10,59 @@ abstract DiscreteProcess <: AbstractProcess
 abstract ContinuousProcess <: AbstractProcess
 abstract IIDExogenous <: AbstractProcess
 
-abstract AbstractDiscretizedProcess <: DiscreteProcess
+abstract AbstractDiscretizedProcess # <: DiscreteProcess
 
+###
+### Discretized process
+###
 
-# discretized process
-
+# date-t grid has a known structure
 type DiscretizedProcess <: AbstractDiscretizedProcess
-    nodes::Matrix{Float64}
-    integration_nodes::Array{Matrix{Float64}}
-    integration_weights::Array{Vector{Float64}}
+    grid::Grid
+    integration_nodes::Matrix{Float64}
+    integration_weights::Vector{Float64}
 end
 
-n_nodes(dp::DiscretizedProcess) = size(dp.nodes, 1)
-n_inodes(dp::DiscretizedProcess, i::Int) = size(dp.integration_nodes[i], 1)
-inodes(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_nodes[i][j, :]
-iweights(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_weights[i][j]
-node(dp::DiscretizedProcess, i) = dp.nodes[i, :]
+n_nodes(dp::DiscretizedProcess) = n_nodes(dp.grid)
+node(dp::DiscretizedProcess, i) = node(dp.grid,i)
+n_inodes(dp::DiscretizedProcess, i::Int) = size(dp.integration_nodes, 1)
+inode(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_nodes[j, :]
+iweight(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_weights[j]
+inodes(dp::DiscretizedProcess, i::Int, j::Int) = inode(dp,i,j)
+iweights(dp::DiscretizedProcess, i::Int, j::Int) = iweight(dp,i,j)
 
+# date-t grid is unstructured
+type DiscreteMarkovProcess <: AbstractDiscretizedProcess
+    transitions::Matrix{Float64}
+    values::Matrix{Float64}
+end
 
+n_nodes(dp::DiscreteMarkovProcess) = size(dp.values, 1)
+n_inodes(dp::DiscreteMarkovProcess, i::Int) = size(dp.values, 1)
+inodes(dp::DiscreteMarkovProcess, i::Int, j::Int) = dp.values[j, :]
+iweights(dp::DiscreteMarkovProcess, i::Int, j::Int) = dp.transitions[i,j]
+node(dp::DiscreteMarkovProcess, i) = dp.values[i, :]
+
+# function discretize(dmp::DiscreteMarkovProcess)
+#     nodes = dmp.values
+#     n_nodes = size(nodes, 1)
+#     integration_nodes = [nodes for i=1:n_nodes]
+#     integration_weights = [dmp.transitions[i, :] for i=1:n_nodes]
+#     return DiscretizedProcess(nodes, integration_nodes, integration_weights)
+# end
+# type DiscreteMarkovProcess <: AbstractDiscretizedProcess
+#     nodes::Matrix{Float64}
+#     integration_nodes::Array{Matrix{Float64}}
+#     integration_weights::Array{Vector{Float64}}
+# end
+#
+# n_nodes(dp::DiscretizedProcess) = size(dp.nodes, 1)
+# n_inodes(dp::DiscretizedProcess, i::Int) = size(dp.integration_nodes[i], 1)
+# inodes(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_nodes[i][j, :]
+# iweights(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_weights[i][j]
+# node(dp::DiscretizedProcess, i) = dp.nodes[i, :]
+
+# date-t grid is empty
 type DiscretizedIIDProcess <: AbstractDiscretizedProcess
     # nodes::Matrix{Float64}
     integration_nodes::Matrix{Float64}
@@ -37,6 +74,9 @@ n_inodes(dp::DiscretizedIIDProcess, i::Int) = size(dp.integration_nodes, 1)
 inodes(dp::DiscretizedIIDProcess, i::Int, j::Int) = dp.integration_nodes[j, :]
 iweights(dp::DiscretizedIIDProcess, i::Int, j::Int) = dp.integration_weights[j]
 node(dip::DiscretizedIIDProcess, i) = zeros(n_inodes(dip, 1))
+
+
+
 
 # Normal law
 
@@ -55,21 +95,31 @@ function discretize(mvn::MvNormal)
     DiscretizedIIDProcess(x, w)
 end
 
-
-# discrete markov processes
-
-type DiscreteMarkovProcess <: DiscreteProcess
-    transitions::Matrix{Float64}
-    values::Matrix{Float64}
+function rand(mvn::MvNormal, args...)
+    dist = Distributions.MvNormal(mvn.mu, mvn.Sigma)
+    return rand(dist, args...)
 end
 
-function discretize(dmp::DiscreteMarkovProcess)
-    nodes = dmp.values
-    n_nodes = size(nodes, 1)
-    integration_nodes = [nodes for i=1:n_nodes]
-    integration_weights = [dmp.transitions[i, :] for i=1:n_nodes]
-    return DiscretizedProcess(nodes, integration_nodes, integration_weights)
+function simulate(mvn::MvNormal, n_exp::Integer, horizon::Integer)
+    dist = Distributions.MvNormal(mvn.mu, mvn.Sigma)
+    d = length(mvn.mu)
+    out = zeros(d, n_exp, horizon)
+    for t=1:horizon
+        out[:,:,t] = rand(dist,n_exp)
+    end
+    return out
 end
+
+
+discretize(dmp::DiscreteMarkovProcess) = dmp
+
+# function discretize(dmp::DiscreteMarkovProcess)
+#     nodes = dmp.values
+#     n_nodes = size(nodes, 1)
+#     integration_nodes = [nodes for i=1:n_nodes]
+#     integration_weights = [dmp.transitions[i, :] for i=1:n_nodes]
+#     return DiscretizedProcess(nodes, integration_nodes, integration_weights)
+# end
 
 #type DiscretizedContinousProcess <: AbstractDiscretizedProcess
 #    nodes::Array{Float64,2}
@@ -187,28 +237,29 @@ function discretize(VAR_info::VAR1, n_states::Array{Int64,1}, n_integration::Arr
         integration_weights =[integration_weights]
       end
 #  return nodes, integration_nodes, integration_weights
-    return DiscretizedProcess(nodes, integration_nodes, integration_weights)
+    grid = CartesianGrid(-a_bar, a_bar, n_states)
+    return DiscretizedProcess(grid, integration_nodes[1], integration_weights[1])
 end
 
 
 
-function simulate_var(VAR_info::VAR1, T::Int64, N::Int64)
+function simulate(var::VAR1, N::Int64, T::Int64)
 
   """
   This function takes:
     - VAR_info -  an object of the type "VAR1.myvar"
     which contains 3 arrays: mean and autocorrelation matrices of the VAR(1) process
       and covariance matrix of the innovations;
-    - T - number of periods to simulate;
     - N - number of simulations.
+    - T - number of periods to simulate;
 
   The function returns:
-    - XN - simulated data, ordered as [N, T, n], where n is the number of variables;
-    - E - simulated innovations, ordered as [N, T, n], where n is the number of variables;
+    - XN - simulated data, ordered as [n, N, T], where n is the number of variables;
+    #- E - simulated innovations, ordered as [N, T, n], where n is the number of variables;
   """
-  n = size(VAR_info.M, 1);
-  srand(123) # Setting the seed
-  d = MvNormal(VAR_info.Sigma);
+  n = size(var.M, 1);
+  # srand(123) # Setting the seed
+  d = MvNormal(var.Sigma);
   XN=zeros(N, T, n);
   E=zeros(N, T, n);
   #Inicial conditions
@@ -216,10 +267,10 @@ function simulate_var(VAR_info::VAR1, T::Int64, N::Int64)
   for jj = 1:1:N
         E[jj, :, :] = rand(d, T)';
         for ii =1:1:T-1
-        XN[jj, ii+1, :]=VAR_info.M+VAR_info.R*(XN[jj, ii, :]-VAR_info.M)+E[jj, ii, :];
+            XN[jj, ii+1, :]=var.M+var.R*(XN[jj, ii, :]-var.M)+E[jj, ii, :];
         end
   end
-  return XN, E
+  return permutedims(XN,[3,1,2])  #, E
 end
 
 
