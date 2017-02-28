@@ -42,7 +42,6 @@ abstract AbstractNumericModel{ID} <: AbstractModel{ID}
 typealias ASM AbstractSymbolicModel
 typealias ANM AbstractNumericModel
 
-abstract AbstractDecisionRule
 
 id{ID}(::AbstractModel{ID}) = ID
 

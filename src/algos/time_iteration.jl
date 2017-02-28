@@ -6,8 +6,8 @@ function residual(model, dprocess, s, x::Array{Array{Float64,2},1}, p, dr)
     for i=1:size(res, 1)
         m = node(dprocess, i)
         for j=1:n_inodes(dprocess, i)
-            M = inodes(dprocess, i, j)
-            w = iweights(dprocess, i, j)
+            M = inode(dprocess, i, j)
+            w = iweight(dprocess, i, j)
             # Update the states
             for n=1:N
                 S[n, :] = Dolo.transition(model, m, s[n, :], x[i][n, :], M, p)
@@ -80,7 +80,7 @@ function time_iteration(model, process, init_dr; verbose::Bool=true,
     end
 
     # create decision rule (which interpolates x0)
-    dr = DecisionRule(dprocess, grid, x0)
+    dr = CachedDecisionRule(dprocess, grid, x0)
 
     # loop option
     init_res = residual(model, dprocess, endo_nodes, x0, p, dr)

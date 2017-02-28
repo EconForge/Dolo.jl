@@ -28,8 +28,6 @@ node(dp::DiscretizedProcess, i) = node(dp.grid,i)
 n_inodes(dp::DiscretizedProcess, i::Int) = size(dp.integration_nodes, 1)
 inode(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_nodes[j, :]
 iweight(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_weights[j]
-inodes(dp::DiscretizedProcess, i::Int, j::Int) = inode(dp,i,j)
-iweights(dp::DiscretizedProcess, i::Int, j::Int) = iweight(dp,i,j)
 
 # date-t grid is unstructured
 type DiscreteMarkovProcess <: AbstractDiscretizedProcess
@@ -39,8 +37,8 @@ end
 
 n_nodes(dp::DiscreteMarkovProcess) = size(dp.values, 1)
 n_inodes(dp::DiscreteMarkovProcess, i::Int) = size(dp.values, 1)
-inodes(dp::DiscreteMarkovProcess, i::Int, j::Int) = dp.values[j, :]
-iweights(dp::DiscreteMarkovProcess, i::Int, j::Int) = dp.transitions[i,j]
+inode(dp::DiscreteMarkovProcess, i::Int, j::Int) = dp.values[j, :]
+iweight(dp::DiscreteMarkovProcess, i::Int, j::Int) = dp.transitions[i,j]
 node(dp::DiscreteMarkovProcess, i) = dp.values[i, :]
 
 # function discretize(dmp::DiscreteMarkovProcess)
@@ -71,8 +69,8 @@ end
 
 n_nodes(dp::DiscretizedIIDProcess) = 0
 n_inodes(dp::DiscretizedIIDProcess, i::Int) = size(dp.integration_nodes, 1)
-inodes(dp::DiscretizedIIDProcess, i::Int, j::Int) = dp.integration_nodes[j, :]
-iweights(dp::DiscretizedIIDProcess, i::Int, j::Int) = dp.integration_weights[j]
+inode(dp::DiscretizedIIDProcess, i::Int, j::Int) = dp.integration_nodes[j, :]
+iweight(dp::DiscretizedIIDProcess, i::Int, j::Int) = dp.integration_weights[j]
 node(dip::DiscretizedIIDProcess, i) = zeros(n_inodes(dip, 1))
 
 

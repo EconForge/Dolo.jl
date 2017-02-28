@@ -69,15 +69,6 @@ import Dolo
 # does not work yet
 fn = Pkg.dir("Dolo","examples","models","rbc_dtcc_ar1.yaml")
 model = Dolo.yaml_import(fn)
-
 model.exogenous
-
-dpe = Dolo.discretize(model.exogenous)
-Dolo.nodes(dpe.grid)
-
-
-
-
-
 @time dr = Dolo.time_iteration(model)
 @time drv = Dolo.evaluate_policy(model, dr, verbose=true)
