@@ -19,15 +19,15 @@ abstract AbstractDiscretizedProcess # <: DiscreteProcess
 # date-t grid has a known structure
 type DiscretizedProcess <: AbstractDiscretizedProcess
     grid::Grid
-    integration_nodes::Matrix{Float64}
-    integration_weights::Vector{Float64}
+    integration_nodes::Array{Matrix{Float64},1}
+    integration_weights::Array{Vector{Float64},1}
 end
 
 n_nodes(dp::DiscretizedProcess) = n_nodes(dp.grid)
 node(dp::DiscretizedProcess, i) = node(dp.grid,i)
-n_inodes(dp::DiscretizedProcess, i::Int) = size(dp.integration_nodes, 1)
-inode(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_nodes[j, :]
-iweight(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_weights[j]
+n_inodes(dp::DiscretizedProcess, i::Int) = size(dp.integration_nodes[i], 1)
+inode(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_nodes[i][j, :]
+iweight(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_weights[i][j]
 
 # date-t grid is unstructured
 type DiscreteMarkovProcess <: AbstractDiscretizedProcess
@@ -164,80 +164,90 @@ function discretize(var::VAR1)
     return dis
 end
 
-function discretize(VAR_info::VAR1, n_states::Array{Int64,1}, n_integration::Array{Int64,1}; n_std::Int64=3, μ::Int64=0)
 
-      ###############################################################################
+function discretize(var::VAR1, n_states::Array{Int64,1}, n_integration::Array{Int64,1}; n_std::Int64=3,)
 
-      n  = size(VAR_info.M, 1);
-      # State space
-      # Collect all the state values for each variable in VAR
-      states = collect(zeros(n_states[ii]) for ii in 1:n);
-      a_bar=zeros(n)
-      # That is true iff R and Sigma is diagonal... better to use simulate?
-      a_bar = [n_std * sqrt(VAR_info.Sigma[j, j]^2 / (1 - VAR_info.R[j, j]^2)) for j in 1:n]
-      y = [linspace(-a_bar[j], a_bar[j], n_states[j]) for j in 1:n]
-      states = [collect(y[j]) for j in 1:n]
-      # Take cartesian product to have state space for endogenuous part
-      yⁱ= collect(Base.product([states[i] for i in 1:size(states, 1)]...))
-      nodes = cat( 1, [[e...]' for e in yⁱ]... )
-      # Discretizing Exo process usinf QR
-      #This function computes the points and weights of an N-point Gauss–Legendre quadrature rule on the interval (a,b).
-      #It uses the O(N2) algorithm described in Trefethen & Bau, Numerical Linear Algebra, which
-      # finds the points and weights by computing the eigenvalues and eigenvectors of a real-symmetric tridiagonal matrix:
-      function gauss(a, b, S)
-          λ, Q = eig(SymTridiagonal(zeros(S), [ n / sqrt(4n^2 - 1) for n = 1:S-1 ]))
-          return (λ + 1) * (b-a)/2 + a, [ 2*Q[1, i]^2 for i = 1:S ] * (b-a)/2
-      end
-
-      x = collect(zeros(n_integration[ii]) for ii in 1:n);
-      w = collect(zeros(n_integration[ii]) for ii in 1:n);
-      for j in 1:n
-          x[j], w[j] = gauss(-VAR_info.Sigma[j, j], VAR_info.Sigma[j, j], n_integration[j])
-      end
-
-      # Computing the nodes of the exo process
-      Eⁱʲ=collect(zeros(n_integration[ii]) for ii in 1:n);
-      #Compute states of exogenous process
-      # j stands for a variables in the VAR
-
-      [Eⁱʲ[j] =  1/(2*VAR_info.Sigma[j, j]*sqrt(pi)).*exp(-(x[j]- μ).^2./(2*VAR_info.Sigma[j, j]^2))  for j = 1:n]
-      #Compute Cartesian product
-
-      Eⁱʲ_c = collect(Base.product([Eⁱʲ[i] for i in 1:size(Eⁱʲ, 1)]...))
-      #Compute future states for endogenous variables
-      # kron([n_integration[i] for i in 1:n]...) computes the possible combination of states of innovations
-      if n>2
-        yⁱʲ  = zeros(kron([n_integration[i] for i in 1:n]...), n, kron([n_states[i] for i in 1:n]...));
-
-        for ii in 1:kron([n_states[i] for i in 1:n]...)
-
-            [ yⁱʲ[ss, :, ii] = VAR_info.M + VAR_info.R*collect(yⁱ[ii])+collect(Eⁱʲ_c[ss]) for ss = 1:kron([n_integration[i] for i in 1:n]...) ]
-
-        end
-        integration_nodes = collect(yⁱʲ[:, :, ii] for ii in 1:kron([n_states[i] for i in 1:n]...))
-
-        # Get transition probabilities
-
-        integration_weights = repmat(kron([w[i] for i in 1:n]...), 1, kron([n_integration[i] for i in 1:n]...))
-        integration_weights =collect(integration_weights[:, ii] for ii in 1:kron([n_integration[i] for i in 1:n]...))
-      else
-        yⁱʲ  = zeros(n_integration[n], n, n_states[n]);
-
-        for ii in 1:n_states[n]
-            [ yⁱʲ[ss, :, ii] = VAR_info.M + VAR_info.R*collect(yⁱ[ii])+collect(Eⁱʲ_c[ss]) for ss = 1:n_integration[n]]
-
-        end
-        integration_nodes = collect(yⁱʲ[:, :, ii] for ii in 1:n_states[n])
-
-        # Get transition probabilities
-
-        integration_weights = w[n]
-        integration_weights =[integration_weights]
-      end
-#  return nodes, integration_nodes, integration_weights
-    grid = CartesianGrid(-a_bar, a_bar, n_states)
-    return DiscretizedProcess(grid, integration_nodes[1], integration_weights[1])
+    R = var.R
+    M = var.M
+    Sigma = var.Sigma
+    S = QE.solve_discrete_lyapunov(R,Sigma)  # asymptotic variance
+    sig = diag(S)
+    println(sig)
+    min = var.M - n_std*(sig)
+    max = var.M + n_std*(sig)
+    grid = Dolo.CartesianGrid(min,max,n_states)
+    # discretize innovations
+    x,w = QE.qnwnorm(n_integration, zeros(size(var.Sigma,1)), var.Sigma)
+    integration_nodes = [ cat(1,[(M + R*(Dolo.node(grid, i)-M) + x[j,:])' for j=1:size(x,1)]...) for i in 1:Dolo.n_nodes(grid)]
+    integration_weights = [w for i in 1:Dolo.n_nodes(grid)]
+    return DiscretizedProcess(grid, integration_nodes, integration_weights)
 end
+#
+# function discretize(VAR_info::VAR1, n_states::Array{Int64,1}, n_integration::Array{Int64,1}; n_std::Int64=3, μ::Int64=0)
+#
+#       ###############################################################################
+#
+#       n  = size(VAR_info.M, 1);
+#       # State space
+#       # Collect all the state values for each variable in VAR
+#       states = collect(zeros(n_states[ii]) for ii in 1:n);
+#       a_bar=zeros(n)
+#       # That is true iff R and Sigma is diagonal... better to use simulate?
+#       a_bar = [n_std * sqrt(VAR_info.Sigma[j, j]^2 / (1 - VAR_info.R[j, j]^2)) for j in 1:n]
+#       y = [linspace(-a_bar[j], a_bar[j], n_states[j]) for j in 1:n]
+#       states = [collect(y[j]) for j in 1:n]
+#       # Take cartesian product to have state space for endogenuous part
+#       yⁱ= collect(Base.product([states[i] for i in 1:size(states, 1)]...))
+#       nodes = cat( 1, [[e...]' for e in yⁱ]... )
+#
+#       x = collect(zeros(n_integration[ii]) for ii in 1:n);
+#       w = collect(zeros(n_integration[ii]) for ii in 1:n);
+#       for j in 1:n
+#           x[j], w[j] = VAR_info.Sigma[j, j]*gauss(Float64, n_integration[j])
+#       end
+#       # Computing the nodes of the exo process
+#       Eⁱʲ=collect(zeros(n_integration[ii]) for ii in 1:n);
+#       #Compute states of exogenous process
+#       # j stands for a variables in the VAR
+#
+#       [Eⁱʲ[j] =  1/(2*VAR_info.Sigma[j, j]*sqrt(pi)).*exp(-(x[j]- μ).^2./(2*VAR_info.Sigma[j, j]^2))  for j = 1:n]
+#       #Compute Cartesian product
+#
+#       Eⁱʲ_c = collect(Base.product([Eⁱʲ[i] for i in 1:size(Eⁱʲ, 1)]...))
+#       #Compute future states for endogenous variables
+#       # kron([n_integration[i] for i in 1:n]...) computes the possible combination of states of innovations
+#       if n>2
+#         yⁱʲ  = zeros(kron([n_integration[i] for i in 1:n]...), n, kron([n_states[i] for i in 1:n]...));
+#
+#         for ii in 1:kron([n_states[i] for i in 1:n]...)
+#
+#             [ yⁱʲ[ss, :, ii] = VAR_info.M + VAR_info.R*collect(yⁱ[ii])+collect(Eⁱʲ_c[ss]) for ss = 1:kron([n_integration[i] for i in 1:n]...) ]
+#
+#         end
+#         integration_nodes = collect(yⁱʲ[:, :, ii] for ii in 1:kron([n_states[i] for i in 1:n]...))
+#
+#         # Get transition probabilities
+#
+#         integration_weights = repmat(kron([w[i] for i in 1:n]...), 1, kron([n_integration[i] for i in 1:n]...))
+#         integration_weights =collect(integration_weights[:, ii] for ii in 1:kron([n_integration[i] for i in 1:n]...))
+#       else
+#         yⁱʲ  = zeros(n_integration[n], n, n_states[n]);
+#
+#         for ii in 1:n_states[n]
+#             [ yⁱʲ[ss, :, ii] = VAR_info.M + VAR_info.R*collect(yⁱ[ii])+collect(Eⁱʲ_c[ss]) for ss = 1:n_integration[n]]
+#
+#         end
+#         integration_nodes = collect(yⁱʲ[:, :, ii] for ii in 1:n_states[n])
+#
+#         # Get transition probabilities
+#
+#         integration_weights = w[n]
+#         integration_weights =[integration_weights]
+#       end
+# #  return nodes, integration_nodes, integration_weights
+#     grid = CartesianGrid(-a_bar, a_bar, n_states)
+#     return DiscretizedProcess(grid, integration_nodes[1], integration_weights[1])
+# end
 
 
 

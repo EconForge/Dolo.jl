@@ -45,11 +45,11 @@ type CachedDecisionRule{S,T} <: AbstractCachedDecisionRule{S,T}
     process::AbstractDiscretizedProcess
 end
 
-function CachedDecisionRule(dprocess::DiscretizedIIDProcess, grid_endo::CartesianGrid, n_x::Int64)
+function CachedDecisionRule(process::DiscretizedIIDProcess, grid_endo::CartesianGrid, n_x::Int64)
     grid_exo = EmptyGrid()
     orders = grid_endo.n # how to call the super constructor ?
     coeffs = [zeros(n_x, (orders+2)...)]
-    return CachedDecisionRule{EmptyGrid,CartesianGrid}(grid_exo, grid_endo, n_x, coeffs, dprocess)
+    return CachedDecisionRule{EmptyGrid,CartesianGrid}(grid_exo, grid_endo, n_x, coeffs, process)
 end
 
 function CachedDecisionRule(process::DiscretizedProcess, grid_endo::CartesianGrid, n_x::Int64)
@@ -146,15 +146,19 @@ function DecisionRule(grid_exo::CartesianGrid, grid_endo::CartesianGrid, values:
 end
 
 
-function set_values!(dr::AbstractDecisionRule{CartesianGrid, CartesianGrid}, values::Matrix{Float64})
+# function set_values!(dr::AbstractDecisionRule{CartesianGrid, CartesianGrid}, values::Matrix{Float64})
+#     a = cat(1,dr.grid_exo.min,dr.grid_endo.min)
+#     b = cat(1,dr.grid_exo.max,dr.grid_endo.max)
+#     orders = cat(1,dr.grid_exo.n,dr.grid_endo.n)
+#     dr.coefficients = [filter_mcoeffs(a, b, orders, values)]
+# end
+
+function set_values!(dr::AbstractDecisionRule{CartesianGrid, CartesianGrid}, values::Array{Matrix{Float64},1})
     a = cat(1,dr.grid_exo.min,dr.grid_endo.min)
     b = cat(1,dr.grid_exo.max,dr.grid_endo.max)
     orders = cat(1,dr.grid_exo.n,dr.grid_endo.n)
-    dr.coefficients = [filter_mcoeffs(a, b, orders, values)]
-end
-
-function set_values!(dr::AbstractDecisionRule{CartesianGrid, CartesianGrid}, values::Array{Matrix{Float64},1})
-    set_values!(dr, values[1])
+    cvalues = cat(1,values...)
+    dr.coefficients = [filter_mcoeffs(a,b,orders,cvalues)]
 end
 
 function evaluate(dr::AbstractDecisionRule{CartesianGrid, CartesianGrid}, z::Matrix{Float64})
@@ -179,7 +183,7 @@ end
 (dr::CachedDecisionRule{CartesianGrid, CartesianGrid})(x::Matrix{Float64},y::Matrix{Float64}) = dr([x y])
 (dr::CachedDecisionRule{CartesianGrid, CartesianGrid})(x::Vector{Float64},y::Matrix{Float64}) = dr([repmat(x',size(y,1),1) y])
 (dr::CachedDecisionRule{CartesianGrid, CartesianGrid})(i::Int64,y::Union{Vector{Float64},Matrix{Float64}}) = dr(node(dr.grid_exo,i),y)
-(dr::CachedDecisionRule{CartesianGrid, CartesianGrid})(i::Int64,j::Int64,y::Union{Vector{Float64},Matrix{Float64}}) = dr(i,node(dr.dprocess,i,j),y)
+(dr::CachedDecisionRule{CartesianGrid, CartesianGrid})(i::Int64,j::Int64,y::Union{Vector{Float64},Matrix{Float64}}) = dr(inode(dr.process,i,j),y)
 
 
 
