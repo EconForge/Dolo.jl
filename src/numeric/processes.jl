@@ -141,8 +141,8 @@ function discretize(var::VAR1, n_states::Array{Int64,1}, n_integration::Array{In
     Sigma = var.Sigma
     S = QE.solve_discrete_lyapunov(R,Sigma)  # asymptotic variance
     sig = diag(S)
-    min = var.M - n_std*(sig)
-    max = var.M + n_std*(sig)
+    min = var.M - n_std*sqrt(sig)
+    max = var.M + n_std*sqrt(sig)
     grid = Dolo.CartesianGrid(min,max,n_states)
     # discretize innovations
     x,w = QE.qnwnorm(n_integration, zeros(size(var.Sigma,1)), var.Sigma)

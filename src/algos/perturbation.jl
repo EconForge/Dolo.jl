@@ -42,7 +42,9 @@ function get_ss_derivatives(model)
     return g_diff,f_diff
 end
 
-perturbate(p::VAR1) = (p.M, p.R, eye(size(p.R,1)), p.Sigma)
+perturbate(p::IIDExogenous) = (zeros(0), zeros(0,0))
+
+perturbate(p::VAR1) = (p.M, p.R)
 
 function perturbate(model::AbstractNumericModel, eigtol::Float64=1.0+1e-6)
 
@@ -51,18 +53,25 @@ function perturbate(model::AbstractNumericModel, eigtol::Float64=1.0+1e-6)
     _f_m,_f_s,_f_x,_f_M,_f_S,_f_X = f_diff
     _g_m,_g_s,_g_x,_g_M = g_diff
 
-    (M, R, E, Sigma) = perturbate(model.exogenous)
+    (M, R) = perturbate(model.exogenous)
 
-    f_s = [_f_m _f_s]
-    f_S = [_f_M _f_S]
     f_x = _f_x
     f_X = _f_X
-    g_s = [R zeros(size(R,1),size(_g_s,2)); _g_m _g_s]
-    g_x = [zeros(size(_g_m,1),size(_g_x,2)); _g_x]
-    println(size(g_s))
     _m,_s,x,p = model.calibration[:exogenous,:states,:controls,:parameters]
+    if size(R,1)>0
+        f_s = [_f_m _f_s]
+        f_S = [_f_M _f_S]
+        g_s = [R zeros(size(R,1),size(_g_s,2)); _g_m _g_s]
+        g_x = [zeros(size(_g_m,1),size(_g_x,2)); _g_x]
+        s = cat(1,_m, _s)
+    else
+        f_s = _f_s
+        f_S = _f_S
+        g_s = _g_s
+        g_x = _g_x
+        s = _s
+    end
 
-    s = cat(1,_m, _s)
     ns = length(s)
     nx = length(x)
     nv = ns + nx
@@ -101,5 +110,10 @@ function perturbate(model::AbstractNumericModel, eigtol::Float64=1.0+1e-6)
     # B = g_e
     C_exo = C[:,1:length(_m)]
     C_endo = C[:,(length(_m)+1):end]
-    return BiTaylorExpansion(_m, _s, x, C_exo, C_endo)
+
+    if size(R,1)>0
+        BiTaylorExpansion(_m, _s, x, C_exo, C_endo)
+    else
+        BiTaylorExpansion(zeros(0), _s, x, C_exo, C_endo)
+    end
 end

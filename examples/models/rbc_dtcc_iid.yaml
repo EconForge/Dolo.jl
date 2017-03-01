@@ -4,8 +4,8 @@ model_type: dtcc
 
 symbols:
 
-   exogenous: [z]
-   states: [k]
+   exogenous: [e_z]
+   states: [z, k]
    controls: [n, i]
    expectations: [m]
    values: [V]
@@ -26,6 +26,7 @@ equations:
 
 
     transition:
+        - z = rho*z(-1) + e_z
         - k = (1-delta)*k(-1) + i(-1)
 
     value:
@@ -77,8 +78,8 @@ options:
         sigma: sig_z**2
 
     grid: !Cartesian
-        a: [k*0.5]
-        b: [k*1.5]
+        a: [-2*sig_z/(1-rho^2)^0.5, k*0.5]
+        b: [ 2*sig_z/(1-rho^2)^0.5, k*1.5]
         orders: [50]
 
     random:

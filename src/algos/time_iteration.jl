@@ -22,7 +22,6 @@ function residual(model, dprocess, s, x::Array{Array{Float64,2},1}, p, dr)
     return res
 end
 
-
 function residual(model, dprocess, s, x::Array{Float64,2}, p, dr)
     n_m = max(1, n_nodes(dprocess))
     xx = destack(x, n_m)
