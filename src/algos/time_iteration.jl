@@ -22,8 +22,6 @@ function residual(model, dprocess, s, x::Array{Array{Float64,2},1}, p, dr)
     return res
 end
 
-using NLsolve
-
 
 function residual(model, dprocess, s, x::Array{Float64,2}, p, dr)
     n_m = max(1, n_nodes(dprocess))
