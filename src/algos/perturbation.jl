@@ -32,49 +32,13 @@ function _check_bk_conditions(eigval, tol, n_expected)
     end
     true
 end
+
 function get_ss_derivatives(model)
-
-    # This CLEARLY has nothing to do here
-    specs = Dolo.RECIPES[:dtcc][:specs]
-    code = Dict()
-    for eq_type in [:transition, :arbitrage]
-        spec = specs[eq_type]
-        all_arguments = [ [(s,el[2]) for s in model.symbols[Symbol(el[1])]] for el in specs[eq_type][:eqs] ]
-        arguments = all_arguments[1:end-1]
-        parameters = [e[1] for e in all_arguments[end]]
-        equations = model.symbolic.equations[eq_type]
-        if :target in keys(spec)
-            equations = [e.args[2] for e in equations]
-        end
-        defs = model.symbolic.definitions
-        args_flat= cat(1, arguments...)
-        funname = Symbol(string("temp_", eq_type))
-        code[eq_type] = Dolang.make_method(equations, args_flat, parameters, funname=funname, defs=defs, orders=[0,1])
-    end
-    for eq_type in keys(code)
-        eval(code[eq_type])
-    end
-
-
     m,s,x,p = model.calibration[:exogenous,:states,:controls,:parameters]
 
-    args = [m,s,x,m]
-    J_g = temp_transition(Dolo.Der{1},cat(1,args...),p)
-    g_diff = []
-    ind = 1
-    for v in args
-        push!(g_diff, J_g[:,ind:(ind+length(v)-1)])
-        ind += length(v)
-    end
+    g_diff = eval_jacobians(model, transition!, length(s), (m, s, x, m), p)
+    f_diff = eval_jacobians(model, arbitrage!, length(x), (m, s, x, m, s, x), p)
 
-    args = [m,s,x,m,s,x]
-    J_f = temp_arbitrage(Dolo.Der{1},cat(1,args...),p)
-    f_diff = []
-    ind = 1
-    for v in args
-        push!(f_diff, J_f[:,ind:(ind+length(v)-1)])
-        ind += length(v)
-    end
     return g_diff,f_diff
 end
 
