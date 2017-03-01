@@ -158,21 +158,20 @@ end
 
 function discretize(var::VAR1)
     d = size(var.R, 1)
-    n_states = ones(Int64, d)*3
+    n_states = ones(Int64, d)*5
     n_integration = ones(Int64, d)*5
     dis = discretize(var, n_states, n_integration)
     return dis
 end
 
 
-function discretize(var::VAR1, n_states::Array{Int64,1}, n_integration::Array{Int64,1}; n_std::Int64=3,)
+function discretize(var::VAR1, n_states::Array{Int64,1}, n_integration::Array{Int64,1}; n_std::Int64=2,)
 
     R = var.R
     M = var.M
     Sigma = var.Sigma
     S = QE.solve_discrete_lyapunov(R,Sigma)  # asymptotic variance
     sig = diag(S)
-    println(sig)
     min = var.M - n_std*(sig)
     max = var.M + n_std*(sig)
     grid = Dolo.CartesianGrid(min,max,n_states)

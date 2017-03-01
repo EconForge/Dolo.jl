@@ -65,10 +65,18 @@ ivec_0 = [dr0(1,[k])[2] for k in kvec]
 
 
 
-import Dolo
-# does not work yet
 fn = Pkg.dir("Dolo","examples","models","rbc_dtcc_ar1.yaml")
 model = Dolo.yaml_import(fn)
-model.exogenous
-@time dr = Dolo.time_iteration(model)
+dp = Dolo.discretize(model.exogenous)
+dr = Dolo.perturbate(model)
+cdr =Dolo.CDecisionRule(dr,dp)
+@time dr = Dolo.time_iteration(model, model.exogenous, cdr, maxit=1000)
+
+# @time dr = Dolo.time_iteration(model)
+
+
+
+
+
+
 @time drv = Dolo.evaluate_policy(model, dr, verbose=true)

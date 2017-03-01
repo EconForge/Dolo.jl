@@ -12,6 +12,7 @@ function residual(model, dprocess, s, x::Array{Array{Float64,2},1}, p, dr)
             for n=1:N
                 S[n, :] = Dolo.transition(model, m, s[n, :], x[i][n, :], M, p)
             end
+
             X = dr(i, j, S)
             for n=1:N
                 res[i][n, :] += w*Dolo.arbitrage(model, m, s[n, :], x[i][n, :], M, S[n, :], X[n, :], p)
@@ -62,7 +63,6 @@ function time_iteration(model, process, init_dr; verbose::Bool=true,
 
     p = model.calibration[:parameters]
 
-    xxxx0 = init_dr(1,endo_nodes)
     x0 = [init_dr(i, endo_nodes) for i=1:nsd]
 
     n_x = length(model.calibration[:controls])

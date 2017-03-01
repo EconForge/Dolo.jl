@@ -1,5 +1,9 @@
 using splines
 
+abstract AbstractDecisionRule{S,T}
+abstract AbstractCachedDecisionRule{S,T} <: AbstractDecisionRule{S,T}
+
+
 type ConstantDecisionRule
     constants::Vector{Float64}
 end
@@ -12,6 +16,32 @@ end
 (dr::ConstantDecisionRule)(x::Matrix{Float64}, y::Matrix{Float64}) = repmat( dr.constants', size(x,1), 1)
 (dr::ConstantDecisionRule)(i::Int64, x::Union{Vector{Float64},Matrix{Float64}}) = dr(x)
 (dr::ConstantDecisionRule)(i::Int64, j::Int64, x::Union{Vector{Float64},Matrix{Float64}}) = dr(x)
+
+
+type BiTaylorExpansion <: AbstractDecisionRule
+    m0::Vector{Float64}
+    s0::Vector{Float64}
+    x0::Vector{Float64}
+    x_m::Matrix{Float64}
+    x_s::Matrix{Float64}
+end
+
+(dr::BiTaylorExpansion)(m::Vector{Float64}, s::Vector{Float64}) = dr.x0 + dr.x_m*(m-dr.m0) + dr.x_s*(s-dr.s0)
+(dr::BiTaylorExpansion)(m::Matrix{Float64}, s::Vector{Float64}) = vcat( [ (dr(m[i,:],s))' for i=1:size(m,1) ]...)
+(dr::BiTaylorExpansion)(m::Vector{Float64}, s::Matrix{Float64}) = vcat( [ (dr(m,s[i,:]))' for i=1:size(s,1) ]...)
+(dr::BiTaylorExpansion)(m::Matrix{Float64}, s::Matrix{Float64}) = vcat( [ (dr(m[i,:],s[i,:]))' for i=1:size(m,1) ]...)
+
+type CDecisionRule{T,S}
+    dr::T
+    process::S
+end
+
+(cdr::CDecisionRule)(v::Union{Vector{Float64},Matrix{Float64}}) = cdr.dr(v)
+(cdr::CDecisionRule)(m::Union{Vector{Float64},Matrix{Float64}},s::Union{Vector{Float64},Matrix{Float64}}) = cdr.dr(m,s)
+(cdr::CDecisionRule)(i::Int64,s::Union{Vector{Float64},Matrix{Float64}}) = cdr.dr(node(cdr.process,i),s)
+(cdr::CDecisionRule)(i::Int64,j::Int64,s::Union{Vector{Float64},Matrix{Float64}}) = cdr.dr(inode(cdr.process,i,j),s)
+
+
 
 function filter_mcoeffs(a::Array{Float64,1},b::Array{Float64,1},n::Array{Int64,1},mvalues::Array{Float64})
     n_x = size(mvalues)[end]
@@ -27,8 +57,6 @@ end
 
 
 
-abstract AbstractDecisionRule{S,T}
-abstract AbstractCachedDecisionRule{S,T} <: AbstractDecisionRule{S,T}
 
 type DecisionRule{S,T} <: AbstractDecisionRule{S,T}
     grid_exo::S
@@ -153,12 +181,18 @@ end
 #     dr.coefficients = [filter_mcoeffs(a, b, orders, values)]
 # end
 
-function set_values!(dr::AbstractDecisionRule{CartesianGrid, CartesianGrid}, values::Array{Matrix{Float64},1})
+function set_values!(dr::Dolo.AbstractDecisionRule{Dolo.CartesianGrid, Dolo.CartesianGrid}, values::Array{Matrix{Float64},1})
     a = cat(1,dr.grid_exo.min,dr.grid_endo.min)
     b = cat(1,dr.grid_exo.max,dr.grid_endo.max)
     orders = cat(1,dr.grid_exo.n,dr.grid_endo.n)
-    cvalues = cat(1,values...)
-    dr.coefficients = [filter_mcoeffs(a,b,orders,cvalues)]
+    n_x = size(values[1],2)
+    vv = zeros(prod(dr.grid_exo.n), prod(dr.grid_endo.n), n_x)
+    for n=1:size(vv,1)
+        # ah, if only Julia had chosen C-order arrays !
+        vv[n,:,:] = values[n]
+    end
+    vv = reshape(vv, prod(dr.grid_endo.n)*prod(dr.grid_exo.n),n_x)
+    dr.coefficients = [Dolo.filter_mcoeffs(a,b,orders,vv)]
 end
 
 function evaluate(dr::AbstractDecisionRule{CartesianGrid, CartesianGrid}, z::Matrix{Float64})
