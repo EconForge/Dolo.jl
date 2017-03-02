@@ -22,6 +22,9 @@ function residual(model, dprocess, s, x::Array{Array{Float64,2},1}, p, dr)
     return res
 end
 
+using NLsolve
+
+
 function residual(model, dprocess, s, x::Array{Float64,2}, p, dr)
     n_m = max(1, n_nodes(dprocess))
     xx = destack(x, n_m)
@@ -40,8 +43,7 @@ function stack(x::Array{Array{Float64,2},1})::Array{Float64,2}
 end
 
 function time_iteration(model, process, init_dr; verbose::Bool=true,
-    maxit::Int=100, tol::Float64=1e-8
-    )
+    maxit::Int=100, tol::Float64=1e-8)
 
     # get grid for endogenous
     gg = model.options.grid
@@ -110,7 +112,7 @@ function time_iteration(model, process, init_dr; verbose::Bool=true,
 
     # TODO: somehow after defining `fobj` the `dr` object gets `Core.Box`ed
     #       making the return type right here non-inferrable.
-    return dr
+    return dr.dr
 
 end
 

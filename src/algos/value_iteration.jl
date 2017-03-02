@@ -51,7 +51,7 @@ function evaluate_policy(model, dr, β=model.calibration.flat[:beta];
     err = 10.0
     it = 0
 
-    drv = DecisionRule(process, grid, v0)
+    drv = CachedDecisionRule(dprocess, grid, v0)
 
     verbose && @printf "%-6s%-12s\n" "It" "SA"
     verbose && println(repeat("-", 14))
@@ -63,8 +63,8 @@ function evaluate_policy(model, dr, β=model.calibration.flat[:beta];
         for i = 1:nsd
             m = node(dprocess, i)
             for j = 1:n_inodes(dprocess, i)
-                M = inodes(dprocess, i, j)
-                w = iweights(dprocess, i, j)
+                M = inode(dprocess, i, j)
+                w = iweight(dprocess, i, j)
                  for n=1:N
                      # Update the states
                      S = Dolo.transition(model, m, s[n, :], x[i][n, :], M, p)
@@ -97,8 +97,8 @@ function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64},
     m = node(dprocess, i)
     E_V = 0.0
     for j=1:n_inodes(dprocess, i)
-        M = inodes(dprocess, i, j)
-        w = iweights(dprocess, i, j)
+        M = inode(dprocess, i, j)
+        w = iweight(dprocess, i, j)
         S = Dolo.transition(model, m, s, x0, M, p)
         E_V += w*drv(i, j, S)[1]
     end
@@ -107,7 +107,7 @@ function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64},
     return E_V
 end
 
-function solve_policy(model, dr, β=model.calibration.flat[:beta],
+function solve_policy(model, pdr, β=model.calibration.flat[:beta],
     verbose::Bool=true, maxit::Int=5000)
 
     # get grid for endogenous
@@ -118,6 +118,7 @@ function solve_policy(model, dr, β=model.calibration.flat[:beta],
     process = model.exogenous
     dprocess = discretize(process)
 
+    dr = CachedDecisionRule(pdr, dprocess)
     # compute the value function
     absmax(x) = max([maximum(abs(x[i])) for i=1:length(x)]...)
     p = model.calibration[:parameters]
@@ -221,6 +222,6 @@ function solve_policy(model, dr, β=model.calibration.flat[:beta],
 
     end
 
-    dr = DecisionRule(process, grid, x0)
-    return (dr, drv)
+    dr = CachedDecisionRule(dprocess, grid, x0)
+    return (dr.dr, drv.dr)
 end

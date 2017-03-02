@@ -184,7 +184,7 @@ function evaluate(dr::AbstractDecisionRule{UnstructuredGrid, CartesianGrid}, i::
 end
 
 (dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::Int64,y::Matrix{Float64}) = evaluate(dr,i,y)
-(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::Int64,y::Vector{Float64}) = dr(dr,i,y')[:]
+(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::Int64,y::Vector{Float64}) = dr(i,y')[:]
 
 
 
@@ -197,6 +197,8 @@ type CachedDecisionRule{T,S}
     dr::T
     process::S
 end
+
+typealias AbstractADecisionRule Union{DecisionRule, CachedDecisionRule}
 
 CachedDecisionRule(process::AbstractDiscretizedProcess, grid::Grid, n_x::Int) =
     CachedDecisionRule(DecisionRule(process.grid, grid, n_x), process)

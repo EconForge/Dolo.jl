@@ -47,6 +47,7 @@ node(dp::DiscreteMarkovProcess, i) = dp.values[i, :]
 
 
 # date-t grid is empty
+
 type DiscretizedIIDProcess <: AbstractDiscretizedProcess
     # nodes::Matrix{Float64}
     grid::EmptyGrid
