@@ -80,7 +80,7 @@ options:
     grid: !Cartesian
         a: [-2*sig_z/(1-rho^2)^0.5, k*0.5]
         b: [ 2*sig_z/(1-rho^2)^0.5, k*1.5]
-        orders: [50]
+        orders: [5, 50]
 
     random:
         any: 0.1

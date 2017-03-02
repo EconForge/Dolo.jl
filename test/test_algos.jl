@@ -36,14 +36,13 @@ drc = Dolo.ConstantDecisionRule(model_mc.calibration[:controls])
 # @assert maximum(abs(nvec-nvec_test))<1e-5
 
 
-# this  model is actually wrong !
 path = Pkg.dir("Dolo")
 fn = joinpath(path,"examples","models","rbc_dtcc_iid.yaml")
 model = Dolo.yaml_import(fn)
-size(Dolo.perturbate(model.exogenous)[2],1)
+
 @time dr = Dolo.perturbate(model)
 drc = Dolo.ConstantDecisionRule(model.calibration[:controls])
-@time dr = Dolo.time_iteration(model, maxit=1000, verbose=true)
+@time dr = Dolo.time_iteration(model, maxit=100, verbose=true)
 #
 # @time dr0, drv0 = Dolo.solve_policy(model, drc) #;, verbose=true, maxit=1000 )
 # @time drd = Dolo.time_iteration_direct(model, maxit=1000, verbose=true)
@@ -62,10 +61,12 @@ drc = Dolo.ConstantDecisionRule(model.calibration[:controls])
 # @assert maxabs(nvec_0-nvec)<1e-5 # not satisfied right now (see tol. of optimizer)
 
 
-# AR1 model
+# AR1 model: this one should be exactly equivalent to rbc_dtcc_ar1
 fn = Pkg.dir("Dolo","examples","models","rbc_dtcc_ar1.yaml")
 model = Dolo.yaml_import(fn)
 dp = Dolo.discretize(model.exogenous)
 @time dr = Dolo.perturbate(model)
 cdr =Dolo.CachedDecisionRule(dr,dp)
-@time dr = Dolo.time_iteration(model, model.exogenous, cdr, maxit=1000)
+@time dr = Dolo.time_iteration(model, model.exogenous, cdr)
+
+@time dr = Dolo.time_iteration(model)
