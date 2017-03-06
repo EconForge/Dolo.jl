@@ -129,13 +129,13 @@ end
 
 function discretize(var::VAR1)
     d = size(var.R, 1)
-    n_states = ones(Int64, d)*5
-    n_integration = ones(Int64, d)*5
+    n_states = ones(Int, d)*5
+    n_integration = ones(Int, d)*5
     dis = discretize(var, n_states, n_integration)
     return dis
 end
 
-function discretize(var::VAR1, n_states::Array{Int64,1}, n_integration::Array{Int64,1}; n_std::Int64=2,)
+function discretize(var::VAR1, n_states::Array{Int,1}, n_integration::Array{Int,1}; n_std::Int=2,)
 
     R = var.R
     M = var.M
@@ -154,7 +154,7 @@ end
 
 
 
-function simulate(var::VAR1, N::Int64, T::Int64)
+function simulate(var::VAR1, N::Int, T::Int)
 
   """
   This function takes:
@@ -188,14 +188,14 @@ end
 
 
 
-function ErgodDist(VAR_info::VAR1, T::Int64, N::Int64)
+function ErgodDist(VAR_info::VAR1, T::Int, N::Int)
 
        # Simulate for T period, N times;
        #  #    - simulate a VAR1 process for T periods N times#
        n = size(VAR_info.M, 1);
        srand(123) # Setting the seed
        d = MvNormal(VAR_info.Sigma);
-       VAR_process=sim_VAR1.simulate_var(VAR_info::VAR1.myvar, T::Int64, N::Int64)
+       VAR_process=sim_VAR1.simulate_var(VAR_info::VAR1.myvar, T::Int, N::Int)
        E = VAR_process[2];
        XN = VAR_process[1];
        # Computing moments

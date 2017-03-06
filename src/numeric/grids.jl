@@ -11,7 +11,7 @@ end
 
 nodes(grid::EmptyGrid) = nothing
 n_nodes(grid::EmptyGrid) = 0
-node(grid::EmptyGrid, i::Int64) = nothing # fail if i!=1 ?
+node(grid::EmptyGrid, i::Int) = nothing # fail if i!=1 ?
 
 
 type PointGrid <: Grid
@@ -19,7 +19,7 @@ type PointGrid <: Grid
 end
 nodes(grid::PointGrid) = grid.point[:,:]
 n_nodes(grid::PointGrid) = 1
-node(grid::PointGrid, i::Int64) = point # fail if i!=1 ?
+node(grid::PointGrid, i::Int) = point # fail if i!=1 ?
 
 
 type UnstructuredGrid <: Grid
@@ -27,13 +27,13 @@ type UnstructuredGrid <: Grid
 end
 nodes(grid::UnstructuredGrid) = grid.nodes
 n_nodes(grid::UnstructuredGrid) = size(grid.nodes,1)
-node(grid::UnstructuredGrid, i::Int64) = grid.nodes[i,:] # fail if i!=1 ?
+node(grid::UnstructuredGrid, i::Int) = grid.nodes[i,:] # fail if i!=1 ?
 
 
 type CartesianGrid <: Grid
     min::Vector{Float64}
     max::Vector{Float64}
-    n::Vector{Int64}
+    n::Vector{Int}
     nodes::Matrix{Float64}
     function CartesianGrid(min, max, n)
         nodes = mlinspace(min, max, n)
@@ -42,11 +42,11 @@ type CartesianGrid <: Grid
 end
 nodes(grid::Grid) = grid.nodes
 n_nodes(grid::Grid) = size(grid.nodes,1)
-node(grid::Grid, i::Int64) = grid.nodes[i,:]
+node(grid::Grid, i::Int) = grid.nodes[i,:]
 
 type SmolyakGrid <: Grid
     min::Vector{Float64}
     max::Vector{Float64}
-    mu::Vector{Int64}
+    mu::Vector{Int}
     nodes::Matrix{Float64}
 end

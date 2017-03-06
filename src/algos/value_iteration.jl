@@ -1,6 +1,5 @@
-function evaluate_policy(model, dr, β=model.calibration.flat[:beta];
-    verbose::Bool=true, maxit::Int=5000
-    )
+evaluate_policy(model, dr, β=model.calibration.flat[:beta];
+    verbose::Bool=true, maxit::Int=5000)
 
     # get grid for endogenous
     gg = model.options.grid
@@ -133,7 +132,7 @@ function solve_policy(model, pdr, β=model.calibration.flat[:beta],
     res = [zeros(N, 1) for i=1:nsd]
 
     # bounds on controls
-    x_lb = Array{Float64,2}[cat(1, [Dolo.controls_lb(model, node(dprocess, i) , endo_nodes[n, :], p)' for n=1:N]...) for i=1:nsd]
+    x_lb = Array{Float64,2}[cat(1, [Dolo.controls_lb(model, node(dprocess, i), endo_nodes[n, :], p)' for n=1:N]...) for i=1:nsd]
     x_ub = Array{Float64,2}[cat(1, [Dolo.controls_ub(model, node(dprocess, i), endo_nodes[n, :], p)' for n=1:N]...) for i=1:nsd]
 
     # States at time t+1
@@ -143,6 +142,7 @@ function solve_policy(model, pdr, β=model.calibration.flat[:beta],
     x = [dr(i, endo_nodes) for i=1:nsd]
     x0 = deepcopy(x)
 
+    # this could be integrated in the main loop.
     verbose && println("Evaluating initial policy")
 
     drv = evaluate_policy(model, dr, β, maxit=1000, verbose=false)
@@ -161,28 +161,43 @@ function solve_policy(model, pdr, β=model.calibration.flat[:beta],
     n_eval = 50
     optim_opts = Optim.OptimizationOptions(x_tol=1e-9, f_tol=1e-9)
 
-    while (err > tol || err_x > tol) && it < maxit
-        it += 1
-        optim = (n_eval*div(it, n_eval) == it) || (err<tol)
+    mode == :optimize
 
-        for i = 1:size(res, 1)
-            m = node(dprocess, i)
-            for n = 1:N
-                s = endo_nodes[n, :]
-                if !optim
+    converged = false
+    it_eval = 0
+
+    while !converged
+
+        if !(mode == :optimize)
+            it_eval += 1
+            for i = 1:size(res, 1)
+                m = node(dprocess, i)
+                for n = 1:N
+                    s = endo_nodes[n, :]
                     # update vals
                     nv = update_value(model, β, dprocess, drv, i, s, x0[i][n, :], p)
                     v[i][n, 1] = nv
-                else
+                end
+            end
+            # compute diff in values
+            err = 0.0
+            for i in 1:nsd
+                err = max(err, maxabs(v[i] - v0[i]))
+                copy!(v0[i], v[i])
+            end
+        else
+            it += 1
+            for i = 1:size(res, 1)
+                m = node(dprocess, i)
+                for n = 1:N
+                    s = endo_nodes[n, :]
                     # optimize vals
                     fobj(u) = -update_value(model, β, dprocess, drv, i, s, u, p)*1000.0
                     lower = x_lb[i][n, :]
                     upper = x_ub[i][n, :]
                     upper = clamp!(upper, -Inf, 1000000)
                     lower = clamp!(lower, -1000000, Inf)
-
                     initial_x = x0[i][n, :]
-
                     # try
                     results = optimize(
                         DifferentiableFunction(fobj), initial_x, lower, upper,
@@ -193,21 +208,23 @@ function solve_policy(model, pdr, β=model.calibration.flat[:beta],
                     nv = -Optim.minimum(results)/1000.0
                     x[i][n, :] = xn
                     v[i][n, 1] = nv
-
                 end
             end
-        end
-
-        err = 0.0
-        err_x = optim ? 0.0 : err_x
-        for i in 1:nsd
-            err = max(err, maxabs(v[i] - v0[i]))
-            copy!(v0[i], v[i])
-
-            if optim
+            # compute diff in values
+            err = 0.0
+            for i in 1:nsd
+                err = max(err, maxabs(v[i] - v0[i]))
+                copy!(v0[i], v[i])
+            end
+            # compute diff in policy
+            for i in 1:nsd
+                err_x = 0
                 err_x = max(err_x, maxabs(x[i] - x0[i]))
                 copy!(x0[i], x[i])
             end
+            # update values and policies
+            set_values!(drv, v0)
+            set_values!(dr, x0)
         end
 
         if verbose
@@ -218,7 +235,7 @@ function solve_policy(model, pdr, β=model.calibration.flat[:beta],
             end
         end
 
-        set_values!(drv, v0)
+
 
     end
 
