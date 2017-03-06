@@ -1,5 +1,4 @@
-evaluate_policy(model, dr, β=model.calibration.flat[:beta];
-    verbose::Bool=true, maxit::Int=5000)
+function evaluate_policy(model, dr; verbose::Bool=true, maxit::Int=5000)
 
     # get grid for endogenous
     gg = model.options.grid
@@ -11,6 +10,7 @@ evaluate_policy(model, dr, β=model.calibration.flat[:beta];
 
     # extract parameters
     p = model.calibration[:parameters]
+    β=model.calibration.flat[:beta]
 
     # states today are the grid
     s = nodes(grid)
@@ -106,12 +106,13 @@ function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64},
     return E_V
 end
 
-function solve_policy(model, pdr, β=model.calibration.flat[:beta],
-    verbose::Bool=true, maxit::Int=5000)
+function solve_policy(model, pdr; verbose::Bool=true)
 
     # get grid for endogenous
     gg = model.options.grid
     grid = CartesianGrid(gg.a, gg.b, gg.orders) # temporary compatibility
+
+    β=model.calibration.flat[:beta]
 
     # process = dr.process
     process = model.exogenous
@@ -119,7 +120,7 @@ function solve_policy(model, pdr, β=model.calibration.flat[:beta],
 
     dr = CachedDecisionRule(pdr, dprocess)
     # compute the value function
-    absmax(x) = max([maximum(abs(x[i])) for i=1:length(x)]...)
+    absmax(x) = max( [maximum(abs(x[i])) for i=1:length(x)]... )
     p = model.calibration[:parameters]
 
     endo_nodes = nodes(grid)
@@ -142,10 +143,12 @@ function solve_policy(model, pdr, β=model.calibration.flat[:beta],
     x = [dr(i, endo_nodes) for i=1:nsd]
     x0 = deepcopy(x)
 
+    dr = CachedDecisionRule(dprocess, grid, x0)
+
     # this could be integrated in the main loop.
     verbose && println("Evaluating initial policy")
 
-    drv = evaluate_policy(model, dr, β, maxit=1000, verbose=false)
+    drv = evaluate_policy(model, dr; maxit=1000, verbose=verbose)
 
     verbose && println("Evaluating initial policy (done)")
 
@@ -153,39 +156,60 @@ function solve_policy(model, pdr, β=model.calibration.flat[:beta],
     v = deepcopy(v0)
 
     #Preparation for a loop
-    tol = 1e-6
-    err = 10.0
+    tol_x = 1e-8
+    tol_v = 1e-8
+    tol_eval = 1e-8
+    maxit = 1000
+    maxit_eval = 1000
+    err_v = 10.0
     err_x = 10.0
-    it = 0
+    err_eval = 10.0
 
-    n_eval = 50
+    it = 0
+    it_eval = 0
+
+
     optim_opts = Optim.OptimizationOptions(x_tol=1e-9, f_tol=1e-9)
 
-    mode == :optimize
+    mode = :improve
 
     converged = false
-    it_eval = 0
 
     while !converged
 
-        if !(mode == :optimize)
-            it_eval += 1
-            for i = 1:size(res, 1)
-                m = node(dprocess, i)
-                for n = 1:N
-                    s = endo_nodes[n, :]
-                    # update vals
-                    nv = update_value(model, β, dprocess, drv, i, s, x0[i][n, :], p)
-                    v[i][n, 1] = nv
+        # it += 1
+        if (mode == :eval)
+    #
+            it_eval = 0
+            converged_eval = false
+            while !converged_eval
+                it_eval += 1
+                for i = 1:size(res, 1)
+                    m = node(dprocess, i)
+                    for n = 1:N
+                        s = endo_nodes[n, :]
+    #                     # update vals
+                        nv = update_value(model, β, dprocess, drv, i, s, x0[i][n, :], p)
+                        v[i][n, 1] = nv
+                    end
+                end
+                # compute diff in values
+                err_eval = 0.0
+                for i in 1:nsd
+                    err_eval = max(err_eval, maxabs(v[i] - v0[i]))
+                    copy!(v0[i], v[i])
+                end
+                converged_eval = (it_eval>=maxit_eval) || (err_eval<tol_eval)
+                set_values!(drv, v0)
+                if verbose
+                    println("    It: ", it_eval, " ; SA: ", err_eval)
                 end
             end
-            # compute diff in values
-            err = 0.0
-            for i in 1:nsd
-                err = max(err, maxabs(v[i] - v0[i]))
-                copy!(v0[i], v[i])
-            end
+
+            mode = :improve
+
         else
+    #
             it += 1
             for i = 1:size(res, 1)
                 m = node(dprocess, i)
@@ -210,13 +234,15 @@ function solve_policy(model, pdr, β=model.calibration.flat[:beta],
                     v[i][n, 1] = nv
                 end
             end
+
             # compute diff in values
-            err = 0.0
+            err_v = 0.0
             for i in 1:nsd
-                err = max(err, maxabs(v[i] - v0[i]))
+                err_v = max(err_v, maxabs(v[i] - v0[i]))
                 copy!(v0[i], v[i])
             end
             # compute diff in policy
+            err_x = 0.0
             for i in 1:nsd
                 err_x = 0
                 err_x = max(err_x, maxabs(x[i] - x0[i]))
@@ -225,18 +251,18 @@ function solve_policy(model, pdr, β=model.calibration.flat[:beta],
             # update values and policies
             set_values!(drv, v0)
             set_values!(dr, x0)
-        end
 
-        if verbose
-            if optim
-                println("It: ", it, " ; SA: ", err, " ; SA_x: ", err_x, " ; nit: ", it)
-            else
-                println("It: ", it, " ; SA: ", err, " ; nit: ", it)
+            if verbose
+                println("It: ", it, " ; SA: ", err_v, " ; SA_x: ", err_x, " ; (nit) ", it_eval)
             end
+
+            # terminate only if policy didn't move
+            converged = ((err_x<tol_x) && (err_v<tol_v)) || (it>=maxit)
+
+            mode = :eval
+    #
         end
-
-
-
+    #
     end
 
     dr = CachedDecisionRule(dprocess, grid, x0)

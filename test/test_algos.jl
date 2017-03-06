@@ -9,8 +9,8 @@ model_mc = Dolo.yaml_import(fn)
 drc = Dolo.ConstantDecisionRule(model_mc.calibration[:controls])
 @time dr0, drv0 = Dolo.solve_policy(model_mc, drc) #, verbose=true, maxit=10000 )
 @time dr = Dolo.time_iteration(model_mc, verbose=true, maxit=10000)
-@time drv = Dolo.evaluate_policy(model_mc, dr, verbose=true, maxit=10000)
-@time drd = Dolo.time_iteration_direct(model_mc, dr, verbose=true, maxit=500)
+@time drv = Dolo.evaluate_policy(model_mc, dr) #, verbose=true, maxit=10000)
+@time drd = Dolo.time_iteration_direct(model_mc, dr) #, maxit=500)
 #
 # # compare with prerecorded values
 # kvec = linspace(dr.grid.min[1],dr.grid.max[1],10)
@@ -41,9 +41,6 @@ model = Dolo.yaml_import(fn)
 @time dr = Dolo.perturbate(model)
 drc = Dolo.ConstantDecisionRule(model.calibration[:controls])
 @time dr = Dolo.time_iteration(model, maxit=100, verbose=true)
-#
-
-
 
 @time dr0, drv0 = Dolo.solve_policy(model, drc) #;, verbose=true, maxit=1000 )
 
@@ -65,6 +62,7 @@ drc = Dolo.ConstantDecisionRule(model.calibration[:controls])
 
 
 # AR1 model: this one should be exactly equivalent to rbc_dtcc_ar1
+import Dolo
 fn = Pkg.dir("Dolo","examples","models","rbc_dtcc_ar1.yaml")
 model = Dolo.yaml_import(fn)
 dp = Dolo.discretize(model.exogenous)
@@ -72,7 +70,7 @@ dp = Dolo.discretize(model.exogenous)
 cdr =Dolo.CachedDecisionRule(dr,dp)
 @time dr = Dolo.time_iteration(model, model.exogenous, cdr)
 @time dr = Dolo.time_iteration(model)
-@time dr0, drv0 = Dolo.solve_policy(model_mc, drc) #, verbose=true, maxit=10000 )
-@time drv = Dolo.evaluate_policy(model_mc, dr, verbose=true, maxit=10000)
-@time drd = Dolo.time_iteration_direct(model_mc, dr) #, verbose=true) #, maxit=500)
+@time dr0, drv0 = Dolo.solve_policy(model, cdr, verbose=true) #, maxit=10000 )
+@time drv = Dolo.evaluate_policy(model, dr, verbose=true, maxit=10000)
+@time drd = Dolo.time_iteration_direct(model, dr) #, verbose=true) #, maxit=500)
 #

@@ -1,6 +1,6 @@
 import QuantEcon
 const QE = QuantEcon
-import Distributions:rand
+import Base:rand
 import Distributions
 
 abstract AbstractExogenous
@@ -10,15 +10,15 @@ abstract DiscreteProcess <: AbstractProcess
 abstract ContinuousProcess <: AbstractProcess
 abstract IIDExogenous <: AbstractProcess
 
-abstract AbstractDiscretizedProcess # <: DiscreteProcess
+abstract AbstractDiscretizedProcess
 
 ###
 ### Discretized process
 ###
 
 # date-t grid has a known structure
-type DiscretizedProcess <: AbstractDiscretizedProcess
-    grid::Grid
+type DiscretizedProcess{TG<:Grid} <: AbstractDiscretizedProcess
+    grid::TG
     integration_nodes::Array{Matrix{Float64},1}
     integration_weights::Array{Vector{Float64},1}
 end
@@ -37,7 +37,7 @@ type DiscreteMarkovProcess <: AbstractDiscretizedProcess
 end
 
 DiscreteMarkovProcess(transitions::Matrix{Float64}, values::Matrix{Float64}) =
-    DiscreteMarkovProcess(UnstructuredGrid(transitions), transitions, values)
+    DiscreteMarkovProcess(UnstructuredGrid(values), transitions, values)
 
 n_nodes(dp::DiscreteMarkovProcess) = size(dp.values, 1)
 n_inodes(dp::DiscreteMarkovProcess, i::Int) = size(dp.values, 1)

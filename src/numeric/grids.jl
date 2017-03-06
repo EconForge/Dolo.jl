@@ -1,11 +1,11 @@
 abstract Grid
 
 function mlinspace(min, max, n)
-    nodes = [linspace(e...) for e in zip(min, max, n)]
+    nodes =  map(linspace, min, max, n)
     return QE.gridmake(nodes...)
 end
 
-type EmptyGrid <: Grid
+immutable EmptyGrid <: Grid
     # this grid does not exist ;-)
 end
 
@@ -14,15 +14,15 @@ n_nodes(grid::EmptyGrid) = 0
 node(grid::EmptyGrid, i::Int) = nothing # fail if i!=1 ?
 
 
-type PointGrid <: Grid
+immutable PointGrid <: Grid
     point::Vector{Float64}
 end
-nodes(grid::PointGrid) = grid.point[:,:]
+nodes(grid::PointGrid) = grid.point'
 n_nodes(grid::PointGrid) = 1
 node(grid::PointGrid, i::Int) = point # fail if i!=1 ?
 
 
-type UnstructuredGrid <: Grid
+immutable UnstructuredGrid <: Grid
     nodes::Matrix{Float64}
 end
 nodes(grid::UnstructuredGrid) = grid.nodes
@@ -30,7 +30,7 @@ n_nodes(grid::UnstructuredGrid) = size(grid.nodes,1)
 node(grid::UnstructuredGrid, i::Int) = grid.nodes[i,:] # fail if i!=1 ?
 
 
-type CartesianGrid <: Grid
+immutable CartesianGrid <: Grid
     min::Vector{Float64}
     max::Vector{Float64}
     n::Vector{Int}
@@ -44,7 +44,7 @@ nodes(grid::Grid) = grid.nodes
 n_nodes(grid::Grid) = size(grid.nodes,1)
 node(grid::Grid, i::Int) = grid.nodes[i,:]
 
-type SmolyakGrid <: Grid
+immutable SmolyakGrid <: Grid
     min::Vector{Float64}
     max::Vector{Float64}
     mu::Vector{Int}
