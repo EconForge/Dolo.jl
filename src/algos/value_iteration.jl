@@ -1,6 +1,4 @@
-function evaluate_policy(model, dr, β=model.calibration.flat[:beta];
-    verbose::Bool=true, maxit::Int=5000
-    )
+function evaluate_policy(model, dr; verbose::Bool=true, maxit::Int=5000)
 
     # get grid for endogenous
     gg = model.options.grid
@@ -12,6 +10,7 @@ function evaluate_policy(model, dr, β=model.calibration.flat[:beta];
 
     # extract parameters
     p = model.calibration[:parameters]
+    β=model.calibration.flat[:beta]
 
     # states today are the grid
     s = nodes(grid)
@@ -51,7 +50,7 @@ function evaluate_policy(model, dr, β=model.calibration.flat[:beta];
     err = 10.0
     it = 0
 
-    drv = DecisionRule(process, grid, v0)
+    drv = CachedDecisionRule(dprocess, grid, v0)
 
     verbose && @printf "%-6s%-12s\n" "It" "SA"
     verbose && println(repeat("-", 14))
@@ -63,8 +62,8 @@ function evaluate_policy(model, dr, β=model.calibration.flat[:beta];
         for i = 1:nsd
             m = node(dprocess, i)
             for j = 1:n_inodes(dprocess, i)
-                M = inodes(dprocess, i, j)
-                w = iweights(dprocess, i, j)
+                M = inode(dprocess, i, j)
+                w = iweight(dprocess, i, j)
                  for n=1:N
                      # Update the states
                      S = Dolo.transition(model, m, s[n, :], x[i][n, :], M, p)
@@ -97,8 +96,8 @@ function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64},
     m = node(dprocess, i)
     E_V = 0.0
     for j=1:n_inodes(dprocess, i)
-        M = inodes(dprocess, i, j)
-        w = iweights(dprocess, i, j)
+        M = inode(dprocess, i, j)
+        w = iweight(dprocess, i, j)
         S = Dolo.transition(model, m, s, x0, M, p)
         E_V += w*drv(i, j, S)[1]
     end
@@ -107,19 +106,21 @@ function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64},
     return E_V
 end
 
-function solve_policy(model, dr, β=model.calibration.flat[:beta],
-    verbose::Bool=true, maxit::Int=5000)
+function solve_policy(model, pdr; verbose::Bool=true)
 
     # get grid for endogenous
     gg = model.options.grid
     grid = CartesianGrid(gg.a, gg.b, gg.orders) # temporary compatibility
 
+    β=model.calibration.flat[:beta]
+
     # process = dr.process
     process = model.exogenous
     dprocess = discretize(process)
 
+    dr = CachedDecisionRule(pdr, dprocess)
     # compute the value function
-    absmax(x) = max([maximum(abs(x[i])) for i=1:length(x)]...)
+    absmax(x) = max( [maximum(abs(x[i])) for i=1:length(x)]... )
     p = model.calibration[:parameters]
 
     endo_nodes = nodes(grid)
@@ -132,7 +133,7 @@ function solve_policy(model, dr, β=model.calibration.flat[:beta],
     res = [zeros(N, 1) for i=1:nsd]
 
     # bounds on controls
-    x_lb = Array{Float64,2}[cat(1, [Dolo.controls_lb(model, node(dprocess, i) , endo_nodes[n, :], p)' for n=1:N]...) for i=1:nsd]
+    x_lb = Array{Float64,2}[cat(1, [Dolo.controls_lb(model, node(dprocess, i), endo_nodes[n, :], p)' for n=1:N]...) for i=1:nsd]
     x_ub = Array{Float64,2}[cat(1, [Dolo.controls_ub(model, node(dprocess, i), endo_nodes[n, :], p)' for n=1:N]...) for i=1:nsd]
 
     # States at time t+1
@@ -142,9 +143,12 @@ function solve_policy(model, dr, β=model.calibration.flat[:beta],
     x = [dr(i, endo_nodes) for i=1:nsd]
     x0 = deepcopy(x)
 
+    dr = CachedDecisionRule(dprocess, grid, x0)
+
+    # this could be integrated in the main loop.
     verbose && println("Evaluating initial policy")
 
-    drv = evaluate_policy(model, dr, β, maxit=1000, verbose=false)
+    drv = evaluate_policy(model, dr; maxit=1000, verbose=verbose)
 
     verbose && println("Evaluating initial policy (done)")
 
@@ -152,36 +156,72 @@ function solve_policy(model, dr, β=model.calibration.flat[:beta],
     v = deepcopy(v0)
 
     #Preparation for a loop
-    tol = 1e-6
-    err = 10.0
+    tol_x = 1e-8
+    tol_v = 1e-8
+    tol_eval = 1e-8
+    maxit = 1000
+    maxit_eval = 1000
+    err_v = 10.0
     err_x = 10.0
-    it = 0
+    err_eval = 10.0
 
-    n_eval = 50
+    it = 0
+    it_eval = 0
+
+
     optim_opts = Optim.OptimizationOptions(x_tol=1e-9, f_tol=1e-9)
 
-    while (err > tol || err_x > tol) && it < maxit
-        it += 1
-        optim = (n_eval*div(it, n_eval) == it) || (err<tol)
+    mode = :improve
 
-        for i = 1:size(res, 1)
-            m = node(dprocess, i)
-            for n = 1:N
-                s = endo_nodes[n, :]
-                if !optim
-                    # update vals
-                    nv = update_value(model, β, dprocess, drv, i, s, x0[i][n, :], p)
-                    v[i][n, 1] = nv
-                else
+    converged = false
+
+    while !converged
+
+        # it += 1
+        if (mode == :eval)
+    #
+            it_eval = 0
+            converged_eval = false
+            while !converged_eval
+                it_eval += 1
+                for i = 1:size(res, 1)
+                    m = node(dprocess, i)
+                    for n = 1:N
+                        s = endo_nodes[n, :]
+    #                     # update vals
+                        nv = update_value(model, β, dprocess, drv, i, s, x0[i][n, :], p)
+                        v[i][n, 1] = nv
+                    end
+                end
+                # compute diff in values
+                err_eval = 0.0
+                for i in 1:nsd
+                    err_eval = max(err_eval, maxabs(v[i] - v0[i]))
+                    copy!(v0[i], v[i])
+                end
+                converged_eval = (it_eval>=maxit_eval) || (err_eval<tol_eval)
+                set_values!(drv, v0)
+                if verbose
+                    println("    It: ", it_eval, " ; SA: ", err_eval)
+                end
+            end
+
+            mode = :improve
+
+        else
+    #
+            it += 1
+            for i = 1:size(res, 1)
+                m = node(dprocess, i)
+                for n = 1:N
+                    s = endo_nodes[n, :]
                     # optimize vals
                     fobj(u) = -update_value(model, β, dprocess, drv, i, s, u, p)*1000.0
                     lower = x_lb[i][n, :]
                     upper = x_ub[i][n, :]
                     upper = clamp!(upper, -Inf, 1000000)
                     lower = clamp!(lower, -1000000, Inf)
-
                     initial_x = x0[i][n, :]
-
                     # try
                     results = optimize(
                         DifferentiableFunction(fobj), initial_x, lower, upper,
@@ -192,35 +232,39 @@ function solve_policy(model, dr, β=model.calibration.flat[:beta],
                     nv = -Optim.minimum(results)/1000.0
                     x[i][n, :] = xn
                     v[i][n, 1] = nv
-
                 end
             end
-        end
 
-        err = 0.0
-        err_x = optim ? 0.0 : err_x
-        for i in 1:nsd
-            err = max(err, maxabs(v[i] - v0[i]))
-            copy!(v0[i], v[i])
-
-            if optim
+            # compute diff in values
+            err_v = 0.0
+            for i in 1:nsd
+                err_v = max(err_v, maxabs(v[i] - v0[i]))
+                copy!(v0[i], v[i])
+            end
+            # compute diff in policy
+            err_x = 0.0
+            for i in 1:nsd
+                err_x = 0
                 err_x = max(err_x, maxabs(x[i] - x0[i]))
                 copy!(x0[i], x[i])
             end
-        end
+            # update values and policies
+            set_values!(drv, v0)
+            set_values!(dr, x0)
 
-        if verbose
-            if optim
-                println("It: ", it, " ; SA: ", err, " ; SA_x: ", err_x, " ; nit: ", it)
-            else
-                println("It: ", it, " ; SA: ", err, " ; nit: ", it)
+            if verbose
+                println("It: ", it, " ; SA: ", err_v, " ; SA_x: ", err_x, " ; (nit) ", it_eval)
             end
+
+            # terminate only if policy didn't move
+            converged = ((err_x<tol_x) && (err_v<tol_v)) || (it>=maxit)
+
+            mode = :eval
+    #
         end
-
-        set_values!(drv, v0)
-
+    #
     end
 
-    dr = DecisionRule(process, grid, x0)
-    return (dr, drv)
+    dr = CachedDecisionRule(dprocess, grid, x0)
+    return (dr.dr, drv.dr)
 end

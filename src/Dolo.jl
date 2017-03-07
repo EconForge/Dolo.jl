@@ -42,7 +42,6 @@ abstract AbstractNumericModel{ID} <: AbstractModel{ID}
 typealias ASM AbstractSymbolicModel
 typealias ANM AbstractNumericModel
 
-abstract AbstractDecisionRule
 
 id{ID}(::AbstractModel{ID}) = ID
 
@@ -84,6 +83,7 @@ include("algos/steady_state.jl")
 include("algos/time_iteration.jl")
 include("algos/time_iteration_direct.jl")
 include("algos/value_iteration.jl")
+include("algos/perturbation.jl")
 
 
 end # module
