@@ -13,14 +13,28 @@ model = Dolo.yaml_import(filename)
 n_exp = 0
 sigma = model.calibration.flat[:sig_z]
 
-Dolo.simulation(model, sigma, n_exp, horizon, seed,zeros(0, 0))
+res = Dolo.simulation(model, sigma, n_exp, horizon, seed,zeros(0, 0))
+vec(res)
+kvec = res[:,2,:]
+ivec = res[:,4,:]
+nvec = res[:,3,:]
+time = linspace(0,horizon-1,horizon)
+using Gadfly
+
+plot(x=time, y=kvec, Geom.point, Geom.line,
+     Guide.xlabel("horizon"), Guide.ylabel("Capital"), Guide.title("Simulations"))
+plot(x=time, y=nvec, Geom.point, Geom.line,Guide.xlabel("horizon"), Guide.ylabel("Hours"), Guide.title("Simulations"))
+plot(x=time, y=ivec, Geom.point, Geom.line, Guide.xlabel("horizon"), Guide.ylabel("Investments"), Guide.title("Simulations"))
 
 
+O = Theme(
+    default_color=colorant"orange")
 
-
-
-
-
+plot(layer(x=time, y=nvec, Geom.point, Geom.line, O),
+     layer(x=time, y=ivec, Geom.point, Geom.line),
+     Guide.xlabel("horizon"),
+     Guide.ylabel("Hours (orange), Investment"),
+     Guide.title("Simulations"))
 
 
 # verbose=true
