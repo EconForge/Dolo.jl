@@ -27,7 +27,7 @@ params = calib[:parameters]
 #ny = length(calib[:auxiliaries])
 #has_aux = ny > 0
 
-sigma = model.calibration.flat[:sigma]
+sigma = (model.calibration.flat[:sig_z])^2
 
 # calculate initial controls using decision rule
 s0=model.calibration[:states]
@@ -66,9 +66,9 @@ end
 
 
 
-# verbose=true
-# verbose && @printf "%-8s%-10s%-10s%-10s%-5s\n" "t" model.symbols[:states][1] model.symbols[:states][2] model.symbols[:controls][1] model.symbols[:controls][2]
-# verbose && println(repeat("-", 35))
+verbose=true
+verbose && @printf "%-8s%-10s%-10s%-10s%-5s\n" "t" model.symbols[:states][1] model.symbols[:states][2] model.symbols[:controls][1] model.symbols[:controls][2]
+verbose && println(repeat("-", 35))
 
 for t in 1:horizon
     #if irf

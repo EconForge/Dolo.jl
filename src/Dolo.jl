@@ -32,7 +32,7 @@ export arbitrage, transition, auxiliary, value, expectation,
        # dolo functions
 export yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename, id
 
-export time_iteration, value_iteration, steady_state_residuals
+export time_iteration, value_iteration, steady_state_residuals, simulation
 
 # set up core types
 abstract AbstractModel{ID}
@@ -84,6 +84,7 @@ include("algos/time_iteration.jl")
 include("algos/time_iteration_direct.jl")
 include("algos/value_iteration.jl")
 include("algos/perturbation.jl")
+include("algos/simulation.jl")
 
 
 end # module
