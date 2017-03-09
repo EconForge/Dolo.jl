@@ -1,5 +1,27 @@
-include("tmp_module.jl")
-#
+import Dolo
+import Distributions
+
+
+# test IID-Normal
+mu = [0.0, 0.0]
+Sigma = [1.0 0.0; 0.0 2.0]
+d = Dolo.MvNormal(mu, Sigma)
+sim = Dolo.simulate(d, 5, 200)
+dp = Dolo.discretize(d)
+
+
+# test VAR
+var = Dolo.VAR1([0.0,0.0],[0.99 0.0; 0.0 0.08],eye(2)*0.01)
+sim = Dolo.simulate(var, 5, 200)
+dp = Dolo.discretize(var)
+
+
+
+
+
+
+
+
 import temp
 
 
@@ -35,7 +57,7 @@ M = rand(2)
 Sigma = [0.5 0.5; 0.5 0.5]
 R = [0.9 0.1; 0 .8];
 n_states= [5,10]
-n_states::Array{Int64,1}
+n_states::Array{Int,1}
 n = 2
 n_integration=[7,4]
 # 4/ Create a VAR1 type (in the module). Add new functions that operate on this type. Add them to the test file.
@@ -55,7 +77,7 @@ M = rand(1)
 Sigma = [0.5]'
 R = [0.9]'
 n_states= [5]
-n_states::Array{Int64,1}
+n_states::Array{Int,1}
 n = 2
 n_integration=[7]
 # 4/ Create a VAR1 type (in the module). Add new functions that operate on this type. Add them to the test file.

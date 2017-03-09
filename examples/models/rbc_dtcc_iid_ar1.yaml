@@ -50,7 +50,7 @@ calibration:
     delta : 0.025
     alpha : 0.33
     rho : 0.8
-    sigma: 0.1
+    sigma: 0.01
     eta: 1
     sig_z: 0.016
     zbar: 0

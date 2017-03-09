@@ -50,21 +50,27 @@ end
 # NOTE: this will be empty if ny is zero. That's ok. Our call to `cat`  #       below will work either way  y_simul = Array(Float64, n_exp, ny, horizon)
 
 
-srand(seed)
-
 using Distributions
-d = Normal(0,sigma)
-epsilons = rand(d,horizon)
-# not working
-#ϵ_dist = Dolo.MvNormal(sigma)
-#epsilons = rand(ϵ_dist, n_exp)'
+#
+sigma = ones(1,1)*sigma
+n_m = size(sigma,1)
+d = MvNormal(zeros(n_m),sigma)
+epsilons = Array(Float64, n_exp, n_m, horizon)
+for i =1:n_exp
+    epsilons[i,:,:] = rand(d,horizon)
+end
 
-#verbose=true
-#verbose && @printf "%-8s%-10s%-10s%-10s%-5s\n" "t" model.symbols[:states][1] model.symbols[:states][2] model.symbols[:controls][1] model.symbols[:controls][2]
-#verbose && println(repeat("-", 35))
 
 
-for t in 2:horizon
+
+
+
+
+# verbose=true
+# verbose && @printf "%-8s%-10s%-10s%-10s%-5s\n" "t" model.symbols[:states][1] model.symbols[:states][2] model.symbols[:controls][1] model.symbols[:controls][2]
+# verbose && println(repeat("-", 35))
+
+for t in 1:horizon
     #if irf
     #  if !isempty(forcing_shocks) && t < size(forcing_shocks, 2)
     #      epsilons = forcing_shocks[t, :]'
@@ -77,19 +83,50 @@ for t in 2:horizon
 
     #s = view(s_simul, :, :, t)
     s = copy(view(s_simul, :, :, t))
-    x = copy(view(x_simul, :, :, t))
+    #x = view(x_simul, :, :, t)
     x = dr(s)
+    # this won't work with s = view(s_simul, :, :, t) even if using vec
     x_simul[:, :, t] = x
+    m = view(epsilons,:,:,t)
 
     if t < horizon
-      ss = copy(view(s_simul, :, :, t+1))
-      ss = Dolo.transition!(model, s[1:ns],  [epsilons[t]], s[1:ns], x[1:nx], [epsilons[t+1]], params)
-
+      M = view(epsilons,:,:,t+1)
+      ss = view(s_simul, :, :, t+1)
+      ss = Dolo.transition!(model, vec(ss), vec(m), vec(s), vec(x), vec(M), params)
       s_simul[:, :, t+1] = ss
-      # verbose && @printf "%-8s%-10s%-10s%-10s%-5s\n"  t round(ss[1],2) round(ss[2],2) round(xx[1],2) round(xx[2],2)
+      verbose && @printf "%-8s%-10s%-10s%-10s%-5s\n"  t round(s[1],2) round(s[2],2) round(x[1],2) round(x[2],2)
     end
 
 
 end
+
+
+
+s_simul[:,:,1]
+
+s_simul = Array(Float64, n_exp, ns, horizon)
+x_simul = Array(Float64, n_exp, nx, horizon)
+for i in 1:n_exp
+  s_simul[i, :, 1] = s0
+  x_simul[i, :, 1] = x0
+end
+
+
+t =1
+s = copy(view(s_simul, :, :, t))
+#x = view(x_simul, :, :, t)
+x = dr(s)
+# this won't work with s = view(s_simul, :, :, t) even if using vec
+x_simul[:, :, t] = x
+m = view(epsilons,:,:,t)
+
+
+M = view(epsilons,:,:,t+1)
+ss = view(s_simul, :, :, t+1)
+ss = Dolo.transition!(model, vec(ss), vec(m), vec(s), vec(x), vec(M), params)
+s_simul[:, :, t+1] = ss
+verbose && @printf "%-8s%-10s%-10s%-10s%-5s\n"  t round(s[1],2) round(s[2],2) round(x[1],2) round(x[2],2)
+s
+
 
 cat(2, s_simul, x_simul)::Array{Float64,3}
