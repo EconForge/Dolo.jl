@@ -11,9 +11,9 @@ import Dolo
 filename = joinpath(path,"examples","models","rbc_dtcc_iid_ar1.yaml")
 model = Dolo.yaml_import(filename)
 n_exp = 0
+sigma = model.calibration.flat[:sig_z]
 
-
-Dolo.simulation(model, n_exp, horizon, seed,zeros(0, 0))
+Dolo.simulation(model, sigma, n_exp, horizon, seed,zeros(0, 0))
 
 
 
