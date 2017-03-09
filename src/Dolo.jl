@@ -77,6 +77,7 @@ include("symbolic.jl")
 include("calibration.jl")
 include("minilang.jl")
 include("numeric.jl")
+include("printing.jl")
 include("model_import.jl")
 
 include("algos/steady_state.jl")
