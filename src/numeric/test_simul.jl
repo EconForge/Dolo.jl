@@ -102,4 +102,31 @@ end
 
 
 
+s_simul[:,:,1]
+
+s_simul = Array(Float64, n_exp, ns, horizon)
+x_simul = Array(Float64, n_exp, nx, horizon)
+for i in 1:n_exp
+  s_simul[i, :, 1] = s0
+  x_simul[i, :, 1] = x0
+end
+
+
+t =1
+s = copy(view(s_simul, :, :, t))
+#x = view(x_simul, :, :, t)
+x = dr(s)
+# this won't work with s = view(s_simul, :, :, t) even if using vec
+x_simul[:, :, t] = x
+m = view(epsilons,:,:,t)
+
+
+M = view(epsilons,:,:,t+1)
+ss = view(s_simul, :, :, t+1)
+ss = Dolo.transition!(model, vec(ss), vec(m), vec(s), vec(x), vec(M), params)
+s_simul[:, :, t+1] = ss
+verbose && @printf "%-8s%-10s%-10s%-10s%-5s\n"  t round(s[1],2) round(s[2],2) round(x[1],2) round(x[2],2)
+s
+
+
 cat(2, s_simul, x_simul)::Array{Float64,3}
