@@ -1,7 +1,4 @@
 
-horizon=40
-seed=42
-
 
 path = Pkg.dir("Dolo")
 
@@ -12,12 +9,21 @@ filename = joinpath(path,"examples","models","rbc_dtcc_iid_ar1.yaml")
 model = Dolo.yaml_import(filename)
 n_exp = 0
 sigma = model.calibration.flat[:sig_z]
+horizon=40
+seed=42
+@time dr = Dolo.time_iteration(model, verbose=true, maxit=10000)
+s0=model.calibration[:states]
+# You have to specify parameters of the function inside the brakets, strange
+res = Dolo.simulation(model, sigma, dr,s0, n_exp, horizon, seed, zeros(0, 0))
+res_long = Dolo.simulation(model, sigma, dr,s0, n_exp=0, horizon=100, seed=42)
 
-res = Dolo.simulation(model, sigma, n_exp, horizon, seed,zeros(0, 0))
-vec(res)
-kvec = res[:,2,:]
-ivec = res[:,4,:]
-nvec = res[:,3,:]
+res = Dolo.simulation(model, sigma, dr,s0)
+res = Dolo.simulation(model, sigma)
+
+kvec = res_long[:,2,:]
+ivec = res_long[:,4,:]
+nvec = res_long[:,3,:]
+horizon=100
 time = linspace(0,horizon-1,horizon)
 using Gadfly
 

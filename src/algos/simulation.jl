@@ -4,7 +4,9 @@
 #                            seed::Int=42,
 #                            forcing_shocks::AbstractMatrix=zeros(0, 0))
 #
-function simulation(model::AbstractNumericModel, sigma::Any,
+function simulation(model::AbstractNumericModel, sigma::Any, dr::AbstractDecisionRule,
+                           #s0::AbstractVector=m.calibration[:states];
+                           s0::AbstractVector;
                            n_exp::Int=0, horizon::Int=40,
                            seed::Int=42,
                            forcing_shocks::AbstractMatrix=zeros(0, 0))
@@ -25,8 +27,8 @@ function simulation(model::AbstractNumericModel, sigma::Any,
     sigma = sigma^2
 
     # calculate initial controls using decision rule
-    s0=model.calibration[:states]
-    @time dr = Dolo.time_iteration(model, verbose=true, maxit=10000)
+    #s0=model.calibration[:states]
+    #@time dr = Dolo.time_iteration(model, verbose=true, maxit=10000)
     x0 = dr(s0)
 
     # get number of states and controls
@@ -76,10 +78,22 @@ function simulation(model::AbstractNumericModel, sigma::Any,
           ss = Dolo.transition!(model, vec(ss), vec(m), vec(s), vec(x), vec(M), params)
           s_simul[:, :, t+1] = ss
         end
-
-
     end
 
-    cat(2, s_simul, x_simul)::Array{Float64,3}
+    return cat(2, s_simul, x_simul)::Array{Float64,3}
 
+end
+
+
+function simulation(model::AbstractNumericModel, sigma::Any; kwargs...)
+  #n_exp::Int=0, horizon::Int=40,
+  #                        seed::Int=42,
+  #                        forcing_shocks::AbstractMatrix=zeros(0, 0))
+    @time dr = Dolo.time_iteration(model, verbose=true, maxit=10000)
+    s0=model.calibration[:states]
+    return simulation(model::AbstractNumericModel, sigma::Any, dr::AbstractDecisionRule,
+                        s0::AbstractVector; kwargs...)
+                        # n_exp::Int=0, horizon::Int=40,
+                        # seed::Int=42,
+                        # forcing_shocks::AbstractMatrix=zeros(0, 0))
 end
