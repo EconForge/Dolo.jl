@@ -1,5 +1,13 @@
 abstract Grid
 
+function Base.show(io::IO, grid::Grid)
+    @printf io "%s\n" typeof(grid)
+end
+
+function Base.display(io::IO, grid::Grid)
+    @printf io "%s\n" typeof(grid)
+end
+
 function mlinspace(min, max, n)
     nodes =  map(linspace, min, max, n)
     return QE.gridmake(nodes...)

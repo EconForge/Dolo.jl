@@ -42,8 +42,27 @@ function stack(x::Array{Array{Float64,2},1})::Array{Float64,2}
      return cat(1, x...)
 end
 
+type TimeIterationResult
+    dr::AbstractDecisionRule
+    iterations::Int
+    complementarities::Bool
+    x_converged::Bool
+    x_tol::Float64
+    err::Float64
+end
+
+converged(r::TimeIterationResult) = r.x_converged
+function Base.show(io::IO, r::TimeIterationResult)
+    @printf io "Results of Time Iteration Algorithm\n"
+    @printf io " * Complementarities: %s\n" string(r.complementarities)
+    @printf io " * Decision Rule type: %s\n" string(typeof(r))
+    @printf io " * Number of iterations: %s\n" string(r.iterations)
+    @printf io " * Convergence: %s\n" converged(r)
+    @printf io "   * |x - x'| < %.1e: %s\n" r.x_tol r.x_converged
+end
+
 function time_iteration(model, process, init_dr; verbose::Bool=true,
-    maxit::Int=100, tol::Float64=1e-8)
+    maxit::Int=100, tol::Float64=1e-8, infos=false)
 
     # get grid for endogenous
     gg = model.options.grid
@@ -112,7 +131,12 @@ function time_iteration(model, process, init_dr; verbose::Bool=true,
 
     # TODO: somehow after defining `fobj` the `dr` object gets `Core.Box`ed
     #       making the return type right here non-inferrable.
-    return dr.dr
+    if !infos
+        return dr.dr
+    else
+        converged = err<tol
+        TimeIterationResult(dr.dr, it, true, converged, tol, err)
+    end
 
 end
 

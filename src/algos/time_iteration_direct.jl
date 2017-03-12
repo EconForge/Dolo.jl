@@ -1,4 +1,5 @@
-function time_iteration_direct(model, process, init_dr, verbose=true, maxit=100, tol=1e-8)
+function time_iteration_direct(model, process, init_dr; verbose::Bool=true,
+    maxit::Int=100, tol::Float64=1e-8, infos=false)
 
     # Grid
     gg = model.options.grid
@@ -86,21 +87,25 @@ function time_iteration_direct(model, process, init_dr, verbose=true, maxit=100,
       verbose && @printf "%-6i%-12.2e\n" it err
     end
 
-    return dr.dr
+    if !infos
+        return dr.dr
+    else
+        converged = err<tol
+        TimeIterationResult(dr.dr, it, converged, true, tol, err)
+    end
+
 end
 
-
+# get stupid initial rule
 function time_iteration_direct(model, process::AbstractExogenous; kwargs...)
     init_dr = ConstantDecisionRule(model.calibration[:controls])
-    return time_iteration_direct(model, process, init_dr; kwargs...)
+    return time_iteration_direct(model, process, init_dr;  kwargs...)
 end
-
 
 function time_iteration_direct(model, init_dr::AbstractDecisionRule; kwargs...)
     process = model.exogenous
     return time_iteration_direct(model, process, init_dr; kwargs...)
 end
-
 
 function time_iteration_direct(model; kwargs...)
     process = model.exogenous

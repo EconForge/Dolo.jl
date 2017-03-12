@@ -10,8 +10,12 @@ type DecisionRule{S,T} <: AbstractDecisionRule{S,T}
     coefficients::Array{Array{Float64}}
 end
 
+function Base.show(io::IO, dr::AbstractDecisionRule)
+    @printf io "%s\n" typeof(dr)
+end
 
-type ConstantDecisionRule
+
+type ConstantDecisionRule <: AbstractDecisionRule
     constants::Vector{Float64}
 end
 

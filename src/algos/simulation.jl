@@ -1,9 +1,3 @@
-# function QuantEcon.simulate_2(m::AbstractNumericModel, dr::AbstractDecisionRule,
-#                            s0::AbstractVector=m.calibration[:states];
-#                            n_exp::Int=0, horizon::Int=40,
-#                            seed::Int=42,
-#                            forcing_shocks::AbstractMatrix=zeros(0, 0))
-#
 function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
                            s0::AbstractVector, e0::AbstractVector;
                            n_exp::Int=1, horizon::Int=40,  seed::Int=42, stochastic=true)

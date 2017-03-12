@@ -40,14 +40,17 @@ fn = joinpath(path,"examples","models","rbc_dtcc_iid.yaml")
 model = Dolo.yaml_import(fn)
 
 @time dr = Dolo.perturbate(model)
+
 drc = Dolo.ConstantDecisionRule(model.calibration[:controls])
+
 @time dr = Dolo.time_iteration(model, maxit=100, verbose=true)
+@time res = Dolo.time_iteration(model, dr; maxit=100, infos=true)
+res
 
 @time dr0, drv0 = Dolo.solve_policy(model, drc) #;, verbose=true, maxit=1000 )
-
 @time drd = Dolo.time_iteration_direct(model) #, maxit=1000, verbose=true)
 @time dr = Dolo.time_iteration_direct(model, drd) #, maxit=500, verbose=true)
-
+@time res = Dolo.time_iteration_direct(model, drc; infos=true)
 @time drv = Dolo.evaluate_policy(model, dr, verbose=true)
 #
 Dolo.simulate(model, dr)

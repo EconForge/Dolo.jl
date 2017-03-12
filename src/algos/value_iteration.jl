@@ -1,3 +1,30 @@
+
+type TimeIterationResult
+    dr::AbstractDecisionRule
+    drv::AbstractDecisionRule
+    iterations::Int
+    complementarities::Bool
+    x_converged::Bool
+    x_tol::Float64
+    x_err::Float64
+    v_converged::Bool
+    v_tol::Float64
+    v_err::Float64
+end
+
+converged(r::TimeIterationResult) = r.x_converged && r.v_converged
+function Base.show(io::IO, r::TimeIterationResult)
+    @printf io "Results of Time Iteration Algorithm\n"
+    @printf io " * Complementarities: %s\n" string(r.complementarities)
+    @printf io " * Decision Rule type: %s\n" string(typeof(r))
+    @printf io " * Number of iterations: %s\n" string(r.iterations)
+    @printf io " * Convergence: %s\n" converged(r)
+    @printf io "   * |x - x'| < %.1e: %s\n" r.x_tol r.x_converged
+    @printf io "   * |v - v'| < %.1e: %s\n" r.v_tol r.v_converged
+
+end
+
+
 function evaluate_policy(model, dr; verbose::Bool=true, maxit::Int=5000)
 
     # get grid for endogenous
@@ -265,6 +292,13 @@ function solve_policy(model, pdr; verbose::Bool=true)
     #
     end
 
-    dr = CachedDecisionRule(dprocess, grid, x0)
-    return (dr.dr, drv.dr)
+
+    if !infos
+        dr = CachedDecisionRule(dprocess, grid, x0)
+        return (dr.dr, drv.dr)
+    else
+        converged_x = err_x<tol_x
+        converged_v = err_v<tol_v
+        TimeIterationResult(dr.dr, it, true, converged_x, tol_x, err_x, converged_v, tol_v, err_v)
+    end
 end
