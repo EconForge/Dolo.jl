@@ -88,14 +88,24 @@ function rand(mvn::MvNormal, args...)
     return rand(dist, args...)
 end
 
-function simulate(mvn::MvNormal, n_exp::Integer, horizon::Integer)
+function simulate(mvn::MvNormal, N::Integer, T::Integer, e0::Vector{Float64}; stochastic=true)
     dist = Distributions.MvNormal(mvn.mu, mvn.Sigma)
     d = length(mvn.mu)
-    out = zeros(d, n_exp, horizon)
-    for t=1:horizon
-        out[:,:,t] = rand(dist,n_exp)
+    out = zeros(d, N, T)
+    for i=1:N
+        out[:,i,1] = e0
+    end
+    if stochastic
+        for t =2:T
+            out[:,:,t] = rand(dist, N)
+        end
     end
     return out
+end
+
+function simulate(mvn::MvNormal, N::Integer, T::Integer; stochastic=true)
+    e0 = zeros(size(mvn.mu,1))
+    return simulate(mvn, N, T, e0; stochastic=stochastic )
 end
 
 discretize(dmp::DiscreteMarkovProcess) = dmp
@@ -136,7 +146,6 @@ function discretize(var::VAR1)
 end
 
 function discretize(var::VAR1, n_states::Array{Int,1}, n_integration::Array{Int,1}; n_std::Int=2,)
-
     R = var.R
     M = var.M
     Sigma = var.Sigma
@@ -154,37 +163,43 @@ end
 
 
 
-function simulate(var::VAR1, N::Int, T::Int)
+function simulate(var::VAR1, N::Int, T::Int, e0::Vector{Float64}; stochastic=true)
 
   """
   This function takes:
-    - VAR_info -  an object of the type "VAR1.myvar"
-    which contains 3 arrays: mean and autocorrelation matrices of the VAR(1) process
-      and covariance matrix of the innovations;
+    - var -  a VAR1 process
     - N - number of simulations.
     - T - number of periods to simulate;
 
   The function returns:
-    - XN - simulated data, ordered as [n, N, T], where n is the number of variables;
-    #- E - simulated innovations, ordered as [N, T, n], where n is the number of variables;
+    - XN - simulated data, ordered as (n, N, T), where n is the number of variables;
   """
   n = size(var.M, 1);
   # srand(123) # Setting the seed
   d = MvNormal(var.Sigma);
   XN=zeros(N, T, n);
   E=zeros(N, T, n);
-  #Inicial conditions
-  XN[:, 1, :]=rand(N, n);
-  for jj = 1:1:N
-        E[jj, :, :] = rand(d, T)';
+  if stochastic
+      for jj = 1:1:N
+            E[jj, :, :] = rand(d, T)';
+      end
+  end
+  # Initial conditions
+  for i=1:N
+      XN[i, 1, :]=e0
+      for jj = 1:1:N
         for ii =1:1:T-1
             XN[jj, ii+1, :]=var.M+var.R*(XN[jj, ii, :]-var.M)+E[jj, ii, :];
         end
+      end
   end
   return permutedims(XN,[3,1,2])  #, E
 end
 
 
+function simulate(var::VAR1, N::Int, T::Int; stochastic=true)
+    return simulate(var, N, T, var.M; stochastic=stochastic)
+end
 
 
 

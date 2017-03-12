@@ -1,5 +1,6 @@
 path = Pkg.dir("Dolo")
 
+Pkg.build("QuantEcon")
 import Dolo
 
 
@@ -26,12 +27,12 @@ drc = Dolo.ConstantDecisionRule(model_mc.calibration[:controls])
 # ivec_0 = [dr0(1,[k])[2] for k in kvec]
 # @assert maxabs(nvec_0-nvec)<1e-4
 
-
 # let's redo when model is stable !
 # ivec_test = [0.295977,  0.257538,  0.21566,  0.173564,  0.132103,  0.0915598,  0.0520067,  0.0134661,  7.01983e-6, 3.40994e-17]
 # nvec_test = [ 0.391997,  0.348033,  0.318369,  0.296276,  0.278821,  0.264487,  0.25239 ,  0.241974,  0.236604,  0.233779 ]
 # @assert maximum(abs(ivec-ivec_test))<1e-5
 # @assert maximum(abs(nvec-nvec_test))<1e-5
+
 
 import Dolo
 path = Pkg.dir("Dolo")
@@ -49,6 +50,17 @@ drc = Dolo.ConstantDecisionRule(model.calibration[:controls])
 
 @time drv = Dolo.evaluate_policy(model, dr, verbose=true)
 #
+Dolo.simulate(model, dr)
+
+s0 = model.calibration[:states]+0.1
+sim = Dolo.simulate(model, dr, s0; stochastic=true)
+Dolo.simulate(model, dr, n_exp=10)
+
+# this doesn't work here
+irf = Dolo.response(model, dr, [0.1])
+irf[:k]
+
+
 # kvec = linspace(dr.grid.min[1],dr.grid.max[1],10)
 # nvec = [dr(1,[k])[1] for k in kvec]
 # ivec = [dr(1,[k])[2] for k in kvec]
@@ -74,3 +86,7 @@ cdr =Dolo.CachedDecisionRule(dr,dp)
 @time drv = Dolo.evaluate_policy(model, dr, verbose=true, maxit=10000)
 @time drd = Dolo.time_iteration_direct(model, dr) #, verbose=true) #, maxit=500)
 #
+
+Dolo.simulate(model, dr, n_exp=10)
+sim = Dolo.response(model, dr, [0.01])
+sim

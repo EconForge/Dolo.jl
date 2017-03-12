@@ -6,15 +6,23 @@ import Distributions
 mu = [0.0, 0.0]
 Sigma = [1.0 0.0; 0.0 2.0]
 d = Dolo.MvNormal(mu, Sigma)
-sim = Dolo.simulate(d, 5, 200)
+sim = Dolo.simulate(d, 1, 200, [0.1, -0.01])
+sim = Dolo.simulate(d, 1, 200, [0.1, -0.01]; stochastic=false)
 dp = Dolo.discretize(d)
 
 
 # test VAR
 var = Dolo.VAR1([0.0,0.0],[0.99 0.0; 0.0 0.08],eye(2)*0.01)
+
+
 sim = Dolo.simulate(var, 5, 200)
+sim = Dolo.simulate(var, 5, 200, [0.8, 0.8])
+sim = Dolo.simulate(var, 1, 200, [0.8, 0.8]; stochastic=false)
+
 dp = Dolo.discretize(var)
 
+
+import PyPlot
 
 
 

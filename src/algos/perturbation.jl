@@ -108,12 +108,12 @@ function perturbate(model::AbstractNumericModel, eigtol::Float64=1.0+1e-6)
     # Q = g_e
     # A = g_s + g_x*C
     # B = g_e
-    C_exo = C[:,1:length(_m)]
-    C_endo = C[:,(length(_m)+1):end]
 
     if size(R,1)>0
+        C_exo = C[:,1:length(_m)]
+        C_endo = C[:,(length(_m)+1):end]
         BiTaylorExpansion(_m, _s, x, C_exo, C_endo)
     else
-        BiTaylorExpansion(zeros(0), _s, x, C_exo, C_endo)
+        BiTaylorExpansion(_m, _s, x, zeros(nx, length(_m)), C)
     end
 end
