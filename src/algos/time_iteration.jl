@@ -62,7 +62,7 @@ function Base.show(io::IO, r::TimeIterationResult)
 end
 
 function time_iteration(model, process, init_dr; verbose::Bool=true,
-    maxit::Int=100, tol::Float64=1e-8, infos=false)
+    maxit::Int=100, tol::Float64=1e-8, infos::Bool=false)
 
     # get grid for endogenous
     gg = model.options.grid

@@ -1,5 +1,5 @@
 function time_iteration_direct(model, process, init_dr; verbose::Bool=true,
-    maxit::Int=100, tol::Float64=1e-8, infos=false)
+    maxit::Int=100, tol::Float64=1e-8, infos::Bool=false)
 
     # Grid
     gg = model.options.grid

@@ -1,5 +1,5 @@
 
-type TimeIterationResult
+type ValueIterationResult
     dr::AbstractDecisionRule
     drv::AbstractDecisionRule
     iterations::Int
@@ -12,9 +12,9 @@ type TimeIterationResult
     v_err::Float64
 end
 
-converged(r::TimeIterationResult) = r.x_converged && r.v_converged
-function Base.show(io::IO, r::TimeIterationResult)
-    @printf io "Results of Time Iteration Algorithm\n"
+converged(r::ValueIterationResult) = r.x_converged && r.v_converged
+function Base.show(io::IO, r::ValueIterationResult)
+    @printf io "Results of Value Iteration Algorithm\n"
     @printf io " * Complementarities: %s\n" string(r.complementarities)
     @printf io " * Decision Rule type: %s\n" string(typeof(r))
     @printf io " * Number of iterations: %s\n" string(r.iterations)
@@ -133,7 +133,7 @@ function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64},
     return E_V
 end
 
-function solve_policy(model, pdr; verbose::Bool=true)
+function solve_policy(model, pdr; maxit::Int=1000, verbose::Bool=true, infos::Bool=false)
 
     # get grid for endogenous
     gg = model.options.grid
@@ -186,7 +186,6 @@ function solve_policy(model, pdr; verbose::Bool=true)
     tol_x = 1e-8
     tol_v = 1e-8
     tol_eval = 1e-8
-    maxit = 1000
     maxit_eval = 1000
     err_v = 10.0
     err_x = 10.0
@@ -228,9 +227,9 @@ function solve_policy(model, pdr; verbose::Bool=true)
                 end
                 converged_eval = (it_eval>=maxit_eval) || (err_eval<tol_eval)
                 set_values!(drv, v0)
-                if verbose
-                    println("    It: ", it_eval, " ; SA: ", err_eval)
-                end
+                # if verbose
+                #     println("    It: ", it_eval, " ; SA: ", err_eval)
+                # end
             end
 
             mode = :improve
@@ -299,6 +298,6 @@ function solve_policy(model, pdr; verbose::Bool=true)
     else
         converged_x = err_x<tol_x
         converged_v = err_v<tol_v
-        TimeIterationResult(dr.dr, it, true, converged_x, tol_x, err_x, converged_v, tol_v, err_v)
+        ValueIterationResult(dr.dr, drv.dr, it, true, converged_x, tol_x, err_x, converged_v, tol_v, err_v)
     end
 end
