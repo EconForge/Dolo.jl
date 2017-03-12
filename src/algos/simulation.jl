@@ -4,8 +4,8 @@
 #                            seed::Int=42,
 #                            forcing_shocks::AbstractMatrix=zeros(0, 0))
 #
-function simulation(model::AbstractNumericModel, dr::AbstractDecisionRule,
-                           s0::AbstractVector;
+function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
+                           s0::AbstractVector, e0::AbstractVector;
                            n_exp::Int=1, horizon::Int=40,  seed::Int=42, stochastic=true)
 
     # extract data from model
@@ -13,14 +13,12 @@ function simulation(model::AbstractNumericModel, dr::AbstractDecisionRule,
     params = calib[:parameters]
 
     # simulate exogenous shocks: size (ne.N.T)
-    epsilons = simulate(model.exogenous, n_exp, horizon; stochastic=stochastic)
-    epsilons = permutedims(epsilons, [2,1,3])
+    epsilons = simulate(model.exogenous, n_exp, horizon, e0; stochastic=stochastic)
+    epsilons = permutedims(epsilons, [2,1,3]) # (N,ne,T)
 
     # calculate initial controls using decision rule
-
-    println(s0)
-    println(epsilons[:,1,1])
-    x0 = dr(epsilons[:,1,1],s0)
+    println(size(epsilons))
+    x0 = dr(epsilons[1,:,1],s0)
 
     # get number of states and controls
     ns = length(s0)
@@ -38,23 +36,39 @@ function simulation(model::AbstractNumericModel, dr::AbstractDecisionRule,
 
     for t in 1:horizon
         s = copy(view(s_simul, :, :, t))
-        m = copy(view(epsilons,:,:,t))
+        m = copy(view(epsilons, :, :, t))
         x = dr(m,s)
         x_simul[:, :, t] = x
         if t < horizon
-          M = view(epsilons,:,:,t+1)
+          M = view(epsilons, :, :, t+1)
           ss = view(s_simul, :, :, t+1)
-          ss = Dolo.transition!(model, vec(ss), vec(m), vec(s), vec(x), vec(M), params)
+          println([size(e) for e in [ss,m,s,x,M]])
+          ss = Dolo.transition!(model, (ss), (m), (s), (x), (M), params)
           s_simul[:, :, t+1] = ss
         end
     end
 
-    return cat(2, s_simul, x_simul)::Array{Float64,3}
+    return cat(2, epsilons, s_simul, x_simul)::Array{Float64,3}
 
 end
 
+function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule, s0::AbstractVector; kwargs...)
+    e0 = model.calibration[:exogenous]
+    return simulate(model, dr, s0, e0; kwargs...)
+end
 
-function simulation(model::AbstractNumericModel,  dr::AbstractDecisionRule; kwargs...)
+function simulate(model::AbstractNumericModel,  dr::AbstractDecisionRule; kwargs...)
     s0 = model.calibration[:states]
-    return simulation(model, dr, s0; kwargs...)
+    e0 = model.calibration[:exogenous]
+    return simulate(model, dr, s0, e0; kwargs...)
+end
+
+using DataFrames
+
+function response(model::AbstractNumericModel,  dr::AbstractDecisionRule, e0::AbstractVector; kwargs...)
+    s0 = model.calibration[:states]
+    sims = simulate(model, dr, s0, e0; stochastic=false, n_exp=1, kwargs...)
+    sim = sims[1,:,:]
+    columns = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+    return DataFrame(Dict(columns[i]=>sim[i,:] for i=1:length(columns)))
 end

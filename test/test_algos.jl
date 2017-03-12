@@ -50,14 +50,16 @@ drc = Dolo.ConstantDecisionRule(model.calibration[:controls])
 
 @time drv = Dolo.evaluate_policy(model, dr, verbose=true)
 #
-Dolo.simulation(model, dr)
+Dolo.simulate(model, dr)
 
 s0 = model.calibration[:states]+0.1
-sim = Dolo.simulation(model, dr, s0; stochastic=true)
+sim = Dolo.simulate(model, dr, s0; stochastic=true)
+Dolo.simulate(model, dr, n_exp=10)
 
-figure()
-plot(sim[1,1,:])
-show()
+# this doesn't work here
+irf = Dolo.response(model, dr, [0.1])
+irf[:k]
+
 
 # kvec = linspace(dr.grid.min[1],dr.grid.max[1],10)
 # nvec = [dr(1,[k])[1] for k in kvec]
@@ -84,12 +86,7 @@ cdr =Dolo.CachedDecisionRule(dr,dp)
 @time drv = Dolo.evaluate_policy(model, dr, verbose=true, maxit=10000)
 @time drd = Dolo.time_iteration_direct(model, dr) #, verbose=true) #, maxit=500)
 #
-Dolo.simulation(model, dr)
 
-
-s0 = model.calibration[:states]
-sim = Dolo.simulation(model, dr, s0; stochastic=false)
-size(sim)
-figure()
-plot(sim[1,1,:])
-show()
+Dolo.simulate(model, dr, n_exp=10)
+sim = Dolo.response(model, dr, [0.01])
+sim
