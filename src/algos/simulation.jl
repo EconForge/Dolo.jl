@@ -1,13 +1,13 @@
 function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
                            s0::AbstractVector, e0::AbstractVector;
-                           n_exp::Int=1, horizon::Int=40,  seed::Int=42, stochastic=true)
+                           n_exp::Int=1, horizon::Int=40,  seed::Int=42, stochastic=true, irf=false)
 
     # extract data from model
     calib = model.calibration
     params = calib[:parameters]
 
     # simulate exogenous shocks: size (ne.N.T)
-    epsilons = simulate(model.exogenous, n_exp, horizon, e0; stochastic=stochastic)
+    epsilons = simulate(model.exogenous, n_exp, horizon, e0; stochastic=stochastic, irf=irf)
     epsilons = permutedims(epsilons, [2,1,3]) # (N,ne,T)
 
     # calculate initial controls using decision rule
@@ -61,7 +61,16 @@ using DataFrames
 
 function response(model::AbstractNumericModel,  dr::AbstractDecisionRule, e0::AbstractVector; kwargs...)
     s0 = model.calibration[:states]
-    sims = simulate(model, dr, s0, e0; stochastic=false, n_exp=1, kwargs...)
+    sims = simulate(model, dr, s0, e0; stochastic=false, irf=true, n_exp=1, kwargs...)
+    sim = sims[1,:,:]
+    columns = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+    return DataFrame(Dict(columns[i]=>sim[i,:] for i=1:length(columns)))
+end
+
+function response(model::AbstractNumericModel,  dr::AbstractDecisionRule; kwargs...)
+    e0 = model.calibration[:exogenous]
+    s0 = model.calibration[:states]
+    sims = simulate(model, dr, s0, e0; stochastic=false, irf=true, n_exp=1, kwargs...)
     sim = sims[1,:,:]
     columns = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
     return DataFrame(Dict(columns[i]=>sim[i,:] for i=1:length(columns)))

@@ -88,7 +88,7 @@ function rand(mvn::MvNormal, args...)
     return rand(dist, args...)
 end
 
-function simulate(mvn::MvNormal, N::Integer, T::Integer, e0::Vector{Float64}; stochastic=true)
+function simulate(mvn::MvNormal, N::Integer, T::Integer, e0::Vector{Float64}; stochastic=true, irf=false)
     dist = Distributions.MvNormal(mvn.mu, mvn.Sigma)
     d = length(mvn.mu)
     out = zeros(d, N, T)
@@ -99,6 +99,19 @@ function simulate(mvn::MvNormal, N::Integer, T::Integer, e0::Vector{Float64}; st
         for t =2:T
             out[:,:,t] = rand(dist, N)
         end
+    else
+      if irf
+        out[:,:,2] = mvn.Sigma
+        for t =3:T
+            out[:,:,t] = 0
+        end
+      else
+        for t =2:T
+            out[:,:,t] = 0
+# out[:,:,t] = zeros(dist, N) isn't working ... gives an error
+# MethodError: no method matching Array{Float64,N}(::Distributions.MvNormal{Float64,PDMats.PDMat{Float64,Array{Float64,2}},Array{Float64,1}}, ::Int64)
+        end
+      end
     end
     return out
 end
