@@ -88,26 +88,34 @@ function rand(mvn::MvNormal, args...)
     return rand(dist, args...)
 end
 
-function simulate(mvn::MvNormal, N::Integer, T::Integer, e0::Vector{Float64}; stochastic=true, irf=false)
-    dist = Distributions.MvNormal(mvn.mu, mvn.Sigma)
+# function simulate(model, mvn::MvNormal, N::Integer, T::Integer, e0::Vector{Float64}, shock_name::Symbol; stochastic=true, irf=false)
+function simulate(model::AbstractNumericModel, mvn::MvNormal, N::Integer, T::Integer,
+                  e0::Vector{Float64}, shock_name::Symbol, shock_size::AbstractArray=zeros(0, 0); stochastic=true, irf=false)
+    ind_shock = findfirst(model.symbols[:exogenous], shock_name)
+    # ind_shock = findfirst(model.symbols[:exogenous], :e_d)
+    dist = Distributions.MvNormal([mvn.mu[ind_shock]], diag(mvn.Sigma)[ind_shock])
     d = length(mvn.mu)
     out = zeros(d, N, T)
     for i=1:N
-        out[:,i,1] = e0
+        out[ind_shock,i,1] = e0[ind_shock]
     end
     if stochastic
         for t =2:T
-            out[:,:,t] = rand(dist, N)
+            out[ind_shock,:,t] = rand(dist, N)
         end
     else
       if irf
-        out[:,:,2] = mvn.Sigma
+        if !isempty(shock_size)
+            out[ind_shock,:,2] =  shock_size
+        else
+            out[ind_shock,:,2] =  diag(sqrt(mvn.Sigma))[ind_shock]
+        end
         for t =3:T
-            out[:,:,t] = 0
+            out[ind_shock,:,t] = 0
         end
       else
         for t =2:T
-            out[:,:,t] = 0
+            out[ind_shock,:,t] = 0
 # out[:,:,t] = zeros(dist, N) isn't working ... gives an error
 # MethodError: no method matching Array{Float64,N}(::Distributions.MvNormal{Float64,PDMats.PDMat{Float64,Array{Float64,2}},Array{Float64,1}}, ::Int64)
         end
@@ -115,6 +123,12 @@ function simulate(mvn::MvNormal, N::Integer, T::Integer, e0::Vector{Float64}; st
     end
     return out
 end
+
+function simulate(model, N::Integer, T::Integer, e0::Vector{Float64}, shock_name::Symbol; stochastic=true, irf=false)
+  mvn = model.exogenous
+  return simulate(model, mvn::MvNormal, N::Integer, T::Integer, e0::Vector{Float64}, shock_name::Symbol; stochastic=true, irf=false)
+end
+
 
 function simulate(mvn::MvNormal, N::Integer, T::Integer; stochastic=true)
     e0 = zeros(size(mvn.mu,1))
