@@ -57,12 +57,12 @@ function simulate(model::AbstractNumericModel,  dr::AbstractDecisionRule; kwargs
     return simulate(model, dr, s0, e0; kwargs...)
 end
 
-using DataFrames
+import DataFrames
 
 function response(model::AbstractNumericModel,  dr::AbstractDecisionRule, e0::AbstractVector; kwargs...)
     s0 = model.calibration[:states]
     sims = simulate(model, dr, s0, e0; stochastic=false, n_exp=1, kwargs...)
     sim = sims[1,:,:]
     columns = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
-    return DataFrame(Dict(columns[i]=>sim[i,:] for i=1:length(columns)))
+    return DataFrames.DataFrame(Dict(columns[i]=>sim[i,:] for i=1:length(columns)))
 end
