@@ -71,8 +71,8 @@ end
 using DataFrames
 
 function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
-                  s0::AbstractVector, shock_name::Symbol,
-                  Impulse::Float64=zeros(0);  T::Integer=40)
+                  s0::AbstractVector, shock_name::Symbol;
+                  T::Integer=40, Impulse::Float64=zeros(0))
     index_s = findfirst(model.symbols[:exogenous], shock_name)
     if isempty(Impulse)
       Impulse = sqrt(diag(model.exogenous.Sigma)[index_s])
@@ -89,15 +89,8 @@ end
 
 
 function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
-                  shock_name::Symbol,
-                  Impulse::AbstractArray=zeros(0, 0); kwargs...)
+                  shock_name::Symbol;
+                  kwargs...)
     s0 = model.calibration[:states]
-    return response(model,  dr, s0, shock_name, Impulse; kwargs...)
-end
-
-
-function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
-                  shock_name::Symbol, Impulse::AbstractArray=zeros(0, 0); kwargs...)
-    s0 = model.calibration[:states]
-    return response(model,  dr, s0, shock_name, Impulse; kwargs...)
+    return response(model,  dr, s0, shock_name; kwargs...)
 end
