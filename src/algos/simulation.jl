@@ -42,8 +42,8 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
           M = view(epsilons, :, :, t+1)
           ss = view(s_simul, :, :, t+1)
           println([size(e) for e in [ss,m,s,x,M]])
-          ss = Dolo.transition!(model, (ss), (m), (s), (x), (M), params)
-          s_simul[:, :, t+1] = ss
+          Dolo.transition!(model, (ss), (m), (s), (x), (M), params)
+          # s_simul[:, :, t+1] = ss
         end
     end
     if !isempty(driving_process)
