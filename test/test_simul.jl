@@ -4,12 +4,153 @@ path = Pkg.dir("Dolo")
 Pkg.build("QuantEcon")
 import Dolo
 
-filename = joinpath(path,"examples","models","rbc_dtcc_iid_2ar1.yaml")
+filename = joinpath(path,"examples","models","rbc_dtcc_iid_ar1.yaml")
 # filename2 = joinpath(path,"examples","models","rbc_dtcc_iid_ar1.yaml")
 model = Dolo.yaml_import(filename)
 # model2 = Dolo.yaml_import(filename2)
+N = 1
+T=40
+@time dr = Dolo.time_iteration(model, verbose=true, maxit=10000)
+
+
+s0 = model.calibration[:states]
+e0 = model.calibration[:exogenous]
+
+# index_s = findfirst(model.symbols[:exogenous], :e_z)
+
+Dolo.response(model, dr, s0, e0, :e_z, 0.3; T=40)
+# IRF_2 =Dolo.response(model, dr, e0, :e_z)
+
+sims = Dolo.simulate(model, dr, s0, e0, m_simul, stochastic = false; n_exp=1, T=40 )
+
+
+
+
+s0 = model.calibration[:states]
+index_s = findfirst(model.symbols[:exogenous], :e_z)
+
+Impulse = sqrt(diag(model.exogenous.Sigma)[index_s])
+Impulse::Float64
+
+
+d = length(Impulse)
+out = zeros(d,40)
+out[:,2] = Impulse
+out
+
+
+m_simul = zeros(length(model.exogenous.mu), 40)
+m_simul[index_s,:] = Dolo.response(40, Impulse)
+m_simul
+driving_process = m_simul
+driving_process = zeros(2,40)
+driving_process::AbstractArray
+driving_process::AbstractArray=zeros(0, 0)
+
+
+sims = Dolo.simulate(model, dr, s0, e0, m_simul, stochastic = false; n_exp=1, T=40 )
+sims = Dolo.simulate(model, dr, s0, e0, stochastic = true; n_exp=1, T=40 )
+sim = sims[1,:,:]
+columns = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+DataFrame(Dict(columns[i]=>sim[i,:] for i=1:length(columns)))
+
+Dolo.simulate(model, dr, s0, e0)
+
+model::Dolo.AbstractNumericModel{ID}
+driving_process = m_simul
+driving_process
+!isempty(driving_process)
+if !isempty(driving_process)
+    for ii in 1:size(driving_process)[2]
+      epsilons[:,1,ii] = driving_process[:,ii]
+    end
+else
+      epsilons = Dolo.simulate(model.exogenous, 1, T, e0; stochastic=false)
+end
+
+epsilons = Dolo.simulate(model.exogenous, 1, T, e0; stochastic=false)
+epsilons = permutedims(epsilons, [2,1,3]) # (N,ne,T)
+# calculate initial controls using decision rule
+println(size(epsilons))
+x0 = dr(epsilons[1,:,1],s0)
+
+
+epsilons=zeros(length(model.exogenous.mu), 1, T)
+size(m_simul)[2]
+for ii in 1:size(m_simul)[2]
+    epsilons[:,1,ii] = m_simul[:,ii]
+end
+ii = 1
+epsilons
+
+
+epsilons = Dolo.permutedims(epsilons, [2,1,3])
+
+### Simulation model
+
+calib = model.calibration
+params = calib[:parameters]
+driving_process = m_simul
 
 e0 = model.calibration[:exogenous]
+stochastic=true
+epsilons = Dolo.simulate(model.exogenous, 1, 40, e0; stochastic=stochastic)
+epsilons = Dolo.permutedims(epsilons, [2,1,3]) # (N,ne,T)
+
+
+epsilons = driving_process
+
+
+
+# calculate initial controls using decision rule
+println(size(epsilons))
+x0 = dr(epsilons[1,:,1],s0)
+
+# get number of states and controls
+ns = length(s0)
+nx = length(x0)
+nsx = nx+ns
+
+# TODO: talk to Pablo and make a decision about this
+s_simul = Array(Float64, n_exp, ns, horizon)
+x_simul = Array(Float64, n_exp, nx, horizon)
+for i in 1:n_exp
+s_simul[i, :, 1] = s0
+x_simul[i, :, 1] = x0
+end
+# NOTE: this will be empty if ny is zero. That's ok. Our call to `cat`  #       below will work either way  y_simul = Array(Float64, n_exp, ny, horizon)
+
+for t in 1:horizon
+s = copy(view(s_simul, :, :, t))
+m = copy(view(epsilons, :, :, t))
+x = dr(m,s)
+x_simul[:, :, t] = x
+if t < horizon
+  M = view(epsilons, :, :, t+1)
+  ss = view(s_simul, :, :, t+1)
+  println([size(e) for e in [ss,m,s,x,M]])
+  ss = Dolo.transition!(model, (ss), (m), (s), (x), (M), params)
+  s_simul[:, :, t+1] = ss
+end
+end
+
+return cat(2, epsilons, s_simul, x_simul)::Array{Float64,3}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 stochastic = false
 irf=true
 model
@@ -42,50 +183,10 @@ ind_shock = findfirst(model.symbols[:exogenous], :e_d)
 e0 = model.calibration[:exogenous][ind_shock]
 
  mvn = model.exogenous
-# mvn2 = model2.exogenous
+mvn2 = model2.exogenous
+xx= diag(mvn.Sigma)[ind_shock]
+typeof(xx)
 # mvn2.Sigma
-# diag(mvn.Sigma)[ind_shock]
-# mvn.mu[ind_shock]
-dist = Distributions.MvNormal([mvn.mu[ind_shock]], diag(mvn.Sigma)[ind_shock])
-# dist = Distributions.MvNormal(mvn.mu, diag(mvn.Sigma))
-# dist2 = Distributions.MvNormal(mvn2.mu, diag(mvn2.Sigma))
-d = length(mvn.mu)
-out = zeros(d, N, T)
-# x::Symbol = :e_z
-
-
-
-for i=1:N
-    out[ind_shock,i,1] = e0
-end
-out
-
-rand(dist, N)
-for t =2:T
-    out[ind_shock,:,t] = rand(dist, N)
-end
-out
-
-
-irf = true
-if irf
-    out[ind_shock,:,2] = diag(sqrt(mvn.Sigma))[ind_shock]
-      for t =3:T
-              out[:,:,t] = 0
-      end
-else
-      for t =2:T
-          out[ind_shock,:,t] = 0
-      end
-end
-
-out
-
-
-f
-
-
-
 
 
 
