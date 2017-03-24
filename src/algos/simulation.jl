@@ -71,13 +71,9 @@ end
 using DataFrames
 
 function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
-                  s0::AbstractVector, shock_name::Symbol;
-                  T::Integer=40, Impulse::Float64=zeros(0))
+                  s0::AbstractVector, shock_name::Symbol, Impulse::Float64;
+                  T::Integer=40)
     index_s = findfirst(model.symbols[:exogenous], shock_name)
-    if isempty(Impulse)
-      Impulse = sqrt(diag(model.exogenous.Sigma)[index_s])
-    end
-
     m_simul = zeros(length(model.exogenous.mu), T)
     m_simul[index_s,:] = response(T, Impulse)
 
@@ -85,6 +81,17 @@ function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
     sim = sims[1,:,:]
     columns = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
     return DataFrame(Dict(columns[i]=>sim[i,:] for i=1:length(columns)))
+end
+
+function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
+                  s0::AbstractVector, shock_name::Symbol;
+                  T::Integer=40)
+    index_s = findfirst(model.symbols[:exogenous], shock_name)
+    Impulse = zeros(0)
+    if isempty(Impulse)
+      Impulse = sqrt(diag(model.exogenous.Sigma)[index_s])
+    end
+    return response(model, dr, s0, shock_name, Impulse; T=T)
 end
 
 

@@ -13,16 +13,14 @@ T=40
 
 s0 = model.calibration[:states]
 e0 = model.calibration[:exogenous]
-irf = Dolo.response(model, dr, s0, :e_z; Impulse=0.03)
+irf = Dolo.response(model, dr, s0, :e_z, 0.03)
 Dolo.response(model, dr, s0, :e_z)
 
 
 
 
-
 ############## 2 shocks
-filename2 = joinpath(path,"examples","models","rbc_dtcc_iid_2ar1.yaml")
-model2 = Dolo.yaml_import(filename2)
+filename2 = joinpath(path,"examples","models","rbc_dtcc_iid_2ar1.yaml") model2 = Dolo.yaml_import(filename2)
 @time dr2 = Dolo.time_iteration(model2, verbose=true, maxit=10000)
 s0 = model2.calibration[:states]
 e0 = model2.calibration[:exogenous]
