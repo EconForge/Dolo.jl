@@ -56,9 +56,10 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
     end
 end
 
-function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule, s0::AbstractVector; kwargs...)
+function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule, s0::AbstractVector,
+                  driving_process::AbstractArray=zeros(0, 0); kwargs...)
     e0 = model.calibration[:exogenous]
-    return simulate(model, dr, s0, e0; kwargs...)
+    return simulate(model, dr, s0, e0, driving_process; kwargs...)
 end
 
 function simulate(model::AbstractNumericModel,  dr::AbstractDecisionRule; kwargs...)
@@ -70,8 +71,8 @@ end
 using DataFrames
 
 function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
-                  s0::AbstractVector, e0::AbstractVector, shock_name::Symbol,
-                  Impulse::Float64=zeros(0, 0);  T::Integer=40)
+                  s0::AbstractVector, shock_name::Symbol,
+                  Impulse::Float64=zeros(0);  T::Integer=40)
     index_s = findfirst(model.symbols[:exogenous], shock_name)
     if isempty(Impulse)
       Impulse = sqrt(diag(model.exogenous.Sigma)[index_s])
@@ -80,7 +81,7 @@ function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
     m_simul = zeros(length(model.exogenous.mu), T)
     m_simul[index_s,:] = response(T, Impulse)
 
-    sims = simulate(model, dr, s0, e0, m_simul, stochastic = false; n_exp=1, T=T)
+    sims = simulate(model, dr, s0, m_simul, stochastic = false; n_exp=1, T=T)
     sim = sims[1,:,:]
     columns = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
     return DataFrame(Dict(columns[i]=>sim[i,:] for i=1:length(columns)))
@@ -88,23 +89,15 @@ end
 
 
 function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
-                  e0::AbstractVector, shock_name::Symbol,
+                  shock_name::Symbol,
                   Impulse::AbstractArray=zeros(0, 0); kwargs...)
     s0 = model.calibration[:states]
-    return response(model,  dr, e0, shock_name, Impulse; kwargs...)
+    return response(model,  dr, s0, shock_name, Impulse; kwargs...)
 end
 
 
 function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
                   shock_name::Symbol, Impulse::AbstractArray=zeros(0, 0); kwargs...)
     s0 = model.calibration[:states]
-    e0 = model.calibration[:exogenous]
-    return response(model,  dr, s0, e0, shock_name, Impulse; kwargs...)
-end
-
-function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
-                  s0::AbstractVector, shock_name::Symbol,
-                  Impulse::AbstractArray=zeros(0, 0); kwargs...)
-    e0 = model.calibration[:exogenous]
-    return response(model,  dr, e0, shock_name, Impulse; kwargs...)
+    return response(model,  dr, s0, shock_name, Impulse; kwargs...)
 end
