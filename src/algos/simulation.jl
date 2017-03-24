@@ -7,7 +7,7 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
     params = calib[:parameters]
     epsilons=zeros(length(model.exogenous.mu), n_exp, T)
     # simulate exogenous shocks: size (ne.N.T)
-    if !isempty(driving_process)  #it means actually that driving_process is NOT empty
+    if !isempty(driving_process)  #   "!" means NOT
       for ii in 1:size(driving_process)[2]
           epsilons[:,1,ii] = driving_process[:,ii]
       end
@@ -73,7 +73,7 @@ function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, e0::AbstractVector, shock_name::Symbol,
                   Impulse::Float64=zeros(0, 0);  T::Integer=40)
     index_s = findfirst(model.symbols[:exogenous], shock_name)
-    if !isempty(Impulse)
+    if isempty(Impulse)
       Impulse = sqrt(diag(model.exogenous.Sigma)[index_s])
     end
 
@@ -91,21 +91,20 @@ function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
                   e0::AbstractVector, shock_name::Symbol,
                   Impulse::AbstractArray=zeros(0, 0); kwargs...)
     s0 = model.calibration[:states]
-    return response(model,  dr, e0, shock_name, Impulse, T; kwargs...)
+    return response(model,  dr, e0, shock_name, Impulse; kwargs...)
 end
 
 
 function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
-                  shock_name::Symbol,
-                  Impulse::AbstractArray=zeros(0, 0); kwargs...)
+                  shock_name::Symbol, Impulse::AbstractArray=zeros(0, 0); kwargs...)
     s0 = model.calibration[:states]
     e0 = model.calibration[:exogenous]
-    return response(model,  dr, s0, e0, shock_name, Impulse, T; kwargs...)
+    return response(model,  dr, s0, e0, shock_name, Impulse; kwargs...)
 end
 
 function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, shock_name::Symbol,
-                  Impulse::AbstractArray=zeros(0, 0), T::Integer=40; kwargs...)
+                  Impulse::AbstractArray=zeros(0, 0); kwargs...)
     e0 = model.calibration[:exogenous]
-    return response(model,  dr, e0, shock_name, Impulse, T; kwargs...)
+    return response(model,  dr, e0, shock_name, Impulse; kwargs...)
 end
