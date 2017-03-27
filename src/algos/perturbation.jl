@@ -1,38 +1,3 @@
-
-# define custom exception types that hold some data for us to catch/explore
-immutable GeneralizedEigenvaluesError <: Exception
-    msg::AbstractString
-    diag_S::Vector{Float64}
-    diag_T::Vector{Float64}
-end
-
-immutable BlanchardKahnError <: Exception
-    msg::AbstractString
-    n_found::Int
-    n_expected::Int
-end
-
-function _check_gev(diag_S, diag_T, tol)
-    ok = sum((abs(diag_S) .< tol) .* (abs(diag_T) .< tol)) == 0
-    if !ok
-        msg = "Eigenvalues are not uniquely defined."
-        throw(GeneralizedEigenvaluesError(msg, diag_S, diag_T))
-    end
-    true
-end
-
-function _check_bk_conditions(eigval, tol, n_expected)
-    n_big = sum(eigval .> tol)
-    if n_expected != n_big
-        msg = """
-        There are $(n_big) eigenvalues greater than one.
-        There should be exactly $(n_expected) to meet Blanchard-Kahn conditions.
-        """
-        throw(BlanchardKahnError(msg, n_big, n_expected))
-    end
-    true
-end
-
 function get_ss_derivatives(model)
     m,s,x,p = model.calibration[:exogenous,:states,:controls,:parameters]
 
@@ -43,10 +8,73 @@ function get_ss_derivatives(model)
 end
 
 perturbate(p::IIDExogenous) = (zeros(0), zeros(0,0))
-
 perturbate(p::VAR1) = (p.M, p.R)
 
-function perturbate(model::AbstractNumericModel, eigtol::Float64=1.0+1e-6)
+type PerturbationResult
+    solution::BiTaylorExpansion
+    generalized_eigenvalues::Vector
+    stable::Bool     # biggest e.v. lam of solution is < 1
+    determined::Bool # next eigenvalue is > lam + epsilon (MOD solution well defined)
+    unique::Bool     # next eigenvalue is > 1
+end
+
+function Base.show(io::IO, pbr::PerturbationResult)
+    @printf io "Perturbation Results\n"
+    @printf io " * Decision Rule type: %s\n" string(typeof(PerturbationResult))
+    @printf io "   * %s\n" show(pbr.solution)
+    @printf io " * Blanchard-Kahn: %s\n" blanchard_kahn(pbr)
+    @printf io "   * stable < %s\n" pbr.stable
+    @printf io "   * determined < %s\n" pbr.determined
+    @printf io "   * unique < %s\n" pbr.unique
+end
+
+blanchard_kahn(fos::PerturbationResult) = fos.stable && fos.unique
+
+function perturbate_first_order(g_s, g_x, f_s, f_x, f_S, f_X)
+
+    eigtol = 1.0+1e-6
+
+    ns = size(g_s,1)
+    nx = size(g_x,1)
+    nv = ns + nx
+
+    A = [eye(ns) zeros(ns, nx);
+         -f_S     -f_X]
+
+    B = [g_s g_x;
+         f_s f_x]
+
+    # do orderd QZ decomposition
+    gs = schurfact(A, B)
+
+    genvals = (abs(gs[:alpha]) ./ abs(gs[:beta]))
+    sort!(genvals, rev=true)
+    n_keep = ns # number of eigenvalues to keep
+    diff = genvals[n_keep+1] - genvals[n_keep]
+    eigtol = genvals[n_keep] + diff/2
+
+    select = (abs(gs[:alpha]) .> eigtol*abs(gs[:beta]))
+
+    ordschur!(gs, select)
+    S, T, Q, Z = gs[:S], gs[:T], gs[:Q], gs[:Z]
+    diag_S = diag(S)
+    diag_T = diag(T)
+    eigval = abs(diag_S./diag_T)
+
+    # now obtain first order solution
+    Z11 = Z[1:ns, 1:ns]
+    Z12 = Z[1:ns, ns+1:end]
+    Z21 = Z[ns+1:end, 1:ns]
+    Z22 = Z[ns+1:end, ns+1:end]
+    S11 = S[1:ns, 1:ns]
+    T11 = T[1:ns, 1:ns]
+
+    # first order solution
+    C = (Z11'\Z21')'
+    return C, genvals
+end
+
+function perturbate(model::AbstractNumericModel; infos=false)
 
 
     g_diff,f_diff = get_ss_derivatives(model)
@@ -58,6 +86,7 @@ function perturbate(model::AbstractNumericModel, eigtol::Float64=1.0+1e-6)
     f_x = _f_x
     f_X = _f_X
     _m,_s,x,p = model.calibration[:exogenous,:states,:controls,:parameters]
+
     if size(R,1)>0
         f_s = [_f_m _f_s]
         f_S = [_f_M _f_S]
@@ -72,48 +101,34 @@ function perturbate(model::AbstractNumericModel, eigtol::Float64=1.0+1e-6)
         s = _s
     end
 
-    ns = length(s)
-    nx = length(x)
-    nv = ns + nx
+    nx = size(g_x, 2)
 
-    A = [eye(ns) zeros(ns, nx);
-         -f_S     -f_X]
-    B = [g_s g_x;
-         f_s f_x]
-
-    # do orderd QZ decomposition
-    gs = schurfact(A, B)
-    select = (abs(gs[:alpha]) .> eigtol*abs(gs[:beta]))
-    ordschur!(gs, select)
-    S, T, Q, Z = gs[:S], gs[:T], gs[:Q], gs[:Z]
-    diag_S = diag(S)
-    diag_T = diag(T)
-    eigval = abs(diag_S./diag_T)
-
-    # check eigen values and BK conditions
-    _check_gev(diag_S, diag_T, 1e-10)
-    _check_bk_conditions(eigval, eigtol, nx)
-
-    # now obtain first order solution
-    Z11 = Z[1:ns, 1:ns]
-    Z12 = Z[1:ns, ns+1:end]
-    Z21 = Z[ns+1:end, 1:ns]
-    Z22 = Z[ns+1:end, ns+1:end]
-    S11 = S[1:ns, 1:ns]
-    T11 = T[1:ns, 1:ns]
-
-    # first order solution
-    C = (Z11'\Z21')'
-    # P = (S11'\Z11')'*(Z11'\T11')'
-    # Q = g_e
-    # A = g_s + g_x*C
-    # B = g_e
+    C, genvals = perturbate_first_order(g_s, g_x, f_s, f_x, f_S, f_X)
+    sort!(genvals)
 
     if size(R,1)>0
         C_exo = C[:,1:length(_m)]
         C_endo = C[:,(length(_m)+1):end]
-        BiTaylorExpansion(_m, _s, x, C_exo, C_endo)
+        dr = BiTaylorExpansion(_m, _s, x, C_exo, C_endo)
     else
-        BiTaylorExpansion(_m, _s, x, zeros(nx, length(_m)), C)
+        dr = BiTaylorExpansion(_m, _s, x, zeros(nx, length(_m)), C)
     end
+
+    tol = 1e-6 # minimum distance betweel lam_n and lam_{n+1}
+
+    if !infos
+        return dr
+    else
+        n_s = size(g_s,1)
+        PerturbationResult(
+            dr,
+            genvals,
+            genvals[n_s]<1,
+            genvals[n_s+1]-genvals[n_s]>tol,
+            genvals[n_s+1]>1
+        )
+    end
+
+
+
 end
