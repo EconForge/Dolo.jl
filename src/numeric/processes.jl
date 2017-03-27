@@ -103,15 +103,15 @@ function simulate(mvn::MvNormal, N::Integer, T::Integer, e0::Vector{Float64}; st
     return out
 end
 
-function simulate(mvn::MvNormal, N::Integer,c; stochastic=true)
+function simulate(mvn::MvNormal, N::Integer, T::Integer; stochastic=true)
     e0 = zeros(size(mvn.mu,1))
     return simulate(mvn, N, T, e0; stochastic=stochastic )
 end
 
-function response(T::Integer, Impulse::Float64)
-    d = length(Impulse)
+function response(mvn::MvNormal, T::Integer, e1::AbstractVector)
+    d = length(mvn.mu)
     out = zeros(d,T)
-    out[:,2] = Impulse
+    out[:,2] = e1
     return out
 end
 
