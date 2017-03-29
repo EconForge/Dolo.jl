@@ -171,7 +171,8 @@ end
 
 
 
-function simulate(var::VAR1, N::Int, T::Int, e0::Vector{Float64}; stochastic=true)
+function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64};
+                  stochastic=true, irf=false, e0::Vector{Float64}=zeros(0))
 
   """
   This function takes:
@@ -192,9 +193,13 @@ function simulate(var::VAR1, N::Int, T::Int, e0::Vector{Float64}; stochastic=tru
             E[jj, :, :] = rand(d, T)';
       end
   end
+
+  if irf==true
+    E[:,1,:] = e0;
+  end
   # Initial conditions
   for i=1:N
-      XN[i, 1, :]=e0
+      XN[i, 1, :]=x0
       for jj = 1:1:N
         for ii =1:1:T-1
             XN[jj, ii+1, :]=var.M+var.R*(XN[jj, ii, :]-var.M)+E[jj, ii, :];
@@ -205,24 +210,52 @@ function simulate(var::VAR1, N::Int, T::Int, e0::Vector{Float64}; stochastic=tru
 end
 
 
-function simulate(var::VAR1, N::Int, T::Int; stochastic=true)
-    return simulate(var, N, T, var.M; stochastic=stochastic)
+function simulate(var::VAR1, N::Int, T::Int; kwargs...)
+    return simulate(var, N, T, var.M; kwargs...)
+end
+
+function response(var::VAR1, x0::AbstractVector,
+                  e1::AbstractVector; T::Integer=40, N::Integer=1)
+    sim = simulate(var, N, T, x0; stochastic=false, irf=true, e0=e1)
+    return sim
+end
+
+function response(var::VAR1, e1::AbstractVector;
+                  T::Integer=40, N::Integer=1)
+    sim = simulate(var, N, T; stochastic=false, irf=true, e0=e1)
+    return sim
+end
+
+function response(var::VAR1, x0::AbstractVector,
+                  index_s::Int; T::Integer=40, N::Integer=1)
+    e1 = zeros(size(var.M, 1))
+    Impulse = sqrt(diag(var.Sigma)[index_s])
+    e1[index_s] = Impulse
+    sim = simulate(var, N, T, x0; stochastic=false, irf=true, e0=e1)
+    return sim
+end
+
+function response(var::VAR1; T::Integer=40, N::Integer=1)
+    Impulse = sqrt(diag(var.Sigma))
+    e1 = Impulse
+    sim = simulate(var, N, T; stochastic=false, irf=true, e0=e1)
+    return sim
 end
 
 
 
-function ErgodDist(VAR_info::VAR1, T::Int, N::Int)
+function ErgodDist(var::VAR1, N::Int, T::Int)
 
        # Simulate for T period, N times;
        #  #    - simulate a VAR1 process for T periods N times#
-       n = size(VAR_info.M, 1);
+       n = size(var.M, 1);
        srand(123) # Setting the seed
-       d = MvNormal(VAR_info.Sigma);
-       VAR_process=sim_VAR1.simulate_var(VAR_info::VAR1.myvar, T::Int, N::Int)
-       E = VAR_process[2];
+       d = MvNormal(var.Sigma);
+       VAR_process=simulate(var,N,T)
+       E = VAR_process[2]
        XN = VAR_process[1];
        # Computing moments
-       Mean_sim = mean(squeeze(mean(VAR_process[1], 2), 2), 1);
+       Mean_sim = mean(squeeze(mean(VAR_process, 3), 2), 2);
        #Computing the std of simulted Processes (Covariance matrix)
        E1_d = (E[:, :, 1] - repeat(mean(E[:, :, 1], 2), inner=[1, T]));
        cov(E1_d[:, 1])    # which is X1_d[:, 1]'*X1_d[:, 1]/T
