@@ -96,7 +96,12 @@ end
 
 function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, e1::AbstractVector; T::Integer=40)
-    m_simul = response(model.exogenous, T, e1)'
+    m_simul=response(model.exogenous, e1; T=T)
+    if typeof(m_simul)==Array{Float64,3}
+      m_simul=(vec(m_simul)')'
+    else
+      m_simul = m_simul'
+    end
     sim = simulate(model, dr, s0, m_simul)
     return sim
 end

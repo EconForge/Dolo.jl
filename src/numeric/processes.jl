@@ -108,7 +108,7 @@ function simulate(mvn::MvNormal, N::Integer, T::Integer; stochastic=true)
     return simulate(mvn, N, T, e0; stochastic=stochastic )
 end
 
-function response(mvn::MvNormal, T::Integer, e1::AbstractVector)
+function response(mvn::MvNormal, e1::AbstractVector; T::Integer=40)
     d = length(mvn.mu)
     out = zeros(d,T)
     out[:,2] = e1
