@@ -12,6 +12,8 @@ drc = Dolo.ConstantDecisionRule(model_mc.calibration[:controls])
 @time dr = Dolo.time_iteration(model_mc, verbose=true, maxit=10000)
 @time drv = Dolo.evaluate_policy(model_mc, dr) #, verbose=true, maxit=10000)
 @time drd = Dolo.time_iteration_direct(model_mc, dr) #, maxit=500)
+
+
 #
 # # compare with prerecorded values
 # kvec = linspace(dr.grid.min[1],dr.grid.max[1],10)
@@ -60,11 +62,11 @@ res
 Dolo.simulate(model, dr)
 
 s0 = model.calibration[:states]+0.1
-sim = Dolo.simulate(model, dr, s0; stochastic=true)
-Dolo.simulate(model, dr, n_exp=10)
+sim = Dolo.simulate(model, dr, s0)
+Dolo.simulate(model, dr, N=10)
 
 # this doesn't work here
-irf = Dolo.response(model, dr, [0.1])
+irf = Dolo.response(model, dr, :e_z)
 irf[:k]
 
 
@@ -85,6 +87,7 @@ import Dolo
 fn = Pkg.dir("Dolo","examples","models","rbc_dtcc_ar1.yaml")
 model = Dolo.yaml_import(fn)
 dp = Dolo.discretize(model.exogenous)
+
 @time dr = Dolo.perturbate(model)
 cdr =Dolo.CachedDecisionRule(dr,dp)
 @time dr = Dolo.time_iteration(model, model.exogenous, cdr)
@@ -93,7 +96,7 @@ cdr =Dolo.CachedDecisionRule(dr,dp)
 @time drv = Dolo.evaluate_policy(model, dr, verbose=true, maxit=10000)
 @time drd = Dolo.time_iteration_direct(model, dr) #, verbose=true) #, maxit=500)
 #
+model.symbols[:exogenous]
 
-Dolo.simulate(model, dr, n_exp=10)
-sim = Dolo.response(model, dr, [0.01])
-sim
+Dolo.simulate(model, dr, N=10)
+sim = Dolo.response(model, dr, :z)
