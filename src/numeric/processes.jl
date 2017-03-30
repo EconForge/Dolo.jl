@@ -133,7 +133,7 @@ discretize(dmp::DiscreteMarkovProcess) = dmp
 #end
 
 type VAR1 <: ContinuousProcess
-    M::Array{Float64,1}
+    mu::Array{Float64,1}
     R::Array{Float64,2}
     Sigma::Array{Float64,2}
 end
@@ -155,12 +155,12 @@ end
 
 function discretize(var::VAR1, n_states::Array{Int,1}, n_integration::Array{Int,1}; n_std::Int=2,)
     R = var.R
-    M = var.M
+    M = var.mu
     Sigma = var.Sigma
     S = QE.solve_discrete_lyapunov(R,Sigma)  # asymptotic variance
     sig = diag(S)
-    min = var.M - n_std*sqrt(sig)
-    max = var.M + n_std*sqrt(sig)
+    min = var.mu - n_std*sqrt(sig)
+    max = var.mu + n_std*sqrt(sig)
     grid = Dolo.CartesianGrid(min,max,n_states)
     # discretize innovations
     x,w = QE.qnwnorm(n_integration, zeros(size(var.Sigma,1)), var.Sigma)
@@ -183,7 +183,7 @@ function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64};
   The function returns:
     - XN - simulated data, ordered as (n, N, T), where n is the number of variables;
   """
-  n = size(var.M, 1);
+  n = size(var.mu, 1);
   # srand(123) # Setting the seed
   d = MvNormal(var.Sigma);
   XN=zeros(N, T, n);
@@ -202,7 +202,7 @@ function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64};
       XN[i, 1, :]=x0
       for jj = 1:1:N
         for ii =1:1:T-1
-            XN[jj, ii+1, :]=var.M+var.R*(XN[jj, ii, :]-var.M)+E[jj, ii, :];
+            XN[jj, ii+1, :]=var.mu+var.R*(XN[jj, ii, :]-var.mu)+E[jj, ii, :];
         end
       end
   end
@@ -211,7 +211,7 @@ end
 
 
 function simulate(var::VAR1, N::Int, T::Int; kwargs...)
-    return simulate(var, N, T, var.M; kwargs...)
+    return simulate(var, N, T, var.mu; kwargs...)
 end
 
 function response(var::VAR1, x0::AbstractVector,
@@ -228,7 +228,7 @@ end
 
 function response(var::VAR1, x0::AbstractVector,
                   index_s::Int; T::Integer=40, N::Integer=1)
-    e1 = zeros(size(var.M, 1))
+    e1 = zeros(size(var.mu, 1))
     Impulse = sqrt(diag(var.Sigma)[index_s])
     e1[index_s] = Impulse
     sim = simulate(var, N, T, x0; stochastic=false, irf=true, e0=e1)
@@ -236,8 +236,7 @@ function response(var::VAR1, x0::AbstractVector,
 end
 
 function response(var::VAR1; T::Integer=40, N::Integer=1)
-    Impulse = sqrt(diag(var.Sigma))
-    e1 = Impulse
+    e1 = sqrt(diag(var.Sigma))
     sim = simulate(var, N, T; stochastic=false, irf=true, e0=e1)
     return sim
 end
@@ -248,7 +247,7 @@ function ErgodDist(var::VAR1, N::Int, T::Int)
 
        # Simulate for T period, N times;
        #  #    - simulate a VAR1 process for T periods N times#
-       n = size(var.M, 1);
+       n = size(var.mu, 1);
        srand(123) # Setting the seed
        d = MvNormal(var.Sigma);
        VAR_process=simulate(var,N,T)

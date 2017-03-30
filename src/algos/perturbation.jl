@@ -8,7 +8,7 @@ function get_ss_derivatives(model)
 end
 
 perturbate(p::IIDExogenous) = (zeros(0), zeros(0,0))
-perturbate(p::VAR1) = (p.M, p.R)
+perturbate(p::VAR1) = (p.mu, p.R)
 
 type PerturbationResult
     solution::BiTaylorExpansion

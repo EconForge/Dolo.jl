@@ -21,18 +21,16 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
     nx = length(x0)
     nsx = nx+ns
 
-    # TODO: talk to Pablo and make a decision about this
     s_simul = Array(Float64, N, ns, T)
     x_simul = Array(Float64, N, nx, T)
     for i in 1:N
       s_simul[i, :, 1] = s0
       x_simul[i, :, 1] = x0
     end
-    # NOTE: this will be empty if ny is zero. That's ok. Our call to `cat`  #       below will work either way  y_simul = Array(Float64, N, ny, horizon)
 
     for t in 1:T
-        s = copy(view(s_simul, :, :, t))
-        m = copy(view(epsilons, :, :, t))
+        s = view(s_simul, :, :, t)
+        m = view(epsilons, :, :, t)
         x = dr(m,s)
         x_simul[:, :, t] = x
         if t < T
@@ -120,8 +118,5 @@ import DataFrames
 function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
                   shock_name::Symbol; kwargs...)
     s0 = model.calibration[:states]
-    sims = simulate(model, dr, s0, e0; stochastic=false, n_exp=1, kwargs...)
-    sim = sims[1,:,:]
-    columns = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
-    return DataFrames.DataFrame(Dict(columns[i]=>sim[i,:] for i=1:length(columns)))
+    return response(model, dr, s0, shock_name;  kwargs...)
 end
