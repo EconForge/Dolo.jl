@@ -9,9 +9,10 @@ using Requests: get
 using NLsolve
 using Optim
 using QuantEcon
-using Distributions: MvNormal, Distribution
 using Dolang
 using Dolang: _to_expr
+# using Distributions: MvNormal, Distribution
+import Distributions
 import ForwardDiff
 import YAML
 using Compat; import Compat: String, view

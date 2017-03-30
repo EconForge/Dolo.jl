@@ -115,9 +115,13 @@ function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
     return response(model, dr, s0, e1; T=T)
 end
 
+import DataFrames
 
 function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
                   shock_name::Symbol; kwargs...)
     s0 = model.calibration[:states]
-    return response(model, dr, s0, shock_name; kwargs...)
+    sims = simulate(model, dr, s0, e0; stochastic=false, n_exp=1, kwargs...)
+    sim = sims[1,:,:]
+    columns = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+    return DataFrames.DataFrame(Dict(columns[i]=>sim[i,:] for i=1:length(columns)))
 end
