@@ -1,4 +1,15 @@
-function steady_state_residuals(model, calibration=model.calibration)
+"""
+Computes the residuals of the arbitrage and transition equations at the steady state of the model.
+
+If the calibration for the model is not explicitly provided, the calibration is that associated with the model object.
+
+# Arguments
+* `model::NumericModel`: Model object that describes the current model environment.
+* `calibration::OrderedDict`: Contains the model calibration.
+# Returns
+* `residuals::Dict`: Contains the residuals of the arbitrage equations, and the residuals of the transition equations.
+"""
+function steady_state_residuals(model, calibration)
     m = calibration[:exogenous]
     s = calibration[:states]
     x = calibration[:controls]
@@ -9,7 +20,13 @@ function steady_state_residuals(model, calibration=model.calibration)
 end
 
 
-function find_deterministic_equilibrium(model, calibration::ModelCalibration=model.calibration)
+function steady_state_residuals(model)
+    return steady_state_residuals(model, model.calibration)
+end
+
+ 
+
+function find_deterministic_equilibrium(model, calibration)
     m, p, s0, x0 = calibration[:exogenous, :parameters, :states, :controls]
     ns = length(s0)
     nx = length(x0)
@@ -37,4 +54,8 @@ function find_deterministic_equilibrium(model, calibration::ModelCalibration=mod
     out[:states] = sol.zero[1:ns]
     out[:controls] = sol.zero[ns+1:end]
     out
+end
+
+function find_deterministic_equilibrium(model)
+    return find_deterministic_equilibrium(model, model.calibration)
 end

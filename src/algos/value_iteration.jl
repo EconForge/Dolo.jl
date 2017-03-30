@@ -1,4 +1,3 @@
-
 type ValueIterationResult
     dr::AbstractDecisionRule
     drv::AbstractDecisionRule
@@ -24,7 +23,15 @@ function Base.show(io::IO, r::ValueIterationResult)
 
 end
 
+"""
+Evaluate the value function under the given decision rule.
 
+# Arguments
+* `model::NumericModel`: Model object that describes the current model environment.
+* `dr`: Current guess for the decision rule.
+# Returns
+* `drv`: Value function.
+"""
 function evaluate_policy(model, dr; verbose::Bool=true, maxit::Int=5000)
 
     # get grid for endogenous
@@ -118,6 +125,22 @@ function evaluate_policy(model, dr; verbose::Bool=true, maxit::Int=5000)
     return drv
 end
 
+
+"""
+Evaluate the right hand side of the value function at given values of states, controls, and exogenous variables.
+
+# Arguments
+* `model::NumericModel`: Model object that describes the current model environment.
+* `β::Float64`: Value of the discount factor.
+* `dprocess::`: Discretized exogenous process.
+* `drv`: Current guess for the value function object.
+* `i::Int64`: Index of node for exogeous variable(s).
+* `s::ListOfPoints`: List of state variables.
+* `x0::ListOfListOfPoints`: List of control variables.
+* `p::Vector{Float64}`: Model parameters.
+# Returns
+* `E_V::`: Right hand side of the value function.
+"""    
 function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64},
                       x0::Vector{Float64}, p::Vector{Float64})
     m = node(dprocess, i)
@@ -133,6 +156,17 @@ function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64},
     return E_V
 end
 
+
+"""
+Solve for the value function and associated decision rule using value function iteration.
+
+# Arguments
+* `model::NumericModel`: Model object that describes the current model environment.
+* `pdr`: Initial guess for the decision rule.
+# Returns
+* `dr`: Solved decision rule object.
+* `drv`: Solved value function object.
+"""
 function solve_policy(model, pdr; maxit::Int=1000, verbose::Bool=true, infos::Bool=false)
 
     # get grid for endogenous
