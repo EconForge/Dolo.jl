@@ -52,8 +52,6 @@ Dolo.response(model, dr, s0, [0.4])
 
 
 
-
-
 ############
 # Ploting
 
