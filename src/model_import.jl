@@ -29,6 +29,10 @@ function yaml_import(::Type{SymbolicModel}, url; print_code::Bool=false)
     SymbolicModel(data, fname)
 end
 
+"""
+Imports the model from a yaml file specified by the `url` input
+parameter, and returns the corresponding `Dolo` model object.
+"""
 function yaml_import(url; print_code::Bool=false)
     sm = yaml_import(SymbolicModel, url; print_code=print_code)
     NumericModel(sm; print_code=print_code)
