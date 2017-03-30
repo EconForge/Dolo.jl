@@ -1,5 +1,4 @@
 
-
 path = Pkg.dir("Dolo")
 
 Pkg.build("QuantEcon")
@@ -7,15 +6,84 @@ import Dolo
 
 filename = joinpath(path,"examples","models","rbc_dtcc_iid_ar1.yaml")
 model = Dolo.yaml_import(filename)
-n_exp = 0
-sigma = model.calibration.flat[:sig_z]
-horizon=40
-seed=42
 @time dr = Dolo.time_iteration(model, verbose=true, maxit=10000)
-s0=model.calibration[:states]
-# You have to specify parameters of the function inside the brakets, strange
+
+s0 = model.calibration[:states]
+e0 = model.calibration[:exogenous]
+irf = Dolo.response(model, dr, s0, :e_z)
+Dolo.response(model, dr, s0, [0.3])
+
+
+############## 2 shocks
+filename2 = joinpath(path,"examples","models","rbc_dtcc_iid_2ar1.yaml")
+model2 = Dolo.yaml_import(filename2)
+@time dr2 = Dolo.time_iteration(model2, verbose=true, maxit=10000)
+s0 = model2.calibration[:states]
+e0 = model2.calibration[:exogenous]
+
+irf=Dolo.response(model2, dr2, s0, [0, 0.3]; T=40)
+irf2=Dolo.response(model2, dr2, s0, :e_z)
+
+Dolo.response(model2, dr2, s0, :e_d)
+
+
+#########################################################################
+
+filename = joinpath(path,"examples","models","rbc_dtcc_ar1.yaml")
+model = Dolo.yaml_import(filename)
+# model2 = Dolo.yaml_import(filename2)
+N = 1
+T=40
+@time dr = Dolo.time_iteration(model, verbose=true, maxit=10000)
+s0 = model.calibration[:states]
+m0 = model.calibration[:exogenous]
+Dolo.response(model, dr, s0, [0.2])
+Dolo.response(model, dr, s0, [0.4])
+
+
+
+
+############
+# Ploting
+
+
+irf = Dolo.response(model, dr, e0; horizon = 100)
+
+kirf = irf[:,3]
+iirf = irf[:,2]
+nirf = irf[:,4]
+zirf = irf[:,5]
+horizon=100
+time = linspace(0,horizon-1,horizon)
+using Gadfly
+
+plot(x=time, y=kirf, Geom.point, Geom.line,
+     Guide.xlabel("horizon"), Guide.ylabel("Capital"), Guide.title("IRF"))
+plot(x=time, y=nirf, Geom.point, Geom.line,Guide.xlabel("horizon"),
+     Guide.ylabel("Hours"), Guide.title("IRF"))
+plot(x=time, y=iirf, Geom.point, Geom.line, Guide.xlabel("horizon"),
+   Guide.ylabel("Investments"), Guide.title("IRF"))
+plot(x=time, y=zirf, Geom.point, Geom.line, Guide.xlabel("horizon"),
+      Guide.ylabel("AR1"), Guide.title("IRF"))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# test simulation
 res = Dolo.simulation(model, sigma, dr,s0, n_exp, horizon, seed, zeros(0, 0))
-res_long = Dolo.simulation(model, sigma, dr,s0, n_exp=0, horizon=100, seed=42)
+res_long = Dolo.simulation(model, sigma, dr,s0, n_exp=0, horizon=1000, seed=42)
 
 res = Dolo.simulation(model, sigma, dr,s0)
 res = Dolo.simulation(model, sigma)
@@ -23,7 +91,7 @@ res = Dolo.simulation(model, sigma)
 kvec = res_long[:,2,:]
 ivec = res_long[:,4,:]
 nvec = res_long[:,3,:]
-horizon=100
+horizon=1000
 time = linspace(0,horizon-1,horizon)
 using Gadfly
 

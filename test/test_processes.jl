@@ -22,6 +22,11 @@ sim = Dolo.simulate(var, 1, 200, [0.8, 0.8]; stochastic=false)
 dp = Dolo.discretize(var)
 
 
+irf = Dolo.response(var, [0.1, 0.3])
+irf = Dolo.response(var, [0.8, 0.8], [0.1, 0.3])
+irf = Dolo.response(var, [0.8, 0.8], 2)
+irf = Dolo.response(var)
+
 import PyPlot
 
 
