@@ -59,7 +59,7 @@ immutable SymbolicModel{ID} <: ASM{ID}
         _calib  = OrderedDict{Symbol,Union{Expr,Symbol,Number}}()
         for k in keys(_symbols)
             for nm in _symbols[k]
-                if k == :shocks
+                if k == :exogenous
                     _calib[nm] = 0.0
                 else
                     _calib[nm] = _expr_or_number(calib[nm])

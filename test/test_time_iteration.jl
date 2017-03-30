@@ -28,8 +28,8 @@ steady_state(model, model.calibration)
 
 @time dr = time_iteration(model, process, verbose=true)
 
-ivals = [evaluate(dr, 1, [i])[1] for i=kvec ]
-nvals = [evaluate(dr, 1, [i])[2] for i=kvec ]
+ivals = [dr(1, [i])[1] for i=kvec ]
+nvals = [dr(1, [i])[2] for i=kvec ]
 
 
 using Gadfly
@@ -38,5 +38,5 @@ plot(x=kvec, y=ivals)
 
 plot(x=kvec, y=nvals)
 
-kkvec = [evaluate(dr,1,[k])[1] for k in kvec]
+kkvec = [dr(1,[k])[1] for k in kvec]
 plot(x=kvec, y=yvec, Geom.line)

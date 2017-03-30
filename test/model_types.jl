@@ -115,7 +115,7 @@
             @test fc1[:z] == 1.0
 
             # conversion to Float64
-            for T in (Float16, Float32, Float64, Int8, Int16, Int32, Int64,
+            for T in (Float16, Float32, Float64, Int8, Int16, Int32, Int,
                       Rational{Int}, BigFloat, BigInt)
                 fc1[:q] = one(T)
                 @test Float64(1.0) == @inferred getindex(fc1, :q)
@@ -157,7 +157,7 @@
             @test_throws DimensionMismatch setindex!(gc1, [1.0], :x)
 
             # conversion to Float64
-            for T in (Float16, Float32, Float64, Int8, Int16, Int32, Int64,
+            for T in (Float16, Float32, Float64, Int8, Int16, Int32, Int,
                       Rational{Int}, BigFloat, BigInt)
                 gc1[:q] = [one(T)]
                 @test [Float64(1.0)] == @inferred getindex(gc1, :q)

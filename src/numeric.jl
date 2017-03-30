@@ -36,13 +36,6 @@ end
 
 _numeric_mod_type{ID}(::ASM{ID}) = NumericModel{ID}
 
-function Base.show{ID}(io::IO, m::NumericModel{ID})
-    println(io,
-    """NumericModel
-      - name: $(m.name)
-    """)
-end
-
 Base.convert(::Type{SymbolicModel}, m::NumericModel) = m.symbolic
 
 function NumericModel{ID}(sm::SymbolicModel{ID}; print_code::Bool=false)

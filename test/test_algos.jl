@@ -3,33 +3,29 @@ path = Pkg.dir("Dolo")
 Pkg.build("QuantEcon")
 import Dolo
 
-filename = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
-# filename = joinpath(path,"examples","models","sudden_stop.yaml")
-model_mc = Dolo.yaml_import(filename)
+
+fn = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
+model_mc = Dolo.yaml_import(fn)
 
 drc = Dolo.ConstantDecisionRule(model_mc.calibration[:controls])
-@time dr0, drv0 = Dolo.solve_policy(model_mc, drc, verbose=true, maxit=10000 )
-
-
+@time dr0, drv0 = Dolo.solve_policy(model_mc, drc) #, verbose=true, maxit=10000 )
 @time dr = Dolo.time_iteration(model_mc, verbose=true, maxit=10000)
-@time drv = Dolo.evaluate_policy(model_mc, dr, verbose=true, maxit=10000)
-
-@time drd = Dolo.time_iteration_direct(model_mc, dr, verbose=true, maxit=500)
-
-# compare with prerecorded values
-kvec = linspace(dr.grid.min[1],dr.grid.max[1],10)
-nvec = [Dolo.evaluate(dr,1,[k])[1] for k in kvec]
-ivec = [Dolo.evaluate(dr,1,[k])[2] for k in kvec]
-# compare  time_iteration_direct
-nvec_d = [Dolo.evaluate(drd,1,[k])[1] for k in kvec]
-ivec_d = [Dolo.evaluate(drd,1,[k])[2] for k in kvec]
-@assert maximum(abs(nvec_d-nvec))<1e-
-
-# compare  vfi
-nvec_0 = [Dolo.evaluate(dr0,1,[k])[1] for k in kvec]
-ivec_0 = [Dolo.evaluate(dr0,1,[k])[2] for k in kvec]
-@assert maximum(abs(nvec_0-nvec))<1e-4
-
+@time drv = Dolo.evaluate_policy(model_mc, dr) #, verbose=true, maxit=10000)
+@time drd = Dolo.time_iteration_direct(model_mc, dr) #, maxit=500)
+#
+# # compare with prerecorded values
+# kvec = linspace(dr.grid.min[1],dr.grid.max[1],10)
+# nvec = [dr(1,[k])[1] for k in kvec]
+# ivec = [dr(1,[k])[2] for k in kvec]
+# # compare  time_iteration_direct
+# nvec_d = [drd(1,[k])[1] for k in kvec]
+# ivec_d = [drd(1,[k])[2] for k in kvec]
+# @assert maxabs(nvec_d-nvec)<1e-4
+#
+# # compare  vfi
+# nvec_0 = [dr0(1,[k])[1] for k in kvec]
+# ivec_0 = [dr0(1,[k])[2] for k in kvec]
+# @assert maxabs(nvec_0-nvec)<1e-4
 
 # let's redo when model is stable !
 # ivec_test = [0.295977,  0.257538,  0.21566,  0.173564,  0.132103,  0.0915598,  0.0520067,  0.0134661,  7.01983e-6, 3.40994e-17]
@@ -38,38 +34,66 @@ ivec_0 = [Dolo.evaluate(dr0,1,[k])[2] for k in kvec]
 # @assert maximum(abs(nvec-nvec_test))<1e-5
 
 
-# this one needs a lower value of beta or a better initial guess
-filename = joinpath(path,"examples","models","rbc_dtcc_iid.yaml")
-model = Dolo.yaml_import(filename)
+import Dolo
+path = Pkg.dir("Dolo")
+fn = joinpath(path,"examples","models","rbc_dtcc_iid.yaml")
+model = Dolo.yaml_import(fn)
+
+@time dr = Dolo.perturbate(model)
 
 drc = Dolo.ConstantDecisionRule(model.calibration[:controls])
-@time dr0, drv0 = Dolo.solve_policy(model, drc, verbose=true, maxit=1000 )
 
+@time dr = Dolo.time_iteration(model, maxit=100, verbose=true)
+@time res = Dolo.time_iteration(model, dr; maxit=100, infos=true)
+res
 
-@time dr = Dolo.time_iteration(model, maxit=1000, verbose=true)
-@time drd = Dolo.time_iteration_direct(model, maxit=1000, verbose=true)
-# @time dr = Dolo.time_iteration_direct(model, dr, maxit=500, verbose=true)
+@time dr0, drv0 = Dolo.solve_policy(model, drc) #;, verbose=true, maxit=1000 )
+@time res = Dolo.solve_policy(model, drc; infos=true) #;, verbose=true, maxit=1000 )
+
+@time drd = Dolo.time_iteration_direct(model) #, maxit=1000, verbose=true)
+
+@time dr = Dolo.time_iteration_direct(model, drd) #, maxit=500, verbose=true)
+@time res = Dolo.time_iteration_direct(model, drc; infos=true)
 @time drv = Dolo.evaluate_policy(model, dr, verbose=true)
 
-kvec = linspace(dr.grid.min[1],dr.grid.max[1],10)
-nvec = [Dolo.evaluate(dr,1,[k])[1] for k in kvec]
-ivec = [Dolo.evaluate(dr,1,[k])[2] for k in kvec]
-nvec_d = [Dolo.evaluate(drd,1,[k])[1] for k in kvec]
-ivec_d = [Dolo.evaluate(drd,1,[k])[2] for k in kvec]
-nvec_0 = [Dolo.evaluate(dr0,1,[k])[1] for k in kvec]
-ivec_0 = [Dolo.evaluate(dr0,1,[k])[2] for k in kvec]
+#
+Dolo.simulate(model, dr)
 
-@assert maximum(abs(nvec_d-nvec))<1e-5
-@assert maximum(abs(nvec_0-nvec))<1e-5 # not satisfied right now (see tol. of optimizer)
+s0 = model.calibration[:states]+0.1
+sim = Dolo.simulate(model, dr, s0; stochastic=true)
+Dolo.simulate(model, dr, n_exp=10)
 
-
+# this doesn't work here
+irf = Dolo.response(model, dr, [0.1])
+irf[:k]
 
 
-# does not work yet
-filename = joinpath(path,"examples","models","rbc_dtcc_ar1.yaml")
-model = Dolo.yaml_import(filename)
+# kvec = linspace(dr.grid.min[1],dr.grid.max[1],10)
+# nvec = [dr(1,[k])[1] for k in kvec]
+# ivec = [dr(1,[k])[2] for k in kvec]
+# nvec_d = [drd(1,[k])[1] for k in kvec]
+# ivec_d = [drd(1,[k])[2] for k in kvec]
+# nvec_0 = [dr0(1,[k])[1] for k in kvec]
+# ivec_0 = [dr0(1,[k])[2] for k in kvec]
+#
+# @assert maxabs(nvec_d-nvec)<1e-5
+# @assert maxabs(nvec_0-nvec)<1e-5 # not satisfied right now (see tol. of optimizer)
 
-Dolo.discretize(model.exogenous)
 
+# AR1 model: this one should be exactly equivalent to rbc_dtcc_ar1
+import Dolo
+fn = Pkg.dir("Dolo","examples","models","rbc_dtcc_ar1.yaml")
+model = Dolo.yaml_import(fn)
+dp = Dolo.discretize(model.exogenous)
+@time dr = Dolo.perturbate(model)
+cdr =Dolo.CachedDecisionRule(dr,dp)
+@time dr = Dolo.time_iteration(model, model.exogenous, cdr)
 @time dr = Dolo.time_iteration(model)
-@time drv = Dolo.evaluate_policy(model, dr, verbose=true)
+@time dr0, drv0 = Dolo.solve_policy(model, cdr, verbose=true) #, maxit=10000 )
+@time drv = Dolo.evaluate_policy(model, dr, verbose=true, maxit=10000)
+@time drd = Dolo.time_iteration_direct(model, dr) #, verbose=true) #, maxit=500)
+#
+
+Dolo.simulate(model, dr, n_exp=10)
+sim = Dolo.response(model, dr, [0.01])
+sim

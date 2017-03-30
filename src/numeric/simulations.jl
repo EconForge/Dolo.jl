@@ -53,20 +53,20 @@ function QuantEcon.simulate(m::AbstractNumericModel, dr::AbstractDecisionRule,
             epsilons = rand(ϵ_dist, n_exp)'
         end
 
-        s = slice(s_simul, :, :, t)
+        s = view(s_simul, :, :, t)
 
         # extract x and then fill it
-        x = slice(x_simul, :, :, t)
+        x = view(x_simul, :, :, t)
         dr(s, x)
 
         if has_aux
             # extract a and then fill it
-            y = slice(y_simul, :, :, t)
+            y = view(y_simul, :, :, t)
             evaluate!(a, s, x, params, y)
         end
 
         if t < horizon
-            ss = slice(s_simul, :, :, t+1)
+            ss = view(s_simul, :, :, t+1)
             evaluate!(g, s, x, epsilons, params, ss)
         end
     end

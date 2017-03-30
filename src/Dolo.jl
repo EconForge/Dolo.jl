@@ -7,10 +7,12 @@ using DataStructures: OrderedDict
 using YAML: load_file, load
 using Requests: get
 using NLsolve
+using Optim
 using QuantEcon
-using Distributions: MvNormal, Distribution
 using Dolang
 using Dolang: _to_expr
+# using Distributions: MvNormal, Distribution
+import Distributions
 import ForwardDiff
 import YAML
 using Compat; import Compat: String, view
@@ -31,7 +33,7 @@ export arbitrage, transition, auxiliary, value, expectation,
        # dolo functions
 export yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename, id
 
-export time_iteration, value_iteration, steady_state_residuals
+export time_iteration, value_iteration, steady_state_residuals, simulation
 
 # set up core types
 abstract AbstractModel{ID}
@@ -41,7 +43,6 @@ abstract AbstractNumericModel{ID} <: AbstractModel{ID}
 typealias ASM AbstractSymbolicModel
 typealias ANM AbstractNumericModel
 
-abstract AbstractDecisionRule
 
 id{ID}(::AbstractModel{ID}) = ID
 
@@ -77,12 +78,15 @@ include("symbolic.jl")
 include("calibration.jl")
 include("minilang.jl")
 include("numeric.jl")
+include("printing.jl")
 include("model_import.jl")
 
 include("algos/steady_state.jl")
 include("algos/time_iteration.jl")
 include("algos/time_iteration_direct.jl")
 include("algos/value_iteration.jl")
+include("algos/perturbation.jl")
+include("algos/simulation.jl")
 
 
 end # module
