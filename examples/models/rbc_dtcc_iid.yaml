@@ -75,7 +75,7 @@ calibration:
 options:
 
     exogenous: !Normal
-        sigma: sig_z**2
+        sigma: sig_z^2
 
     grid: !Cartesian
         a: [-2*sig_z/(1-rho^2)^0.5, k*0.5]

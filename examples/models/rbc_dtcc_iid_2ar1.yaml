@@ -81,7 +81,7 @@ calibration:
 options:
 
     exogenous: !Normal
-        sigma: [[sig_z**2, 0], [0, sig_d**2]]
+        sigma: [[sig_z^2, 0], [0, sig_d^2]]
 
     grid: !Cartesian
         a: [-sig_z, -sig_d, k*0.5]

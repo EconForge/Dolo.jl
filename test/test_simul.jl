@@ -6,12 +6,6 @@ import Dolo
 
 filename = joinpath(path,"examples","models","rbc_dtcc_iid_ar1.yaml")
 model = Dolo.yaml_import(filename)
-m_simul = Dolo.response(mode
-
-# m_simul'
-# model2 = Dolo.yaml_import(filename2)
-N = 1
-T=40
 @time dr = Dolo.time_iteration(model, verbose=true, maxit=10000)
 
 s0 = model.calibration[:states]
@@ -27,9 +21,6 @@ model2 = Dolo.yaml_import(filename2)
 s0 = model2.calibration[:states]
 e0 = model2.calibration[:exogenous]
 
-# index_s = findfirst(model.symbols[:exogenous], :e_z)
-
-# irf=Dolo.response(model2, dr2, s0, :e_d, 0.3; T=40)
 irf=Dolo.response(model2, dr2, s0, [0, 0.3]; T=40)
 irf2=Dolo.response(model2, dr2, s0, :e_z)
 
