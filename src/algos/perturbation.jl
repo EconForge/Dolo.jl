@@ -106,29 +106,6 @@ end
 function perturbate(model::AbstractNumericModel; infos=false)
 
     g_s, g_x, f_s, f_x, f_S, f_X = get_gf_derivatives(model)
-    # g_diff,f_diff = get_ss_derivatives(model)
-    # _f_m,_f_s,_f_x,_f_M,_f_S,_f_X = f_diff
-    # _g_m,_g_s,_g_x,_g_M = g_diff
-    #
-    # (M, R) = perturbate(model.exogenous)
-    #
-    # f_x = _f_x
-    # f_X = _f_X
-    #_m,_s,x,p = model.calibration[:exogenous,:states,:controls,:parameters]
-    #
-    # if size(R,1)>0
-    #     f_s = [_f_m _f_s]
-    #     f_S = [_f_M _f_S]
-    #     g_s = [R zeros(size(R,1),size(_g_s,2)); _g_m _g_s]
-    #     g_x = [zeros(size(_g_m,1),size(_g_x,2)); _g_x]
-    #     s = cat(1,_m, _s)
-    # else
-    #     f_s = _f_s
-    #     f_S = _f_S
-    #     g_s = _g_s
-    #     g_x = _g_x
-    #     s = _s
-    # end
     nx = size(g_x, 2)
 
     (M, R) = perturbate(model.exogenous)
