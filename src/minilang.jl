@@ -65,10 +65,10 @@ function _build_exogenous_entry(data::Associative, calib::ModelCalibration)
 
     if data[:tag] == :MarkovChain
         # need to extract/clean up P and Q
-        P = eval_with(calib, data[:P])
-        states_values = to_matrix(P)
-        Q = eval_with(calib, data[:Q])
-        Π = to_matrix(Q)
+        values = eval_with(calib, data[:values])
+        states_values = to_matrix(values)
+        transitions = eval_with(calib, data[:transitions])
+        Π = to_matrix(transitions)
         return MarkovChain(Π, states_values)
     elseif data[:tag] == :AR1
         # need to extract rho an dsigma
