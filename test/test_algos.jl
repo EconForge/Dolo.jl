@@ -2,13 +2,14 @@ path = Pkg.dir("Dolo")
 
 Pkg.build("QuantEcon")
 import Dolo
+import YAML
 
-
-fn = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
+# fn = joinpath(path,"examples","models","rbc_dtcc_iid_ar1.yaml")
+fn = joinpath(path,"examples","models","LAMP.yaml")
 model_mc = Dolo.yaml_import(fn)
 
 drc = Dolo.ConstantDecisionRule(model_mc.calibration[:controls])
-@time dr0, drv0 = Dolo.solve_policy(model_mc, drc) #, verbose=true, maxit=10000 )
+# @time dr0, drv0 = Dolo.solve_policy(model_mc, drc) #, verbose=true, maxit=10000 )
 @time dr = Dolo.time_iteration(model_mc, verbose=true, maxit=10000)
 @time drv = Dolo.evaluate_policy(model_mc, dr) #, verbose=true, maxit=10000)
 @time drd = Dolo.time_iteration_direct(model_mc, dr) #, maxit=500)
