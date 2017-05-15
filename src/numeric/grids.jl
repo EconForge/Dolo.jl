@@ -53,8 +53,19 @@ n_nodes(grid::Grid) = size(grid.nodes,1)
 node(grid::Grid, i::Int) = grid.nodes[i,:]
 
 immutable SmolyakGrid <: Grid
+
     min::Vector{Float64}
     max::Vector{Float64}
     mu::Vector{Int}
     nodes::Matrix{Float64}
+
+    function SmolyakGrid(min::Vector{Float64}, max::Vector{Float64}, mu::Int64)
+        return new(min,max,[mu for i=1:length(min)])
+    end
+
+    function SmolyakGrid(min::Vector{Float64}, max::Vector{Float64}, mu::Vector{Int})
+        nodes = zeros(10,10) # TODO !!!!
+        return new(min,max,mu,nodes)
+    end
+
 end

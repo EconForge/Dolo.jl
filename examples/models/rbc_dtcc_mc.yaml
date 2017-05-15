@@ -73,16 +73,20 @@ calibration:
     u: c^(1-sigma)/(1-sigma) - chi*n^(1+eta)/(1+eta)
 
 
+domain:
+    k: [k*0.5, k*1.5]
+
 options:
 
     exogenous: !MarkovChain
         values: [[0.00]]
         transitions: [[1.0]]
 
-    grid: !Cartesian
+    grid: !Smolyak
         a: [k*0.5]
         b: [k*1.5]
         orders: [50]
+        mu: 2
 
     random:
         any: 0.1
