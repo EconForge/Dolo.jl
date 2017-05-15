@@ -15,11 +15,6 @@ import ForwardDiff
 import YAML
 using Compat; import Compat: String, view
 
-# export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
-#        SymbolicModel, NumericModel,
-#        FlatCalibration, GroupedCalibration, ModelCalibration, TaylorExpansion,
-#        RECIPES,
-
        # model functions
 export arbitrage, transition, auxiliary, value, expectation,
        direct_response, controls_lb, controls_ub, arbitrage_2, felicity,
@@ -67,7 +62,6 @@ include("numeric/newton.jl")
 include("numeric/grids.jl")
 include("numeric/processes.jl")
 include("numeric/decision_rules.jl")
-include("numeric/taylor_series.jl")
 include("numeric/simulations.jl")
 include("numeric/derivatives.jl")
 
