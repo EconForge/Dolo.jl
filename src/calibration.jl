@@ -130,6 +130,34 @@ function ModelCalibration(sm::SymbolicModel)
     ModelCalibration(flat, grouped, symbol_table, deepcopy(sm.symbols))
 end
 
+
+function ModelCalibration(calib, symbols)
+    flat = FlatCalibration(calib)
+    grouped = GroupedCalibration()
+    for (k, nms) in symbols
+        grouped[k] = Float64[flat[nm] for nm in nms]
+    end
+
+    # grouped[:definitions] = Float64[flat[nm] for nm in keys(sm.definitions)]
+
+    symbol_table = Dict{Symbol,Tuple{Symbol,Int}}()
+    for (grp, vals) in symbols
+        for (i, v) in enumerate(vals)
+            symbol_table[v] = (grp, i)
+        end
+    end
+
+    # for (i, v) in enumerate(keys(sm.definitions))
+    #     symbol_table[v] = (:definitions, i)
+    # end
+
+    # # make sure we documented where in grouped every symbol is
+    # @assert sort(collect(keys(symbol_table))) == sort(collect(keys(flat)))
+
+    ModelCalibration(flat, grouped, symbol_table, deepcopy(symbols))
+end
+
+
 for f in (:copy, :deepcopy)
     @eval Base.$(f)(mc::ModelCalibration) =
         ModelCalibration($(f)(mc.flat), $(f)(mc.grouped),
