@@ -1,5 +1,9 @@
 using DataFrames
 using PyPlot
+using AxisArrays
+using Unitful
+import Unitful: s, ms, µs
+
 
 
 function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
@@ -42,7 +46,13 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
           # s_simul[:, :, t+1] = ss
         end
     end
-    return cat(2, epsilons, s_simul, x_simul)::Array{Float64,3}
+
+    sim = cat(2, epsilons, s_simul, x_simul)::Array{Float64,3}
+    Ac= cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+    ll=[Symbol(i) for i in Ac]
+    AA = AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
+
+    return AA
 
 end
 
