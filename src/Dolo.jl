@@ -1,5 +1,3 @@
-# __precompile__()
-
 module Dolo
 
 using MacroTools
@@ -80,6 +78,7 @@ include("minilang.jl")
 include("numeric.jl")
 include("printing.jl")
 include("model_import.jl")
+include("new_symbolic.jl")
 
 include("algos/steady_state.jl")
 include("algos/time_iteration.jl")

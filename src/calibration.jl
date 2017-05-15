@@ -131,15 +131,13 @@ function ModelCalibration(sm::SymbolicModel)
 end
 
 
-function ModelCalibration(calib, symbols)
+function ModelCalibration(calib::OrderedDict{Symbol,Real}, symbols::OrderedDict{Symbol,Array{Symbol,1}})
     flat = FlatCalibration(calib)
     grouped = GroupedCalibration()
     for (k, nms) in symbols
         grouped[k] = Float64[flat[nm] for nm in nms]
     end
-
     # grouped[:definitions] = Float64[flat[nm] for nm in keys(sm.definitions)]
-
     symbol_table = Dict{Symbol,Tuple{Symbol,Int}}()
     for (grp, vals) in symbols
         for (i, v) in enumerate(vals)

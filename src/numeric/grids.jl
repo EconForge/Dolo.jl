@@ -59,11 +59,11 @@ immutable SmolyakGrid <: Grid
     mu::Vector{Int}
     nodes::Matrix{Float64}
 
-    function SmolyakGrid(min::Vector{Float64}, max::Vector{Float64}, mu::Int64)
+    function SmolyakGrid(min::Array{Float64,1}, max::Array{Float64,1}, mu::Int64)
         return new(min,max,[mu for i=1:length(min)])
     end
 
-    function SmolyakGrid(min::Vector{Float64}, max::Vector{Float64}, mu::Vector{Int})
+    function SmolyakGrid(min::Array{Float64,1}, max::Array{Float64,1}, mu::Array{Int64,1})
         nodes = zeros(10,10) # TODO !!!!
         return new(min,max,mu,nodes)
     end
