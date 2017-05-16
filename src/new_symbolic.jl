@@ -20,10 +20,8 @@ pairs = [("!Cartesian", :Cartesian),
 yaml_types = Dict{AbstractString,Function}([(t, (c, n) -> construct_type_map(s, c, n))
                        for (t, s) in pairs])
 
-abstract type AModel end                # symbolic model
-abstract type ANModel <: AModel end      # numeric model
 
-type SModel <: AModel
+type SModel{ID} <: AModel{ID}
     data::Dict{Any,Any}
 end
 
@@ -41,7 +39,8 @@ function SModel(url::AbstractString)
     else
         data = Dolo._symbol_dict(Dolo.load_file(url, yaml_types))
     end
-    return SModel(data)
+    id = gensym()
+    return SModel{id}(data)
 end
 
 function get_symbols(model::AModel)
@@ -167,29 +166,35 @@ function set_calibration(model::AModel, key::Symbol, value::Union{Real,Expr, Sym
     model.data[:calibration][key] = value
 end
 
-type Model<:AModel
+
+##### TEMP
+symbols
+calibration::ModelCalibration
+exogenous::Texog
+options::Options
+name::String
+filename::String
+factories::Dict{Symbol,FunctionFactory}
+
+type Model{ID}<:AModel{ID}
+
     data
-    name           # weakly immutable
-    symbols        # weakly immutable
+    name::String           # weakly immutable
+    symbols::OrderedDict{Symbol,Array{Symbol,1}}        # weakly immutable
     equations      # weakly immutable
     definitions    # weakly immutable
-    functions      # weakly immutable
+    # functions      # weakly immutable
 
-    calibration
+    calibration::ModelCalibration
     exogenous
     domain
     grid
     options
 
-    function Model(url::AbstractString)
-        # it looks like it would be cool to use the super constructor ;-)
-        if match(r"(http|https):.*", url) != nothing
-            res = get(url)
-            buf = Dolo.IOBuffer(res.data)
-            data = Dolo._symbol_dict(Dolo.load(buf, yaml_types))
-        else
-            data = Dolo._symbol_dict(Dolo.load_file(url, yaml_types))
-        end
+    factories
+
+
+    function Model(data; print_code=false)
 
         model = new(data)
         model.name = get_name(model)
@@ -202,8 +207,36 @@ type Model<:AModel
         model.domain = get_domain(model)
         model.options = get_options(model)
         model.grid = get_grid(model)
-        return model
 
+
+        # now let's compile the functions:
+        model.factories = Dict()
+        for eqtype in keys(model.equations)
+            factory = Dolang.FunctionFactory(model,eqtype)
+            code = make_method(factory)
+            model.factories[eqtype] = code
+            print_code && println(code)
+            eval(Dolo, code)
+        end
+
+        return model
     end
 
+end
+
+_numeric_mod_type{ID}(::Model{ID}) = Model{ID}
+
+
+
+function Model(url::AbstractString; print_code=false)
+    # it looks like it would be cool to use the super constructor ;-)
+    if match(r"(http|https):.*", url) != nothing
+        res = get(url)
+        buf = Dolo.IOBuffer(res.data)
+        data = Dolo._symbol_dict(Dolo.load(buf, yaml_types))
+    else
+        data = Dolo._symbol_dict(Dolo.load_file(url, yaml_types))
+    end
+    id = gensym()
+    return Model{id}(data; print_code=print_code)
 end

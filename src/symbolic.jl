@@ -17,6 +17,7 @@ immutable SymbolicModel{ID} <: ASM{ID}
                            exog::Associative,
                            options::Associative, defs::Associative,
                            name="modeldoesnotwork", filename="none")
+
         # prep symbols
         model_type = Symbol(recipe[:model_spec])
         _symbols = OrderedDict{Symbol,Vector{Symbol}}()
@@ -128,7 +129,7 @@ function SymbolicModel(data::Dict, filename="none")
 end
 
 # assume dolo style model is default, special case others
-function _get_args(sm::SymbolicModel, spec)
+function _get_args(sm, spec)
     # get args
     args = OrderedDict{Symbol,Vector{Tuple{Symbol,Int}}}()
     for (grp, shift, nm) in spec[:eqs]
@@ -141,10 +142,7 @@ function _get_args(sm::SymbolicModel, spec)
 end
 
 
-type StupidType end
-
-
-function Dolang.FunctionFactory(sm::SymbolicModel, func_nm::Symbol)
+function Dolang.FunctionFactory(sm, func_nm::Symbol)
     spec = RECIPES[:dtcc][:specs][func_nm]
     eqs = sm.equations[func_nm]
 
@@ -156,8 +154,8 @@ function Dolang.FunctionFactory(sm::SymbolicModel, func_nm::Symbol)
     # get other stuff
     args = Dolo._get_args(sm, spec)
     params = sm.symbols[:parameters]
-    # dispatch = _numeric_mod_type(sm)
-    dispatch = StupidType
+    dispatch = _numeric_mod_type(sm)
+
     FunctionFactory(dispatch, eqs, args, params, targets=targets,
                     defs=sm.definitions, funname=func_nm)
 end

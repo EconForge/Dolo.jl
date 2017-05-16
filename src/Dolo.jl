@@ -36,8 +36,15 @@ abstract AbstractNumericModel{ID} <: AbstractModel{ID}
 typealias ASM AbstractSymbolicModel
 typealias ANM AbstractNumericModel
 
-
 id{ID}(::AbstractModel{ID}) = ID
+
+
+# duplicate hierarchy to experiment with
+abstract type AModel{ID} end                # symbolic model
+abstract type ANModel{ID} <: AModel{ID} end      # numeric model
+
+
+
 
 # recursively make all keys at any layer of nesting a symbol
 # included here instead of util.jl so we can call it on RECIPES below
