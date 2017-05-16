@@ -40,8 +40,8 @@ id{ID}(::AbstractModel{ID}) = ID
 
 
 # duplicate hierarchy to experiment with
-abstract type AModel{ID} end                # symbolic model
-abstract type ANModel{ID} <: AModel{ID} end      # numeric model
+@compat abstract type AModel{ID} end                # symbolic model
+@compat abstract type ANModel{ID} <: AModel{ID} end      # numeric model
 
 
 

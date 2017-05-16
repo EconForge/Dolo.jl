@@ -115,9 +115,9 @@ function get_calibration(model::AModel)
         _calib[Symbol(k)] = Dolo._expr_or_number(calib[k])
     end
     # so far _calib is a symbolic calibration
-    calibration = Dolo.solve_triangular_system(_calib)
+    calibration = solve_triangular_system(_calib) ::OrderedDict{Symbol,Real }
     symbols = get_symbols( model )
-    return Dolo.ModelCalibration( calibration, symbols )
+    return ModelCalibration( calibration, symbols )
 end
 
 function get_domain(model::AModel)
@@ -125,8 +125,8 @@ function get_domain(model::AModel)
     calib = get_calibration(model)
     # TODO deal with empty dict and make robust construction
     states = get_symbols(model)[:states]
-    min = [Dolo.eval_with(calib, domain[(k)][1]) for k in states]
-    max = [Dolo.eval_with(calib, domain[(k)][2]) for k in states]
+    min = [eval_with(calib, domain[(k)][1]) for k in states]
+    max = [eval_with(calib, domain[(k)][2]) for k in states]
     return Domain(states, min, max)
 end
 
@@ -167,15 +167,6 @@ function set_calibration(model::AModel, key::Symbol, value::Union{Real,Expr, Sym
 end
 
 
-##### TEMP
-symbols
-calibration::ModelCalibration
-exogenous::Texog
-options::Options
-name::String
-filename::String
-factories::Dict{Symbol,FunctionFactory}
-
 type Model{ID}<:AModel{ID}
 
     data
@@ -191,9 +182,6 @@ type Model{ID}<:AModel{ID}
     grid
     options
 
-    factories
-
-
     function Model(data; print_code=false)
 
         model = new(data)
@@ -201,7 +189,6 @@ type Model{ID}<:AModel{ID}
         model.symbols = get_symbols(model)
         model.equations = get_equations(model)
         model.definitions = get_definitions(model)
-        model.functions = Dict() # dirty placeholder
         model.calibration = get_calibration(model)
         model.exogenous = get_exogenous(model)
         model.domain = get_domain(model)
@@ -210,7 +197,6 @@ type Model{ID}<:AModel{ID}
 
 
         # now let's compile the functions:
-        model.factories = Dict()
         for eqtype in keys(model.equations)
             factory = Dolang.FunctionFactory(model,eqtype)
             code = make_method(factory)

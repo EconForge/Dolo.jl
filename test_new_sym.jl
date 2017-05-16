@@ -25,6 +25,8 @@ data = model.data
 Dolo.set_calibration(model, :k, 0.1)
 Dolo.get_domain(model)
 
+
+
 @time nmodel = Dolo.Model(url; print_code=false)
 
 nmodel.name
@@ -32,9 +34,7 @@ nmodel.calibration[:states, :controls]
 nmodel.grid
 nmodel.exogenous
 
-nmodel.equations[:controls_ub]
 nmodel.equations[:arbitrage]
-nmodel.equations[:controls_lb]
 
 m,s,x,p = nmodel.calibration[:exogenous,:states,:controls,:parameters]
 

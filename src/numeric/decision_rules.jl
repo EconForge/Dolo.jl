@@ -15,7 +15,7 @@ function Base.show(io::IO, dr::AbstractDecisionRule)
 end
 
 
-@compat struct ConstantDecisionRule <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
+@compat type ConstantDecisionRule <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
     constants::Vector{Float64}
 end
 

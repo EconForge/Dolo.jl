@@ -84,5 +84,5 @@ function solve_triangular_system(d::OrderedDict)
                         $ret
                         end))
 
-    OrderedDict(zip(nms, data))
+    OrderedDict{Symbol, Real}(zip(nms, data))
 end
