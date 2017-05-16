@@ -188,9 +188,14 @@ function evaluate(dr::AbstractDecisionRule{UnstructuredGrid, CartesianGrid}, i::
 end
 
 (dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::Int,y::AbstractMatrix{Float64}) = evaluate(dr,i,y)
+
+# (dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::AbstractVector{Int},y::AbstractMatrix{Float64}) =
+# vcat( [evaluate(dr, i[j], y[j,:]) for j=1:size(y,1)]... )
+
 (dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::Int,y::AbstractVector{Float64}) = dr(i,y')[:]
 
-
+(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::AbstractVector{Int},y::AbstractVector{Float64}) =
+  vcat( [dr(i[j], y[j,:])' for j=1:size(y,1)]... )
 
 
 #####

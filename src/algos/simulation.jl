@@ -7,7 +7,7 @@ import Unitful: s, ms, µs
 
 
 function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
-                       s0::AbstractVector, driving_process::Array{Float64,3})
+                  s0::AbstractVector, driving_process::Union{Array{Int64,3},Array{Float64,3}})
 
     # driving_process: (ne,N,T)
 
@@ -21,7 +21,6 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
 
     # calculate initial controls using decision rule
     x0 = dr(epsilons[1,:,1],s0)
-
     # get number of states and controls
     ns = length(s0)
     nx = length(x0)
@@ -37,18 +36,38 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
     for t in 1:T
         s = view(s_simul, :, :, t)
         m = view(epsilons, :, :, t)
-        x = dr(m,s)
+        if typeof(driving_process)==Array{Float64,3}
+            m_val = m
+            x = dr(m,s)
+        else
+            m_ind=cat(1,m)[:,1]
+            m_val= model.exogenous.values[m_cat,:]
+            x = dr(m_ind,s)
+        end
         x_simul[:, :, t] = x
         if t < T
           M = view(epsilons, :, :, t+1)
+          if typeof(driving_process)==Array{Float64,3}
+              M_val = M
+          else
+              M_cat=cat(1,M)[:,1]
+              M_val= model.exogenous.values[M_cat,:]
+          end
           ss = view(s_simul, :, :, t+1)
-          Dolo.transition!(model, (ss), (m), (s), (x), (M), params)
+          Dolo.transition!(model, (ss), (m_val), (s), (x), (M_val), params)
           # s_simul[:, :, t+1] = ss
         end
     end
 
     sim = cat(2, epsilons, s_simul, x_simul)::Array{Float64,3}
-    Ac= cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+
+    if typeof(driving_process)==Array{Float64,3}
+        model_sym=model.symbols[:exogenous]
+    else
+        model_sym=:mc_process
+    end
+
+    Ac= cat(1, model_sym, model.symbols[:states], model.symbols[:controls])
     ll=[Symbol(i) for i in Ac]
     AA = AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
 
@@ -56,35 +75,62 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
 
 end
 
-function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule{},
-                  s0::AbstractVector, driving_process::Array{Float64,2})
-
-    # driving_process: (T,ne)
-    epsilons = reshape(driving_process, 1, size(driving_process)...) # (N,T,ne)
-    epsilons = permutedims(epsilons,[3,1,2])
-    sim = simulate(model, dr, s0, epsilons)
-    out = sim[1,:,:]
-    columns = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
-    return DataFrame(
-            merge(
-                Dict(:t=>0:(size(out,2)-1)),
-                Dict(columns[i]=>out[i,:] for i=1:length(columns))
-            )
-        )
-end
+# function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
+#                   s0::AbstractVector, driving_process::Union{Array{Float64,2},Array{Float64,3}})
+#
+#     # driving_process: (T,ne)
+#     if typeof(driving_process) == Array{Float64,2}
+#       epsilons = reshape(driving_process, 1, size(driving_process)...)
+#     else
+#       epsilons = driving_process
+#     end
+#     epsilons = permutedims(epsilons,[3,1,2])
+#     sim = simulate(model, dr, s0, epsilons)
+#     out = sim[1,:,:]
+#     columns = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+#     return DataFrame(
+#             merge(
+#                 Dict(:t=>0:(size(out,2)-1)),
+#                 Dict(columns[i]=>out[i,:] for i=1:length(columns))
+#             )
+#         )
+# end
 
 function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
-                driving_process::Union{Array{Float64,2},Array{Float64,3}})
+                  driving_process::Union{Array{Float64,2},Array{Float64,3}})
     s0 = model.calibration[:states]
     return simulate(model, dr, s0, driving_process)
 end
+
+function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
+                  driving_process::Array{Int64,3})
+    s0 = model.calibration[:states]
+    return simulate(model, dr, s0, driving_process)
+end
+
+# function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
+#                   s0::AbstractVector, driving_process::Array{Int64,3})
+#
+#     # driving_process: (T,ne)
+#     epsilons = reshape(driving_process, 1, size(driving_process)...) # (N,T,ne)
+#     epsilons = permutedims(epsilons,[3,1,2])
+#     sim = simulate(model, dr, s0, epsilons)
+#     out = sim[1,:,:]
+#     columns = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+#     return DataFrame(
+#             merge(
+#                 Dict(:t=>0:(size(out,2)-1)),
+#                 Dict(columns[i]=>out[i,:] for i=1:length(columns))
+#             )
+#         )
+# end
 
 ##
 ## methods which simulate the process
 ##
 
 function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule, s0::AbstractVector, m0::AbstractVector; N=1, T=40, stochastic=true)
-    driving_process = simulate(model.exogenous, N, T, m0; stochastic=stochastic)
+                  driving_process = simulate(model.exogenous, N, T, m0; stochastic=stochastic)
     return simulate(model, dr, s0, driving_process)
 end
 
