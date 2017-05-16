@@ -140,6 +140,10 @@ function _get_args(sm::SymbolicModel, spec)
     args
 end
 
+
+type StupidType end
+
+
 function Dolang.FunctionFactory(sm::SymbolicModel, func_nm::Symbol)
     spec = RECIPES[:dtcc][:specs][func_nm]
     eqs = sm.equations[func_nm]
@@ -152,8 +156,8 @@ function Dolang.FunctionFactory(sm::SymbolicModel, func_nm::Symbol)
     # get other stuff
     args = Dolo._get_args(sm, spec)
     params = sm.symbols[:parameters]
-    dispatch = _numeric_mod_type(sm)
-
+    # dispatch = _numeric_mod_type(sm)
+    dispatch = StupidType
     FunctionFactory(dispatch, eqs, args, params, targets=targets,
                     defs=sm.definitions, funname=func_nm)
 end
