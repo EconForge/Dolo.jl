@@ -4,7 +4,7 @@ model_type: dtcc
 
 symbols:
 
-   exogenous: [z]
+   exogenous: [z, z2]
    states: [k]
    controls: [n, i]
    expectations: [m]
@@ -76,8 +76,8 @@ calibration:
 options:
 
     exogenous: !MarkovChain
-        values: [[0.00]]
-        transitions: [[1.0]]
+        values: [[-0.01, 0.1],[0.01, 0.5]]
+        transitions: [[0.4, 0.6], [0.6, 0.4]]
 
     grid: !Cartesian
         a: [k*0.5]

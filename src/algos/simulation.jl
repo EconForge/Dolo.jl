@@ -56,7 +56,7 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
 
 end
 
-function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
+function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule{},
                   s0::AbstractVector, driving_process::Array{Float64,2})
 
     # driving_process: (T,ne)

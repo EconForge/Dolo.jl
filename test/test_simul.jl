@@ -41,68 +41,9 @@ plt.plot(Tvalues, a_median, marker="o")
 
 
 
+#########################################################################
 
-
-
-
-a_sort = sort(collect(a),1)
-
-
-
-
-
-
-
-BB = AxisArray(randn(100,100,100), :x, :y, :z)
-Itotal = sumz = 0.0
-for iter in eachindex(B)  # traverses in storage order for cache efficiency
-    I = B[iter]  # intensity in a single voxel
-    Itotal += I
-    sumz += I * iter[axisdim(B, Axis{:z})]  # axisdim "looks up" the z dimension
-end
-meanz = sumz/Itotal
-
-
-d/1
-Int(d)
-eachindex(B)
-iter = 1
-
-
-I = B[iter]  # intensity in a single voxel
-Itotal += I
-sumz += I * iter[axisdim(B, Axis{:z})]
-
-
-
-B = AxisArray(reshape(1:15, 5, 3), .1:.1:0.5, [:a, :b, :c])
-B[Axis{:row}(Interval(.2,.4))] # restrict the AxisArray along the time axis
-B[Interval(0.,.3), [:a, :c]]
-
-.1:.1:0.5
-
-i = 1
-plt.plot(Tvalues, AA[Axis{:N}(i), Axis{:V}("e_z")])
-
-AA[Axis{:N}[i]]
-
-time = collect(AA[Axis{:T}(1:50)])
-time = AA[Axis{:T}(1:50)]
-
-
-
-# Ac= cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
-# Ac[1]
-# ll=[string(i) for i in Ac]
-#
-# A = AxisArray([y 2y], Axis{:time}(0s:1s/fs:60s), Axis{:chan}([:c1, :c2]))
-#
-# sim[1,:,1]
-# AxisArray(sim[1,:,1], Axis{:V}(ll))
-# AxisArray(sim[1,1,:], Axis{:V}(1:40))
-# AxisArray(sim[:,1,1], Axis{:V}(1))
-# AAA=AxisArray(sim[:,:,1], Axis{:N}(1), Axis{:V}(ll))
-# a =AAA[Axis{:V}("e_z")]
+##################  IRF         ###########################
 
 
 
