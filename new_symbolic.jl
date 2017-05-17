@@ -18,10 +18,10 @@ pairs = [("!Cartesian", :Cartesian),
 yaml_types = Dict{AbstractString,Function}([(t, (c, n) -> construct_type_map(s, c, n))
                        for (t, s) in pairs])
 
-abstract type AModel end
-abstract type ANModel <: AModel end
+abstract type ASModel end
+abstract type AModel <: ASModel end
 
-type Model <:AModel
+type Model <:ASModel
     data::Dict{Any,Any}
 end
 

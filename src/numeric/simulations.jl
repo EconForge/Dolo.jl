@@ -1,4 +1,4 @@
-function QuantEcon.simulate(m::AbstractNumericModel, dr::AbstractDecisionRule,
+function QuantEcon.simulate(m::AbstractModel, dr::AbstractDecisionRule,
                             s0::AbstractVector=m.calibration[:states];
                             n_exp::Int=0, horizon::Int=40,
                             seed::Int=42,

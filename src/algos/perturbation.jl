@@ -74,7 +74,7 @@ function perturbate_first_order(g_s, g_x, f_s, f_x, f_S, f_X)
     return C, genvals
 end
 
-function get_gf_derivatives(model::AbstractNumericModel)
+function get_gf_derivatives(model::AbstractModel)
 
     g_diff,f_diff = get_ss_derivatives(model)
     _f_m,_f_s,_f_x,_f_M,_f_S,_f_X = f_diff
@@ -103,7 +103,7 @@ function get_gf_derivatives(model::AbstractNumericModel)
 end
 
 
-function perturbate(model::AbstractNumericModel; infos=false)
+function perturbate(model::Model; infos=false)
 
     g_s, g_x, f_s, f_x, f_S, f_X = get_gf_derivatives(model)
     nx = size(g_x, 2)

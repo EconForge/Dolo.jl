@@ -1,6 +1,6 @@
 using DataFrames
 
-function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
+function simulate(model::AbstractModel, dr::AbstractDecisionRule,
                        s0::AbstractVector, driving_process::Array{Float64,3})
 
     # driving_process: (ne,N,T)
@@ -44,7 +44,7 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
 
 end
 
-function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
+function simulate(model::AbstractModel, dr::AbstractDecisionRule,
                   s0::AbstractVector, driving_process::Array{Float64,2})
 
     # driving_process: (T,ne)
@@ -61,7 +61,7 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
         )
 end
 
-function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
+function simulate(model::AbstractModel, dr::AbstractDecisionRule,
                 driving_process::Union{Array{Float64,2},Array{Float64,3}})
     s0 = model.calibration[:states]
     return simulate(model, dr, s0, driving_process)
@@ -71,18 +71,18 @@ end
 ## methods which simulate the process
 ##
 
-function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule, s0::AbstractVector, m0::AbstractVector; N=1, T=40, stochastic=true)
+function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector, m0::AbstractVector; N=1, T=40, stochastic=true)
     driving_process = simulate(model.exogenous, N, T, m0; stochastic=stochastic)
     return simulate(model, dr, s0, driving_process)
 end
 
-function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule, s0::AbstractVector; N=1, T=40, stochastic=true)
+function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector; N=1, T=40, stochastic=true)
     m0 = model.calibration[:exogenous]
     driving_process = simulate(model.exogenous, N, T, m0; stochastic=stochastic)
     return simulate(model, dr, s0, driving_process)
 end
 
-function simulate(model::AbstractNumericModel,  dr::AbstractDecisionRule; kwargs...)
+function simulate(model::AbstractModel,  dr::AbstractDecisionRule; kwargs...)
     s0 = model.calibration[:states]
     m0 = model.calibration[:exogenous]
     return simulate(model, dr, s0, m0; kwargs...)
@@ -92,7 +92,7 @@ end
 ## Impulse response functions
 ##
 
-function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
+function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, e1::AbstractVector; T::Integer=40)
     m_simul=response(model.exogenous, e1; T=T)
     if typeof(m_simul)==Array{Float64,3}
@@ -104,7 +104,7 @@ function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
     return sim
 end
 
-function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
+function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, shock_name::Symbol; T::Integer=40)
     index_s = findfirst(model.symbols[:exogenous], shock_name)
     e1 = zeros(length(model.exogenous.mu))
@@ -115,7 +115,7 @@ end
 
 import DataFrames
 
-function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
+function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   shock_name::Symbol; kwargs...)
     s0 = model.calibration[:states]
     return response(model, dr, s0, shock_name;  kwargs...)

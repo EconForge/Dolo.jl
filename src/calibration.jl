@@ -103,33 +103,33 @@ immutable ModelCalibration
     symbol_table::Dict{Symbol,Tuple{Symbol,Int}}
     symbol_groups::OrderedDict{Symbol,Vector{Symbol}}
 end
-
-function ModelCalibration(sm::SymbolicModel)
-    flat = FlatCalibration(solve_triangular_system(sm))
-    grouped = GroupedCalibration()
-    for (k, nms) in sm.symbols
-        grouped[k] = Float64[flat[nm] for nm in nms]
-    end
-
-    grouped[:definitions] = Float64[flat[nm] for nm in keys(sm.definitions)]
-
-    symbol_table = Dict{Symbol,Tuple{Symbol,Int}}()
-    for (grp, vals) in sm.symbols
-        for (i, v) in enumerate(vals)
-            symbol_table[v] = (grp, i)
-        end
-    end
-
-    for (i, v) in enumerate(keys(sm.definitions))
-        symbol_table[v] = (:definitions, i)
-    end
-
-    # make sure we documented where in grouped every symbol is
-    @assert sort(collect(keys(symbol_table))) == sort(collect(keys(flat)))
-
-    ModelCalibration(flat, grouped, symbol_table, deepcopy(sm.symbols))
-end
-
+#
+# function ModelCalibration(sm::SymbolicModel)
+#     flat = FlatCalibration(solve_triangular_system(sm))
+#     grouped = GroupedCalibration()
+#     for (k, nms) in sm.symbols
+#         grouped[k] = Float64[flat[nm] for nm in nms]
+#     end
+#
+#     grouped[:definitions] = Float64[flat[nm] for nm in keys(sm.definitions)]
+#
+#     symbol_table = Dict{Symbol,Tuple{Symbol,Int}}()
+#     for (grp, vals) in sm.symbols
+#         for (i, v) in enumerate(vals)
+#             symbol_table[v] = (grp, i)
+#         end
+#     end
+#
+#     for (i, v) in enumerate(keys(sm.definitions))
+#         symbol_table[v] = (:definitions, i)
+#     end
+#
+#     # make sure we documented where in grouped every symbol is
+#     @assert sort(collect(keys(symbol_table))) == sort(collect(keys(flat)))
+#
+#     ModelCalibration(flat, grouped, symbol_table, deepcopy(sm.symbols))
+# end
+#
 
 function ModelCalibration(calib::OrderedDict{Symbol,Real}, symbols::OrderedDict{Symbol,Array{Symbol,1}})
     flat = FlatCalibration(calib)

@@ -1,10 +1,4 @@
 
-function sanitize(a,model::Dolo.AbstractNumericModel)
-    vars = cat(1, values(model.symbols)...)
-    dynvars = setdiff(vars, model.symbols[:parameters] )
-    return sanitize(a, dynvars)
-end
-
 function sanitize(s,  dynvars::Array{Symbol,1})
     return s
 end
@@ -34,7 +28,12 @@ function sanitize(eq::Expr, dynvars::Array{Symbol,1})
     end
 end
 
-function Base.show{ID}(io::IO, m::NumericModel{ID})
+function sanitize(a,model::Dolo.SModel)
+    dynvars = get_variables(model)
+    return sanitize(a, dynvars)
+end
+
+function Base.show{ID}(io::IO, m::SModel{ID})
     println(io,
     """NumericModel
       - name: $(m.name)
@@ -42,7 +41,7 @@ function Base.show{ID}(io::IO, m::NumericModel{ID})
     """)
 end
 
-function Base.show(io::IO, ::MIME"text/html", model::AbstractNumericModel)
+function Base.show(io::IO, ::MIME"text/html", model::Model)
 
     source = """
          <table>
@@ -61,8 +60,8 @@ function Base.show(io::IO, ::MIME"text/html", model::AbstractNumericModel)
     header = "<tr><td><b>Type</b></td><td><b>Equation</b></td></tr>\n"
 
     table_lines = []
-    for eq_type in keys(model.symbolic.equations)
-        equations = model.symbolic.equations[eq_type]
+    for eq_type in keys(model.equations)
+        equations = model.equations[eq_type]
         if eq_type in [:controls_ub, :controls_lb]
             continue
         end

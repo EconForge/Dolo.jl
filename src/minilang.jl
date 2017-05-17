@@ -10,6 +10,13 @@ immutable Cartesian <: AbstractGrid
     orders::Vector{Int}
 end
 
+type Domain
+    states::Vector{Symbol}
+    min::Vector{Float64}
+    max::Vector{Float64}
+end
+
+
 function Cartesian(stuff::Associative, calib::ModelCalibration)
     kind = get(stuff, :tag, nothing)
     if kind != :Cartesian

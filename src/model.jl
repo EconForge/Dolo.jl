@@ -1,35 +1,27 @@
-
-import YAML
-import Dolo
-import DataStructures:OrderedDict
-
-
+# used for constructing appropraite dict from YAML object.
 function construct_type_map(t::Symbol, constructor::YAML.Constructor,
                             node::YAML.Node)
-    mapping = Dolo._symbol_dict(YAML.construct_mapping(constructor, node))
+    mapping = _symbol_dict(YAML.construct_mapping(constructor, node))
     mapping[:tag] = t
     mapping
 end
 
+const yaml_types = let
+    pairs = [("!Cartesian", :Cartesian),
+            ("!Smolyak", :Smolyak),
+             ("!Normal", :Normal),
+             ("!MarkovChain", :MarkovChain),
+             ("!AR1", :AR1)]
+    Dict{AbstractString,Function}([(t, (c, n) -> construct_type_map(s, c, n))
+                           for (t, s) in pairs])
+end
 
-pairs = [("!Cartesian", :Cartesian),
-         ("!Smolyak", :Smolyak),
-         ("!Normal", :Normal),
-         ("!MarkovChain", :MarkovChain),
-         ("!AR1", :AR1)]
-yaml_types = Dict{AbstractString,Function}([(t, (c, n) -> construct_type_map(s, c, n))
-                       for (t, s) in pairs])
 
 
-type SModel{ID} <: AModel{ID}
+type SModel{ID} <: ASModel{ID}
     data::Dict{Any,Any}
 end
 
-type Domain
-    states::Vector{Symbol}
-    min::Vector{Float64}
-    max::Vector{Float64}
-end
 
 function SModel(url::AbstractString)
     if match(r"(http|https):.*", url) != nothing
@@ -43,7 +35,7 @@ function SModel(url::AbstractString)
     return SModel{id}(data)
 end
 
-function get_symbols(model::AModel)
+function get_symbols(model::ASModel)
     syms = model.data[:symbols]
     symbols = OrderedDict{Symbol,Vector{Symbol}}()
     for k in keys(syms)
@@ -52,11 +44,17 @@ function get_symbols(model::AModel)
     return symbols
 end
 
-function get_name(model::AModel)
+function get_variables(model::ASModel)
+    symbols = get_symbols(model)
+    vars = cat(1, values(symbols)...)
+    dynvars = setdiff(vars, symbols[:parameters] )
+end
+
+function get_name(model::ASModel)
     get(model.data, :name, "modeldoesnotwork")
 end
 
-function get_equations(model::AModel)
+function get_equations(model::ASModel)
 
     eqs = model.data[:equations]
     recipe = Dolo.RECIPES[:dtcc]
@@ -84,29 +82,34 @@ function get_equations(model::AModel)
         _eqs[:controls_ub] = c_ub
     end
 
+    dynvars = get_variables(model)
+    for eqtype in keys(_eqs)
+        _eqs[eqtype] = [sanitize(eq,dynvars) for eq in _eqs[eqtype]]
+    end
+
     return _eqs
 end
 
-function definitions(model::AModel)
+function definitions(model::ASModel)
     model.data[:definitions]
 end
 
-function get_infos(model::AModel)
+function get_infos(model::ASModel)
     get(model.data, :infos, Dict())
 end
 
-function get_options(model::AModel)
+function get_options(model::ASModel)
     get(model.data, :options, Dict())
 end
 
-function get_definitions(model::AModel)
+function get_definitions(model::ASModel)
     # parse defs so values are Expr
     defs = get(model.data,:definitions,Dict())
     _defs = OrderedDict{Symbol,Expr}([(Symbol(k), Dolo._to_expr(v)) for (k, v) in defs])
     return _defs
 end
 
-function get_calibration(model::AModel)
+function get_calibration(model::ASModel)
     calib = get(model.data, :calibration, Dict())
     # prep calib: parse to Expr, Symbol, or Number
     _calib  = OrderedDict{Symbol,Union{Expr,Symbol,Number}}()
@@ -120,7 +123,7 @@ function get_calibration(model::AModel)
     return ModelCalibration( calibration, symbols )
 end
 
-function get_domain(model::AModel)
+function get_domain(model::ASModel)
     domain = deepcopy(get(model.data, :domain, Dict()))
     calib = get_calibration(model)
     # TODO deal with empty dict and make robust construction
@@ -130,7 +133,7 @@ function get_domain(model::AModel)
     return Domain(states, min, max)
 end
 
-function get_grid(model::AModel)
+function get_grid(model::ASModel)
     domain = get_domain(model)
     d = length(domain.states)
     grid_dict = model.data[:options][:grid]
@@ -151,7 +154,7 @@ function get_grid(model::AModel)
     return grid
 end
 
-function get_exogenous(model::AModel)
+function get_exogenous(model::ASModel)
     exo_dict = get(model.data,:exogenous,Dict{Symbol,Any}())
     if length(exo_dict)==0
         exo_dict = get(model.data[:options], :exogenous, Dict{Symbol,Any}())
@@ -162,7 +165,7 @@ function get_exogenous(model::AModel)
     return exogenous
 end
 
-function set_calibration(model::AModel, key::Symbol, value::Union{Real,Expr, Symbol})
+function set_calibration(model::ASModel, key::Symbol, value::Union{Real,Expr, Symbol})
     model.data[:calibration][key] = value
 end
 
@@ -171,36 +174,38 @@ type Model{ID}<:AModel{ID}
 
     data
     name::String           # weakly immutable
+    filename::String
     symbols::OrderedDict{Symbol,Array{Symbol,1}}        # weakly immutable
     equations      # weakly immutable
     definitions    # weakly immutable
     # functions      # weakly immutable
-
+    factories::Dict
     calibration::ModelCalibration
     exogenous
     domain
     grid
     options
 
-    function Model(data; print_code=false)
+    function Model(data; print_code=false, filename="<string>")
 
         model = new(data)
         model.name = get_name(model)
+        model.filename = filename
         model.symbols = get_symbols(model)
         model.equations = get_equations(model)
         model.definitions = get_definitions(model)
+        model.factories = Dict()
         model.calibration = get_calibration(model)
         model.exogenous = get_exogenous(model)
         model.domain = get_domain(model)
         model.options = get_options(model)
         model.grid = get_grid(model)
 
-
         # now let's compile the functions:
         for eqtype in keys(model.equations)
             factory = Dolang.FunctionFactory(model,eqtype)
+            model.factories[eqtype] = factory
             code = make_method(factory)
-            model.factories[eqtype] = code
             print_code && println(code)
             eval(Dolo, code)
         end
@@ -213,6 +218,8 @@ end
 _numeric_mod_type{ID}(::Model{ID}) = Model{ID}
 
 
+#### import functions
+
 
 function Model(url::AbstractString; print_code=false)
     # it looks like it would be cool to use the super constructor ;-)
@@ -224,5 +231,15 @@ function Model(url::AbstractString; print_code=false)
         data = Dolo._symbol_dict(Dolo.load_file(url, yaml_types))
     end
     id = gensym()
-    return Model{id}(data; print_code=print_code)
+    fname = basename(url)
+    return Model{id}(data; print_code=print_code, filename=fname)
+end
+
+
+"""
+Imports the model from a yaml file specified by the `url` input
+parameter, and returns the corresponding `Dolo` model object.
+"""
+function yaml_import(url; print_code::Bool=false)
+    Model(url; print_code=print_code)
 end

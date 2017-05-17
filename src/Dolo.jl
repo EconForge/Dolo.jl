@@ -29,20 +29,23 @@ export yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename, 
 export time_iteration, value_iteration, steady_state_residuals, simulation
 
 # set up core types
-abstract AbstractModel{ID}
-abstract AbstractSymbolicModel{ID} <: AbstractModel{ID}
-abstract AbstractNumericModel{ID} <: AbstractModel{ID}
+abstract AbstractSymbolicModel{ID}
+# abstract AbstractSymbolicModel{ID} <: AbstractModel{ID}
+abstract AbstractModel{ID} <: AbstractSymbolicModel{ID}
 
 typealias ASM AbstractSymbolicModel
-typealias ANM AbstractNumericModel
+typealias ANM AbstractModel
+
+typealias ASModel AbstractSymbolicModel
+typealias AModel AbstractModel
 
 id{ID}(::AbstractModel{ID}) = ID
 
-
-# duplicate hierarchy to experiment with
-@compat abstract type AModel{ID} end                # symbolic model
-@compat abstract type ANModel{ID} <: AModel{ID} end      # numeric model
-
+#
+# # duplicate hierarchy to experiment with
+# @compat abstract type ASModel{ID} end                # symbolic model
+# @compat abstract type AModel{ID} <: ASModel{ID} end      # numeric model
+#
 
 
 
@@ -77,9 +80,8 @@ include("symbolic.jl")
 include("calibration.jl")
 include("minilang.jl")
 include("numeric.jl")
+include("model.jl")
 include("printing.jl")
-include("model_import.jl")
-include("new_symbolic.jl")
 
 include("algos/steady_state.jl")
 include("algos/time_iteration.jl")
