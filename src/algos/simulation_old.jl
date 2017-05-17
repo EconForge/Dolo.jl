@@ -7,7 +7,8 @@ import Unitful: s, ms, µs
 
 
 function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
-                  s0::AbstractVector, driving_process::Union{Array{Int64,2},Array{Float64,3}})
+                       s0::AbstractVector, driving_process)
+                      #  s0::AbstractVector, driving_process::Array{Float64,3})
 
     # driving_process: (ne,N,T)
 
@@ -15,21 +16,9 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
     calib = model.calibration
     params = calib[:parameters]
 
-    if typeof(driving_process)==Array{Int64,2}
-          N = size(driving_process,2)
-          T = size(driving_process,1)
-          epsilons = zeros(Int,1,N,T)
-          for i in 1:N
-            epsilons[1,i,:]=driving_process[:,i]
-          end
-    else
-      epsilons = driving_process
-      N = size(driving_process,2)
-      T = size(driving_process,3)
-    end
-
-
-    epsilons = permutedims(epsilons, [2,1,3]) # (N,ne,T)
+    epsilons = permutedims(driving_process, [2,1,3]) # (N,ne,T)
+    N = size(epsilons,1)
+    T = size(epsilons,3)
 
     # calculate initial controls using decision rule
     x0 = dr(epsilons[1,:,1],s0)
@@ -48,38 +37,18 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
     for t in 1:T
         s = view(s_simul, :, :, t)
         m = view(epsilons, :, :, t)
-        if typeof(driving_process)==Array{Float64,3}
-            m_val = m
-            x = dr(m,s)
-        else
-            m_ind=cat(1,m)[:,1]
-            m_val= model.exogenous.values[m_ind,:]
-            x = dr(m_ind,s)
-        end
+        x = dr(m,s)
         x_simul[:, :, t] = x
         if t < T
           M = view(epsilons, :, :, t+1)
-          if typeof(driving_process)==Array{Float64,3}
-              M_val = M
-          else
-              M_cat=cat(1,M)[:,1]
-              M_val= model.exogenous.values[M_cat,:]
-          end
           ss = view(s_simul, :, :, t+1)
-          Dolo.transition!(model, (ss), (m_val), (s), (x), (M_val), params)
+          Dolo.transition!(model, (ss), (m), (s), (x), (M), params)
           # s_simul[:, :, t+1] = ss
         end
     end
 
     sim = cat(2, epsilons, s_simul, x_simul)::Array{Float64,3}
-
-    if typeof(driving_process)==Array{Float64,3}
-        model_sym=model.symbols[:exogenous]
-    else
-        model_sym=:mc_process
-    end
-
-    Ac= cat(1, model_sym, model.symbols[:states], model.symbols[:controls])
+    Ac= cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
     ll=[Symbol(i) for i in Ac]
     AA = AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
 
@@ -87,42 +56,72 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
 
 end
 
+function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
+                  s0::AbstractVector, driving_process::Union{Array{Float64,2},Array{Float64,3}})
 
+    # driving_process: (T,ne)
+    epsilons = reshape(driving_process, 1, size(driving_process)...) # (N,T,ne)
+    epsilons = permutedims(epsilons,[3,1,2])
+    sim = simulate(model, dr, s0, epsilons)
+    out = sim[1,:,:]
+    columns = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+    return DataFrame(
+            merge(
+                Dict(:t=>0:(size(out,2)-1)),
+                Dict(columns[i]=>out[i,:] for i=1:length(columns))
+            )
+        )
+end
 
 function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
-                  driving_process::Union{Array{Int64,2},Array{Float64,3}})
+                  driving_process::Union{Array{Float64,2},Array{Float64,3}})
     s0 = model.calibration[:states]
     return simulate(model, dr, s0, driving_process)
 end
 
+function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
+                  driving_process::Array{Int64,3})
+    s0 = model.calibration[:states]
+    return simulate(model, dr, s0, driving_process)
+end
 
+function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
+                  s0::AbstractVector, driving_process::Array{Int64,3})
+
+    # driving_process: (T,ne)
+    epsilons = reshape(driving_process, 1, size(driving_process)...) # (N,T,ne)
+    epsilons = permutedims(epsilons,[3,1,2])
+    sim = simulate(model, dr, s0, epsilons)
+    out = sim[1,:,:]
+    columns = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+    return DataFrame(
+            merge(
+                Dict(:t=>0:(size(out,2)-1)),
+                Dict(columns[i]=>out[i,:] for i=1:length(columns))
+            )
+        )
+end
 
 ##
 ## methods which simulate the process
 ##
 
-# Unless stochastic and return_indexes are always == true, it will work
-function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule, s0::AbstractVector,
-                  m0::Union{Int,AbstractVector}; N=1, T=40, option=true)
-    driving_process = simulate(model.exogenous, N, T, m0)
+function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule, s0::AbstractVector, m0::AbstractVector; N=1, T=40, stochastic=true)
+                  driving_process = simulate(model.exogenous, N, T, m0; stochastic=stochastic)
     return simulate(model, dr, s0, driving_process)
 end
 
 function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule, s0::AbstractVector;
-                  N=1, T=40, option=true)
-    if typeof(dr)==Dolo.DecisionRule{Dolo.UnstructuredGrid,Dolo.CartesianGrid}
-        m0 = 1
-    else
-        m0 = model.calibration[:exogenous]
-    end
-    driving_process = simulate(model.exogenous, N, T, m0)
+                  N=1, T=40, stochastic=true)
+    m0 = model.calibration[:exogenous]
+    driving_process = simulate(model.exogenous, N, T, m0; stochastic=stochastic)
     return simulate(model, dr, s0, driving_process)
 end
 
 function simulate(model::AbstractNumericModel,  dr::AbstractDecisionRule; kwargs...)
     s0 = model.calibration[:states]
-    # m0 = model.calibration[:exogenous]
-    return simulate(model, dr, s0; kwargs...)
+    m0 = model.calibration[:exogenous]
+    return simulate(model, dr, s0, m0; kwargs...)
 end
 
 ##

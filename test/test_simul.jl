@@ -14,6 +14,9 @@ filename = joinpath(path,"examples","models","rbc_dtcc_iid_ar1.yaml")
 model = Dolo.yaml_import(filename)
 @time dr = Dolo.time_iteration(model, verbose=true, maxit=10000)
 
+driving_process = Dolo.simulate(model2.exogenous, 10, 40, m0)
+sim1 = Dolo.simulate(model, dr, driving_process)
+
 sim = Dolo.simulate(model, dr; N= 1000, T=50)
 # Ac= cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
 # ll=[Symbol(i) for i in Ac]
@@ -22,7 +25,7 @@ sim = Dolo.simulate(model, dr; N= 1000, T=50)
 Tvalues = linspace(1, sim[Axis{:T}][end], sim[Axis{:T}][end])
 
 a_sort = sort(collect(sim[Axis{:V}(:k)]),1)
-a_median = a_sort[Int(size(a,1)*0.5),:]
+a_median = a_sort[Int(size(sim,1)*0.5),:]
 
 
 import PyPlot

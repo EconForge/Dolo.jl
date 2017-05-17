@@ -116,6 +116,58 @@ function response(mvn::MvNormal, e1::AbstractVector; T::Integer=40)
 end
 
 
+
+### Simulate Markov process
+function choice(x, n, cumul)
+    i = 1
+    running = true
+    # while (i<n) && running
+    while (i<n) && running
+        if x < cumul[i]
+            running = false
+        else
+            i += 1
+        end
+    end
+    return i
+end
+
+# function simulate(nodes::Array{Float64,2}, transitions::Array{Float64,2},N::Int, T::Int; i0::Int=1)
+function simulate(process::Dolo.DiscreteMarkovProcess,N::Int, T::Int, i0::Int; return_indexes=true)
+
+      n_states = size(process.values,1)
+
+      simul = zeros(Int, T, N)
+      simul[1,:] = 1
+      rnd = rand(T, N)
+      cumuls = cumsum(process.transitions, 2)
+
+      for t in 1:(T-1)
+        for j in 1:N
+          s = simul[t,j]
+          p = cumuls[s,:]
+          v = choice(rnd[t,j], n_states, p)
+          simul[t+1,j] = v
+        end
+      end
+
+      Index_mc = simul
+      if return_indexes==true
+            return Index_mc
+      else
+            Values_mc = process.values[Index_mc]
+            return Values_mc
+      end
+
+
+end
+
+
+
+
+
+
+
 discretize(dmp::DiscreteMarkovProcess) = dmp
 
 # function discretize(dmp::DiscreteMarkovProcess)

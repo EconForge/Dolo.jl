@@ -63,6 +63,7 @@ calibration:
     # endogenous variables
     n: 0.33
     z: zbar
+    z2: zbar
     rk: 1/beta-1+delta
     w: (1-alpha)*exp(z)*(k/n)^(alpha)
     k: n/(rk/alpha)^(1/(1-alpha))
