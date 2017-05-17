@@ -47,113 +47,15 @@ plt.ylabel("Capital");
 
 
 plt.plot(Tvalues, a_median, marker="o")
-#
-#
-# calib = model.calibration
-# params = calib[:parameters]
-#
-# epsilons = permutedims(ind2, [2,1,3]) # (N,ne,T)
-# N = size(epsilons,1)
-# T = size(epsilons,3)
-# S0=model.calibration[:states]
-# # calculate initial controls using decision rule
-# x0 = dr(epsilons[1,:,1],S0)
-# s0=S0
-# ns = length(s0)
-# nx = length(x0)
-# nsx = nx+ns
-#
-# s_simul = Array(Float64, N, ns, T)
-# x_simul = Array(Float64, N, nx, T)
-# for i in 1:N
-#   s_simul[i, :, 1] = s0
-#   x_simul[i, :, 1] = x0
-# end
-#
-#
-# t=1
-# s = view(s_simul, :, :, t)
-# m = view(epsilons, :, :, t)
-# m_cat=cat(1,m)[:,1]
-# x = dr(m_cat,s)
-# s_cat = cat(1,s)
-#
-# # m_cat
-# typeof(dr)
-# println()
-# x = vcat( [dr(m_cat[j], s_cat[j,:])' for j=1:size(s_cat,1)]... )
-#
-# m_val= model.exogenous.values[m_cat,:]
-#
-# x_simul[:, :, t] = x
-# s
-# x
-# ss
-# t=1
-#
-# M = view(epsilons, :, :, t+1)
-# M_cat= cat(1,M)[:,1]
-# M_val= model.exogenous.values[M_cat,:]
-# ss = view(s_simul, :, :, t+1)
-# Dolo.transition!(model, (ss), (m_val), (s), (x), (M_val), params)
-#
-#
-# for t in 1:T
-#     s = view(s_simul, :, :, t)
-#     m = view(epsilons, :, :, t)
-#     m_cat=cat(1,m)[:,1]
-#     m_val= model.exogenous.values[m_cat,:]
-#     x = dr(m_cat,s)
-#     x_simul[:, :, t] = x
-#     if t < T
-#       M = view(epsilons, :, :, t+1)
-#       M_cat= cat(1,M)[:,1]
-#       M_val= model.exogenous.values[M_cat,:]
-#       ss = view(s_simul, :, :, t+1)
-#       Dolo.transition!(model, (ss), (m_val), (s), (x), (M_val), params)
-#       # s_simul[:, :, t+1] = ss
-#     end
-# end
-# epsilons
-# s_simul
-# x_simul
-# sim = cat(2, epsilons, s_simul, x_simul)::Array{Float64,3}
-#
-# model_sym=model.symbols[:exogenous]
-# model_sym=:mc_process
-#
-#
-# Ac= cat(1, model_sym, model.symbols[:states], model.symbols[:controls])
-# ll=[Symbol(i) for i in Ac]
-# AA = AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
-# N
-# T=50
-#
-# Shocks= model.exogenous.values[Index_mc]
-# Shocks[:,1]
-# S2 = zeros(1,N,T)
-# for i in 1:N
-#   S2[1,i,:]=Shocks[:,i]
-# end
-# S2[1,1,:]==Shocks[:,1]
-
-# function simulate(process::Dolo.DiscreteMarkovProcess, N::Int, T::Int; i0=1)
-#       Index_mc = simulate(process.values, process.transitions, N, T; i0=1)
-#       Shocks = model.exogenous.values[Index_mc]
-#       S2 = zeros(1,N,T)
-#       for i in 1:N
-#         S2[1,i,:]=Shocks[:,i]
-#       end
-#       return S2
-# end
-
 
 Shocks_mc= Dolo.simulate(model.exogenous, 10,50, 1; return_indexes=false)
 
 s0=model.calibration[:states]
 
 # Check it won't work with values
-Dolo.simulate(model, dr, s0, Shocks_mc)
+# Dolo.simulate(model, dr, s0, Shocks_mc)
+# Check
+
 
 # Check it works without providing States
 sim_mc2 = Dolo.simulate(model, dr, Index_mc)
