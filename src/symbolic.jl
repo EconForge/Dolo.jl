@@ -15,9 +15,21 @@ function _get_args(sm, spec)
 end
 
 
+function temporary_equation_quickfixer(eq)
+    if (eq.head == :call) && (eq.args[1]==:(==))
+        u = eq.args[2]
+        v = eq.args[3]
+        return :($u=$v)
+    else
+        return eq
+    end
+end
+
 function Dolang.FunctionFactory(sm, func_nm::Symbol)
     spec = RECIPES[:dtcc][:specs][func_nm]
     eqs = sm.equations[func_nm]
+
+    eqs = [temporary_equation_quickfixer(eq) for eq in eqs]
 
     # get targets
     target = get(spec, :target, [nothing])[1]

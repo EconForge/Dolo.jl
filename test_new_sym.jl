@@ -27,7 +27,7 @@ Dolo.get_domain(model)
 
 
 
-@time nmodel = Dolo.Model(url; print_code=false)
+@time nmodel = Dolo.Model(url; print_code=true)
 
 nmodel.name
 nmodel.calibration[:states, :controls]
@@ -38,4 +38,4 @@ nmodel.equations[:arbitrage]
 
 m,s,x,p = nmodel.calibration[:exogenous,:states,:controls,:parameters]
 
-Dolo.transition!(nmodel, m,s,x,p)
+Dolo.transition(nmodel, m,s,x,m,p)
