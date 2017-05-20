@@ -16,8 +16,7 @@ function time_iteration_direct(model, process, init_dr; verbose::Bool=true,
     maxit::Int=100, tol::Float64=1e-8, infos::Bool=false)
 
     # Grid
-    gg = model.options.grid
-    grid = CartesianGrid(gg.a, gg.b, gg.orders) # temporary compatibility
+    grid = model.grid
     endo_nodes = nodes(grid)
     N = size(endo_nodes, 1)
 

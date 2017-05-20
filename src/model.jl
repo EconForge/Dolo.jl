@@ -82,7 +82,8 @@ function get_equations(model::ASModel)
         _eqs[:controls_ub] = c_ub
     end
 
-    dynvars = get_variables(model)
+    defs = get_definitions(model)
+    dynvars = cat(1, get_variables(model), keys(defs)...)
     for eqtype in keys(_eqs)
         _eqs[eqtype] = [sanitize(eq,dynvars) for eq in _eqs[eqtype]]
     end

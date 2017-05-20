@@ -178,7 +178,7 @@ function set_values!(dr::AbstractDecisionRule{UnstructuredGrid, CartesianGrid}, 
 end
 
 
-function evaluate(dr::AbstractDecisionRule{UnstructuredGrid, CartesianGrid}, i::Int, z::Matrix{Float64})
+function evaluate(dr::AbstractDecisionRule{UnstructuredGrid, CartesianGrid}, i::Int, z::AbstractMatrix{Float64})
     a = dr.grid_endo.min
     b = dr.grid_endo.max
     n = dr.grid_endo.n

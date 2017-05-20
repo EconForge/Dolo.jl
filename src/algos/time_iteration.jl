@@ -106,8 +106,8 @@ function time_iteration(model, process, init_dr;
       verbose::Bool=true, maxit::Int=100, tol::Float64=1e-8, infos::Bool=false)
 
     # get grid for endogenous
-    gg = model.options.grid
-    grid = CartesianGrid(gg.a, gg.b, gg.orders)  # temporary compatibility
+    grid = model.grid
+    # grid = CartesianGrid(gg.a, gg.b, gg.orders)  # temporary compatibility
 
     endo_nodes = nodes(grid)
     N = size(endo_nodes, 1)

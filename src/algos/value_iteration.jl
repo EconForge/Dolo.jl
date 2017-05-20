@@ -35,8 +35,7 @@ Evaluate the value function under the given decision rule.
 function evaluate_policy(model, dr; verbose::Bool=true, maxit::Int=5000)
 
     # get grid for endogenous
-    gg = model.options.grid
-    grid = CartesianGrid(gg.a, gg.b, gg.orders) # temporary compatibility
+    grid = model.grid
 
     # obtain discrete exogenous process
     process = model.exogenous
@@ -103,7 +102,7 @@ function evaluate_policy(model, dr; verbose::Bool=true, maxit::Int=5000)
                      S = Dolo.transition(model, m, s[n, :], x[i][n, :], M, p)
 
                      # Update value function
-                     E_V[i][n, :] += w*drv(i, j, S)
+                      E_V[i][n, :] += w*drv(i, j, S)
                  end
             end
         end
@@ -140,7 +139,7 @@ Evaluate the right hand side of the value function at given values of states, co
 * `p::Vector{Float64}`: Model parameters.
 # Returns
 * `E_V::`: Right hand side of the value function.
-"""    
+"""
 function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64},
                       x0::Vector{Float64}, p::Vector{Float64})
     m = node(dprocess, i)
@@ -170,8 +169,7 @@ Solve for the value function and associated decision rule using value function i
 function solve_policy(model, pdr; maxit::Int=1000, verbose::Bool=true, infos::Bool=false)
 
     # get grid for endogenous
-    gg = model.options.grid
-    grid = CartesianGrid(gg.a, gg.b, gg.orders) # temporary compatibility
+    grid = model.grid
 
     β=model.calibration.flat[:beta]
 
