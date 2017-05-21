@@ -103,7 +103,7 @@ function get_gf_derivatives(model::AbstractModel)
 end
 
 
-function perturbate(model::Model; infos=false)
+function perturbate(model::Model; details=false)
 
     g_s, g_x, f_s, f_x, f_S, f_X = get_gf_derivatives(model)
     nx = size(g_x, 2)
@@ -130,7 +130,7 @@ function perturbate(model::Model; infos=false)
 
     tol = 1e-6 # minimum distance betweel lam_n and lam_{n+1}
 
-    if !infos
+    if !details
         return dr
     else
         n_s = size(g_s,1)

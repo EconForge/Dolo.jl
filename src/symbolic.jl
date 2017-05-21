@@ -44,8 +44,6 @@ function Dolang.FunctionFactory(sm, func_nm::Symbol)
     args = Dolo._get_args(sm, spec)
     params = sm.symbols[:parameters]
     dispatch = _numeric_mod_type(sm)
-    println("Definitions")
-    println(sm.definitions)
     FunctionFactory(dispatch, eqs, args, params, targets=targets,
                     defs=sm.definitions, funname=func_nm)
 end

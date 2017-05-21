@@ -103,7 +103,7 @@ If the stochastic process for the model is not explicitly provided, the process 
 * `dr`: Solved decision rule.
 """
 function time_iteration(model, process, init_dr;
-      verbose::Bool=true, maxit::Int=100, tol::Float64=1e-8, infos::Bool=false)
+      verbose::Bool=true, maxit::Int=100, tol::Float64=1e-8, details::Bool=false)
 
     # get grid for endogenous
     grid = model.grid
@@ -172,7 +172,7 @@ function time_iteration(model, process, init_dr;
 
     # TODO: somehow after defining `fobj` the `dr` object gets `Core.Box`ed
     #       making the return type right here non-inferrable.
-    if !infos
+    if !details
         return dr.dr
     else
         converged = err<tol

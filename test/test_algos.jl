@@ -46,26 +46,25 @@ model = Dolo.yaml_import(fn)
 drc = Dolo.ConstantDecisionRule(model.calibration[:controls])
 
 @time dr = Dolo.time_iteration(model, maxit=100, verbose=true)
-@time res = Dolo.time_iteration(model, dr; maxit=100, infos=true)
+@time res = Dolo.time_iteration(model, dr; maxit=100, details=true)
 res
 
 @time dr0, drv0 = Dolo.solve_policy(model, drc) #;, verbose=true, maxit=1000 )
-@time res = Dolo.solve_policy(model, drc; infos=true) #;, verbose=true, maxit=1000 )
+@time res = Dolo.solve_policy(model, drc; details=true) #;, verbose=true, maxit=1000 )
 
 @time drd = Dolo.time_iteration_direct(model) #, maxit=1000, verbose=true)
 
 @time dr = Dolo.time_iteration_direct(model, drd) #, maxit=500, verbose=true)
-@time res = Dolo.time_iteration_direct(model, drc; infos=true)
-@time drv = Dolo.evaluate_policy(model, dr, verbose=true)
+@time res = Dolo.time_iteration_direct(model, drc; details=true)
+@time drv = Dolo.evaluate_policy(model, dr; verbose=true)
 
 #
 Dolo.simulate(model, dr)
 
 s0 = model.calibration[:states]+0.1
 sim = Dolo.simulate(model, dr, s0)
-Dolo.simulate(model, dr, N=10)
+Dolo.simulate(model, dr; N=10)
 
-# this doesn't work here
 irf = Dolo.response(model, dr, :e_z)
 irf[:k]
 
@@ -99,4 +98,5 @@ cdr =Dolo.CachedDecisionRule(dr,dp)
 model.symbols[:exogenous]
 
 Dolo.simulate(model, dr, N=10)
+
 sim = Dolo.response(model, dr, :z)

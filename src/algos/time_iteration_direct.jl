@@ -13,7 +13,7 @@ If the stochastic process for the model is not explicitly provided, the process 
 * `dr`: Solved decision rule.
 """
 function time_iteration_direct(model, process, init_dr; verbose::Bool=true,
-    maxit::Int=100, tol::Float64=1e-8, infos::Bool=false)
+    maxit::Int=100, tol::Float64=1e-8, details::Bool=false)
 
     # Grid
     grid = model.grid
@@ -100,7 +100,7 @@ function time_iteration_direct(model, process, init_dr; verbose::Bool=true,
       verbose && @printf "%-6i%-12.2e\n" it err
     end
 
-    if !infos
+    if !details
         return dr.dr
     else
         converged = err<tol

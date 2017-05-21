@@ -166,7 +166,7 @@ Solve for the value function and associated decision rule using value function i
 * `dr`: Solved decision rule object.
 * `drv`: Solved value function object.
 """
-function solve_policy(model, pdr; maxit::Int=1000, verbose::Bool=true, infos::Bool=false)
+function solve_policy(model, pdr; maxit::Int=1000, verbose::Bool=true, details::Bool=false)
 
     # get grid for endogenous
     grid = model.grid
@@ -324,7 +324,7 @@ function solve_policy(model, pdr; maxit::Int=1000, verbose::Bool=true, infos::Bo
     end
 
 
-    if !infos
+    if !details
         dr = CachedDecisionRule(dprocess, grid, x0)
         return (dr.dr, drv.dr)
     else
