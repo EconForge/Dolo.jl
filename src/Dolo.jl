@@ -37,9 +37,6 @@ abstract AbstractSymbolicModel{ID}
 # abstract AbstractSymbolicModel{ID} <: AbstractModel{ID}
 abstract AbstractModel{ID} <: AbstractSymbolicModel{ID}
 
-typealias ASM AbstractSymbolicModel
-typealias ANM AbstractModel
-
 typealias ASModel AbstractSymbolicModel
 typealias AModel AbstractModel
 

@@ -34,8 +34,8 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
     nx = length(x0)
     nsx = nx+ns
 
-    s_simul = Array(Float64, N, ns, T)
-    x_simul = Array(Float64, N, nx, T)
+    s_simul = Array{Float64}(N, ns, T)
+    x_simul = Array{Float64}(N, nx, T)
     for i in 1:N
       s_simul[i, :, 1] = s0
       x_simul[i, :, 1] = x0

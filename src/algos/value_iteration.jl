@@ -227,7 +227,7 @@ function solve_policy(model, pdr; maxit::Int=1000, verbose::Bool=true, details::
     it_eval = 0
 
 
-    optim_opts = Optim.OptimizationOptions(x_tol=1e-9, f_tol=1e-9)
+    optim_opts = Optim.Options(x_tol=1e-9, f_tol=1e-9)
 
     mode = :improve
 

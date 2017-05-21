@@ -61,7 +61,6 @@ function solution_order(_d::Associative)
     solution_order(d, it)
 end
 
-solve_triangular_system(sm::ASM) = solve_triangular_system(sm.calibration)
 solve_triangular_system(d::Associative) = solve_triangular_system(OrderedDict(d))
 
 function solve_triangular_system(d::OrderedDict)
