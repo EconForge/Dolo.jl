@@ -1,5 +1,4 @@
 using DataFrames
-using PyPlot
 using AxisArrays
 
 function simulate(model::AbstractModel, dr::AbstractDecisionRule,
@@ -201,21 +200,21 @@ function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol;
     return df
 end
 
-
-
-function plot(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
-                  bounds::Array{Float64,1}, s0::AbstractVector, m0::AbstractVector,
-                  plot_controls::Vector{Symbol};  n_steps=100)
-
-
-    df = tabulate(model, dr, state,bounds, s0, m0;  n_steps=100)
-
-    for j in plot_controls
-      fig = PyPlot.figure(j,figsize=(3,3))
-      fig
-      PyPlot.plot(df[state], df[j], label=j)
-      PyPlot.legend()
-      # PyPlot.xlabel('state = {} | mstate = {}'.format(state, i0))
-    end
-
-end
+#
+# using PyPlot
+# function plot(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
+#                   bounds::Array{Float64,1}, s0::AbstractVector, m0::AbstractVector,
+#                   plot_controls::Vector{Symbol};  n_steps=100)
+#
+#
+#     df = tabulate(model, dr, state,bounds, s0, m0;  n_steps=100)
+#
+#     for j in plot_controls
+#       fig = PyPlot.figure(j,figsize=(3,3))
+#       fig
+#       PyPlot.plot(df[state], df[j], label=j)
+#       PyPlot.legend()
+#       # PyPlot.xlabel('state = {} | mstate = {}'.format(state, i0))
+#     end
+#
+# end
