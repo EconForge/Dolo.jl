@@ -1,7 +1,9 @@
-julia 0.4
+julia 0.5
 MacroTools
 YAML
 DataStructures
+DataFrames
+AxisArrays
 NLsolve
 Requests
 QuantEcon

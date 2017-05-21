@@ -116,6 +116,58 @@ function response(mvn::MvNormal, e1::AbstractVector; T::Integer=40)
 end
 
 
+
+### Simulate Markov process
+function choice(x, n, cumul)
+    i = 1
+    running = true
+    # while (i<n) && running
+    while (i<n) && running
+        if x < cumul[i]
+            running = false
+        else
+            i += 1
+        end
+    end
+    return i
+end
+
+# function simulate(nodes::Array{Float64,2}, transitions::Array{Float64,2},N::Int, T::Int; i0::Int=1)
+function simulate(process::Dolo.DiscreteMarkovProcess,N::Int, T::Int, i0::Int; return_indexes=true)
+
+      n_states = size(process.values,1)
+
+      simul = zeros(Int, T, N)
+      simul[1,:] = 1
+      rnd = rand(T, N)
+      cumuls = cumsum(process.transitions, 2)
+
+      for t in 1:(T-1)
+        for j in 1:N
+          s = simul[t,j]
+          p = cumuls[s,:]
+          v = choice(rnd[t,j], n_states, p)
+          simul[t+1,j] = v
+        end
+      end
+
+      Index_mc = simul
+      if return_indexes==true
+            return Index_mc
+      else
+            Values_mc = process.values[Index_mc]
+            return Values_mc
+      end
+
+
+end
+
+
+
+
+
+
+
 discretize(dmp::DiscreteMarkovProcess) = dmp
 
 # function discretize(dmp::DiscreteMarkovProcess)
@@ -215,29 +267,27 @@ function simulate(var::VAR1, N::Int, T::Int; kwargs...)
 end
 
 function response(var::VAR1, x0::AbstractVector,
-                  e1::AbstractVector; T::Integer=40, N::Integer=1)
-    sim = simulate(var, N, T, x0; stochastic=false, irf=true, e0=e1)
+                  e1::AbstractVector; T::Integer=40)
+    sim = simulate(var, 1, T, x0; stochastic=false, irf=true, e0=e1)[1,:,:]
     return sim
 end
 
-function response(var::VAR1, e1::AbstractVector;
-                  T::Integer=40, N::Integer=1)
-    sim = simulate(var, N, T; stochastic=false, irf=true, e0=e1)
+function response(var::VAR1, e1::AbstractVector; T::Integer=40)
+    sim = simulate(var, 1, T; stochastic=false, irf=true, e0=e1)[1,:,:]
     return sim
 end
 
-function response(var::VAR1, x0::AbstractVector,
-                  index_s::Int; T::Integer=40, N::Integer=1)
+function response(var::VAR1, x0::AbstractVector, index_s::Int; T::Integer=40)
     e1 = zeros(size(var.mu, 1))
     Impulse = sqrt(diag(var.Sigma)[index_s])
     e1[index_s] = Impulse
-    sim = simulate(var, N, T, x0; stochastic=false, irf=true, e0=e1)
+    sim = simulate(var, 1, T, x0; stochastic=false, irf=true, e0=e1)[1,:,:]
     return sim
 end
 
-function response(var::VAR1; T::Integer=40, N::Integer=1)
+function response(var::VAR1; T::Integer=40)
     e1 = sqrt(diag(var.Sigma))
-    sim = simulate(var, N, T; stochastic=false, irf=true, e0=e1)
+    sim = simulate(var, 1, T; stochastic=false, irf=true, e0=e1)[1,:,:]
     return sim
 end
 

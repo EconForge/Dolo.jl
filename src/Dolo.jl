@@ -1,4 +1,4 @@
-__precompile__()
+# __precompile__()
 
 module Dolo
 
@@ -29,6 +29,8 @@ export arbitrage, transition, auxiliary, value, expectation,
 export yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename, id
 
 export time_iteration, value_iteration, steady_state_residuals, simulation
+
+export ModelCalibration, FlatCalibration, GroupedCalibration
 
 # set up core types
 abstract AbstractSymbolicModel{ID}

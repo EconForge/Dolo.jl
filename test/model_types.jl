@@ -14,72 +14,73 @@
     ```
     And then doing some formatting
     =#
-
-    rbc_dict = Dict{Any,Any}(
-        "symbols"=>Dict{Any,Any}(
-            "parameters"=>Any["beta","sigma","eta","chi","delta","alpha","rho","zbar","sig_z"],
-            "controls"=>Any["i","n"],
-            "values"=>Any["V"],
-            "states"=>Any["k"],
-            "exogenous"=>Any["z"]
-        ),
-        "model_type"=>"dtcc",
-        "name"=>"Real Business Cycle",
-        "calibration"=>Dict{Any,Any}(
-            "c"=>"y - i",
-            "zbar"=>1,
-            "V"=>"log(c)/(1-beta)",
-            "c_i"=>1.5,
-            "delta"=>0.025,
-            "sigma"=>1,
-            "chi"=>"w/c^sigma/n^eta",
-            "phi"=>1,
-            "z"=>"zbar",
-            "rk"=>"1/beta-1+delta",
-            "i"=>"delta*k",
-            "y"=>"z*k^alpha*n^(1-alpha)",
-            "sig_z"=>0.016,
-            "w"=>"(1-alpha)*z*(k/n)^(alpha)",
-            "alpha"=>0.33,
-            "k"=>"n/(rk/alpha)^(1/(1-alpha))",
-            "eta"=>1,
-            "rho"=>0.8,
-            "beta"=>0.99,
-            "c_y"=>0.5,
-            "n"=>0.33),
-
-        "options"=>Dict{Any,Any}(
-            # "distribution"=>Dict{Symbol,Any}(
-            "exogenous"=>Dict{Any,Any}(
-                :rho => 0.9,
-                :sigma => "sig_z",
-                :tag => :AR1
-              ),
-            #     :sigma=>Any[Any["sig_z**2"]],
-            #     :tag=>:Normal),
-            "grid"=>Dict{Symbol,Any}(
-                :orders=>Any[10],
-                :b=>Any["k*1.1"],
-                :a=>Any["k*0.9"],
-                :tag=>:Cartesian
-              )
-        ),
-        "equations"=>Dict{Any,Any}(
-            "arbitrage"=>Any["1 - beta*(c/c(1))^(sigma)*(1-delta+rk(1))  | 0 <= i <= inf","chi*n^eta*c^sigma - w                      | 0 <= n <= inf"],
-            "value"=>Any["V = log(c) + beta*V(1)"],
-            "transition"=>Any["k = (1-delta)*k(-1) + i(-1)"]
-        ),
-        "definitions"=>Dict{Any,Any}(
-            "c"=>"y - i",
-            "w"=>"(1-alpha)*y/n",
-            "rk"=>"alpha*y/k",
-            "y"=>"z*k^alpha*n^(1-alpha)"
-        )
-    )
-
-    rbc_dict = Dolo._symbol_dict(rbc_dict)
+    #
+    # rbc_dict = Dict{Any,Any}(
+    #     "symbols"=>Dict{Any,Any}(
+    #         "parameters"=>Any["beta","sigma","eta","chi","delta","alpha","rho","zbar","sig_z"],
+    #         "controls"=>Any["i","n"],
+    #         "values"=>Any["V"],
+    #         "states"=>Any["k"],
+    #         "exogenous"=>Any["z"]
+    #     ),
+    #     "model_type"=>"dtcc",
+    #     "name"=>"Real Business Cycle",
+    #     "calibration"=>Dict{Any,Any}(
+    #         "c"=>"y - i",
+    #         "zbar"=>1,
+    #         "V"=>"log(c)/(1-beta)",
+    #         "c_i"=>1.5,
+    #         "delta"=>0.025,
+    #         "sigma"=>1,
+    #         "chi"=>"w/c^sigma/n^eta",
+    #         "phi"=>1,
+    #         "z"=>"zbar",
+    #         "rk"=>"1/beta-1+delta",
+    #         "i"=>"delta*k",
+    #         "y"=>"z*k^alpha*n^(1-alpha)",
+    #         "sig_z"=>0.016,
+    #         "w"=>"(1-alpha)*z*(k/n)^(alpha)",
+    #         "alpha"=>0.33,
+    #         "k"=>"n/(rk/alpha)^(1/(1-alpha))",
+    #         "eta"=>1,
+    #         "rho"=>0.8,
+    #         "beta"=>0.99,
+    #         "c_y"=>0.5,
+    #         "n"=>0.33),
+    #
+    #     "options"=>Dict{Any,Any}(
+    #         # "distribution"=>Dict{Symbol,Any}(
+    #         "exogenous"=>Dict{Any,Any}(
+    #             :rho => 0.9,
+    #             :sigma => "sig_z",
+    #             :tag => :AR1
+    #           ),
+    #         #     :sigma=>Any[Any["sig_z**2"]],
+    #         #     :tag=>:Normal),
+    #         "grid"=>Dict{Symbol,Any}(
+    #             :orders=>Any[10],
+    #             :b=>Any["k*1.1"],
+    #             :a=>Any["k*0.9"],
+    #             :tag=>:Cartesian
+    #           )
+    #     ),
+    #     "equations"=>Dict{Any,Any}(
+    #         "arbitrage"=>Any["1 - beta*(c/c(1))^(sigma)*(1-delta+rk(1))  | 0 <= i <= inf","chi*n^eta*c^sigma - w                      | 0 <= n <= inf"],
+    #         "value"=>Any["V = log(c) + beta*V(1)"],
+    #         "transition"=>Any["k = (1-delta)*k(-1) + i(-1)"]
+    #     ),
+    #     "definitions"=>Dict{Any,Any}(
+    #         "c"=>"y - i",
+    #         "w"=>"(1-alpha)*y/n",
+    #         "rk"=>"alpha*y/k",
+    #         "y"=>"z*k^alpha*n^(1-alpha)"
+    #     )
+    # )
+    #
+    # rbc_dict = Dolo._symbol_dict(rbc_dict)
 
     @testset "ModelCalibration" begin
+    
         function new_mc()
             flat = FlatCalibration(:k=>8.5, :z=>0.5, :i=>1.1)
             grouped = GroupedCalibration(:states=>[8.5, 0.5],
@@ -259,96 +260,96 @@
 
         end
     end
-
-    @testset "SymbolicModel" begin
-        sm = SymbolicModel(rbc_dict, "rbc_dtcc.yaml")
-
-        @testset "constructor" begin
-
-            # construct the object, and now test to make sure that things are how
-            # they should be
-
-            @test length(keys(sm.symbols)) == 8
-            np, nc, nv, na, ns, nz = 9, 2, 1, 1, 1, 1
-            @test length(sm.symbols[:parameters]) == np
-            @test length(sm.symbols[:controls]) == nc
-            @test length(sm.symbols[:values]) == nv
-            @test length(sm.symbols[:states]) == ns
-            @test length(sm.symbols[:exogenous]) == nz
-            @test length(sm.symbols[:rewards]) == 0
-            @test length(sm.symbols[:expectations]) == 0
-
-            # test order of keys
-            @test collect(keys(sm.symbols)) == map(Symbol, Dolo.RECIPES[:dtcc][:symbols])
-
-            # test that we got the right number of equations for each group
-            @test length(sm.equations[:arbitrage]) == nc
-            @test length(sm.equations[:value]) == nv
-            @test length(sm.equations[:transition]) == ns
-            @test length(sm.equations[:controls_lb]) == nc
-            @test length(sm.equations[:controls_ub]) == nc
-            @test !haskey(sm.equations, :rewards)
-            @test !haskey(sm.equations, :expectations)
-
-            name_order = vcat([sm.symbols[Symbol(k)]
-                              for k in Dolo.RECIPES[:dtcc][:symbols]]...,
-                              collect(keys(sm.definitions)))
-            @test collect(keys(sm.calibration)) == name_order
-        end
-
-        @test name(sm) == sm.name == "Real Business Cycle"
-        @test filename(sm) == sm.filename == "rbc_dtcc.yaml"
-    end
-
-    @testset "NumericModel" begin
-        sm = SymbolicModel(rbc_dict, "rbc_dtcc.yaml")
-        m = NumericModel(sm)
-
-        @test name(m) == m.name == "Real Business Cycle"
-        @test filename(m) == m.filename == "rbc_dtcc.yaml"
-        @test id(sm) == id(m)
-    end
-
-    @testset "compiled functions" begin
-        sm = SymbolicModel(rbc_dict, "rbc_dtcc.yaml")
-        m = NumericModel(sm)
-
-        # we passed in the steady state, so just make sure compiled functions
-        # work out that way
-        mc = m.calibration
-        p, s0, x0, v0 , e_= mc[:parameters, :states, :controls, :values, :exogenous]
-        ns = length(s0)
-        nx = length(x0)
-
-        @test maxabs(zeros(x0) - arbitrage(m, e_, s0, x0, e_, s0, x0, p)) < 1e-13
-        @test maxabs(s0 - transition(m, e_, s0, x0, e_, p)) < 1e-13
-        @test maxabs(v0 - value(m, e_, s0, x0, v0, e_, s0, x0, v0, p)) < 1e-13
-        @test maxabs([0.0, 0.0] - controls_lb(m, e_, s0, p)) < 1e-13
-        @test [Inf, Inf] == controls_ub(m, e_, s0, p)
-
-        # these two aren't implemented for the model above
-        @test_throws ErrorException direct_response(m, e_, s0, [0.0], p)
-        @test_throws ErrorException expectation(m, e_, s0, x0, p)
-
-        # Test mutating versions
-        res = ones(x0)
-        arbitrage!(m, res, e_, s0, x0, e_, s0, x0, p)
-        @test maxabs(zeros(x0) - res) < 1e-13
-
-        s1 = ones(s0)
-        transition!(m, s1, e_, s0, x0, e_, p)
-        @test maxabs(s0 - s1) < 1e-13
-
-        v1 = ones(v0)
-        value!(m, v1, e_, s0, x0, v0, e_, s0, x0, v0, p)
-        @test maxabs(v0 - v1) < 1e-13
-
-        bounds = ones(x0)
-        controls_ub!(m, bounds, e_, s0, p)
-        @test bounds == [Inf, Inf]
-
-        controls_lb!(m, bounds, e_, s0, p)
-        @test bounds == [0.0, 0.0]
-    end
+    #
+    # @testset "SymbolicModel" begin
+    #     sm = SymbolicModel(rbc_dict, "rbc_dtcc.yaml")
+    #
+    #     @testset "constructor" begin
+    #
+    #         # construct the object, and now test to make sure that things are how
+    #         # they should be
+    #
+    #         @test length(keys(sm.symbols)) == 8
+    #         np, nc, nv, na, ns, nz = 9, 2, 1, 1, 1, 1
+    #         @test length(sm.symbols[:parameters]) == np
+    #         @test length(sm.symbols[:controls]) == nc
+    #         @test length(sm.symbols[:values]) == nv
+    #         @test length(sm.symbols[:states]) == ns
+    #         @test length(sm.symbols[:exogenous]) == nz
+    #         @test length(sm.symbols[:rewards]) == 0
+    #         @test length(sm.symbols[:expectations]) == 0
+    #
+    #         # test order of keys
+    #         @test collect(keys(sm.symbols)) == map(Symbol, Dolo.RECIPES[:dtcc][:symbols])
+    #
+    #         # test that we got the right number of equations for each group
+    #         @test length(sm.equations[:arbitrage]) == nc
+    #         @test length(sm.equations[:value]) == nv
+    #         @test length(sm.equations[:transition]) == ns
+    #         @test length(sm.equations[:controls_lb]) == nc
+    #         @test length(sm.equations[:controls_ub]) == nc
+    #         @test !haskey(sm.equations, :rewards)
+    #         @test !haskey(sm.equations, :expectations)
+    #
+    #         name_order = vcat([sm.symbols[Symbol(k)]
+    #                           for k in Dolo.RECIPES[:dtcc][:symbols]]...,
+    #                           collect(keys(sm.definitions)))
+    #         @test collect(keys(sm.calibration)) == name_order
+    #     end
+    #
+    #     @test name(sm) == sm.name == "Real Business Cycle"
+    #     @test filename(sm) == sm.filename == "rbc_dtcc.yaml"
+    # end
+    #
+    # @testset "NumericModel" begin
+    #     sm = SymbolicModel(rbc_dict, "rbc_dtcc.yaml")
+    #     m = NumericModel(sm)
+    #
+    #     @test name(m) == m.name == "Real Business Cycle"
+    #     @test filename(m) == m.filename == "rbc_dtcc.yaml"
+    #     @test id(sm) == id(m)
+    # end
+    #
+    # @testset "compiled functions" begin
+    #     sm = SymbolicModel(rbc_dict, "rbc_dtcc.yaml")
+    #     m = NumericModel(sm)
+    #
+    #     # we passed in the steady state, so just make sure compiled functions
+    #     # work out that way
+    #     mc = m.calibration
+    #     p, s0, x0, v0 , e_= mc[:parameters, :states, :controls, :values, :exogenous]
+    #     ns = length(s0)
+    #     nx = length(x0)
+    #
+    #     @test maxabs(zeros(x0) - arbitrage(m, e_, s0, x0, e_, s0, x0, p)) < 1e-13
+    #     @test maxabs(s0 - transition(m, e_, s0, x0, e_, p)) < 1e-13
+    #     @test maxabs(v0 - value(m, e_, s0, x0, v0, e_, s0, x0, v0, p)) < 1e-13
+    #     @test maxabs([0.0, 0.0] - controls_lb(m, e_, s0, p)) < 1e-13
+    #     @test [Inf, Inf] == controls_ub(m, e_, s0, p)
+    #
+    #     # these two aren't implemented for the model above
+    #     @test_throws ErrorException direct_response(m, e_, s0, [0.0], p)
+    #     @test_throws ErrorException expectation(m, e_, s0, x0, p)
+    #
+    #     # Test mutating versions
+    #     res = ones(x0)
+    #     arbitrage!(m, res, e_, s0, x0, e_, s0, x0, p)
+    #     @test maxabs(zeros(x0) - res) < 1e-13
+    #
+    #     s1 = ones(s0)
+    #     transition!(m, s1, e_, s0, x0, e_, p)
+    #     @test maxabs(s0 - s1) < 1e-13
+    #
+    #     v1 = ones(v0)
+    #     value!(m, v1, e_, s0, x0, v0, e_, s0, x0, v0, p)
+    #     @test maxabs(v0 - v1) < 1e-13
+    #
+    #     bounds = ones(x0)
+    #     controls_ub!(m, bounds, e_, s0, p)
+    #     @test bounds == [Inf, Inf]
+    #
+    #     controls_lb!(m, bounds, e_, s0, p)
+    #     @test bounds == [0.0, 0.0]
+    # end
 
 end
