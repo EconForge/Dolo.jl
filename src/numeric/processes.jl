@@ -46,6 +46,23 @@ iweight(dp::DiscreteMarkovProcess, i::Int, j::Int) = dp.transitions[i,j]
 node(dp::DiscreteMarkovProcess, i) = dp.values[i, :]
 
 
+function MarkovProduct(mc1::Dolo.DiscreteMarkovProcess, mc2::Dolo.DiscreteMarkovProcess)
+    P1 = mc1.transitions
+    P2 = mc2.transitions
+    Q1 = mc1.values
+    Q2 = mc2.values
+    n1 = size(Q1,1)
+    n2 = size(Q2,1)
+    Q = [repeat(Q1, outer=[n2, 1])  repeat(Q2, inner=[n1, 1])]
+    P = fkron(P1, P2)
+    return Dolo.DiscreteMarkovProcess(P,Q)
+end
+
+function MarkovProduct(mcs::Dolo.DiscreteMarkovProcess...)
+    return mcs
+end
+
+
 # date-t grid is empty
 
 type DiscretizedIIDProcess <: AbstractDiscretizedProcess
@@ -116,6 +133,58 @@ function response(mvn::MvNormal, e1::AbstractVector; T::Integer=40)
 end
 
 
+
+### Simulate Markov process
+function choice(x, n, cumul)
+    i = 1
+    running = true
+    # while (i<n) && running
+    while (i<n) && running
+        if x < cumul[i]
+            running = false
+        else
+            i += 1
+        end
+    end
+    return i
+end
+
+# function simulate(nodes::Array{Float64,2}, transitions::Array{Float64,2},N::Int, T::Int; i0::Int=1)
+function simulate(process::Dolo.DiscreteMarkovProcess,N::Int, T::Int, i0::Int; return_indexes=true)
+
+      n_states = size(process.values,1)
+
+      simul = zeros(Int, T, N)
+      simul[1,:] = 1
+      rnd = rand(T, N)
+      cumuls = cumsum(process.transitions, 2)
+
+      for t in 1:(T-1)
+        for j in 1:N
+          s = simul[t,j]
+          p = cumuls[s,:]
+          v = choice(rnd[t,j], n_states, p)
+          simul[t+1,j] = v
+        end
+      end
+
+      Index_mc = simul
+      if return_indexes==true
+            return Index_mc
+      else
+            Values_mc = process.values[Index_mc]
+            return Values_mc
+      end
+
+
+end
+
+
+
+
+
+
+
 discretize(dmp::DiscreteMarkovProcess) = dmp
 
 # function discretize(dmp::DiscreteMarkovProcess)
@@ -142,8 +211,20 @@ end
 
 function VAR1(R::Array{Float64,2}, Sigma::Array{Float64,2})
     M = zeros(size(R, 1))
+    assert(size(R)==size(Sigma))
     return VAR1(M, R, Sigma)
 end
+
+function VAR1(rho::Array{Float64,1}, Sigma::Array{Float64,2})
+    R = diagm(rho)
+    return VAR1(R, Sigma)
+end
+
+function VAR1(rho::Float64, Sigma::Array{Float64,2})
+    R = eye(size(Sigma,1))*rho
+    return VAR1(R, Sigma)
+end
+
 
 function discretize(var::VAR1)
     d = size(var.R, 1)
@@ -169,6 +250,41 @@ function discretize(var::VAR1, n_states::Array{Int,1}, n_integration::Array{Int,
     return DiscretizedProcess(grid, integration_nodes, integration_weights)
 end
 
+
+function discretize_mc(var::VAR1; N=3)
+
+    # it would be good to have a special type of VAR1 process
+    # which has a scalar autoregressive term
+    R = var.R
+    d = size(R,1)
+    ρ = R[1,1]
+    @assert maximum(abs, R-eye(d)*ρ)<1e-16
+
+    sigma = var.Sigma
+    
+    if size(var.Sigma,1)==1
+        mc_qe =QE.rouwenhorst(N, ρ, sigma[1])
+        return Dolo.DiscreteMarkovProcess(mc_qe.p, appenddim(collect(mc_qe.state_values)))
+    end
+
+
+    L = chol(sigma) # sigma = L'*L
+    NN = [N for i=1:d] # default: same number of nodes in each dimension
+
+    components = [QE.rouwenhorst(N, ρ, 1.0) for N in NN]
+    mc_components = [Dolo.DiscreteMarkovProcess(mc.p, appenddim(collect(mc.state_values))) for mc in components]
+    mc_prod = MarkovProduct(mc_components...)
+    mc_prod.values = mc_prod.values*L'
+    return mc_prod
+end
+
+function discretize(tt, var::VAR1; kwargs...)
+    if tt == DiscreteMarkovProcess
+        return discretize_mc(var; kwargs...)
+    elseif tt == DiscretizedProcess
+        return Dolo.discretize(var; kwargs...)
+    end
+end
 
 
 function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64};
@@ -215,29 +331,27 @@ function simulate(var::VAR1, N::Int, T::Int; kwargs...)
 end
 
 function response(var::VAR1, x0::AbstractVector,
-                  e1::AbstractVector; T::Integer=40, N::Integer=1)
-    sim = simulate(var, N, T, x0; stochastic=false, irf=true, e0=e1)
+                  e1::AbstractVector; T::Integer=40)
+    sim = simulate(var, 1, T, x0; stochastic=false, irf=true, e0=e1)[1,:,:]
     return sim
 end
 
-function response(var::VAR1, e1::AbstractVector;
-                  T::Integer=40, N::Integer=1)
-    sim = simulate(var, N, T; stochastic=false, irf=true, e0=e1)
+function response(var::VAR1, e1::AbstractVector; T::Integer=40)
+    sim = simulate(var, 1, T; stochastic=false, irf=true, e0=e1)[1,:,:]
     return sim
 end
 
-function response(var::VAR1, x0::AbstractVector,
-                  index_s::Int; T::Integer=40, N::Integer=1)
+function response(var::VAR1, x0::AbstractVector, index_s::Int; T::Integer=40)
     e1 = zeros(size(var.mu, 1))
     Impulse = sqrt(diag(var.Sigma)[index_s])
     e1[index_s] = Impulse
-    sim = simulate(var, N, T, x0; stochastic=false, irf=true, e0=e1)
+    sim = simulate(var, 1, T, x0; stochastic=false, irf=true, e0=e1)[1,:,:]
     return sim
 end
 
-function response(var::VAR1; T::Integer=40, N::Integer=1)
+function response(var::VAR1; T::Integer=40)
     e1 = sqrt(diag(var.Sigma))
-    sim = simulate(var, N, T; stochastic=false, irf=true, e0=e1)
+    sim = simulate(var, 1, T; stochastic=false, irf=true, e0=e1)[1,:,:]
     return sim
 end
 
@@ -278,6 +392,8 @@ function ErgodDist(var::VAR1, N::Int, T::Int)
 
        return Mean_sim, Sigma_sim, R_sim
 end
+
+
 
 # compatibility names
 typealias AR1 VAR1

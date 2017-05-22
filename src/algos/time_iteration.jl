@@ -20,7 +20,7 @@ If the list of current controls `x` is provided as a two-dimensional array (`Lis
 # Returns
 * `res`: Residuals of the arbitrage equation associated with each exogenous shock.
 """
-function residual(model, dprocess, s, x::Array{Array{Float64,2},1}, p, dr)
+function residual(model, dprocess::AbstractDiscretizedProcess, s, x::Array{Array{Float64,2},1}, p, dr)
     N = size(s, 1)
     res = [zeros(size(x[1])) for i=1:length(x)]
     S = zeros(size(s))
@@ -49,15 +49,15 @@ using NLsolve
 
 function residual(model, dprocess, s, x::Array{Float64,2}, p, dr)
     n_m = max(1, n_nodes(dprocess))
-    xx = destack(x, n_m)
+    xx = destack0(x, n_m)
     res = residual(model, dprocess, s, xx, p, dr)
-    return stack(res)
+    return stack0(res)
 end
 
 """
 #TODO
 """
-function destack(x::Array{Float64,2}, n_m::Int)
+function destack0(x::Array{Float64,2}, n_m::Int)
     N = div(size(x, 1), n_m)
     xx = reshape(x, N, n_m, size(x, 2))
     return Array{Float64,2}[xx[:, i, :] for i=1:n_m]
@@ -66,7 +66,7 @@ end
 """
 #TODO
 """
-function stack(x::Array{Array{Float64,2},1})::Array{Float64,2}
+function stack0(x::Array{Array{Float64,2},1})::Array{Float64,2}
      return cat(1, x...)
 end
 
@@ -102,18 +102,17 @@ If the stochastic process for the model is not explicitly provided, the process 
 # Returns
 * `dr`: Solved decision rule.
 """
-function time_iteration(model, process, init_dr;
-      verbose::Bool=true, maxit::Int=100, tol::Float64=1e-8, infos::Bool=false)
+function time_iteration(model, dprocess::AbstractDiscretizedProcess, init_dr;
+      verbose::Bool=true, maxit::Int=100, tol::Float64=1e-8, details::Bool=false)
 
     # get grid for endogenous
-    gg = model.options.grid
-    grid = CartesianGrid(gg.a, gg.b, gg.orders)  # temporary compatibility
+    grid = model.grid
+    # grid = CartesianGrid(gg.a, gg.b, gg.orders)  # temporary compatibility
 
     endo_nodes = nodes(grid)
     N = size(endo_nodes, 1)
     n_s_endo = size(endo_nodes,2)
 
-    dprocess = discretize(process)
     n_s_exo = n_nodes(dprocess)
 
     # initial guess
@@ -144,7 +143,7 @@ function time_iteration(model, process, init_dr;
     # loop option
     init_res = residual(model, dprocess, endo_nodes, x0, p, dr)
     it = 0
-    err = maxabs(stack(init_res))
+    err = maximum(abs, stack0(init_res))
     err_0 = err
 
     verbose && @printf "%-6s%-12s%-12s%-5s\n" "It" "SA" "gain" "nit"
@@ -157,12 +156,12 @@ function time_iteration(model, process, init_dr;
 
         set_values!(dr, x0)
 
-        xx0 = stack(x0)
+        xx0 = stack0(x0)
         fobj(u) = residual(model, dprocess, endo_nodes, u, p, dr)
         xx1, nit = serial_solver(fobj, xx0, lb, ub, maxit=10, verbose=false)
-        x1 = destack(xx1, nsd)
+        x1 = destack0(xx1, nsd)
 
-        err = maxabs(xx1 - xx0)
+        err = maximum(abs, xx1 - xx0)
         copy!(x0, x1)
         gain = err / err_0
         err_0 = err
@@ -172,7 +171,7 @@ function time_iteration(model, process, init_dr;
 
     # TODO: somehow after defining `fobj` the `dr` object gets `Core.Box`ed
     #       making the return type right here non-inferrable.
-    if !infos
+    if !details
         return dr.dr
     else
         converged = err<tol
@@ -183,20 +182,20 @@ end
 
 
 # get stupid initial rule
-function time_iteration(model, process::AbstractExogenous; kwargs...)
+function time_iteration(model, dprocess::AbstractDiscretizedProcess; kwargs...)
     init_dr = ConstantDecisionRule(model.calibration[:controls])
-    return time_iteration(model, process, init_dr;  kwargs...)
+    return time_iteration(model, dprocess, init_dr;  kwargs...)
 end
 
 
-function time_iteration(model, init_dr::AbstractDecisionRule; kwargs...)
-    process = model.exogenous
-    return time_iteration(model, process, init_dr; kwargs...)
+function time_iteration(model, init_dr; kwargs...)
+    dprocess = discretize( model.exogenous )
+    return time_iteration(model, dprocess, init_dr; kwargs...)
 end
 
 
 function time_iteration(model; kwargs...)
-    process = model.exogenous
+    dprocess = discretize( model.exogenous )
     init_dr = ConstantDecisionRule(model.calibration[:controls])
-    return time_iteration(model, process, init_dr; kwargs...)
+    return time_iteration(model, dprocess, init_dr; kwargs...)
 end

@@ -4,7 +4,7 @@ model_type: dtcc
 
 symbols:
 
-   exogenous: [z]
+   exogenous: [z, z2]
    states: [k]
    controls: [n, i]
    expectations: [m]
@@ -63,6 +63,7 @@ calibration:
     # endogenous variables
     n: 0.33
     z: zbar
+    z2: zbar
     rk: 1/beta-1+delta
     w: (1-alpha)*exp(z)*(k/n)^(alpha)
     k: n/(rk/alpha)^(1/(1-alpha))
@@ -73,16 +74,16 @@ calibration:
     u: c^(1-sigma)/(1-sigma) - chi*n^(1+eta)/(1+eta)
 
 
+domain:
+    k: [k*0.5, k*1.5]
+
+exogenous: !MarkovChain
+    values: [[-0.01, 0.1],[0.01, 0.5]]
+    transitions: [[0.4, 0.6], [0.6, 0.4]]
+
 options:
 
-    exogenous: !MarkovChain
-        values: [[0.00]]
-        transitions: [[1.0]]
 
     grid: !Cartesian
-        a: [k*0.5]
-        b: [k*1.5]
         orders: [50]
 
-    random:
-        any: 0.1

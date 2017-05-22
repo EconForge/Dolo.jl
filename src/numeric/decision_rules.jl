@@ -1,4 +1,4 @@
-abstract AbstractDecisionRule{S,T}
+@compat abstract type AbstractDecisionRule{S,T} end
 
 # abstract AbstractCachedDecisionRule{S,T} <: AbstractDecisionRule{S,T}
 # we don't implement that using subtypes anymore
@@ -15,7 +15,7 @@ function Base.show(io::IO, dr::AbstractDecisionRule)
 end
 
 
-type ConstantDecisionRule <: AbstractDecisionRule
+@compat type ConstantDecisionRule <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
     constants::Vector{Float64}
 end
 
@@ -29,7 +29,7 @@ end
 (dr::ConstantDecisionRule)(i::Int, j::Int, x::Union{AbstractVector{Float64},AbstractMatrix{Float64}}) = dr(x)
 
 
-type BiTaylorExpansion <: AbstractDecisionRule
+@compat type BiTaylorExpansion <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
     m0::Vector{Float64}
     s0::Vector{Float64}
     x0::Vector{Float64}
@@ -178,7 +178,7 @@ function set_values!(dr::AbstractDecisionRule{UnstructuredGrid, CartesianGrid}, 
 end
 
 
-function evaluate(dr::AbstractDecisionRule{UnstructuredGrid, CartesianGrid}, i::Int, z::Matrix{Float64})
+function evaluate(dr::AbstractDecisionRule{UnstructuredGrid, CartesianGrid}, i::Int, z::AbstractMatrix{Float64})
     a = dr.grid_endo.min
     b = dr.grid_endo.max
     n = dr.grid_endo.n
@@ -188,11 +188,17 @@ function evaluate(dr::AbstractDecisionRule{UnstructuredGrid, CartesianGrid}, i::
 end
 
 (dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::Int,y::AbstractMatrix{Float64}) = evaluate(dr,i,y)
+
+# (dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::AbstractMatrix{Int},y::AbstractMatrix{Float64}) =
+# vcat( [evaluate(dr, i[j,1], y[j,:]) for j=1:size(y,1)]... )
+
 (dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::Int,y::AbstractVector{Float64}) = dr(i,y')[:]
 
+(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::AbstractVector{Int64},y::AbstractMatrix{Float64}) =
+  vcat( [dr(i[j], y[j,:])' for j=1:size(y,1)]... )
 
-
-
+(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::AbstractVector{Int64},y::AbstractVector{Float64}) =
+    vcat( [dr(i[j], y[j,:])' for j=1:size(y,1)]... )
 #####
 ##### Cached Decision Rules (do we really need them ?)
 #####
@@ -202,7 +208,7 @@ type CachedDecisionRule{T,S}
     process::S
 end
 
-typealias AbstractADecisionRule Union{DecisionRule, CachedDecisionRule}
+@compat const AbstractADecisionRule = Union{DecisionRule,CachedDecisionRule}
 
 CachedDecisionRule(process::AbstractDiscretizedProcess, grid::Grid, n_x::Int) =
     CachedDecisionRule(DecisionRule(process.grid, grid, n_x), process)

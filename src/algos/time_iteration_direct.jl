@@ -13,11 +13,10 @@ If the stochastic process for the model is not explicitly provided, the process 
 * `dr`: Solved decision rule.
 """
 function time_iteration_direct(model, process, init_dr; verbose::Bool=true,
-    maxit::Int=100, tol::Float64=1e-8, infos::Bool=false)
+    maxit::Int=100, tol::Float64=1e-8, details::Bool=false)
 
     # Grid
-    gg = model.options.grid
-    grid = CartesianGrid(gg.a, gg.b, gg.orders) # temporary compatibility
+    grid = model.grid
     endo_nodes = nodes(grid)
     N = size(endo_nodes, 1)
 
@@ -53,7 +52,7 @@ function time_iteration_direct(model, process, init_dr; verbose::Bool=true,
     verbose && @printf "%-6s%-12s\n" "It" "SA"
     verbose && println(repeat("-", 14))
 
-    maxabsdiff(_a, _b) = maxabs(_a - _b)
+    maxabsdiff(_a, _b) = maximum(abs, _a - _b)
 
     ###############################   Iteration loop
 
@@ -93,7 +92,7 @@ function time_iteration_direct(model, process, init_dr; verbose::Bool=true,
           # apply bounds
           broadcast!(clamp, x1[i], x1[i], x_lb[i], x_ub[i])
           # update error
-          err = max(err, maxabs(x1[i] - x0[i]))
+          err = max(err, maximum(abs, x1[i] - x0[i]))
           # copy controls back into x0
           copy!(x0[i], x1[i])
       end
@@ -101,7 +100,7 @@ function time_iteration_direct(model, process, init_dr; verbose::Bool=true,
       verbose && @printf "%-6i%-12.2e\n" it err
     end
 
-    if !infos
+    if !details
         return dr.dr
     else
         converged = err<tol

@@ -1,159 +1,49 @@
 # -------------- #
 # Symbolic Model #
 # -------------- #
+#
 
-immutable SymbolicModel{ID} <: ASM{ID}
-    symbols::OrderedDict{Symbol,Vector{Symbol}}
-    equations::OrderedDict{Symbol,Vector{Expr}}
-    calibration::OrderedDict{Symbol,Union{Expr,Symbol,Number}}
-    exogenous::Dict{Symbol,Any}
-    options::Dict{Symbol,Any}
-    definitions::OrderedDict{Symbol,Expr}
-    name::String
-    filename::String
-
-    function SymbolicModel(recipe::Associative, symbols::Associative,
-                           eqs::Associative, calib::Associative,
-                           exog::Associative,
-                           options::Associative, defs::Associative,
-                           name="modeldoesnotwork", filename="none")
-        # prep symbols
-        model_type = Symbol(recipe[:model_spec])
-        _symbols = OrderedDict{Symbol,Vector{Symbol}}()
-        for _ in recipe[:symbols]
-            k = Symbol(_)
-            _symbols[k] = Symbol[Symbol(v) for v in get(symbols, k, [])]
-        end
-
-        # prep equations: parse to Expr
-        _eqs = OrderedDict{Symbol,Vector{Expr}}()
-        for k in keys(recipe[:specs])
-
-            # we handle these separately
-            (k in [:arbitrage,]) && continue
-
-            these_eq = get(eqs, k, [])
-
-            # verify that we have at least 1 equation if section is required
-            if !get(recipe[:specs][k], :optional, false)
-                length(these_eq) == 0 && error("equation section $k required")
-            end
-
-            # finally pass in the expressions
-            _eqs[k] = Expr[_to_expr(eq) for eq in these_eq]
-        end
-
-        # handle the arbitrage, arbitrage_exp, controls_lb, and controls_ub
-        if haskey(recipe[:specs], :arbitrage)
-            c_lb, c_ub, arb = _handle_arbitrage(eqs[:arbitrage],
-                                                _symbols[:controls])
-            _eqs[:arbitrage] = arb
-            _eqs[:controls_lb] = c_lb
-            _eqs[:controls_ub] = c_ub
-        end
-
-        # parse defs so values are Expr
-        _defs = OrderedDict{Symbol,Expr}([(k, _to_expr(v)) for (k, v) in defs])
-
-        # prep calib: parse to Expr, Symbol, or Number
-        _calib  = OrderedDict{Symbol,Union{Expr,Symbol,Number}}()
-        for k in keys(_symbols)
-            for nm in _symbols[k]
-                if k == :exogenous
-                    _calib[nm] = 0.0
-                else
-                    _calib[nm] = _expr_or_number(calib[nm])
-                end
-            end
-        end
-
-        # add calibration for definitions
-        for k in keys(_defs)
-            _calib[k] = _expr_or_number(calib[k])
-        end
-
-        new(_symbols, _eqs, _calib, exog, options, _defs, name, filename)
-    end
-end
-
-function Base.show(io::IO, sm::SymbolicModel)
-    println(io, """SymbolicModel
-    - name: $(sm.name)
-    """)
-end
-
-function SymbolicModel(data::Dict, filename="none")
-    # verify that we have all the required fields
-    for k in (:symbols, :equations, :calibration)
-        if !haskey(data, k)
-            error("Yaml file must define section $k for dtcc model")
-        end
-    end
-
-    d = _symbol_dict(deepcopy(data))
-    mt = pop!(d, :model_type, :dtcc)
-    Symbol(mt) in (:dtcc, :dtmscc, :dtcscc)  || error("Only support dtcc, dtmscc and dtcscc models now.")
-    if Symbol(mt) == :dtmscc
-        d[:symbols][:exogenous] = pop!(d[:symbols],:markov_states,nothing)
-        d[:options][:exogenous] = pop!(d[:options],:discrete_transition,nothing)
-    elseif Symbol(mt) == :dtcscc
-        d[:symbols][:exogenous] = pop!(d[:symbols],:shocks,nothing)
-        d[:options][:exogenous] = pop!(d[:options],:distribution,nothing)
-    end
-    recipe = RECIPES[:dtcc]
-    nm = pop!(d, :name, "modeldoesnotwork")
-    id = gensym(nm)
-    options = pop!(d, :options, Dict{Symbol,Any}())
-    defs = pop!(d, :definitions, Dict{Symbol,Any}())
-    # exog = pop!(d, :exogenous, Dict{Symbol,Any}())
-    exog = get(options, :exogenous, Dict{Symbol,Any}())
-    if exog == Dict{Symbol,Any}()
-        error("Yaml file must define section 'exogenous' for dtcc model")
-    end
-    out = SymbolicModel{id}(recipe, pop!(d, :symbols),
-                            pop!(d, :equations),
-                            pop!(d, :calibration),
-                            exog,
-                            options,
-                            defs,
-                            nm,
-                            filename)
-
-    if !isempty(d)
-        m = string("Fields $(join(keys(d), ", ", ", and ")) from yaml file ",
-                   " were not used when constructing SymbolicModel")
-        warn(m)
-    end
-    out
-end
-
-# assume dolo style model is default, special case others
-function _get_args(sm::SymbolicModel, spec)
+function _get_args(sm, spec)
     # get args
     args = OrderedDict{Symbol,Vector{Tuple{Symbol,Int}}}()
     for (grp, shift, nm) in spec[:eqs]
         grp == "parameters" && continue
-
         syms = sm.symbols[Symbol(grp)]
         args[Symbol(nm)] = Tuple{Symbol,Int}[(v, shift) for v in syms]
     end
     args
 end
 
-function Dolang.FunctionFactory(sm::SymbolicModel, func_nm::Symbol)
+
+function temporary_equation_quickfixer(eq)
+    if (eq.head == :call) && (eq.args[1]==:(==))
+        u = eq.args[2]
+        v = eq.args[3]
+        return :($u=$v)
+    else
+        return eq
+    end
+end
+
+function Dolang.FunctionFactory(sm, func_nm::Symbol)
     spec = RECIPES[:dtcc][:specs][func_nm]
     eqs = sm.equations[func_nm]
+
+    eqs = [temporary_equation_quickfixer(eq) for eq in eqs]
 
     # get targets
     target = get(spec, :target, [nothing])[1]
     has_targets = !(target === nothing)
-    targets = has_targets ? sm.symbols[Symbol(target)] : Symbol[]
-
+    if has_targets
+        target_date = spec[:target][2]
+        targets = [Dolang.normalize((s,target_date)) for s in sm.symbols[Symbol(target)]]
+    else
+        targets =  Symbol[]
+    end
     # get other stuff
     args = Dolo._get_args(sm, spec)
     params = sm.symbols[:parameters]
     dispatch = _numeric_mod_type(sm)
-
     FunctionFactory(dispatch, eqs, args, params, targets=targets,
                     defs=sm.definitions, funname=func_nm)
 end

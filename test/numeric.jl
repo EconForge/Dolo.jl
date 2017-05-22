@@ -20,13 +20,13 @@
     out2_1d = dr2(vec(points[1, :]))
     out3_1d = dr3(vec(points[1, :]))
 
-    @test maxabs(out1_1d - vec(out1[1, :])) == 0.0
-    @test maxabs(out2_1d - vec(out2[1, :])) == 0.0
-    @test maxabs(out3_1d - vec(out3[1, :])) == 0.0
+    @test maximum(abs, out1_1d - vec(out1[1, :])) == 0.0
+    @test maximum(abs, out2_1d - vec(out2[1, :])) == 0.0
+    @test maximum(abs, out3_1d - vec(out3[1, :])) == 0.0
 
     ds = points .- s0'
     verif1 = x0 .+ X_s*ds'
-    @test maxabs(out1 - verif1') < 1e-12
+    @test maximum(abs, out1 - verif1') < 1e-12
 
     # TODO: write verification tests for 2d and 3d
 end
