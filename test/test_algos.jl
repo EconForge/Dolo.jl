@@ -54,9 +54,9 @@ import YAML
 
         @time dr = Dolo.time_iteration(model, maxit=100, verbose=false)
         @time res = Dolo.time_iteration(model, dr; maxit=100, details=true)
-
-        @time dr0, drv0 = Dolo.solve_policy(model, drc) #;, verbose=true, maxit=1000 )
-        @time res = Dolo.solve_policy(model, drc; details=true) #;, verbose=true, maxit=1000 )
+        #
+        # @time dr0, drv0 = Dolo.solve_policy(model, drc) #;, verbose=true, maxit=1000 )
+        # @time res = Dolo.solve_policy(model, drc; details=true) #;, verbose=true, maxit=1000 )
 
         @time drd = Dolo.time_iteration_direct(model) #, maxit=1000, verbose=true)
 
@@ -103,7 +103,7 @@ import YAML
         cdr =Dolo.CachedDecisionRule(dr,dp)
         @time dr = Dolo.time_iteration(model, model.exogenous, cdr)
         @time dr = Dolo.time_iteration(model)
-        @time dr0, drv0 = Dolo.solve_policy(model, cdr, verbose=false) #, maxit=10000 )
+        # @time dr0, drv0 = Dolo.solve_policy(model, cdr, verbose=false) #, maxit=10000 )
         @time drv = Dolo.evaluate_policy(model, dr, verbose=false, maxit=10000)
         @time drd = Dolo.time_iteration_direct(model, dr) #, verbose=true) #, maxit=500)
         #
