@@ -85,3 +85,27 @@ function solve_triangular_system(d::OrderedDict)
 
     OrderedDict{Symbol, Real}(zip(nms, data))
 end
+
+
+
+appenddim(A) = reshape(A, size(A)..., 1)
+
+# does kronecker product of matrices according to fortran order
+function fkron(A::AbstractMatrix{Float64}, B::AbstractMatrix{Float64})
+    # A and B must be square
+    na = size(A,1)
+    nb = size(B,1)
+    C = zeros(na*nb,na*nb)
+    for i=1:na
+        for j=1:nb
+            n = i+na*(j-1) # line for state today
+            for k=1:na
+                for l=1:nb
+                    nn = k+na*(l-1) # column for state tomorrow
+                    C[n,nn] = A[i,k]*B[j,l]
+                end
+            end
+        end
+    end
+    return C
+end

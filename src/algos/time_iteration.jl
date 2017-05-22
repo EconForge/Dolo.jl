@@ -20,7 +20,7 @@ If the list of current controls `x` is provided as a two-dimensional array (`Lis
 # Returns
 * `res`: Residuals of the arbitrage equation associated with each exogenous shock.
 """
-function residual(model, dprocess, s, x::Array{Array{Float64,2},1}, p, dr)
+function residual(model, dprocess::AbstractDiscretizedProcess, s, x::Array{Array{Float64,2},1}, p, dr)
     N = size(s, 1)
     res = [zeros(size(x[1])) for i=1:length(x)]
     S = zeros(size(s))
@@ -102,7 +102,7 @@ If the stochastic process for the model is not explicitly provided, the process 
 # Returns
 * `dr`: Solved decision rule.
 """
-function time_iteration(model, process, init_dr;
+function time_iteration(model, dprocess::AbstractDiscretizedProcess, init_dr;
       verbose::Bool=true, maxit::Int=100, tol::Float64=1e-8, details::Bool=false)
 
     # get grid for endogenous
@@ -113,7 +113,6 @@ function time_iteration(model, process, init_dr;
     N = size(endo_nodes, 1)
     n_s_endo = size(endo_nodes,2)
 
-    dprocess = discretize(process)
     n_s_exo = n_nodes(dprocess)
 
     # initial guess
@@ -183,20 +182,20 @@ end
 
 
 # get stupid initial rule
-function time_iteration(model, process::AbstractExogenous; kwargs...)
+function time_iteration(model, dprocess::AbstractDiscretizedProcess; kwargs...)
     init_dr = ConstantDecisionRule(model.calibration[:controls])
-    return time_iteration(model, process, init_dr;  kwargs...)
+    return time_iteration(model, dprocess, init_dr;  kwargs...)
 end
 
 
-function time_iteration(model, init_dr::AbstractDecisionRule; kwargs...)
-    process = model.exogenous
-    return time_iteration(model, process, init_dr; kwargs...)
+function time_iteration(model, init_dr; kwargs...)
+    dprocess = discretize( model.exogenous )
+    return time_iteration(model, dprocess, init_dr; kwargs...)
 end
 
 
 function time_iteration(model; kwargs...)
-    process = model.exogenous
+    dprocess = discretize( model.exogenous )
     init_dr = ConstantDecisionRule(model.calibration[:controls])
-    return time_iteration(model, process, init_dr; kwargs...)
+    return time_iteration(model, dprocess, init_dr; kwargs...)
 end
