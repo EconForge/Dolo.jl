@@ -111,7 +111,7 @@ function evaluate_policy(model, dr; verbose::Bool=true, maxit::Int=5000)
         err = 0.0
         for i in 1:length(v)
             broadcast!((_u, _E_v) -> _u + β * _E_v, v[i], u[i], E_V[i])
-            err = max(err, maxabs(v[i] - v0[i]))
+            err = max(err, maximum(abs, v[i] - v0[i]))
             copy!(v0[i], v[i])
             fill!(E_V[i], 0.0)
         end
@@ -254,7 +254,7 @@ function solve_policy(model, pdr; maxit::Int=1000, verbose::Bool=true, details::
                 # compute diff in values
                 err_eval = 0.0
                 for i in 1:nsd
-                    err_eval = max(err_eval, maxabs(v[i] - v0[i]))
+                    err_eval = max(err_eval, maximum(abs, v[i] - v0[i]))
                     copy!(v0[i], v[i])
                 end
                 converged_eval = (it_eval>=maxit_eval) || (err_eval<tol_eval)
@@ -296,14 +296,14 @@ function solve_policy(model, pdr; maxit::Int=1000, verbose::Bool=true, details::
             # compute diff in values
             err_v = 0.0
             for i in 1:nsd
-                err_v = max(err_v, maxabs(v[i] - v0[i]))
+                err_v = max(err_v, maximum(abs, v[i] - v0[i]))
                 copy!(v0[i], v[i])
             end
             # compute diff in policy
             err_x = 0.0
             for i in 1:nsd
                 err_x = 0
-                err_x = max(err_x, maxabs(x[i] - x0[i]))
+                err_x = max(err_x, maximum(abs, x[i] - x0[i]))
                 copy!(x0[i], x[i])
             end
             # update values and policies

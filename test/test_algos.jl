@@ -27,12 +27,12 @@ import YAML
 # # compare  time_iteration_direct
 # nvec_d = [drd(1,[k])[1] for k in kvec]
 # ivec_d = [drd(1,[k])[2] for k in kvec]
-# @assert maxabs(nvec_d-nvec)<1e-4
+# @assert maximum(abs, nvec_d-nvec)<1e-4
 #
 # # compare  vfi
 # nvec_0 = [dr0(1,[k])[1] for k in kvec]
 # ivec_0 = [dr0(1,[k])[2] for k in kvec]
-# @assert maxabs(nvec_0-nvec)<1e-4
+# @assert maximum(abs, nvec_0-nvec)<1e-4
 
 # let's redo when model is stable !
 # ivec_test = [0.295977,  0.257538,  0.21566,  0.173564,  0.132103,  0.0915598,  0.0520067,  0.0134661,  7.01983e-6, 3.40994e-17]
@@ -88,8 +88,8 @@ import YAML
 # nvec_0 = [dr0(1,[k])[1] for k in kvec]
 # ivec_0 = [dr0(1,[k])[2] for k in kvec]
 #
-# @assert maxabs(nvec_d-nvec)<1e-5
-# @assert maxabs(nvec_0-nvec)<1e-5 # not satisfied right now (see tol. of optimizer)
+# @assert maximum(abs, nvec_d-nvec)<1e-5
+# @assert maximum(abs, nvec_0-nvec)<1e-5 # not satisfied right now (see tol. of optimizer)
 
     @testset "testing ar1 models" begin
 

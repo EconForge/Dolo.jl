@@ -321,10 +321,10 @@
     #     ns = length(s0)
     #     nx = length(x0)
     #
-    #     @test maxabs(zeros(x0) - arbitrage(m, e_, s0, x0, e_, s0, x0, p)) < 1e-13
-    #     @test maxabs(s0 - transition(m, e_, s0, x0, e_, p)) < 1e-13
-    #     @test maxabs(v0 - value(m, e_, s0, x0, v0, e_, s0, x0, v0, p)) < 1e-13
-    #     @test maxabs([0.0, 0.0] - controls_lb(m, e_, s0, p)) < 1e-13
+    #     @test maximum(abs, zeros(x0) - arbitrage(m, e_, s0, x0, e_, s0, x0, p)) < 1e-13
+    #     @test maximum(abs, s0 - transition(m, e_, s0, x0, e_, p)) < 1e-13
+    #     @test maximum(abs, v0 - value(m, e_, s0, x0, v0, e_, s0, x0, v0, p)) < 1e-13
+    #     @test maximum(abs, [0.0, 0.0] - controls_lb(m, e_, s0, p)) < 1e-13
     #     @test [Inf, Inf] == controls_ub(m, e_, s0, p)
     #
     #     # these two aren't implemented for the model above
@@ -334,15 +334,15 @@
     #     # Test mutating versions
     #     res = ones(x0)
     #     arbitrage!(m, res, e_, s0, x0, e_, s0, x0, p)
-    #     @test maxabs(zeros(x0) - res) < 1e-13
+    #     @test maximum(abs, zeros(x0) - res) < 1e-13
     #
     #     s1 = ones(s0)
     #     transition!(m, s1, e_, s0, x0, e_, p)
-    #     @test maxabs(s0 - s1) < 1e-13
+    #     @test maximum(abs, s0 - s1) < 1e-13
     #
     #     v1 = ones(v0)
     #     value!(m, v1, e_, s0, x0, v0, e_, s0, x0, v0, p)
-    #     @test maxabs(v0 - v1) < 1e-13
+    #     @test maximum(abs, v0 - v1) < 1e-13
     #
     #     bounds = ones(x0)
     #     controls_ub!(m, bounds, e_, s0, p)

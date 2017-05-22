@@ -52,7 +52,7 @@ function time_iteration_direct(model, process, init_dr; verbose::Bool=true,
     verbose && @printf "%-6s%-12s\n" "It" "SA"
     verbose && println(repeat("-", 14))
 
-    maxabsdiff(_a, _b) = maxabs(_a - _b)
+    maxabsdiff(_a, _b) = maximum(abs, _a - _b)
 
     ###############################   Iteration loop
 
@@ -92,7 +92,7 @@ function time_iteration_direct(model, process, init_dr; verbose::Bool=true,
           # apply bounds
           broadcast!(clamp, x1[i], x1[i], x_lb[i], x_ub[i])
           # update error
-          err = max(err, maxabs(x1[i] - x0[i]))
+          err = max(err, maximum(abs, x1[i] - x0[i]))
           # copy controls back into x0
           copy!(x0[i], x1[i])
       end

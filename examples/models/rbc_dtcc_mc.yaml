@@ -77,17 +77,13 @@ calibration:
 domain:
     k: [k*0.5, k*1.5]
 
+exogenous: !MarkovChain
+    values: [[-0.01, 0.1],[0.01, 0.5]]
+    transitions: [[0.4, 0.6], [0.6, 0.4]]
+
 options:
 
-    exogenous: !MarkovChain
-        values: [[-0.01, 0.1],[0.01, 0.5]]
-        transitions: [[0.4, 0.6], [0.6, 0.4]]
 
     grid: !Cartesian
-        a: [k*0.5]
-        b: [k*1.5]
         orders: [50]
-        mu: 2
 
-    random:
-        any: 0.1

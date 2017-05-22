@@ -49,15 +49,15 @@ using NLsolve
 
 function residual(model, dprocess, s, x::Array{Float64,2}, p, dr)
     n_m = max(1, n_nodes(dprocess))
-    xx = destack(x, n_m)
+    xx = destack0(x, n_m)
     res = residual(model, dprocess, s, xx, p, dr)
-    return stack(res)
+    return stack0(res)
 end
 
 """
 #TODO
 """
-function destack(x::Array{Float64,2}, n_m::Int)
+function destack0(x::Array{Float64,2}, n_m::Int)
     N = div(size(x, 1), n_m)
     xx = reshape(x, N, n_m, size(x, 2))
     return Array{Float64,2}[xx[:, i, :] for i=1:n_m]
@@ -66,7 +66,7 @@ end
 """
 #TODO
 """
-function stack(x::Array{Array{Float64,2},1})::Array{Float64,2}
+function stack0(x::Array{Array{Float64,2},1})::Array{Float64,2}
      return cat(1, x...)
 end
 
@@ -144,7 +144,7 @@ function time_iteration(model, process, init_dr;
     # loop option
     init_res = residual(model, dprocess, endo_nodes, x0, p, dr)
     it = 0
-    err = maxabs(stack(init_res))
+    err = maximum(abs, stack0(init_res))
     err_0 = err
 
     verbose && @printf "%-6s%-12s%-12s%-5s\n" "It" "SA" "gain" "nit"
@@ -157,12 +157,12 @@ function time_iteration(model, process, init_dr;
 
         set_values!(dr, x0)
 
-        xx0 = stack(x0)
+        xx0 = stack0(x0)
         fobj(u) = residual(model, dprocess, endo_nodes, u, p, dr)
         xx1, nit = serial_solver(fobj, xx0, lb, ub, maxit=10, verbose=false)
-        x1 = destack(xx1, nsd)
+        x1 = destack0(xx1, nsd)
 
-        err = maxabs(xx1 - xx0)
+        err = maximum(abs, xx1 - xx0)
         copy!(x0, x1)
         gain = err / err_0
         err_0 = err

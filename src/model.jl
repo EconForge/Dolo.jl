@@ -63,18 +63,20 @@ function get_equations(model::ASModel)
     # prep equations: parse to Expr
     _eqs = OrderedDict{Symbol,Vector{Expr}}()
     for k in keys(recipe[:specs])
-        # we handle these separately
-        (k in [:arbitrage,]) && continue
-        these_eq = get(eqs, (k), [])
-        # verify that we have at least 1 equation if section is required
-        if !get(recipe[:specs][k], :optional, false)
-            length(these_eq) == 0 && error("equation section $k required")
+        if k in keys(eqs)
+            # we handle these separately
+            (k in [:arbitrage,]) && continue
+            these_eq = get(eqs, (k), [])
+            # verify that we have at least 1 equation if section is required
+            if !get(recipe[:specs][k], :optional, false)
+                length(these_eq) == 0 && error("equation section $k required")
+            end
+            # finally pass in the expressions
+            _eqs[k] = Expr[Dolo._to_expr(eq) for eq in these_eq]
         end
-        # finally pass in the expressions
-        _eqs[k] = Expr[Dolo._to_expr(eq) for eq in these_eq]
     end
     # handle the arbitrage, arbitrage_exp, controls_lb, and controls_ub
-    if haskey(recipe[:specs], :arbitrage)
+    if haskey(recipe[:specs], :arbitrage) && (:arbitrage in keys(eqs))
         c_lb, c_ub, arb = Dolo._handle_arbitrage(eqs[:arbitrage],
                                             _symbols[:controls])
         _eqs[:arbitrage] = arb
