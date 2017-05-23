@@ -166,7 +166,7 @@ Solve for the value function and associated decision rule using value function i
 * `dr`: Solved decision rule object.
 * `drv`: Solved value function object.
 """
-function solve_policy(model, pdr; maxit::Int=1000, verbose::Bool=true, details::Bool=false)
+function solve_policy(model, pdr; maxit::Int=1000, verbose::Bool=true, details::Bool=true)
 
     # get grid for endogenous
     grid = model.grid

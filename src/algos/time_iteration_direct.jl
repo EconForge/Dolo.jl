@@ -13,7 +13,7 @@ If the stochastic process for the model is not explicitly provided, the process 
 * `dr`: Solved decision rule.
 """
 function time_iteration_direct(model, process, init_dr; verbose::Bool=true,
-    maxit::Int=100, tol::Float64=1e-8, details::Bool=false)
+    maxit::Int=100, tol::Float64=1e-8, details::Bool=true)
 
     # Grid
     grid = model.grid

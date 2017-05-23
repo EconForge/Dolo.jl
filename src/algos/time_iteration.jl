@@ -103,7 +103,7 @@ If the stochastic process for the model is not explicitly provided, the process 
 * `dr`: Solved decision rule.
 """
 function time_iteration(model, dprocess::AbstractDiscretizedProcess, init_dr;
-      verbose::Bool=true, maxit::Int=100, tol::Float64=1e-8, details::Bool=false)
+      verbose::Bool=true, maxit::Int=100, tol::Float64=1e-8, details::Bool=true)
 
     # get grid for endogenous
     grid = model.grid

@@ -103,7 +103,7 @@ function get_gf_derivatives(model::AbstractModel)
 end
 
 
-function perturbate(model::Model; details=false)
+function perturbate(model::Model; details=true)
 
     g_s, g_x, f_s, f_x, f_S, f_X = get_gf_derivatives(model)
     nx = size(g_x, 2)
