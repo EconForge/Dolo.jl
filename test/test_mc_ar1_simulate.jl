@@ -20,10 +20,6 @@ model = Dolo.yaml_import(filename)
 N=10
 T= 50
 Index_mc = Dolo.simulate(model.exogenous, N, T, 1)
-# ind2 = zeros(Int,1,N,T)
-# for i in 1:N
-#   ind2[1,i,:]=Index_mc[:,i]
-# end
 
 s0=model.calibration[:states]
 
@@ -88,8 +84,11 @@ model2 = Dolo.yaml_import(filename)
 
 s0=model2.calibration[:states]
 m0 = model2.calibration[:exogenous]
+ll=model2.symbols[:exogenous]
 driving_process = Dolo.simulate(model2.exogenous, N, T, m0)
-
+typeof(driving_process)<:AxisArrays.AxisArray
+typeof(driving_process)==AxisArrays
+typeof(driving_process)==AbstractArray
 # permutedims(driving_process, [2,1,3])
 sim_ar = Dolo.simulate(model2, dr2, driving_process)
 
@@ -118,7 +117,6 @@ sim_ar2==sim_ar
 # Check it works without providing a driving process
 sim_ar3 = Dolo.simulate(model2, dr2, s0)
 
-
 # Check it works without providing a driving process
 sim_ar4 = Dolo.simulate(model2, dr2, s0, m0; N=100)
 Tvalues = linspace(1, sim_ar4[Axis{:T}][end], sim_ar4[Axis{:T}][end])
@@ -133,3 +131,13 @@ end
 plt.title("Simulations");
 plt.xlabel("Horizon");
 plt.ylabel("Capital");
+
+################################################################################
+# Tabulation
+s0=model2.calibration[:states]
+m0 = model2.calibration[:exogenous]
+
+Tab= Dolo.tabulate(model2, dr2, :k, s0, m0)
+Dolo.tabulate(model2, dr2, :z)
+
+Tab[:n]

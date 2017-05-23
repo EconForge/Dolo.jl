@@ -7,7 +7,7 @@ import Unitful: s, ms, µs
 
 
 function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
-                  s0::AbstractVector, driving_process::Union{Array{Int64,2},Array{Float64,3}})
+                  s0::AbstractVector, driving_process::Union{AbstractArray{Int64,2},AbstractArray{Float64,3}})
 
     # driving_process: (ne,N,T)
 
@@ -15,7 +15,7 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
     calib = model.calibration
     params = calib[:parameters]
 
-    if typeof(driving_process)==Array{Int64,2}
+    if typeof(driving_process)<:AbstractArray{Int64,2}
           N = size(driving_process,2)
           T = size(driving_process,1)
           epsilons = zeros(Int,1,N,T)
@@ -48,7 +48,7 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
     for t in 1:T
         s = view(s_simul, :, :, t)
         m = view(epsilons, :, :, t)
-        if typeof(driving_process)==Array{Float64,3}
+        if typeof(driving_process)<:AbstractArray{Float64,3}
             m_val = m
             x = dr(m,s)
         else
@@ -59,7 +59,7 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
         x_simul[:, :, t] = x
         if t < T
           M = view(epsilons, :, :, t+1)
-          if typeof(driving_process)==Array{Float64,3}
+          if typeof(driving_process)<:AbstractArray{Float64,3}
               M_val = M
           else
               M_cat=cat(1,M)[:,1]
@@ -73,7 +73,7 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
 
     sim = cat(2, epsilons, s_simul, x_simul)::Array{Float64,3}
 
-    if typeof(driving_process)==Array{Float64,3}
+    if typeof(driving_process)<:AbstractArray{Float64,3}
         model_sym=model.symbols[:exogenous]
     else
         model_sym=:mc_process
@@ -90,7 +90,7 @@ end
 
 
 function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
-                  driving_process::Union{Array{Int64,2},Array{Float64,3}})
+                  driving_process::Union{AbstractArray{Int64,2},AbstractArray{Float64,3}})
     s0 = model.calibration[:states]
     return simulate(model, dr, s0, driving_process)
 end
@@ -173,34 +173,35 @@ function tabulate(model::AbstractNumericModel, dr::AbstractDecisionRule, state::
     tb = hcat([e' for e in l1']...)
 
     l2 = cat(1, model.symbols[:exogenous] , model.symbols[:states] , model.symbols[:controls] )
-    ll=[string(i) for i in l2]
-    d = OrderedDict()
-    for i=1:length(ll)
-        d[ll[i]] = tb[:,i]
-    end
 
-    df = DataFrames.DataFrame(d)
-
-    return df
-
+    # Peace of code if you want to come back to the DataFrames
+    # ll=[string(i) for i in l2]
+    # d = OrderedDict()
+    # for i=1:length(ll)
+    #     d[ll[i]] = tb[:,i]
+    # end
+    #
+    # df = DataFrames.DataFrame(d)
+    tab_AA = AxisArray(tb, Axis{state}(tb[:,index+1]), Axis{:V}(l2))
+    return tab_AA'
+    # return df
 end
 
 
 
 function tabulate(model::AbstractNumericModel, dr::AbstractDecisionRule, state::Symbol,
                   s0::AbstractVector, m0::AbstractVector;  n_steps=100)
-    index = findfirst(model.symbols[:states],:z)
+    index = findfirst(model.symbols[:states],state)
     bounds = [dr.grid_endo.min[index], dr.grid_endo.max[index]]
-    df = tabulate(model, dr, state,bounds, s0, m0;  n_steps=100)
+    df = tabulate(model, dr, state, bounds, s0, m0;  n_steps=100)
     return df
-
 end
 
 
 function tabulate(model::AbstractNumericModel, dr::AbstractDecisionRule, state::Symbol,
                   s0::AbstractVector;  n_steps=100)
     m0 = model.calibration[:exogenous]
-    df = tabulate(model, dr, state, s0;  n_steps=100)
+    df = tabulate(model, dr, state, s0, m0;  n_steps=100)
     return df
 end
 
