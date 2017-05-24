@@ -261,7 +261,7 @@ function discretize_mc(var::VAR1; N=3)
     @assert maximum(abs, R-eye(d)*ρ)<1e-16
 
     sigma = var.Sigma
-    
+
     if size(var.Sigma,1)==1
         mc_qe =QE.rouwenhorst(N, ρ, sigma[1])
         return Dolo.DiscreteMarkovProcess(mc_qe.p, appenddim(collect(mc_qe.state_values)))

@@ -86,6 +86,7 @@ function get_equations(model::ASModel)
 
     defs = get_definitions(model)
     dynvars = cat(1, get_variables(model), keys(defs)...)
+
     for eqtype in keys(_eqs)
         _eqs[eqtype] = [sanitize(eq,dynvars) for eq in _eqs[eqtype]]
     end
@@ -93,9 +94,6 @@ function get_equations(model::ASModel)
     return _eqs
 end
 
-function definitions(model::ASModel)
-    model.data[:definitions]
-end
 
 function get_infos(model::ASModel)
     get(model.data, :infos, Dict())
@@ -108,7 +106,8 @@ end
 function get_definitions(model::ASModel)
     # parse defs so values are Expr
     defs = get(model.data,:definitions,Dict())
-    _defs = OrderedDict{Symbol,Expr}([(Symbol(k), Dolo._to_expr(v)) for (k, v) in defs])
+    dynvars = cat(1, get_variables(model), keys(defs)...)
+    _defs = OrderedDict{Symbol,Expr}([(Symbol(k), Dolo.sanitize( Dolo._to_expr(v),dynvars)) for (k, v) in defs])
     return _defs
 end
 
