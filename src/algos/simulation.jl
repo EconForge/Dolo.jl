@@ -3,7 +3,7 @@ using AxisArrays
 
 
 
-function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
+function simulate(model::AbstractModel, dr::AbstractDecisionRule,
                   s0::AbstractVector, driving_process::Union{AbstractArray{Int64,2},AbstractArray{Float64,3}})
 
     # driving_process: (ne,N,T)
@@ -85,7 +85,7 @@ end
 
 
 
-function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
+function simulate(model::AbstractModel, dr::AbstractDecisionRule,
                   driving_process::Union{AbstractArray{Int64,2},AbstractArray{Float64,3}})
 
     s0 = model.calibration[:states]

@@ -151,7 +151,7 @@ function choice(x, n, cumul)
 end
 
 # function simulate(nodes::Array{Float64,2}, transitions::Array{Float64,2},N::Int, T::Int; i0::Int=1)
-function simulate(process::Dolo.DiscreteMarkovProcess,N::Int, T::Int, i0::Int; return_indexes=true)
+function simulate(process::Dolo.DiscreteMarkovProcess, N::Int, T::Int, i0::Int; return_indexes=true)
 
       n_states = size(process.values,1)
 
@@ -240,7 +240,7 @@ function discretize(var::VAR1)
     return dis
 end
 
-function discretize(var::VAR1, n_states::Array{Int,1}, n_integration::Array{Int,1}; n_std::Int=2,)
+function discretize(var::VAR1, n_states::Array{Int,1}, n_integration::Array{Int,1}; n_std::Int=2)
     R = var.R
     M = var.mu
     Sigma = var.Sigma
