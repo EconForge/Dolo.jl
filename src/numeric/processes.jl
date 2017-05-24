@@ -117,7 +117,8 @@ function simulate(mvn::MvNormal, N::Integer, T::Integer, e0::Vector{Float64}; st
             out[:,:,t] = rand(dist, N)
         end
     end
-    return out
+    out_AA = AxisArray(out, Axis{:V}(1:d), Axis{:N}(1:N),  Axis{:T}(1:T))
+    return out_AA
 end
 
 function simulate(mvn::MvNormal, N::Integer, T::Integer; stochastic=true)
@@ -150,7 +151,7 @@ function choice(x, n, cumul)
 end
 
 # function simulate(nodes::Array{Float64,2}, transitions::Array{Float64,2},N::Int, T::Int; i0::Int=1)
-function simulate(process::Dolo.DiscreteMarkovProcess,N::Int, T::Int, i0::Int; return_indexes=true)
+function simulate(process::Dolo.DiscreteMarkovProcess, N::Int, T::Int, i0::Int; return_indexes=true)
 
       n_states = size(process.values,1)
 
@@ -169,11 +170,16 @@ function simulate(process::Dolo.DiscreteMarkovProcess,N::Int, T::Int, i0::Int; r
       end
 
       Index_mc = simul
+
+      AA = AxisArray(Index_mc, Axis{:T}(1:T),  Axis{:N}(1:N))
+
+
       if return_indexes==true
-            return Index_mc
+            return AA
       else
             Values_mc = process.values[Index_mc]
-            return Values_mc
+            Values_mc_AA = AxisArray(Values_mc, Axis{:T}(1:T),  Axis{:N}(1:N))
+            return Values_mc_AA
       end
 
 
@@ -234,7 +240,7 @@ function discretize(var::VAR1)
     return dis
 end
 
-function discretize(var::VAR1, n_states::Array{Int,1}, n_integration::Array{Int,1}; n_std::Int=2,)
+function discretize(var::VAR1, n_states::Array{Int,1}, n_integration::Array{Int,1}; n_std::Int=2)
     R = var.R
     M = var.mu
     Sigma = var.Sigma
@@ -297,7 +303,7 @@ function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64};
     - T - number of periods to simulate;
 
   The function returns:
-    - XN - simulated data, ordered as (n, N, T), where n is the number of variables;
+    - XN - simulated data, ordered as (n, N, T); - no need, cuz using AxisArray
   """
   n = size(var.mu, 1);
   # srand(123) # Setting the seed
@@ -322,7 +328,9 @@ function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64};
         end
       end
   end
-  return permutedims(XN,[3,1,2])  #, E
+  XN = permutedims(XN,[3,1,2])
+  XN_AA = AxisArray(XN, Axis{:V}(1:n), Axis{:N}(1:N),  Axis{:T}(1:T))
+  return XN_AA
 end
 
 
