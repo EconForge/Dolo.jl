@@ -49,8 +49,8 @@ abstract AbstractDistribution
 function _build_dist(data::Associative, calib::ModelCalibration)
     if data[:tag] == :Normal
         n = length(calib[:shocks])
-        sigma = reshape(vcat(data[:sigma]...), n, n)
-        return Distributions.MvNormal(_to_Float64(sigma))
+        Sigma = reshape(vcat(data[:Sigma]...), n, n)
+        return Distributions.MvNormal(_to_Float64(Sigma))
     else
         m = "don't know how to handle distribution of type $(data[:tag])"
         error(m)
@@ -77,21 +77,20 @@ function _build_exogenous_entry(data::Associative, calib::ModelCalibration)
         transitions = eval_with(calib, data[:transitions])
         Π = to_matrix(transitions)
         return MarkovChain(Π, states_values)
-    elseif data[:tag] == :AR1
-        # need to extract rho an dsigma
+    elseif data[:tag] == :VAR1
+        # need to extract rho an dSigma
         rho = eval_with(calib, data[:rho])
-        println(rho)
-        sigma = eval_with(calib, data[:sigma])
+        Sigma = eval_with(calib, data[:Sigma])
         N = eval_with(calib, get(data, :N, 10))  # TODO: should default be 10??
         # rho = to_matrix(rho)
-        sigma = to_matrix(sigma)
+        Sigma = to_matrix(Sigma)
         N = to_vector(N)
-        return AR1(rho, sigma)
+        return VAR1(rho, Sigma)
     elseif data[:tag] == :Normal
-        # need to extract rho an dsigma
-        sigma = eval_with(calib, data[:sigma])
-        sigma = to_matrix(sigma)
-        return Normal(sigma)
+        # need to extract rho an dSigma
+        Sigma = eval_with(calib, data[:Sigma])
+        Sigma = to_matrix(Sigma)
+        return Normal(Sigma)
     end
     m = "don't know how to handle exogenous process of type $(data[:tag])"
     error(m)
