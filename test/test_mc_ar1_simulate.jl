@@ -9,6 +9,7 @@ using AxisArrays
 
 
 filename = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
+model = Dolo.Model(Pkg.dir("Dolo", "examples", "models", "rbc_dtcc_mc.yaml"), print_code=true)
 model = Dolo.yaml_import(filename)
 @time dr = Dolo.time_iteration(model, verbose=true, maxit=10000)
 
@@ -79,6 +80,9 @@ plt.ylabel("Capital");
 filename = joinpath(path,"examples","models","rbc_dtcc_iid_ar1.yaml")
 model2 = Dolo.yaml_import(filename)
 @time dr2 = Dolo.time_iteration(model2, verbose=true, maxit=10000)
+
+Dolo.discretize(model2.exogenous)
+Dolo.discretize_mc(model2.exogenous,5)
 
 s0=model2.calibration[:states]
 m0 = model2.calibration[:exogenous]
