@@ -9,9 +9,9 @@ using AxisArrays
 
 
 filename = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
-model = Dolo.Model(Pkg.dir("Dolo", "examples", "models", "rbc_dtcc_mc.yaml"), print_code=true)
+# model = Dolo.Model(Pkg.dir("Dolo", "examples", "models", "rbc_dtcc_mc.yaml"), print_code=true)
 model = Dolo.yaml_import(filename)
-@time dr = Dolo.time_iteration(model, verbose=true, maxit=10000)
+@time dr = Dolo.time_iteration(model, verbose=true, maxit=10000, details=false)
 
 ###############################################################################
 ### Simulate a model with a Markov Chain
@@ -73,25 +73,23 @@ plt.title("Simulations");
 plt.xlabel("Horizon");
 plt.ylabel("Capital");
 
+
+################################################################################
+# Tabulation
+s0=model.calibration[:states]
+m0=1
+
+Dolo.tabulate(model, dr, :k, s0, m0)
+
+
 # Check Simulation work for AR1 process
 
 ####################################################################################
 
 filename = joinpath(path,"examples","models","rbc_dtcc_iid_ar1.yaml")
 model2 = Dolo.yaml_import(filename)
-@time dr2 = Dolo.time_iteration(model2, verbose=true, maxit=10000)
+@time dr2 = Dolo.time_iteration(model2, verbose=true, maxit=10000, details=false)
 
-Dolo.discretize(model2.exogenous)
-Dolo.discretize_mc(model2.exogenous,5)
-
-s0=model2.calibration[:states]
-m0 = model2.calibration[:exogenous]
-ll=model2.symbols[:exogenous]
-driving_process = Dolo.simulate(model2.exogenous, N, T, m0)
-typeof(driving_process)<:AxisArrays.AxisArray
-typeof(driving_process)==AxisArrays
-typeof(driving_process)==AbstractArray
-# permutedims(driving_process, [2,1,3])
 sim_ar = Dolo.simulate(model2, dr2, driving_process)
 
 Tvalues = linspace(1, sim_ar[Axis{:T}][end], sim_ar[Axis{:T}][end])
@@ -140,6 +138,7 @@ s0=model2.calibration[:states]
 m0 = model2.calibration[:exogenous]
 
 Tab= Dolo.tabulate(model2, dr2, :k, s0, m0)
-Dolo.tabulate(model2, dr2, :z)
+Dolo.tabulate(model2, dr2, :k)
+
 
 Tab[:n]

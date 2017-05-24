@@ -153,7 +153,8 @@ end
 
 
 function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
-                  bounds::Array{Float64,1}, s0::AbstractVector, m0::AbstractVector;  n_steps=100)
+                  bounds::Array{Float64,1}, s0::AbstractVector,
+                  m0::Union{Int,AbstractVector};  n_steps=100)
 
     index = findfirst(model.symbols[:states],state)
     Svalues = linspace(bounds[1], bounds[2], n_steps)
@@ -165,7 +166,13 @@ function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
     l1 = [mm, svec, xvec]
     tb = hcat([e' for e in l1']...)
 
-    l2 = cat(1, model.symbols[:exogenous] , model.symbols[:states] , model.symbols[:controls] )
+    if typeof(dr)<:Dolo.DecisionRule{Dolo.UnstructuredGrid,Dolo.CartesianGrid}
+      model_sym=:mc_process
+    else
+      model_sym=model.symbols[:exogenous]
+    end
+
+    l2 = cat(1, model_sym , model.symbols[:states] , model.symbols[:controls] )
 
     # Peace of code if you want to come back to the DataFrames
     # ll=[string(i) for i in l2]
@@ -183,7 +190,7 @@ end
 
 
 function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
-                  s0::AbstractVector, m0::AbstractVector;  n_steps=100)
+                  s0::AbstractVector, m0::Union{Int,AbstractVector};  n_steps=100)
     index = findfirst(model.symbols[:states],state)
     bounds = [dr.grid_endo.min[index], dr.grid_endo.max[index]]
     df = tabulate(model, dr, state, bounds, s0, m0;  n_steps=100)
@@ -193,7 +200,12 @@ end
 
 function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
                   s0::AbstractVector;  n_steps=100)
-    m0 = model.calibration[:exogenous]
+
+    if  typeof(dr)<:Dolo.DecisionRule{Dolo.UnstructuredGrid,Dolo.CartesianGrid}
+      m0=1
+    else
+      m0 = model.calibration[:exogenous]
+    end
     df = tabulate(model, dr, state, s0, m0;  n_steps=100)
     return df
 end
