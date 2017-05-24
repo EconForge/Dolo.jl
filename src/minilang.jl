@@ -10,6 +10,13 @@ immutable Cartesian <: AbstractGrid
     orders::Vector{Int}
 end
 
+type Domain
+    states::Vector{Symbol}
+    min::Vector{Float64}
+    max::Vector{Float64}
+end
+
+
 function Cartesian(stuff::Associative, calib::ModelCalibration)
     kind = get(stuff, :tag, nothing)
     if kind != :Cartesian
@@ -73,9 +80,10 @@ function _build_exogenous_entry(data::Associative, calib::ModelCalibration)
     elseif data[:tag] == :AR1
         # need to extract rho an dsigma
         rho = eval_with(calib, data[:rho])
+        println(rho)
         sigma = eval_with(calib, data[:sigma])
         N = eval_with(calib, get(data, :N, 10))  # TODO: should default be 10??
-        rho = to_matrix(rho)
+        # rho = to_matrix(rho)
         sigma = to_matrix(sigma)
         N = to_vector(N)
         return AR1(rho, sigma)

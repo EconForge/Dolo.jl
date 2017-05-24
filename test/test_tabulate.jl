@@ -1,11 +1,6 @@
 path = Pkg.dir("Dolo")
 
-Pkg.build("QuantEcon")
 import Dolo
-using DataArrays
-import DataFrames
-using RDatasets
-using DataStructures
 import PyPlot
 
 filename = joinpath(path,"examples","models","rbc_dtcc_iid_ar1.yaml")

@@ -35,8 +35,7 @@ Evaluate the value function under the given decision rule.
 function evaluate_policy(model, dr; verbose::Bool=true, maxit::Int=5000)
 
     # get grid for endogenous
-    gg = model.options.grid
-    grid = CartesianGrid(gg.a, gg.b, gg.orders) # temporary compatibility
+    grid = model.grid
 
     # obtain discrete exogenous process
     process = model.exogenous
@@ -103,7 +102,7 @@ function evaluate_policy(model, dr; verbose::Bool=true, maxit::Int=5000)
                      S = Dolo.transition(model, m, s[n, :], x[i][n, :], M, p)
 
                      # Update value function
-                     E_V[i][n, :] += w*drv(i, j, S)
+                      E_V[i][n, :] += w*drv(i, j, S)
                  end
             end
         end
@@ -112,7 +111,7 @@ function evaluate_policy(model, dr; verbose::Bool=true, maxit::Int=5000)
         err = 0.0
         for i in 1:length(v)
             broadcast!((_u, _E_v) -> _u + β * _E_v, v[i], u[i], E_V[i])
-            err = max(err, maxabs(v[i] - v0[i]))
+            err = max(err, maximum(abs, v[i] - v0[i]))
             copy!(v0[i], v[i])
             fill!(E_V[i], 0.0)
         end
@@ -140,7 +139,7 @@ Evaluate the right hand side of the value function at given values of states, co
 * `p::Vector{Float64}`: Model parameters.
 # Returns
 * `E_V::`: Right hand side of the value function.
-"""    
+"""
 function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64},
                       x0::Vector{Float64}, p::Vector{Float64})
     m = node(dprocess, i)
@@ -167,11 +166,10 @@ Solve for the value function and associated decision rule using value function i
 * `dr`: Solved decision rule object.
 * `drv`: Solved value function object.
 """
-function solve_policy(model, pdr; maxit::Int=1000, verbose::Bool=true, infos::Bool=false)
+function solve_policy(model, pdr; maxit::Int=1000, verbose::Bool=true, details::Bool=true)
 
     # get grid for endogenous
-    gg = model.options.grid
-    grid = CartesianGrid(gg.a, gg.b, gg.orders) # temporary compatibility
+    grid = model.grid
 
     β=model.calibration.flat[:beta]
 
@@ -229,7 +227,7 @@ function solve_policy(model, pdr; maxit::Int=1000, verbose::Bool=true, infos::Bo
     it_eval = 0
 
 
-    optim_opts = Optim.OptimizationOptions(x_tol=1e-9, f_tol=1e-9)
+    optim_opts = Optim.Options(x_tol=1e-9, f_tol=1e-9)
 
     mode = :improve
 
@@ -256,7 +254,7 @@ function solve_policy(model, pdr; maxit::Int=1000, verbose::Bool=true, infos::Bo
                 # compute diff in values
                 err_eval = 0.0
                 for i in 1:nsd
-                    err_eval = max(err_eval, maxabs(v[i] - v0[i]))
+                    err_eval = max(err_eval, maximum(abs, v[i] - v0[i]))
                     copy!(v0[i], v[i])
                 end
                 converged_eval = (it_eval>=maxit_eval) || (err_eval<tol_eval)
@@ -298,14 +296,14 @@ function solve_policy(model, pdr; maxit::Int=1000, verbose::Bool=true, infos::Bo
             # compute diff in values
             err_v = 0.0
             for i in 1:nsd
-                err_v = max(err_v, maxabs(v[i] - v0[i]))
+                err_v = max(err_v, maximum(abs, v[i] - v0[i]))
                 copy!(v0[i], v[i])
             end
             # compute diff in policy
             err_x = 0.0
             for i in 1:nsd
                 err_x = 0
-                err_x = max(err_x, maxabs(x[i] - x0[i]))
+                err_x = max(err_x, maximum(abs, x[i] - x0[i]))
                 copy!(x0[i], x[i])
             end
             # update values and policies
@@ -326,7 +324,7 @@ function solve_policy(model, pdr; maxit::Int=1000, verbose::Bool=true, infos::Bo
     end
 
 
-    if !infos
+    if !details
         dr = CachedDecisionRule(dprocess, grid, x0)
         return (dr.dr, drv.dr)
     else

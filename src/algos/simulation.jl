@@ -1,8 +1,5 @@
 using DataFrames
-using PyPlot
 using AxisArrays
-using Unitful
-import Unitful: s, ms, µs
 
 
 
@@ -38,8 +35,8 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
     nx = length(x0)
     nsx = nx+ns
 
-    s_simul = Array(Float64, N, ns, T)
-    x_simul = Array(Float64, N, nx, T)
+    s_simul = Array{Float64}(N, ns, T)
+    x_simul = Array{Float64}(N, nx, T)
     for i in 1:N
       s_simul[i, :, 1] = s0
       x_simul[i, :, 1] = x0
@@ -84,13 +81,13 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
     AA = AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
 
     return AA
-
 end
 
 
 
 function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule,
                   driving_process::Union{AbstractArray{Int64,2},AbstractArray{Float64,3}})
+
     s0 = model.calibration[:states]
     return simulate(model, dr, s0, driving_process)
 end
@@ -102,13 +99,13 @@ end
 ##
 
 # Unless stochastic and return_indexes are always == true, it will work
-function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule, s0::AbstractVector,
+function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector,
                   m0::Union{Int,AbstractVector}; N=1, T=40, option=true)
     driving_process = simulate(model.exogenous, N, T, m0)
     return simulate(model, dr, s0, driving_process)
 end
 
-function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule, s0::AbstractVector;
+function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector;
                   N=1, T=40, option=true)
     if typeof(dr)==Dolo.DecisionRule{Dolo.UnstructuredGrid,Dolo.CartesianGrid}
         m0 = 1
@@ -119,7 +116,7 @@ function simulate(model::AbstractNumericModel, dr::AbstractDecisionRule, s0::Abs
     return simulate(model, dr, s0, driving_process)
 end
 
-function simulate(model::AbstractNumericModel,  dr::AbstractDecisionRule; kwargs...)
+function simulate(model::AbstractModel,  dr::AbstractDecisionRule; kwargs...)
     s0 = model.calibration[:states]
     # m0 = model.calibration[:exogenous]
     return simulate(model, dr, s0; kwargs...)
@@ -129,19 +126,15 @@ end
 ## Impulse response functions
 ##
 
-function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
+function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, e1::AbstractVector; T::Integer=40)
-    m_simul=response(model.exogenous, e1; T=T)
-    if typeof(m_simul)==Array{Float64,3}
-      m_simul=(vec(m_simul)')'
-    else
-      m_simul = m_simul'
-    end
+    m_sim=response(model.exogenous, e1; T=T)
+    m_simul=reshape(m_sim, 1, size(m_sim)...)
     sim = simulate(model, dr, s0, m_simul)
-    return sim
+    return sim[1,:,:] # This is now an AxisArray which seems just fine !
 end
 
-function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
+function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, shock_name::Symbol; T::Integer=40)
     index_s = findfirst(model.symbols[:exogenous], shock_name)
     e1 = zeros(length(model.exogenous.mu))
@@ -152,14 +145,14 @@ end
 
 import DataFrames
 
-function response(model::AbstractNumericModel,  dr::AbstractDecisionRule,
+function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   shock_name::Symbol; kwargs...)
     s0 = model.calibration[:states]
     return response(model, dr, s0, shock_name;  kwargs...)
 end
 
 
-function tabulate(model::AbstractNumericModel, dr::AbstractDecisionRule, state::Symbol,
+function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
                   bounds::Array{Float64,1}, s0::AbstractVector, m0::AbstractVector;  n_steps=100)
 
     index = findfirst(model.symbols[:states],state)
@@ -189,7 +182,7 @@ end
 
 
 
-function tabulate(model::AbstractNumericModel, dr::AbstractDecisionRule, state::Symbol,
+function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
                   s0::AbstractVector, m0::AbstractVector;  n_steps=100)
     index = findfirst(model.symbols[:states],state)
     bounds = [dr.grid_endo.min[index], dr.grid_endo.max[index]]
@@ -198,34 +191,34 @@ function tabulate(model::AbstractNumericModel, dr::AbstractDecisionRule, state::
 end
 
 
-function tabulate(model::AbstractNumericModel, dr::AbstractDecisionRule, state::Symbol,
+function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
                   s0::AbstractVector;  n_steps=100)
     m0 = model.calibration[:exogenous]
     df = tabulate(model, dr, state, s0, m0;  n_steps=100)
     return df
 end
 
-function tabulate(model::AbstractNumericModel, dr::AbstractDecisionRule, state::Symbol;  n_steps=100)
+function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol;  n_steps=100)
     s0 = model.calibration[:states]
     df = tabulate(model, dr, state, s0;  n_steps=100)
     return df
 end
 
-
-
-function plot(model::AbstractNumericModel, dr::AbstractDecisionRule, state::Symbol,
-                  bounds::Array{Float64,1}, s0::AbstractVector, m0::AbstractVector,
-                  plot_controls::Vector{Symbol};  n_steps=100)
-
-
-    df = tabulate(model, dr, state,bounds, s0, m0;  n_steps=100)
-
-    for j in plot_controls
-      fig = PyPlot.figure(j,figsize=(3,3))
-      fig
-      PyPlot.plot(df[state], df[j], label=j)
-      PyPlot.legend()
-      # PyPlot.xlabel('state = {} | mstate = {}'.format(state, i0))
-    end
-
-end
+#
+# using PyPlot
+# function plot(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
+#                   bounds::Array{Float64,1}, s0::AbstractVector, m0::AbstractVector,
+#                   plot_controls::Vector{Symbol};  n_steps=100)
+#
+#
+#     df = tabulate(model, dr, state,bounds, s0, m0;  n_steps=100)
+#
+#     for j in plot_controls
+#       fig = PyPlot.figure(j,figsize=(3,3))
+#       fig
+#       PyPlot.plot(df[state], df[j], label=j)
+#       PyPlot.legend()
+#       # PyPlot.xlabel('state = {} | mstate = {}'.format(state, i0))
+#     end
+#
+# end

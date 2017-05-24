@@ -1,6 +1,6 @@
 """
 ```julia
-eval_jacobian(m::ANM, f!::Function, n::Int, before::Tuple, to_diff::Tuple,
+eval_jacobian(m::AbstractModel, f!::Function, n::Int, before::Tuple, to_diff::Tuple,
               after::Tuple, i::Int)
 ```
 
@@ -28,7 +28,7 @@ Dolo.eval_jacobian(mod, Dolo.transition!, 1, (m, s), (x,), (M, p), 1)
 ```
 
 """
-function eval_jacobian(m::ANM, f!::Function, n::Int, before::Tuple,
+function eval_jacobian(m::AbstractModel, f!::Function, n::Int, before::Tuple,
                        to_diff::Tuple, after::Tuple, i::Int)
     _f!(out, _) = f!(m, out, before..., to_diff[1:i-1]..., _,
                      to_diff[i+1:end]..., after...)
@@ -40,7 +40,7 @@ end
 
 """
 ```julia
-eval_jacobians(m::ANM, f!::Function, n::Int, before::Tuple, to_diff::Tuple,
+eval_jacobians(m::AbstractModel, f!::Function, n::Int, before::Tuple, to_diff::Tuple,
                after...)
 ```
 
@@ -60,7 +60,7 @@ m, s, x, M, p = mod.calibration[:exogenous, :states, :controls, :exogenous, :par
 Dolo.eval_jacobians(mod, Dolo.transition!, 1, (m,), (s, x,), M, p)
 ```
 """
-function eval_jacobians(m::ANM, f!::Function, n::Int, before::Tuple,
+function eval_jacobians(m::AbstractModel, f!::Function, n::Int, before::Tuple,
                         to_diff::Tuple, after...)
     out = Matrix{Float64}[eval_jacobian(m, f!, n, before, to_diff, after, i)
                           for i in 1:length(to_diff)]
@@ -68,12 +68,12 @@ end
 
 """
 ```julia
-eval_jacobians(m::ANM, f!::Function, n::Int, to_diff::Tuple, after...)
+eval_jacobians(m::AbstractModel, f!::Function, n::Int, to_diff::Tuple, after...)
 ```
 
 Version where no arguments come `before` `to_diff` when calling `f!`. The
 full version of `eval_jacboians` is called with `before` set to an empty
 tuple
 """
-eval_jacobians(m::ANM, f!::Function, n::Int, to_diff::Tuple, after...) =
+eval_jacobians(m::AbstractModel, f!::Function, n::Int, to_diff::Tuple, after...) =
     eval_jacobians(m, f!, n, tuple(), to_diff, after...)

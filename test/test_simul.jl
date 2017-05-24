@@ -5,8 +5,6 @@ path = Pkg.dir("Dolo")
 import Dolo
 
 using AxisArrays
-using Unitful
-import Unitful: s, ms, µs
 
 
 

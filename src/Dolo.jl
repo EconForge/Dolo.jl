@@ -17,11 +17,6 @@ import ForwardDiff
 import YAML
 using Compat; import Compat: String, view
 
-# export AbstractModel, AbstractSymbolicModel, AbstractNumericModel, ASM, ANM,
-#        SymbolicModel, NumericModel,
-#        FlatCalibration, GroupedCalibration, ModelCalibration, TaylorExpansion,
-#        RECIPES,
-
        # model functions
 export arbitrage, transition, auxiliary, value, expectation,
        direct_response, controls_lb, controls_ub, arbitrage_2, felicity,
@@ -35,16 +30,25 @@ export yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename, 
 
 export time_iteration, value_iteration, steady_state_residuals, simulation
 
+export ModelCalibration, FlatCalibration, GroupedCalibration
+
 # set up core types
-abstract AbstractModel{ID}
-abstract AbstractSymbolicModel{ID} <: AbstractModel{ID}
-abstract AbstractNumericModel{ID} <: AbstractModel{ID}
+abstract AbstractSymbolicModel{ID}
+# abstract AbstractSymbolicModel{ID} <: AbstractModel{ID}
+abstract AbstractModel{ID} <: AbstractSymbolicModel{ID}
 
-typealias ASM AbstractSymbolicModel
-typealias ANM AbstractNumericModel
-
+typealias ASModel AbstractSymbolicModel
+typealias AModel AbstractModel
 
 id{ID}(::AbstractModel{ID}) = ID
+
+#
+# # duplicate hierarchy to experiment with
+# @compat abstract type ASModel{ID} end                # symbolic model
+# @compat abstract type AModel{ID} <: ASModel{ID} end      # numeric model
+#
+
+
 
 # recursively make all keys at any layer of nesting a symbol
 # included here instead of util.jl so we can call it on RECIPES below
@@ -69,7 +73,6 @@ include("numeric/newton.jl")
 include("numeric/grids.jl")
 include("numeric/processes.jl")
 include("numeric/decision_rules.jl")
-include("numeric/taylor_series.jl")
 include("numeric/simulations.jl")
 include("numeric/derivatives.jl")
 
@@ -78,8 +81,8 @@ include("symbolic.jl")
 include("calibration.jl")
 include("minilang.jl")
 include("numeric.jl")
+include("model.jl")
 include("printing.jl")
-include("model_import.jl")
 
 include("algos/steady_state.jl")
 include("algos/time_iteration.jl")
