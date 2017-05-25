@@ -11,7 +11,7 @@ const yaml_types = let
             ("!Smolyak", :Smolyak),
              ("!Normal", :Normal),
              ("!MarkovChain", :MarkovChain),
-             ("!AR1", :AR1)]
+             ("!VAR1", :VAR1)]
     Dict{AbstractString,Function}([(t, (c, n) -> construct_type_map(s, c, n))
                            for (t, s) in pairs])
 end
