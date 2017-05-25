@@ -80,7 +80,11 @@ s0=model.calibration[:states]
 m0=1
 
 Dolo.tabulate(model, dr, :k, s0, m0)
-
+bounds = [4.0, 10.0]
+4.0
+dr.grid_endo.min[index]
+[dr.grid_endo.min[index], dr.grid_endo.max[index]]
+Dolo.tabulate(model, dr, :k, bounds, model.calibration[:states], model.calibration[:exogenous])
 
 # Check Simulation work for AR1 process
 
