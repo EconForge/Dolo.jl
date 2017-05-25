@@ -3,8 +3,8 @@ using AxisArrays
 
 
 
-function simulate(model::AbstractModel, dr::AbstractDecisionRule,
-                  s0::AbstractVector, driving_process::Union{AbstractArray{Int64,2},AbstractArray{Float64,3}})
+function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector,
+                  driving_process::Union{AbstractArray{Int64,2},AbstractArray{Float64,3}}; n_states::Int=0)
 
     # driving_process: (ne,N,T)
 
@@ -24,9 +24,15 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
       N = size(driving_process,2)
       T = size(driving_process,3)
     end
-
-
     epsilons = permutedims(epsilons, [2,1,3]) # (N,ne,T)
+
+    # Next 5 lines are added in order to addapt a code for models with continuous dr_process but solved with MC
+    if typeof(driving_process)<:AbstractArray{Int64,2} && typeof(model.exogenous)<:Dolo.VAR1
+    # if n_states == 0
+        m_exo_pr = discretize_mc(model.exogenous;N=n_states)
+    else
+       m_exo_pr = model.exogenous
+    end
 
     # calculate initial controls using decision rule
     x0 = dr(epsilons[1,:,1],s0)
@@ -50,7 +56,7 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
             x = dr(m,s)
         else
             m_ind=cat(1,m)[:,1]
-            m_val= model.exogenous.values[m_ind,:]
+            m_val= m_exo_pr.values[m_ind,:]
             x = dr(m_ind,s)
         end
         x_simul[:, :, t] = x
@@ -60,7 +66,7 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
               M_val = M
           else
               M_cat=cat(1,M)[:,1]
-              M_val= model.exogenous.values[M_cat,:]
+              M_val= m_exo_pr.values[M_cat,:]
           end
           ss = view(s_simul, :, :, t+1)
           Dolo.transition!(model, (ss), (m_val), (s), (x), (M_val), params)
@@ -70,10 +76,10 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
 
     sim = cat(2, epsilons, s_simul, x_simul)::Array{Float64,3}
 
-    if typeof(driving_process)<:AbstractArray{Float64,3}
-        model_sym=model.symbols[:exogenous]
+    if typeof(model.exogenous)<:Dolo.VAR1
+      model_sym=model.symbols[:exogenous]
     else
-        model_sym=:mc_process
+      model_sym=:mc_process
     end
 
     Ac= cat(1, model_sym, model.symbols[:states], model.symbols[:controls])
@@ -100,26 +106,38 @@ end
 
 # Unless stochastic and return_indexes are always == true, it will work
 function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector,
-                  m0::Union{Int,AbstractVector}; N=1, T=40, option=true)
-    driving_process = simulate(model.exogenous, N, T, m0)
-    return simulate(model, dr, s0, driving_process)
+                  m0::Union{Int,AbstractVector}; N=1, T=40, n_states::Int=0)
+    if typeof(dr)==Dolo.DecisionRule{Dolo.UnstructuredGrid,Dolo.CartesianGrid} && typeof(model.exogenous)<:Dolo.VAR1
+        mc_ar = discretize_mc(model.exogenous; N=n_states)
+        driving_process = simulate(mc_ar, N, T, 1)
+    else
+        driving_process = simulate(model.exogenous, N, T, m0)
+    end
+    return simulate(model, dr, s0, driving_process; n_states=n_states)
 end
 
+
 function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector;
-                  N=1, T=40, option=true)
+                  N=1, T=40, n_states::Int=0)
     if typeof(dr)==Dolo.DecisionRule{Dolo.UnstructuredGrid,Dolo.CartesianGrid}
         m0 = 1
     else
         m0 = model.calibration[:exogenous]
     end
-    driving_process = simulate(model.exogenous, N, T, m0)
-    return simulate(model, dr, s0, driving_process)
+
+    if typeof(dr)==Dolo.DecisionRule{Dolo.UnstructuredGrid,Dolo.CartesianGrid} && typeof(model.exogenous)<:Dolo.VAR1
+        mc_ar = discretize_mc(model.exogenous;N=n_states)
+        driving_process = simulate(mc_ar, N, T, 1)
+    else
+        driving_process = simulate(model.exogenous, N, T, m0)
+    end
+    return simulate(model, dr, s0, driving_process; n_states=n_states)
 end
 
-function simulate(model::AbstractModel,  dr::AbstractDecisionRule; kwargs...)
+function simulate(model::AbstractModel,  dr::AbstractDecisionRule; N=1, T=40, n_states::Int=0)
     s0 = model.calibration[:states]
     # m0 = model.calibration[:exogenous]
-    return simulate(model, dr, s0; kwargs...)
+    return simulate(model, dr, s0; n_states=n_states)
 end
 
 ##
