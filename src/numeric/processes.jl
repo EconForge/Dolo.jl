@@ -256,8 +256,9 @@ function discretize(var::VAR1, n_states::Array{Int,1}, n_integration::Array{Int,
     return DiscretizedProcess(grid, integration_nodes, integration_weights)
 end
 
+discretize(::Type{DiscretizedProcess},var::VAR1; args...) = discretize(var; args...)
 
-function discretize_mc(var::VAR1; N=3)
+function discretize(::Type{DiscreteMarkovProcess},var::VAR1; N=3)
 
     # it would be good to have a special type of VAR1 process
     # which has a scalar autoregressive term
@@ -269,7 +270,7 @@ function discretize_mc(var::VAR1; N=3)
     sigma = var.Sigma
 
     if size(var.Sigma,1)==1
-        mc_qe =QE.rouwenhorst(N, ρ, sigma[1])
+        mc_qe =QE.rouwenhorst(N, ρ, sqrt(sigma[1]))
         return Dolo.DiscreteMarkovProcess(mc_qe.p, appenddim(collect(mc_qe.state_values)))
     end
 
@@ -284,13 +285,13 @@ function discretize_mc(var::VAR1; N=3)
     return mc_prod
 end
 
-function discretize(tt, var::VAR1; kwargs...)
-    if tt == DiscreteMarkovProcess
-        return discretize_mc(var; kwargs...)
-    elseif tt == DiscretizedProcess
-        return Dolo.discretize(var; kwargs...)
-    end
-end
+# function discretize(tt, var::VAR1; kwargs...)
+#     if tt == DiscreteMarkovProcess
+#         return discretize_mc(var; kwargs...)
+#     elseif tt == DiscretizedProcess
+#         return Dolo.discretize(var; kwargs...)
+#     end
+# end
 
 
 function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64};
