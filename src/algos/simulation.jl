@@ -144,7 +144,7 @@ end
 
 function simulate(model::AbstractModel,  dr::AbstractDecisionRule; N=1, T=40)
     s0 = model.calibration[:states]
-    return simulate(model, dr, s0)
+    return simulate(model, dr, s0; N=N, T=T)
 end
 ##############################################################################
 # Sub-cases for |Int|
