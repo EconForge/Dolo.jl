@@ -1,10 +1,11 @@
 using DataFrames
 using AxisArrays
 
-
+###########################################################################
+# For Float
 
 function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector,
-                  driving_process::Union{AbstractArray{Int64,2},AbstractArray{Float64,3}}; n_states::Int=0)
+                  driving_process::AbstractArray{Float64,3})
 
     # driving_process: (ne,N,T)
 
@@ -12,27 +13,9 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVe
     calib = model.calibration
     params = calib[:parameters]
 
-    if typeof(driving_process)<:AbstractArray{Int64,2}
-          N = size(driving_process,2)
-          T = size(driving_process,1)
-          epsilons = zeros(Int,1,N,T)
-          for i in 1:N
-            epsilons[1,i,:]=driving_process[:,i]
-          end
-    else
-      epsilons = driving_process
-      N = size(driving_process,2)
-      T = size(driving_process,3)
-    end
-    epsilons = permutedims(epsilons, [2,1,3]) # (N,ne,T)
-
-    # Next 5 lines are added in order to addapt a code for models with continuous dr_process but solved with MC
-    if typeof(driving_process)<:AbstractArray{Int64,2} && typeof(model.exogenous)<:Dolo.VAR1
-    # if n_states == 0
-        m_exo_pr = discretize_mc(model.exogenous;N=n_states)
-    else
-       m_exo_pr = model.exogenous
-    end
+    N = size(driving_process,2)
+    T = size(driving_process,3)
+    epsilons = permutedims(driving_process, [2,1,3]) # (N,ne,T)
 
     # calculate initial controls using decision rule
     x0 = dr(epsilons[1,:,1],s0)
@@ -51,37 +34,79 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVe
     for t in 1:T
         s = view(s_simul, :, :, t)
         m = view(epsilons, :, :, t)
-        if typeof(driving_process)<:AbstractArray{Float64,3}
-            m_val = m
-            x = dr(m,s)
-        else
-            m_ind=cat(1,m)[:,1]
-            m_val= m_exo_pr.values[m_ind,:]
-            x = dr(m_ind,s)
-        end
+        x = dr(m,s)
         x_simul[:, :, t] = x
         if t < T
           M = view(epsilons, :, :, t+1)
-          if typeof(driving_process)<:AbstractArray{Float64,3}
-              M_val = M
-          else
-              M_cat=cat(1,M)[:,1]
-              M_val= m_exo_pr.values[M_cat,:]
-          end
+          ss = view(s_simul, :, :, t+1)
+          Dolo.transition!(model, (ss), (m), (s), (x), (M), params)
+          # s_simul[:, :, t+1] = ss
+        end
+    end
+    sim = cat(2, epsilons, s_simul, x_simul)::Array{Float64,3}
+
+    Ac= cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+    ll=[Symbol(i) for i in Ac]
+    AA = AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
+
+    return AA
+end
+
+
+###########################################################################
+# For Int (MC)
+function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector,
+                  driving_process::AbstractArray{Int64,2}, dp_process::Dolo.DiscreteMarkovProcess)
+
+    # driving_process: (ne,N,T)
+
+    # extract data from model
+    calib = model.calibration
+    params = calib[:parameters]
+
+    N = size(driving_process,2)
+    T = size(driving_process,1)
+    epsilons = zeros(Int,1,N,T)
+    for i in 1:N
+      epsilons[1,i,:]=driving_process[:,i]
+    end
+    epsilons = permutedims(epsilons, [2,1,3]) # (N,ne,T)
+
+    # calculate initial controls using decision rule
+    x0 = dr(epsilons[1,:,1],s0)
+    # get number of states and controls
+    ns = length(s0)
+    nx = length(x0)
+    nsx = nx+ns
+
+    s_simul = Array{Float64}(N, ns, T)
+    x_simul = Array{Float64}(N, nx, T)
+    for i in 1:N
+      s_simul[i, :, 1] = s0
+      x_simul[i, :, 1] = x0
+    end
+
+    for t in 1:T
+        s = view(s_simul, :, :, t)
+        m = view(epsilons, :, :, t)
+
+        m_ind=cat(1,m)[:,1]
+        m_val= dp_process.values[m_ind,:]
+        x = dr(m_ind,s)
+        x_simul[:, :, t] = x
+        if t < T
+          M = view(epsilons, :, :, t+1)
+
+          M_cat=cat(1,M)[:,1]
+          M_val= dp_process.values[M_cat,:]
           ss = view(s_simul, :, :, t+1)
           Dolo.transition!(model, (ss), (m_val), (s), (x), (M_val), params)
           # s_simul[:, :, t+1] = ss
         end
     end
-
     sim = cat(2, epsilons, s_simul, x_simul)::Array{Float64,3}
 
-    if typeof(model.exogenous)<:Dolo.VAR1
-      model_sym=model.symbols[:exogenous]
-    else
-      model_sym=:mc_process
-    end
-
+    model_sym=:mc_process
     Ac= cat(1, model_sym, model.symbols[:states], model.symbols[:controls])
     ll=[Symbol(i) for i in Ac]
     AA = AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
@@ -90,59 +115,64 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVe
 end
 
 
-
+##############################################################################
+# Sub-cases for |Floats|
 function simulate(model::AbstractModel, dr::AbstractDecisionRule,
-                  driving_process::Union{AbstractArray{Int64,2},AbstractArray{Float64,3}})
+                  driving_process::AbstractArray{Float64,3})
 
     s0 = model.calibration[:states]
     return simulate(model, dr, s0, driving_process)
 end
 
-
-
-##
 ## methods which simulate the process
 ##
 
 # Unless stochastic and return_indexes are always == true, it will work
 function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector,
-                  m0::Union{Int,AbstractVector}; N=1, T=40, n_states::Int=0)
-    if typeof(dr)==Dolo.DecisionRule{Dolo.UnstructuredGrid,Dolo.CartesianGrid} && typeof(model.exogenous)<:Dolo.VAR1
-        mc_ar = discretize_mc(model.exogenous; N=n_states)
-        driving_process = simulate(mc_ar, N, T, 1)
-    else
-        driving_process = simulate(model.exogenous, N, T, m0)
-    end
-    return simulate(model, dr, s0, driving_process; n_states=n_states)
+                  m0::Union{Int,AbstractVector}; N=1, T=40)
+      driving_process = simulate(model.exogenous, N, T, m0)
+    return simulate(model, dr, s0, driving_process)
 end
 
 
 function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector;
-                  N=1, T=40, n_states::Int=0)
-    if typeof(dr)==Dolo.DecisionRule{Dolo.UnstructuredGrid,Dolo.CartesianGrid}
-        m0 = 1
-    else
+                  N=1, T=40)
         m0 = model.calibration[:exogenous]
-    end
-
-    if typeof(dr)==Dolo.DecisionRule{Dolo.UnstructuredGrid,Dolo.CartesianGrid} && typeof(model.exogenous)<:Dolo.VAR1
-        mc_ar = discretize_mc(model.exogenous;N=n_states)
-        driving_process = simulate(mc_ar, N, T, 1)
-    else
         driving_process = simulate(model.exogenous, N, T, m0)
-    end
-    return simulate(model, dr, s0, driving_process; n_states=n_states)
+    return simulate(model, dr, s0, driving_process)
 end
 
-function simulate(model::AbstractModel,  dr::AbstractDecisionRule; N=1, T=40, n_states::Int=0)
+function simulate(model::AbstractModel,  dr::AbstractDecisionRule; N=1, T=40)
     s0 = model.calibration[:states]
-    # m0 = model.calibration[:exogenous]
-    return simulate(model, dr, s0; n_states=n_states)
+    return simulate(model, dr, s0)
+end
+##############################################################################
+# Sub-cases for |Int|
+
+function simulate(model::AbstractModel, dr::AbstractDecisionRule,
+                  driving_process::AbstractArray{Int64,2}, dp_process::Dolo.DiscreteMarkovProcess)
+    s0 = model.calibration[:states]
+    return simulate(model, dr, s0, driving_process, dp_process)
 end
 
-##
+function simulate(model::AbstractModel, dr::AbstractDecisionRule, dp_process::Dolo.DiscreteMarkovProcess;
+                  N::Int=1, T::Int = 40 , m0::Int = 1)
+    driving_process = simulate(dp_process, N, T, m0)
+    return simulate(model, dr, driving_process, dp_process)
+end
+
+function simulate(model::AbstractModel, dr::AbstractDecisionRule,
+                  s0::AbstractVector, dp_process::Dolo.DiscreteMarkovProcess;
+                  N::Int=1, T::Int = 40 , m0::Int = 1)
+
+    driving_process = simulate(dp_process, N, T, m0)
+    return simulate(model, dr, driving_process, dp_process)
+end
+
+
+################################################################################
 ## Impulse response functions
-##
+
 
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, e1::AbstractVector; T::Integer=40)

@@ -21,7 +21,7 @@ Index_mc = Dolo.simulate(model.exogenous, N, T, 1)
 
 s0=model.calibration[:states]
 
-sim = Dolo.simulate(model, dr, s0, Index_mc)
+sim = Dolo.simulate(model, dr, s0, Index_mc, model.exogenous)
 
 Tvalues = linspace(1, sim[Axis{:T}][end], sim[Axis{:T}][end])
 
@@ -52,15 +52,15 @@ s0=model.calibration[:states]
 
 
 # Check it works without providing States
-sim_mc2 = Dolo.simulate(model, dr, Index_mc)
+sim_mc2 = Dolo.simulate(model, dr, Index_mc, model.exogenous)
 sim_mc2==sim
 
 # Check it works without providing a driving process
-sim_mc3 = Dolo.simulate(model, dr, s0; N=10, T=50)
+sim_mc3 = Dolo.simulate(model, dr, model.exogenous; N=10, T=50, m0=2)
 
 # Check it works without providing a driving process
-sim_mc4 = Dolo.simulate(model, dr, s0, 1; N=10,T=50)
-sim_mc5 = Dolo.simulate(model, dr)
+sim_mc4 = Dolo.simulate(model, dr, s0, model.exogenous)
+Tvalues = linspace(1, sim_mc4[Axis{:T}][end], sim_mc4[Axis{:T}][end])
 
 import PyPlot
 plt = PyPlot;
@@ -157,14 +157,14 @@ model3 = Dolo.yaml_import(filename)
 
 n_states=5
 mc_ar = Dolo.discretize_mc(model3.exogenous;N=n_states)
+
 @time dr_armc = Dolo.time_iteration(model3, mc_ar, verbose=true, maxit=10000, details=false)
 
 # If you solve a model with a continuous exogenous process using MC disretization, then to simulate you need first proved a driving process originated form this new MC. model.exogenous
 # At this point there is no option in the code. If you do not specify any driving porcess(series of shocks), then Dolo takes model.exogenous to do it itself, but then it can't combine dr(i,s) with values of shocks. Shall it be added?
 Index_mc = Dolo.simulate(mc_ar, N, T, 1)
 
-s0=model.calibration[:states]
-sim_armc = Dolo.simulate(model3, dr_armc, s0, Index_mc; n_states=n_states)
-sim_armc_2 = Dolo.simulate(model3, dr_armc, s0, 1; n_states=n_states)
-sim_armc_2 = Dolo.simulate(model3, dr_armc, s0; n_states=n_states)
-sim_armc_2 = Dolo.simulate(model3, dr_armc; n_states=n_states)
+s0=model3.calibration[:states]
+sim_armc = Dolo.simulate(model3, dr_armc, s0, Index_mc, mc_ar)
+sim_armc_2 = Dolo.simulate(model3, dr_armc, s0, mc_ar)
+sim_armc_3 = Dolo.simulate(model3, dr_armc, mc_ar)
