@@ -103,11 +103,11 @@ If the stochastic process for the model is not explicitly provided, the process 
 * `dr`: Solved decision rule.
 """
 function time_iteration(model, dprocess::AbstractDiscretizedProcess, init_dr;
-      verbose::Bool=true, maxit::Int=100, tol::Float64=1e-8, details::Bool=true)
+          verbose::Bool=true, maxit::Int=100, tol::Float64=1e-8, options=Dict(), details::Bool=true)
 
     # get grid for endogenous
-    grid = model.grid
-    # grid = CartesianGrid(gg.a, gg.b, gg.orders)  # temporary compatibility
+    grid = get_grid(model, options=options)
+
 
     endo_nodes = nodes(grid)
     N = size(endo_nodes, 1)

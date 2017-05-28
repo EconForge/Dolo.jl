@@ -99,8 +99,9 @@ function get_infos(model::ASModel)
     get(model.data, :infos, Dict())
 end
 
-function get_options(model::ASModel)
-    get(model.data, :options, Dict())
+function get_options(model::ASModel; options=Dict())
+    opts = get(model.data, :options, Dict())
+    return rmerge(opts, options)
 end
 
 function get_definitions(model::ASModel)
@@ -135,24 +136,20 @@ function get_domain(model::ASModel)
     return Domain(states, min, max)
 end
 
-function get_grid(model::ASModel)
+function get_grid(model::ASModel; options=Dict())
     domain = get_domain(model)
     d = length(domain.states)
-    grid_dict = model.data[:options][:grid]
+    options = get_options(model; options=options)
+    grid_dict = options[:grid]
     if grid_dict[:tag] == :Cartesian
-        # TODO simplify...
-
-        ogrid = model.data[:options][:grid]
-        orders = get(ogrid, :orders, [20 for i=1:d])
+        orders = get(grid_dict, :orders, [20 for i=1:d])
         grid = Dolo.CartesianGrid(domain.min, domain.max, orders)
     elseif grid_dict[:tag] == :Smolyak
-        ogrid = model.data[:options][:grid]
-        mu = ogrid[:mu]
+        mu = grid_dict[:mu]
         grid = Dolo.SmolyakGrid(domain.min, domain.max, mu)
     else
         error("Unknown grid type.")
     end
-
     return grid
 end
 
