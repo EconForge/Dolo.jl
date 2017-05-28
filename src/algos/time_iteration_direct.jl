@@ -12,8 +12,8 @@ If the stochastic process for the model is not explicitly provided, the process 
 # Returns
 * `dr`: Solved decision rule.
 """
-function time_iteration_direct(model, process, init_dr; verbose::Bool=true,
-    maxit::Int=100, tol::Float64=1e-8, details::Bool=true)
+function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess, init_dr;
+    verbose::Bool=true, maxit::Int=100, tol::Float64=1e-8, details::Bool=true)
 
     # Grid
     grid = model.grid
@@ -21,7 +21,6 @@ function time_iteration_direct(model, process, init_dr; verbose::Bool=true,
     N = size(endo_nodes, 1)
 
     # Discretized exogenous process
-    dprocess = discretize(process)
     number_of_smooth_drs(dprocess) = max(n_nodes(dprocess), 1)
     nsd = number_of_smooth_drs(dprocess)
 
@@ -42,8 +41,6 @@ function time_iteration_direct(model, process, init_dr; verbose::Bool=true,
 
     # define states of today
     s = deepcopy(endo_nodes);
-
-    foobar = 10
 
     # loop option
     it = 0
@@ -110,18 +107,20 @@ function time_iteration_direct(model, process, init_dr; verbose::Bool=true,
 end
 
 # get stupid initial rule
-function time_iteration_direct(model, process::AbstractExogenous; kwargs...)
+function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess; kwargs...)
     init_dr = ConstantDecisionRule(model.calibration[:controls])
-    return time_iteration_direct(model, process, init_dr;  kwargs...)
+    return time_iteration_direct(model, dprocess, init_dr;  kwargs...)
 end
 
-function time_iteration_direct(model, init_dr::AbstractDecisionRule; kwargs...)
-    process = model.exogenous
-    return time_iteration_direct(model, process, init_dr; kwargs...)
+
+function time_iteration_direct(model, init_dr; kwargs...)
+    dprocess = discretize( model.exogenous )
+    return time_iteration_direct(model, dprocess, init_dr; kwargs...)
 end
+
 
 function time_iteration_direct(model; kwargs...)
-    process = model.exogenous
+    dprocess = discretize( model.exogenous )
     init_dr = ConstantDecisionRule(model.calibration[:controls])
-    return time_iteration_direct(model, process, init_dr; kwargs...)
+    return time_iteration_direct(model, dprocess, init_dr; kwargs...)
 end

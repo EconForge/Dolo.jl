@@ -58,11 +58,12 @@ import YAML
         # @time dr0, drv0 = Dolo.solve_policy(model, drc) #;, verbose=true, maxit=1000 )
         # @time res = Dolo.solve_policy(model, drc; details=true) #;, verbose=true, maxit=1000 )
 
-        @time drd = Dolo.time_iteration_direct(model) #, maxit=1000, verbose=true)
+        @time drd = Dolo.time_iteration_direct(model; details=false) #, maxit=1000, verbose=true)
 
-        @time dr = Dolo.time_iteration_direct(model, drd) #, maxit=500, verbose=true)
+        @time dr = Dolo.time_iteration_direct(model, drd; details=false) #, maxit=500, verbose=true)
         @time res = Dolo.time_iteration_direct(model, drc; details=true)
         @time drv = Dolo.evaluate_policy(model, dr; verbose=false)
+        @time drv = Dolo.value_iteration(model, dr; verbose=false)
 
         #
         Dolo.simulate(model, dr)

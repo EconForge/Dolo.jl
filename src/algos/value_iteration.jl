@@ -32,18 +32,15 @@ Evaluate the value function under the given decision rule.
 # Returns
 * `drv`: Value function.
 """
-function evaluate_policy(model, dr; verbose::Bool=true, maxit::Int=5000)
+function evaluate_policy(model, dprocess::AbstractDiscretizedProcess, dr;
+                            verbose::Bool=true, maxit::Int=5000)
 
     # get grid for endogenous
     grid = model.grid
 
-    # obtain discrete exogenous process
-    process = model.exogenous
-    dprocess = discretize(process)
-
     # extract parameters
     p = model.calibration[:parameters]
-    β=model.calibration.flat[:beta]
+    β = model.calibration.flat[:beta]
 
     # states today are the grid
     s = nodes(grid)
@@ -124,6 +121,11 @@ function evaluate_policy(model, dr; verbose::Bool=true, maxit::Int=5000)
     return drv
 end
 
+function evaluate_policy(model, dr; args...)
+    dprocess = discretize(model.exogenous)
+    return evaluate_policy(model, dprocess, dr; args...)
+
+end
 
 """
 Evaluate the right hand side of the value function at given values of states, controls, and exogenous variables.
@@ -166,16 +168,12 @@ Solve for the value function and associated decision rule using value function i
 * `dr`: Solved decision rule object.
 * `drv`: Solved value function object.
 """
-function solve_policy(model, pdr; maxit::Int=1000, verbose::Bool=true, details::Bool=true)
+function value_iteration(model, dprocess::AbstractDiscretizedProcess, pdr; maxit::Int=1000, verbose::Bool=true, details::Bool=true)
 
     # get grid for endogenous
     grid = model.grid
 
     β=model.calibration.flat[:beta]
-
-    # process = dr.process
-    process = model.exogenous
-    dprocess = discretize(process)
 
     dr = CachedDecisionRule(pdr, dprocess)
     # compute the value function
@@ -333,3 +331,27 @@ function solve_policy(model, pdr; maxit::Int=1000, verbose::Bool=true, details::
         ValueIterationResult(dr.dr, drv.dr, it, true, converged_x, tol_x, err_x, converged_v, tol_v, err_v)
     end
 end
+
+
+
+# get stupid initial rule
+function value_iteration(model, dprocess::AbstractDiscretizedProcess; kwargs...)
+    init_dr = ConstantDecisionRule(model.calibration[:controls])
+    return value_iteration(model, dprocess, init_dr;  kwargs...)
+end
+
+
+function value_iteration(model, init_dr; kwargs...)
+    dprocess = discretize( model.exogenous )
+    return value_iteration(model, dprocess, init_dr; kwargs...)
+end
+
+
+function value_iteration(model; kwargs...)
+    dprocess = discretize( model.exogenous )
+    init_dr = ConstantDecisionRule(model.calibration[:controls])
+    return value_iteration(model, dprocess, init_dr; kwargs...)
+end
+
+# compatibility
+const solve_policy = value_iteration
