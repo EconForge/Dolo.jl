@@ -76,86 +76,8 @@ function smooth(x::Array{Float64,2},a::Array{Float64,2},b::Array{Float64,2},fx::
 
 end
 
-#
-# function mcp_smooth(x::Vector, f::Vector, J::Matrix, lower::Vector, upper::Vector)
-#
-#     fx = copy(f)
-#
-#     for i = 1:length(x)
-#         if isfinite(upper[i])
-#             fx[i] += (x[i]-upper[i]) + sqrt(fx[i]^2+(x[i]-upper[i])^2)
-#         end
-#         if isfinite(lower[i])
-#             fx[i] += (x[i]-lower[i]) - sqrt(fx[i]^2+(x[i]-lower[i])^2)
-#         end
-#     end
-#
-#     return fx
-#
-# end
-#
-# function mcp_diff(x::Vector, f::Vector, J::Matrix, lower::Vector, upper::Vector)
-#
-#     fx = copy(f)
-#     gx = copy(J)
-#
-#     for i = 1:length(x)
-#         if isfinite(upper[i])
-#             fx[i] += (x[i]-upper[i]) + sqrt(fx[i]^2+(x[i]-upper[i])^2)
-#         end
-#         if isfinite(lower[i])
-#             fx[i] += (x[i]-lower[i]) - sqrt(fx[i]^2+(x[i]-lower[i])^2)
-#         end
-#     end
-#
-#     # Derivatives of phiplus
-#     sqplus = sqrt(fx.^2+(x-upper).^2)
-#
-#     dplus_du = 1 + fx./sqplus
-#
-#     dplus_dv = similar(x)
-#     for i = 1:length(x)
-#         if isfinite(upper[i])
-#             dplus_dv[i] = 1 + (x[i]-upper[i])/sqplus[i]
-#         else
-#             dplus_dv[i] = 0
-#         end
-#     end
-#
-#     # Derivatives of phiminus
-#     phiplus = copy(fx)
-#     for i = 1:length(x)
-#         if isfinite(upper[i])
-#             phiplus[i] += (x[i]-upper[i]) + sqplus[i]
-#         end
-#     end
-#
-#     sqminus = sqrt(phiplus.^2+(x-lower).^2)
-#
-#     dminus_du = 1-phiplus./sqminus
-#
-#     dminus_dv = similar(x)
-#     for i = 1:length(x)
-#         if isfinite(lower[i])
-#             dminus_dv[i] = 1 - (x[i]-lower[i])/sqminus[i]
-#         else
-#             dminus_dv[i] = 0
-#         end
-#     end
-#
-#     # Final computations
-#     for i = 1:length(x)
-#         for j = 1:length(x)
-#             gx[i,j] *= dminus_du[i]*dplus_du[i]
-#         end
-#         gx[i,i] += dminus_dv[i] + dminus_du[i]*dplus_dv[i]
-#     end
-#
-#     return fx,gx
-#
-# end
 
-function serial_solver(f::Function, x0::Array{Float64,2}, a, b; maxit=10, verbose=true)
+function serial_solver(f::Function, x0::Array{Float64,2}, a, b; maxit=10, verbose=true, tol=1e-6, eps=1e-8, n_bsteps=5, lam_bsteps=0.5)
 
     fun(u) = -f(u)
     smooth_me = true
@@ -170,14 +92,11 @@ function serial_solver(f::Function, x0::Array{Float64,2}, a, b; maxit=10, verbos
         b = ones(N,n_x)*Inf
     end
 
-    tol = 1e-6
-    eps = 1e-8
-
     err = 1;
     it = 0;
 
-    n_bsteps = 5
-    backsteps = 0.5.^(0:(n_bsteps-1))
+
+    backsteps = lam_bsteps.^(0:(n_bsteps-1))
 
     x = x0
     res = fun(x0)
