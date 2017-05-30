@@ -32,11 +32,9 @@ Evaluate the value function under the given decision rule.
 # Returns
 * `drv`: Value function.
 """
-function evaluate_policy(model, dprocess::AbstractDiscretizedProcess, dr;
-                            verbose::Bool=true, maxit::Int=5000)
+function evaluate_policy(model, dprocess::AbstractDiscretizedProcess, grid, dr;
+                            verbose::Bool=true, maxit::Int=5000, tol=1e-6)
 
-    # get grid for endogenous
-    grid = model.grid
 
     # extract parameters
     p = model.calibration[:parameters]
@@ -76,7 +74,6 @@ function evaluate_policy(model, dprocess::AbstractDiscretizedProcess, dr;
     v0 = deepcopy(u)
 
     #Preparation for a loop
-    tol = 1e-6
     err = 10.0
     it = 0
 
@@ -121,9 +118,10 @@ function evaluate_policy(model, dprocess::AbstractDiscretizedProcess, dr;
     return drv
 end
 
-function evaluate_policy(model, dr; args...)
+function evaluate_policy(model, dr; grid=Dict(), kwargs...)
+    grid = get_grid(model, options=grid)
     dprocess = discretize(model.exogenous)
-    return evaluate_policy(model, dprocess, dr; args...)
+    return evaluate_policy(model, dprocess, grid, dr; kwargs...)
 
 end
 
@@ -157,6 +155,7 @@ function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64},
     return E_V
 end
 
+absmax(x) = max( [maximum(abs(x[i])) for i=1:length(x)]... )
 
 """
 Solve for the value function and associated decision rule using value function iteration.
@@ -168,16 +167,17 @@ Solve for the value function and associated decision rule using value function i
 * `dr`: Solved decision rule object.
 * `drv`: Solved value function object.
 """
-function value_iteration(model, dprocess::AbstractDiscretizedProcess, pdr; maxit::Int=1000, verbose::Bool=true, details::Bool=true)
+function value_iteration(model, dprocess::AbstractDiscretizedProcess, grid, pdr;
+    discount_symbol=:beta,
+    maxit::Int=1000, tol_x::Float64=1e-8, tol_v::Float64=1e-8,
+    optim_options=Dict(), eval_options=Dict(),
+    verbose::Bool=true, details::Bool=true)
 
-    # get grid for endogenous
-    grid = model.grid
 
-    β=model.calibration.flat[:beta]
+    β=model.calibration.flat[discount_symbol]
 
     dr = CachedDecisionRule(pdr, dprocess)
     # compute the value function
-    absmax(x) = max( [maximum(abs(x[i])) for i=1:length(x)]... )
     p = model.calibration[:parameters]
 
     endo_nodes = nodes(grid)
@@ -205,7 +205,7 @@ function value_iteration(model, dprocess::AbstractDiscretizedProcess, pdr; maxit
     # this could be integrated in the main loop.
     verbose && println("Evaluating initial policy")
 
-    drv = evaluate_policy(model, dr; maxit=1000, verbose=verbose)
+    drv = evaluate_policy(model, dr; eval_options...)
 
     verbose && println("Evaluating initial policy (done)")
 
@@ -213,10 +213,6 @@ function value_iteration(model, dprocess::AbstractDiscretizedProcess, pdr; maxit
     v = deepcopy(v0)
 
     #Preparation for a loop
-    tol_x = 1e-8
-    tol_v = 1e-8
-    tol_eval = 1e-8
-    maxit_eval = 1000
     err_v = 10.0
     err_x = 10.0
     err_eval = 10.0
@@ -224,11 +220,12 @@ function value_iteration(model, dprocess::AbstractDiscretizedProcess, pdr; maxit
     it = 0
     it_eval = 0
 
+    maxit_eval = get(eval_options, :maxit, 1000)
+    tol_eval = get(eval_options, :tol, 1e-8)
 
-    optim_opts = Optim.Options(x_tol=1e-9, f_tol=1e-9)
+    optim_opts = Optim.Options(optim_options...)
 
     mode = :improve
-
     converged = false
 
     while !converged
@@ -281,8 +278,7 @@ function value_iteration(model, dprocess::AbstractDiscretizedProcess, pdr; maxit
                     # try
                     results = optimize(
                         DifferentiableFunction(fobj), initial_x, lower, upper,
-                        Fminbox(), optimizer=NelderMead,
-                        x_tol=1e-10, f_tol=1e-10
+                        Fminbox(), optimizer=NelderMead, optimizer_o=optim_opts
                     )
                     xn = Optim.minimizer(results)
                     nv = -Optim.minimum(results)/1000.0
@@ -332,25 +328,32 @@ function value_iteration(model, dprocess::AbstractDiscretizedProcess, pdr; maxit
     end
 end
 
-
+# get stupid initial rule
+function value_iteration(model, dprocess::AbstractDiscretizedProcess, init_dr; grid=Dict(), kwargs...)
+    grid = get_grid(model, options=grid)
+    return value_iteration(model, dprocess, grid, init_dr;  kwargs...)
+end
 
 # get stupid initial rule
-function value_iteration(model, dprocess::AbstractDiscretizedProcess; kwargs...)
+function value_iteration(model, dprocess::AbstractDiscretizedProcess; grid=Dict(), kwargs...)
+    grid = get_grid(model, options=grid)
     init_dr = ConstantDecisionRule(model.calibration[:controls])
-    return value_iteration(model, dprocess, init_dr;  kwargs...)
+    return value_iteration(model, dprocess, grid, init_dr;  kwargs...)
 end
 
 
-function value_iteration(model, init_dr; kwargs...)
+function value_iteration(model, init_dr; grid=Dict(), kwargs...)
+    grid = get_grid(model, options=grid)
     dprocess = discretize( model.exogenous )
-    return value_iteration(model, dprocess, init_dr; kwargs...)
+    return value_iteration(model, dprocess, grid, init_dr; kwargs...)
 end
 
 
-function value_iteration(model; kwargs...)
+function value_iteration(model; grid=Dict(), kwargs...)
+    grid = get_grid(model; options=grid)
     dprocess = discretize( model.exogenous )
     init_dr = ConstantDecisionRule(model.calibration[:controls])
-    return value_iteration(model, dprocess, init_dr; kwargs...)
+    return value_iteration(model, dprocess, grid, init_dr; kwargs...)
 end
 
 # compatibility
