@@ -139,8 +139,11 @@ end
 function get_grid(model::ASModel; options=Dict())
     domain = get_domain(model)
     d = length(domain.states)
-    options = get_options(model; options=options)
+    options = get_options(model; options=Dict(:grid=>options))
     grid_dict = options[:grid]
+    if :type in keys(grid_dict)
+        grid_dict[:tag] = grid_dict[:type]
+    end
     if grid_dict[:tag] == :Cartesian
         orders = get(grid_dict, :orders, [20 for i=1:d])
         grid = Dolo.CartesianGrid(domain.min, domain.max, orders)
