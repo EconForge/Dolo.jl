@@ -155,7 +155,7 @@ end
 #
 # end
 
-function serial_solver(f::Function, x0::Array{Float64,2}, a, b; maxit=10, verbose=true)
+function serial_solver(f::Function, x0::Array{Float64,2}, a, b; maxit=10, verbose=false, n_bsteps=5, lam_bsteps=0.5)
 
     fun(u) = -f(u)
     smooth_me = true
@@ -177,7 +177,7 @@ function serial_solver(f::Function, x0::Array{Float64,2}, a, b; maxit=10, verbos
     it = 0;
 
     n_bsteps = 5
-    backsteps = 0.5.^(0:(n_bsteps-1))
+    backsteps = lam_bsteps.^(0:(n_bsteps-1))
 
     x = x0
     res = fun(x0)

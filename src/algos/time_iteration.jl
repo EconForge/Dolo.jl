@@ -102,12 +102,17 @@ If the stochastic process for the model is not explicitly provided, the process 
 # Returns
 * `dr`: Solved decision rule.
 """
-function time_iteration(model, dprocess::AbstractDiscretizedProcess, init_dr;
-      verbose::Bool=true, maxit::Int=100, tol::Float64=1e-8, details::Bool=true)
+function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
+                        grid, init_dr;
+          verbose::Bool=true, details::Bool=true,
+          maxit::Int=100, tol_η::Float64=1e-8,
+          solver=Dict())
 
-    # get grid for endogenous
-    grid = model.grid
-    # grid = CartesianGrid(gg.a, gg.b, gg.orders)  # temporary compatibility
+    if get(solver,:type,nothing) == :direct
+        return time_iteration_direct(model, dprocess, grid, init_dr;
+                  verbose=verbose, details=details, maxit=maxit, tol_η=tol_η)
+    end
+
 
     endo_nodes = nodes(grid)
     N = size(endo_nodes, 1)
@@ -142,7 +147,6 @@ function time_iteration(model, dprocess::AbstractDiscretizedProcess, init_dr;
 
     # loop option
     init_res = residual(model, dprocess, endo_nodes, x0, p, dr)
-    it = 0
     err = maximum(abs, stack0(init_res))
     err_0 = err
 
@@ -150,7 +154,8 @@ function time_iteration(model, dprocess::AbstractDiscretizedProcess, init_dr;
     verbose && println(repeat("-", 35))
     verbose && @printf "%-6i%-12.2e%-12.2e%-5i\n" 0 err NaN 0
 
-    while it<maxit && err>tol
+    it = 0
+    while it<maxit && err>tol_η
 
         it += 1
 
@@ -158,7 +163,7 @@ function time_iteration(model, dprocess::AbstractDiscretizedProcess, init_dr;
 
         xx0 = stack0(x0)
         fobj(u) = residual(model, dprocess, endo_nodes, u, p, dr)
-        xx1, nit = serial_solver(fobj, xx0, lb, ub, maxit=10, verbose=false)
+        xx1, nit = serial_solver(fobj, xx0, lb, ub; solver...)
         x1 = destack0(xx1, nsd)
 
         err = maximum(abs, xx1 - xx0)
@@ -174,28 +179,34 @@ function time_iteration(model, dprocess::AbstractDiscretizedProcess, init_dr;
     if !details
         return dr.dr
     else
-        converged = err<tol
-        TimeIterationResult(dr.dr, it, true, converged, tol, err)
+        converged = err<tol_η
+        TimeIterationResult(dr.dr, it, true, converged, tol_η, err)
     end
 
 end
 
+# get grid for endogenous
+function time_iteration(model, dprocess, dr; grid=Dict(), kwargs...)
+    grid = get_grid(model, options=grid)
+    return time_iteration(model, dprocess, grid, dr;  kwargs...)
+end
 
 # get stupid initial rule
-function time_iteration(model, dprocess::AbstractDiscretizedProcess; kwargs...)
+function time_iteration(model, dprocess::AbstractDiscretizedProcess; grid=Dict(), kwargs...)
+
     init_dr = ConstantDecisionRule(model.calibration[:controls])
-    return time_iteration(model, dprocess, init_dr;  kwargs...)
+    return time_iteration(model, dprocess, init_dr;  grid=grid, kwargs...)
 end
 
 
-function time_iteration(model, init_dr; kwargs...)
+function time_iteration(model, init_dr; grid=Dict(), kwargs...)
     dprocess = discretize( model.exogenous )
-    return time_iteration(model, dprocess, init_dr; kwargs...)
+    return time_iteration(model, dprocess, init_dr; grid=grid, kwargs...)
 end
 
 
-function time_iteration(model; kwargs...)
+function time_iteration(model; grid=Dict(), kwargs...)
     dprocess = discretize( model.exogenous )
     init_dr = ConstantDecisionRule(model.calibration[:controls])
-    return time_iteration(model, dprocess, init_dr; kwargs...)
+    return time_iteration(model, dprocess, init_dr; grid=grid, kwargs...)
 end

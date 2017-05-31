@@ -109,3 +109,22 @@ function fkron(A::AbstractMatrix{Float64}, B::AbstractMatrix{Float64})
     end
     return C
 end
+
+
+
+rmerge(default_struct, add_options) = add_options
+function rmerge(def_s::Associative, add_s::Associative)
+    kl = collect(keys(def_s))
+    kr = collect(keys(add_s))
+    resp = Dict()
+    for k in intersect(kl,kr)
+        resp[k] = rmerge(def_s[k],add_s[k])
+    end
+    for k in setdiff(kl, kr)
+        resp[k] = def_s[k]
+    end
+    for k in setdiff(kr, kl)
+        resp[k] = add_s[k]
+    end
+    return resp
+end
