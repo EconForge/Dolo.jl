@@ -1,13 +1,13 @@
 function get_ss_derivatives(model)
-    m,s,x,p = model.calibration[:exogenous,:states,:controls,:parameters]
+    m, s, x, p = model.calibration[:exogenous, :states, :controls, :parameters]
 
     g_diff = eval_jacobians(model, transition!, length(s), (m, s, x, m), p)
     f_diff = eval_jacobians(model, arbitrage!, length(x), (m, s, x, m, s, x), p)
 
-    return g_diff,f_diff
+    return g_diff, f_diff
 end
 
-perturbate(p::IIDExogenous) = (zeros(0), zeros(0,0))
+perturbate(p::IIDExogenous) = (zeros(0), zeros(0, 0))
 perturbate(p::VAR1) = (p.mu, p.R)
 
 type PerturbationResult
@@ -34,8 +34,8 @@ function perturbate_first_order(g_s, g_x, f_s, f_x, f_S, f_X)
 
     eigtol = 1.0+1e-6
 
-    ns = size(g_s,1)
-    nx = size(g_x,1)
+    ns = size(g_s, 1)
+    nx = size(g_x, 1)
     nv = ns + nx
 
     A = [eye(ns) zeros(ns, nx);
@@ -76,22 +76,22 @@ end
 
 function get_gf_derivatives(model::AbstractModel)
 
-    g_diff,f_diff = get_ss_derivatives(model)
-    _f_m,_f_s,_f_x,_f_M,_f_S,_f_X = f_diff
-    _g_m,_g_s,_g_x,_g_M = g_diff
+    g_diff, f_diff = get_ss_derivatives(model)
+    _f_m, _f_s, _f_x, _f_M, _f_S, _f_X = f_diff
+    _g_m, _g_s, _g_x, _g_M = g_diff
 
     (M, R) = perturbate(model.exogenous)
 
     f_x = _f_x
     f_X = _f_X
-    _m,_s,x,p = model.calibration[:exogenous,:states,:controls,:parameters]
+    _m, _s, x, p = model.calibration[:exogenous, :states, :controls, :parameters]
 
-    if size(R,1)>0
+    if size(R, 1)>0
         f_s = [_f_m _f_s]
         f_S = [_f_M _f_S]
-        g_s = [R zeros(size(R,1),size(_g_s,2)); _g_m _g_s]
-        g_x = [zeros(size(_g_m,1),size(_g_x,2)); _g_x]
-        s = cat(1,_m, _s)
+        g_s = [R zeros(size(R, 1), size(_g_s, 2)); _g_m _g_s]
+        g_x = [zeros(size(_g_m, 1), size(_g_x, 2)); _g_x]
+        s = cat(1, _m, _s)
     else
         f_s = _f_s
         f_S = _f_S
@@ -109,10 +109,10 @@ function perturbate(model::Model; details=true)
     nx = size(g_x, 2)
 
     (M, R) = perturbate(model.exogenous)
-    _m,_s,x,p = model.calibration[:exogenous,:states,:controls,:parameters]
+    _m, _s, x, p = model.calibration[:exogenous, :states, :controls, :parameters]
 
-    if size(R,1)>0
-        s = cat(1,_m, _s)
+    if size(R, 1)>0
+        s = cat(1, _m, _s)
     else
         s = _s
     end
@@ -120,9 +120,9 @@ function perturbate(model::Model; details=true)
     C, genvals = perturbate_first_order(g_s, g_x, f_s, f_x, f_S, f_X)
     sort!(genvals)
 
-    if size(R,1)>0
-        C_exo = C[:,1:length(_m)]
-        C_endo = C[:,(length(_m)+1):end]
+    if size(R, 1)>0
+        C_exo = C[:, 1:length(_m)]
+        C_endo = C[:, (length(_m)+1):end]
         dr = BiTaylorExpansion(_m, _s, x, C_exo, C_endo)
     else
         dr = BiTaylorExpansion(_m, _s, x, zeros(nx, length(_m)), C)
@@ -133,7 +133,7 @@ function perturbate(model::Model; details=true)
     if !details
         return dr
     else
-        n_s = size(g_s,1)
+        n_s = size(g_s, 1)
         PerturbationResult(
             dr,
             genvals,
@@ -142,7 +142,4 @@ function perturbate(model::Model; details=true)
             genvals[n_s+1]>1
         )
     end
-
-
-
 end
