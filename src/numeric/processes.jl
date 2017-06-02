@@ -115,50 +115,21 @@ function response(mvn::MvNormal, e1::AbstractVector; T::Int=40)
     return out
 end
 
-### Simulate Markov process
-function choice(x, n, cumul)
-    i = 1
-    running = true
-    # while (i<n) && running
-    while (i<n) && running
-        if x < cumul[i]
-            running = false
-        else
-            i += 1
-        end
-    end
-    return i
+function simulate(process::DiscreteMarkovProcess, N::Int, T::Int, i0::Int)
+    mc_qe = QE.MarkovChain(process.transitions)
+    inds = Array{Int}(T, N)
+    QE.simulate_indices!(inds, mc_qe, init=i0)
+    AxisArray(inds, Axis{:T}(1:T),  Axis{:N}(1:N))
 end
 
-function simulate(process::DiscreteMarkovProcess, N::Int, T::Int, i0::Int; return_indexes::Bool=true)
-
-    n_states = size(process.values, 1)
-
-    simul = zeros(Int, T, N)
-    simul[1, :] = 1
-    rnd = rand(T, N)
-    cumuls = cumsum(process.transitions, 2)
-
-    for t in 1:(T-1)
-        for j in 1:N
-            s = simul[t, j]
-            p = cumuls[s, :]
-            v = choice(rnd[t, j], n_states, p)
-            simul[t+1, j] = v
-        end
+function simulate_values(process::DiscreteMarkovProcess, N::Int, T::Int, i0::Int)
+    inds = simulate(process, N, T, i0)
+    n_values = size(process.values, 2)
+    out_values = Array{Float64}(n_values, N, T)
+    for n in 1:N, t in 1:T
+        out_values[:, n, t] = process.values[inds[t, n], :]
     end
-
-    Index_mc = simul
-
-    AA = AxisArray(Index_mc, Axis{:T}(1:T),  Axis{:N}(1:N))
-
-    if return_indexes
-        return AA
-    else
-        Values_mc = process.values[Index_mc]
-        Values_mc_AA = AxisArray(Values_mc, Axis{:T}(1:T),  Axis{:N}(1:N))
-        return Values_mc_AA
-    end
+    AxisArray(out_values, Axis{:n}(1:n_values), Axis{:T}(1:T), Axis{:N}(1:N))
 end
 
 discretize(dmp::DiscreteMarkovProcess) = dmp

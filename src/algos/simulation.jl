@@ -127,7 +127,6 @@ end
 ## methods which simulate the process
 ##
 
-# Unless stochastic and return_indexes are always == true, it will work
 function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector,
                   m0::Union{Int,AbstractVector}; N=1, T=40)
       driving_process = simulate(model.exogenous, N, T, m0)
