@@ -80,7 +80,7 @@
     # rbc_dict = Dolo._symbol_dict(rbc_dict)
 
     @testset "ModelCalibration" begin
-    
+
         function new_mc()
             flat = FlatCalibration(:k=>8.5, :z=>0.5, :i=>1.1)
             grouped = GroupedCalibration(:states=>[8.5, 0.5],
