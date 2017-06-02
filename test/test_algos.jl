@@ -15,7 +15,7 @@ import YAML
         @time drv = Dolo.evaluate_policy(model_mc, ti_res.dr, verbose=false)
         @time tid_res = Dolo.time_iteration_direct(model_mc, ti_res.dr, verbose=false)
 
-        sim = Dolo.simulate(model_mc, ti_res.dr) #; N=100, T=20)
+        sim = Dolo.simulate(model_mc, ti_res.dr, model_mc.exogenous) #; N=100, T=20)
         @test true
     end
 
