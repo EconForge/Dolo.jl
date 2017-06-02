@@ -61,41 +61,5 @@
         @test Dolo._expr_or_number(:(x+1)) == :(x+1)
         @test Dolo._expr_or_number(:x) == Expr(:block, :x)
         @test Dolo._expr_or_number("foo") == Expr(:block, :foo)
-    end
-
-    @testset "inf_to_Inf" begin
-        # numbers and symbols other than :inf go right through
-        @test Dolo.inf_to_Inf(42.42) == 42.42
-        @test Dolo.inf_to_Inf(:k) == :k
-
-        # :inf and :(-inf) go to Inf and -Inf, respectively
-        @test Dolo.inf_to_Inf(:inf) == Inf
-        @test Dolo.inf_to_Inf(:(-inf)) == -Inf
-
-        # other expressions are unchanged
-        @test Dolo.inf_to_Inf(:(-z)) == :(-z)
-    end
-
-    @testset "solve_triangular_system" begin
-        # very simple case
-        d1 = Dict(:x => 1.0, :y => :(x+1))
-        sol1 = Dolo.OrderedDict{Symbol,Number}(:x => 1.0, :y => 2.0)
-        @test Dolo.solve_triangular_system(d1) == sol1
-
-        # fully specified numerical dict
-        d2 = Dict(:x => 1.0, :y => 2.0)
-        sol2 = Dolo.OrderedDict{Symbol,Number}(:x => 1.0, :y => 2.0)
-        @test Dolo.solve_triangular_system(d2) == sol2
-
-        # unknown variable w
-        d3 = Dict(:x => 1.0, :y => :(x+1), :z=> :(100*w))
-        @test_throws ErrorException Dolo.solve_triangular_system(d3)
-
-        # non-triangular system
-        d4 = Dict(:x => :(y+1), :y => :(x-1))
-        @test_throws ErrorException Dolo.solve_triangular_system(d4)
-
-
-    end
-
+    end    
 end
