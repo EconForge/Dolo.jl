@@ -61,8 +61,6 @@ end
 ##### 1-argument decision rule
 #####
 
-using splines
-
 function DecisionRule(grid_exo::EmptyGrid, grid_endo::CartesianGrid, n_x::Int)
     orders = grid_endo.n
     coeffs = [zeros(n_x, (orders+2)...)]

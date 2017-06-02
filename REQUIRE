@@ -1,9 +1,15 @@
 julia 0.5
 MacroTools
-YAML
+YAML 0.2.1
 DataStructures
 DataFrames
 AxisArrays
 NLsolve
+Optim
 Requests
-QuantEcon
+QuantEcon 0.10.1
+Distributions
+ForwardDiff
+Compat 0.25.0
+# Dolang
+# splines
