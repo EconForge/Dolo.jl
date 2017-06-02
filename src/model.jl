@@ -173,7 +173,7 @@ end
 
 type Model{ID} <: AModel{ID}
 
-    data
+    data::Dict{Symbol,Any}
     name::String           # weakly immutable
     filename::String
     symbols::OrderedDict{Symbol,Array{Symbol,1}}        # weakly immutable
@@ -187,7 +187,7 @@ type Model{ID} <: AModel{ID}
     grid
     options
 
-    function (::Type{Model{ID}}){ID}(data; print_code=false, filename="<string>")
+    function (::Type{Model{ID}}){ID}(data::Dict{Symbol,Any}; print_code::Bool=false, filename="<string>")
 
         model = new{ID}(data)
         model.name = get_name(model)
@@ -218,13 +218,11 @@ end
 
 _numeric_mod_type{ID}(::Model{ID}) = Model{ID}
 
-
 function Base.show(io::IO, model::Model)
-    @printf("Model \n")
+    println("Model")
 end
 
 #### import functions
-
 
 function Model(url::AbstractString; print_code=false)
     # it looks like it would be cool to use the super constructor ;-)
