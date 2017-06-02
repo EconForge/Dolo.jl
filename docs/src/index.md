@@ -1,4 +1,4 @@
-# Dolo doc
+# Algorithms
 
 ```@meta
 CurrentModule = Dolo

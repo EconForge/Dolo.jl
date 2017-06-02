@@ -25,3 +25,5 @@ after_success:
     - if [ $TRAVIS_JULIA_VERSION = "release" ] && [ $TRAVIS_OS_NAME = "linux" ]; then
          julia -e 'cd(Pkg.dir("Dolo")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder()); Codecov.submit(process_folder());';
       fi
+    - julia -e 'Pkg.add("Documenter")'
+    - julia -e 'cd(Pkg.dir("PACKAGE_NAME")); include(joinpath("docs", "make.jl"))'
