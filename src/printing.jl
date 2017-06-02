@@ -1,15 +1,6 @@
 
-function sanitize(s,  dynvars::Array{Symbol,1})
-    return s
-end
-function sanitize(s::Symbol,  dynvars::Array{Symbol,1})
-
-    if (s in dynvars)
-        return :( ($s)(0 ) )
-    else
-        return s
-    end
-end
+sanitize(s, dynvars::Array{Symbol,1}) = s
+sanitize(s::Symbol, dynvars::Array{Symbol,1})= s in dynvars ? :($s(0)) : s
 function sanitize(eq::Expr, dynvars::Array{Symbol,1})
     if eq.head == :(=)
         return sanitize( :( $(eq.args[1])==$( eq.args[2] ) ), dynvars )
