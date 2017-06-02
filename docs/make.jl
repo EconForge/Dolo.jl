@@ -12,6 +12,6 @@ makedocs(
 
 deploydocs(
     repo   = "github.com/EconForge/Dolo.jl.git",
-    julia  = "0.4",
-    osname = "osx"
+    julia  = "release",
+    os = "linux"
 )
