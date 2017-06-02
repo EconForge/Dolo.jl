@@ -13,7 +13,7 @@ If the stochastic process for the model is not explicitly provided, the process 
 * `dr`: Solved decision rule.
 """
 function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
-                               grid, init_dr;
+                               grid, init_dr::AbstractDecisionRule;
                                verbose::Bool=true, maxit::Int=100,
                                tol_η::Float64=1e-8, details::Bool=true)
 
@@ -105,22 +105,29 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
     end
 
 end
-#
-# # get stupid initial rule
-# function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess; kwargs...)
-#     init_dr = ConstantDecisionRule(model.calibration[:controls])
-#     return time_iteration_direct(model, dprocess, init_dr;  kwargs...)
-# end
-#
-#
-# function time_iteration_direct(model, init_dr; kwargs...)
-#     dprocess = discretize( model.exogenous )
-#     return time_iteration_direct(model, dprocess, init_dr; kwargs...)
-# end
-#
-#
-# function time_iteration_direct(model; kwargs...)
-#     dprocess = discretize( model.exogenous )
-#     init_dr = ConstantDecisionRule(model.calibration[:controls])
-#     return time_iteration_direct(model, dprocess, init_dr; kwargs...)
-# end
+
+# get grid for endogenous
+function time_iteration_direct(model, dprocess, init_dr::AbstractDecisionRule; grid=Dict(), kwargs...)
+    grid = get_grid(model, options=grid)
+    return time_iteration_direct(model, dprocess, grid, init_dr;  kwargs...)
+end
+
+# get stupid initial rule
+function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess; grid=Dict(), kwargs...)
+
+    init_dr = ConstantDecisionRule(model.calibration[:controls])
+    return time_iteration_direct(model, dprocess, init_dr;  grid=grid, kwargs...)
+end
+
+
+function time_iteration_direct(model, init_dr::AbstractDecisionRule; grid=Dict(), kwargs...)
+    dprocess = discretize( model.exogenous )
+    return time_iteration_direct(model, dprocess, init_dr; grid=grid, kwargs...)
+end
+
+
+function time_iteration_direct(model; grid=Dict(), kwargs...)
+    dprocess = discretize( model.exogenous )
+    init_dr = ConstantDecisionRule(model.calibration[:controls])
+    return time_iteration_direct(model, dprocess, init_dr; grid=grid, kwargs...)
+end
