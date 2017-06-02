@@ -231,7 +231,7 @@ false, set all shocks to 0 (unless `irf` is true -- see above).
 
 The output is an `AxisArray` contining variables, paths, and time on the 3 axes
 """
-function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64}
+function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64},
                   stochastic::Bool=true, irf::Bool=false, e0::Vector{Float64}=zeros(0))
 
     n = size(var.mu, 1)
