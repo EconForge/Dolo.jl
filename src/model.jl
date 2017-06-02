@@ -16,23 +16,20 @@ const yaml_types = let
                            for (t, s) in pairs])
 end
 
-
-
 type SModel{ID} <: ASModel{ID}
-    data::Dict{Any,Any}
+    data::Dict{Symbol,Any}
 end
-
 
 function SModel(url::AbstractString)
     if match(r"(http|https):.*", url) != nothing
         res = get(url)
-        buf = Dolo.IOBuffer(res.data)
-        data = Dolo._symbol_dict(Dolo.load(buf, yaml_types))
+        buf = IOBuffer(res.data)
+        data = _symbol_dict(YAML.load(buf, yaml_types))
     else
-        data = Dolo._symbol_dict(Dolo.load_file(url, yaml_types))
+        data = _symbol_dict(YAML.load_file(url, yaml_types))
     end
-    id = gensym()
-    return SModel{id}(data)
+    id = gensym(basename(url))
+    return SModel{id}(_symbol_dict(data))
 end
 
 function get_symbols(model::ASModel)
@@ -57,7 +54,7 @@ end
 function get_equations(model::ASModel)
 
     eqs = model.data[:equations]
-    recipe = Dolo.RECIPES[:dtcc]
+    recipe = RECIPES[:dtcc]
     _symbols = get_symbols(model)
 
     # prep equations: parse to Expr
@@ -72,12 +69,12 @@ function get_equations(model::ASModel)
                 length(these_eq) == 0 && error("equation section $k required")
             end
             # finally pass in the expressions
-            _eqs[k] = Expr[Dolo._to_expr(eq) for eq in these_eq]
+            _eqs[k] = Expr[_to_expr(eq) for eq in these_eq]
         end
     end
     # handle the arbitrage, arbitrage_exp, controls_lb, and controls_ub
     if haskey(recipe[:specs], :arbitrage) && (:arbitrage in keys(eqs))
-        c_lb, c_ub, arb = Dolo._handle_arbitrage(eqs[:arbitrage],
+        c_lb, c_ub, arb = _handle_arbitrage(eqs[:arbitrage],
                                             _symbols[:controls])
         _eqs[:arbitrage] = arb
         _eqs[:controls_lb] = c_lb
@@ -106,9 +103,11 @@ end
 
 function get_definitions(model::ASModel)
     # parse defs so values are Expr
-    defs = get(model.data,:definitions,Dict())
+    defs = get(model.data,:definitions, Dict())
     dynvars = cat(1, get_variables(model), keys(defs)...)
-    _defs = OrderedDict{Symbol,Expr}([(Symbol(k), Dolo.sanitize( Dolo._to_expr(v),dynvars)) for (k, v) in defs])
+    _defs = OrderedDict{Symbol,Expr}(
+        [(Symbol(k), sanitize(_to_expr(v), dynvars)) for (k, v) in defs]
+    )
     return _defs
 end
 
@@ -118,12 +117,12 @@ function get_calibration(model::ASModel)
     _calib  = OrderedDict{Symbol,Union{Expr,Symbol,Number}}()
     # add calibration for definitions
     for k in keys(calib)
-        _calib[Symbol(k)] = Dolo._expr_or_number(calib[k])
+        _calib[Symbol(k)] = _expr_or_number(calib[k])
     end
     # so far _calib is a symbolic calibration
-    calibration = solve_triangular_system(_calib) ::OrderedDict{Symbol,Real }
-    symbols = get_symbols( model )
-    return ModelCalibration( calibration, symbols )
+    calibration = solve_triangular_system(_calib)
+    symbols = get_symbols(model)
+    return ModelCalibration(calibration, symbols)
 end
 
 function get_domain(model::ASModel)
@@ -146,10 +145,10 @@ function get_grid(model::ASModel; options=Dict())
     end
     if grid_dict[:tag] == :Cartesian
         orders = get(grid_dict, :orders, [20 for i=1:d])
-        grid = Dolo.CartesianGrid(domain.min, domain.max, orders)
+        grid = CartesianGrid(domain.min, domain.max, orders)
     elseif grid_dict[:tag] == :Smolyak
         mu = grid_dict[:mu]
-        grid = Dolo.SmolyakGrid(domain.min, domain.max, mu)
+        grid = SmolyakGrid(domain.min, domain.max, mu)
     else
         error("Unknown grid type.")
     end
@@ -161,9 +160,9 @@ function get_exogenous(model::ASModel)
     if length(exo_dict)==0
         exo_dict = get(model.data[:options], :exogenous, Dict{Symbol,Any}())
     end
-    exo = Dolo._symbol_dict(exo_dict)
+    exo = _symbol_dict(exo_dict)
     calib = get_calibration(model)
-    exogenous = Dolo._build_exogenous_entry(exo, calib)
+    exogenous = _build_exogenous_entry(exo, calib)
     return exogenous
 end
 
@@ -172,7 +171,7 @@ function set_calibration(model::ASModel, key::Symbol, value::Union{Real,Expr, Sy
 end
 
 
-type Model{ID}<:AModel{ID}
+type Model{ID} <: AModel{ID}
 
     data
     name::String           # weakly immutable
@@ -188,9 +187,9 @@ type Model{ID}<:AModel{ID}
     grid
     options
 
-    function Model(data; print_code=false, filename="<string>")
+    function (::Type{Model{ID}}){ID}(data; print_code=false, filename="<string>")
 
-        model = new(data)
+        model = new{ID}(data)
         model.name = get_name(model)
         model.filename = filename
         model.symbols = get_symbols(model)
@@ -231,10 +230,10 @@ function Model(url::AbstractString; print_code=false)
     # it looks like it would be cool to use the super constructor ;-)
     if match(r"(http|https):.*", url) != nothing
         res = get(url)
-        buf = Dolo.IOBuffer(res.data)
-        data = Dolo._symbol_dict(Dolo.load(buf, yaml_types))
+        buf = IOBuffer(res.data)
+        data = _symbol_dict(load(buf, yaml_types))
     else
-        data = Dolo._symbol_dict(Dolo.load_file(url, yaml_types))
+        data = _symbol_dict(load_file(url, yaml_types))
     end
     id = gensym()
     fname = basename(url)
