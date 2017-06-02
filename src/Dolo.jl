@@ -11,7 +11,6 @@ using Optim
 using QuantEcon
 using Dolang
 using Dolang: _to_expr
-# using Distributions: MvNormal, Distribution
 import Distributions
 import ForwardDiff
 import YAML
@@ -34,21 +33,12 @@ export ModelCalibration, FlatCalibration, GroupedCalibration
 
 # set up core types
 abstract AbstractSymbolicModel{ID}
-# abstract AbstractSymbolicModel{ID} <: AbstractModel{ID}
 abstract AbstractModel{ID} <: AbstractSymbolicModel{ID}
 
 typealias ASModel AbstractSymbolicModel
 typealias AModel AbstractModel
 
 id{ID}(::AbstractModel{ID}) = ID
-
-#
-# # duplicate hierarchy to experiment with
-# @compat abstract type ASModel{ID} end                # symbolic model
-# @compat abstract type AModel{ID} <: ASModel{ID} end      # numeric model
-#
-
-
 
 # recursively make all keys at any layer of nesting a symbol
 # included here instead of util.jl so we can call it on RECIPES below
@@ -67,7 +57,6 @@ for f in [:arbitrage, :transition, :auxiliary, :value, :expectation,
           :direct_response, :controls_lb!, :controls_ub!, :arbitrage_2!]
     eval(Expr(:function, f))
 end
-
 
 include("numeric/newton.jl")
 include("numeric/grids.jl")
