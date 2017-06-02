@@ -103,60 +103,49 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVe
     AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
 end
 
+###########################################################################
+## entry point for either Int or Float
+function simulate(
+        model::AbstractModel, dr::AbstractDecisionRule,
+        s0::AbstractVector=model.calibration[:states];
+        N=1, T=40
+    )
+    simulate(model, dr, s0, model.exogenous; N=N, T=T)
+end
+
+function simulate(
+        model::AbstractModel, dr::AbstractDecisionRule,
+        m0::Union{AbstractVector,Int},
+        s0::AbstractVector=model.calibration[:states];
+        N=1, T=40
+    )
+    simulate(model, dr, s0, m0, model.exogenous; N=N, T=T)
+end
 
 ##############################################################################
 # Sub-cases for |Floats|
-function simulate(model::AbstractModel, dr::AbstractDecisionRule,
-                  driving_process::AbstractArray{Float64,3})
-    s0 = model.calibration[:states]
+
+function simulate(
+        model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector,
+        exog::ContinuousProcess,
+        m0::AbstractVector=model.calibration[:exogenous];
+        N=1, T=40
+    )
+    driving_process = simulate(exog, N, T, m0)
     simulate(model, dr, s0, driving_process)
-end
-
-## methods which simulate the process
-##
-
-function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector,
-                  m0::Union{Int,AbstractVector}; N=1, T=40)
-    driving_process = simulate(model.exogenous, N, T, m0)
-    simulate(model, dr, s0, driving_process)
-end
-
-
-function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector;
-                  N=1, T=40)
-    m0 = model.calibration[:exogenous]
-    driving_process = simulate(model.exogenous, N, T, m0)
-    simulate(model, dr, s0, driving_process)
-end
-
-function simulate(model::AbstractModel,  dr::AbstractDecisionRule; N=1, T=40)
-    s0 = model.calibration[:states]
-    simulate(model, dr, s0; N=N, T=T)
 end
 
 ##############################################################################
 # Sub-cases for |Int|
-
-function simulate(model::AbstractModel, dr::AbstractDecisionRule,
-                  driving_process::AbstractMatrix{Int}, dp_process::DiscreteMarkovProcess)
-    s0 = model.calibration[:states]
-    simulate(model, dr, s0, driving_process, dp_process)
+function simulate(
+        model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector,
+        exog::DiscreteProcess,
+        m0::Int=1;
+        N=1, T=40
+    )
+    driving_process = simulate(exog, N, T, m0)
+    simulate(model, dr, s0, driving_process, exog)
 end
-
-function simulate(model::AbstractModel, dr::AbstractDecisionRule, dp_process::DiscreteMarkovProcess;
-                  N::Int=1, T::Int = 40 , m0::Int = 1)
-    driving_process = simulate(dp_process, N, T, m0)
-    simulate(model, dr, driving_process, dp_process)
-end
-
-function simulate(model::AbstractModel, dr::AbstractDecisionRule,
-                  s0::AbstractVector, dp_process::DiscreteMarkovProcess;
-                  N::Int=1, T::Int = 40 , m0::Int = 1)
-
-    driving_process = simulate(dp_process, N, T, m0)
-    simulate(model, dr, driving_process, dp_process)
-end
-
 
 ################################################################################
 ## Impulse response functions
