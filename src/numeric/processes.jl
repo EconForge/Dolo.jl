@@ -3,9 +3,9 @@
 @compat abstract type AbstractProcess <: AbstractExogenous end
 @compat abstract type DiscreteProcess <: AbstractProcess end
 @compat abstract type ContinuousProcess <: AbstractProcess end
-@compat abstract type IIDExogenous <: AbstractProcess end
+@compat abstract type IIDExogenous <: ContinuousProcess end
 
-@compat abstract type AbstractDiscretizedProcess end
+@compat abstract type AbstractDiscretizedProcess <: DiscreteProcess end
 
 ###
 ### Discretized process
@@ -122,6 +122,18 @@ function simulate(process::DiscreteMarkovProcess, N::Int, T::Int, i0::Int)
     AxisArray(inds, Axis{:T}(1:T),  Axis{:N}(1:N))
 end
 
+function simulate(process::DiscreteMarkovProcess, N::Int, T::Int, m0::AbstractVector{Float64})
+    # try to find index in process.values. IF we do, then simulate using
+    # the corresponding row index. If we don't, then throw an error
+    for i in size(process.values, 1)
+        if process.values[i, :] == m0
+            return simulate(process, N, T, i)
+        end
+    end
+    error("Couldn't find the vector `m0` in process.values. "*
+          "Try passing an integer `i0` instead")
+end
+
 function simulate_values(process::DiscreteMarkovProcess, N::Int, T::Int, i0::Int)
     inds = simulate(process, N, T, i0)
     n_values = size(process.values, 2)
@@ -173,8 +185,8 @@ function discretize(var::VAR1, n_states::Array{Int,1}, n_integration::Array{Int,
     Sigma = var.Sigma
     S = QE.solve_discrete_lyapunov(R,Sigma)  # asymptotic variance
     sig = diag(S)
-    min = var.mu - n_std*sqrt(sig)
-    max = var.mu + n_std*sqrt(sig)
+    min = var.mu - n_std*sqrt.(sig)
+    max = var.mu + n_std*sqrt.(sig)
     grid = CartesianGrid(min,max,n_states)
     # discretize innovations
     x,w = QE.qnwnorm(n_integration, zeros(size(var.Sigma,1)), var.Sigma)
@@ -231,7 +243,7 @@ false, set all shocks to 0 (unless `irf` is true -- see above).
 
 The output is an `AxisArray` contining variables, paths, and time on the 3 axes
 """
-function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64},
+function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64};
                   stochastic::Bool=true, irf::Bool=false, e0::Vector{Float64}=zeros(0))
 
     n = size(var.mu, 1)
@@ -276,13 +288,13 @@ end
 
 function response(var::VAR1, x0::AbstractVector, index_s::Int; T::Int=40)
     e1 = zeros(size(var.mu, 1))
-    Impulse = sqrt(diag(var.Sigma)[index_s])
+    Impulse = sqrt.(diag(var.Sigma)[index_s])
     e1[index_s] = Impulse
     simulate(var, 1, T, x0; stochastic=false, irf=true, e0=e1)[1, :, :]
 end
 
 function response(var::VAR1; T::Int=40)
-    e1 = sqrt(diag(var.Sigma))
+    e1 = sqrt.(diag(var.Sigma))
     simulate(var, 1, T; stochastic=false, irf=true, e0=e1)[1, :, :]
 end
 
@@ -312,10 +324,10 @@ function ErgodDist(var::VAR1, N::Int, T::Int)
         X_d[:, :, ii] = (XN[:, :, 2] - repeat(mean(XN[:, :, ii], 2), inner=[1, T]))
         X_d0[:, :, ii] = X_d[:, 1:end-1, ii]
         X_d1[:, :, ii] = (XN[:, 2:end, ii] - repeat(mean(XN[:, 2:end, ii], 2), inner=[1, T-1]))
-        R_sim[ii, ii] = mean(diag( cov(X_d0[:, :, ii], X_d1[:, :, ii] )/sqrt(var(X_d0[:, :, ii]))/sqrt(var(X_d1[:, :, ii]))))
+        R_sim[ii, ii] = mean(diag( cov(X_d0[:, :, ii], X_d1[:, :, ii] )/sqrt.(var(X_d0[:, :, ii]))/sqrt.(var(X_d1[:, :, ii]))))
         if ii == 2
-            R_sim[ii-1, ii] = mean(diag(cov(X_d0[:, :, ii-1], X_d1[:, :, ii])/sqrt(var(X_d0[:, :, ii-1]))/sqrt(var(X_d1[:, :, ii]))))
-            R_sim[ii, ii-1] = mean(diag(cov(X_d0[:, :, ii], X_d1[:, :, ii-1])/sqrt(var(X_d0[:, :, ii]))/sqrt(var(X_d1[:, :, ii-1]))))
+            R_sim[ii-1, ii] = mean(diag(cov(X_d0[:, :, ii-1], X_d1[:, :, ii])/sqrt.(var(X_d0[:, :, ii-1]))/sqrt.(var(X_d1[:, :, ii]))))
+            R_sim[ii, ii-1] = mean(diag(cov(X_d0[:, :, ii], X_d1[:, :, ii-1])/sqrt.(var(X_d0[:, :, ii]))/sqrt.(var(X_d1[:, :, ii-1]))))
         end
     end
 
