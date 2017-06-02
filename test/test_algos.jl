@@ -11,9 +11,9 @@ import YAML
         model_mc = Dolo.yaml_import(fn)
 
         drc = Dolo.ConstantDecisionRule(model_mc.calibration[:controls])
-        @time ti_res = Dolo.time_iteration(model_mc, verbose=false, maxit=10000)
-        @time drv = Dolo.evaluate_policy(model_mc, ti_res.dr, verbose=false)
-        @time tid_res = Dolo.time_iteration_direct(model_mc, ti_res.dr, verbose=false)
+        @time ti_res = Dolo.time_iteration(model_mc, verbose=true, maxit=10000)
+        @time drv = Dolo.evaluate_policy(model_mc, ti_res.dr, verbose=true)
+        @time tid_res = Dolo.time_iteration_direct(model_mc, ti_res.dr, verbose=true)
 
         sim = Dolo.simulate(model_mc, ti_res.dr, model_mc.exogenous) #; N=100, T=20)
         @test true
@@ -48,13 +48,13 @@ import YAML
 
         drc = Dolo.ConstantDecisionRule(model.calibration[:controls])
 
-        @time ti_res = Dolo.time_iteration(model, maxit=100, verbose=false)
-        @time drd = Dolo.time_iteration_direct(model; details=false, verbose=false)
+        @time ti_res = Dolo.time_iteration(model, maxit=100, verbose=true)
+        @time drd = Dolo.time_iteration_direct(model; details=false, verbose=true)
 
-        @time dr = Dolo.time_iteration_direct(model, drd; details=false, verbose=false) #, maxit=500, verbose=true)
-        @time res = Dolo.time_iteration_direct(model, drc; details=true, verbose=false)
-        @time drv = Dolo.evaluate_policy(model, dr; verbose=false)
-        # @time drv = Dolo.value_iteration(model, dr; verbose=false)
+        @time dr = Dolo.time_iteration_direct(model, drd; details=false, verbose=true) #, maxit=500, verbose=true)
+        @time res = Dolo.time_iteration_direct(model, drc; details=true, verbose=true)
+        @time drv = Dolo.evaluate_policy(model, dr; verbose=true)
+        # @time drv = Dolo.value_iteration(model, dr; verbose=true)
 
         #
         Dolo.simulate(model, dr)
@@ -94,11 +94,11 @@ import YAML
 
         @time dr = Dolo.perturbate(model)
         cdr = Dolo.CachedDecisionRule(dr, dp)
-        @time ti_res = Dolo.time_iteration(model, dp, verbose=false)
-        @time ti_res = Dolo.time_iteration(model, verbose=false)
-        # @time dr0, drv0 = Dolo.solve_policy(model, cdr, verbose=false) #, maxit=10000 )
-        @time drv = Dolo.evaluate_policy(model, ti_res.dr, verbose=false, maxit=10000)
-        @time drd = Dolo.time_iteration_direct(model, ti_res.dr, verbose=false)
+        @time ti_res = Dolo.time_iteration(model, dp, verbose=true)
+        @time ti_res = Dolo.time_iteration(model, verbose=true)
+        # @time dr0, drv0 = Dolo.solve_policy(model, cdr, verbose=true) #, maxit=10000 )
+        @time drv = Dolo.evaluate_policy(model, ti_res.dr, verbose=true, maxit=10000)
+        @time drd = Dolo.time_iteration_direct(model, ti_res.dr, verbose=true)
         #
         model.symbols[:exogenous]
 
