@@ -120,8 +120,8 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
     x0 = [init_dr(i, endo_nodes) for i=1:nsd]
 
     n_x = length(model.calibration[:controls])
-    lb = Array(Float64, N*nsd, n_x)
-    ub = Array(Float64, N*nsd, n_x)
+    lb = Array{Float64}(N*nsd, n_x)
+    ub = Array{Float64}(N*nsd, n_x)
     ix = 0
     for i in 1:nsd
         node_i = node(dprocess, i)
