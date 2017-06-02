@@ -11,7 +11,7 @@ type DecisionRule{S,T} <: AbstractDecisionRule{S,T}
 end
 
 function Base.show(io::IO, dr::AbstractDecisionRule)
-    @printf io "%s\n" typeof(dr)
+    println(typeof(dr))
 end
 
 
@@ -20,13 +20,13 @@ end
 end
 
 (dr::ConstantDecisionRule)(x::AbstractVector{Float64}) = dr.constants
-(dr::ConstantDecisionRule)(x::AbstractMatrix{Float64}) = repmat(dr.constants',size(x,1),1)
+(dr::ConstantDecisionRule)(x::AbstractMatrix{Float64}) = repmat(dr.constants', size(x, 1), 1)
 (dr::ConstantDecisionRule)(x::AbstractVector{Float64}, y::AbstractVector{Float64}) = dr.constants
-(dr::ConstantDecisionRule)(x::AbstractVector{Float64}, y::AbstractMatrix{Float64}) = repmat( dr.constants', size(y,1), 1)
-(dr::ConstantDecisionRule)(x::AbstractMatrix{Float64}, y::AbstractVector{Float64}) = repmat( dr.constants', size(x,1), 1)
-(dr::ConstantDecisionRule)(x::AbstractMatrix{Float64}, y::AbstractMatrix{Float64}) = repmat( dr.constants', size(x,1), 1)
-(dr::ConstantDecisionRule)(i::Int, x::Union{AbstractVector{Float64},AbstractMatrix{Float64}}) = dr(x)
-(dr::ConstantDecisionRule)(i::Int, j::Int, x::Union{AbstractVector{Float64},AbstractMatrix{Float64}}) = dr(x)
+(dr::ConstantDecisionRule)(x::AbstractVector{Float64}, y::AbstractMatrix{Float64}) = repmat( dr.constants', size(y, 1), 1)
+(dr::ConstantDecisionRule)(x::AbstractMatrix{Float64}, y::AbstractVector{Float64}) = repmat( dr.constants', size(x, 1), 1)
+(dr::ConstantDecisionRule)(x::AbstractMatrix{Float64}, y::AbstractMatrix{Float64}) = repmat( dr.constants', size(x, 1), 1)
+(dr::ConstantDecisionRule)(i::Int, x::Union{AbstractVector{Float64}, AbstractMatrix{Float64}}) = dr(x)
+(dr::ConstantDecisionRule)(i::Int, j::Int, x::Union{AbstractVector{Float64}, AbstractMatrix{Float64}}) = dr(x)
 
 
 @compat type BiTaylorExpansion <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
@@ -38,12 +38,12 @@ end
 end
 
 (dr::BiTaylorExpansion)(m::AbstractVector{Float64}, s::AbstractVector{Float64}) = dr.x0 + dr.x_m*(m-dr.m0) + dr.x_s*(s-dr.s0)
-(dr::BiTaylorExpansion)(m::AbstractMatrix{Float64}, s::AbstractVector{Float64}) = vcat( [ (dr(m[i,:],s))' for i=1:size(m,1) ]...)
-(dr::BiTaylorExpansion)(m::AbstractVector{Float64}, s::AbstractMatrix{Float64}) = vcat( [ (dr(m,s[i,:]))' for i=1:size(s,1) ]...)
-(dr::BiTaylorExpansion)(m::AbstractMatrix{Float64}, s::AbstractMatrix{Float64}) = vcat( [ (dr(m[i,:],s[i,:]))' for i=1:size(m,1) ]...)
+(dr::BiTaylorExpansion)(m::AbstractMatrix{Float64}, s::AbstractVector{Float64}) = vcat([(dr(m[i, :], s))' for i=1:size(m, 1) ]...)
+(dr::BiTaylorExpansion)(m::AbstractVector{Float64}, s::AbstractMatrix{Float64}) = vcat([(dr(m, s[i, :]))' for i=1:size(s, 1) ]...)
+(dr::BiTaylorExpansion)(m::AbstractMatrix{Float64}, s::AbstractMatrix{Float64}) = vcat([(dr(m[i, :], s[i, :]))' for i=1:size(m, 1) ]...)
 
 
-function filter_mcoeffs(a::Array{Float64,1},b::Array{Float64,1},n::Array{Int,1},mvalues::Array{Float64})
+function filter_mcoeffs(a::Array{Float64,1}, b::Array{Float64,1}, n::Array{Int,1}, mvalues::Array{Float64})
     n_x = size(mvalues)[end]
     vals = reshape(mvalues, n..., n_x)
     coeffs = zeros(n_x, (n+2)...)
@@ -87,7 +87,7 @@ function set_values!(dr::AbstractDecisionRule{EmptyGrid, CartesianGrid}, values:
     set_values!(dr, [values])
 end
 
-function evaluate(dr::AbstractDecisionRule{EmptyGrid, CartesianGrid},z::AbstractMatrix{Float64})
+function evaluate(dr::AbstractDecisionRule{EmptyGrid, CartesianGrid}, z::AbstractMatrix{Float64})
     a = dr.grid_endo.min
     b = dr.grid_endo.max
     n = dr.grid_endo.n
@@ -96,10 +96,10 @@ function evaluate(dr::AbstractDecisionRule{EmptyGrid, CartesianGrid},z::Abstract
     return res
 end
 
-(dr::DecisionRule{EmptyGrid, CartesianGrid})(z::AbstractMatrix{Float64}) = evaluate(dr,z)
+(dr::DecisionRule{EmptyGrid, CartesianGrid})(z::AbstractMatrix{Float64}) = evaluate(dr, z)
 (dr::DecisionRule{EmptyGrid, CartesianGrid})(z::AbstractVector{Float64}) = dr(z')[:]
-(dr::DecisionRule{EmptyGrid, CartesianGrid})(i::Int, x::Union{AbstractVector{Float64},AbstractMatrix{Float64}}) = dr(x)
-(dr::DecisionRule{EmptyGrid, CartesianGrid})(x::Union{AbstractVector{Float64},AbstractMatrix{Float64}}, y::Union{AbstractVector{Float64},AbstractMatrix{Float64}}) = dr(y)
+(dr::DecisionRule{EmptyGrid, CartesianGrid})(i::Int, x::Union{AbstractVector{Float64}, AbstractMatrix{Float64}}) = dr(x)
+(dr::DecisionRule{EmptyGrid, CartesianGrid})(x::Union{AbstractVector{Float64}, AbstractMatrix{Float64}}, y::Union{AbstractVector{Float64}, AbstractMatrix{Float64}}) = dr(y)
 
 
 ####
@@ -121,17 +121,17 @@ function DecisionRule(grid_exo::CartesianGrid, grid_endo::CartesianGrid, values:
 end
 
 function set_values!(dr::Dolo.AbstractDecisionRule{Dolo.CartesianGrid, Dolo.CartesianGrid}, values::Array{Array{Float64,2},1})
-    a = cat(1,dr.grid_exo.min,dr.grid_endo.min)
-    b = cat(1,dr.grid_exo.max,dr.grid_endo.max)
-    orders = cat(1,dr.grid_exo.n,dr.grid_endo.n)
-    n_x = size(values[1],2)
+    a = cat(1, dr.grid_exo.min, dr.grid_endo.min)
+    b = cat(1, dr.grid_exo.max, dr.grid_endo.max)
+    orders = cat(1, dr.grid_exo.n, dr.grid_endo.n)
+    n_x = size(values[1], 2)
     vv = zeros(prod(dr.grid_exo.n), prod(dr.grid_endo.n), n_x)
-    for n=1:size(vv,1)
+    for n=1:size(vv, 1)
         # ah, if only Julia had chosen C-order arrays !
-        vv[n,:,:] = values[n]
+        vv[n, :, :] = values[n]
     end
-    vv = reshape(vv, prod(dr.grid_endo.n)*prod(dr.grid_exo.n),n_x)
-    dr.coefficients = [Dolo.filter_mcoeffs(a,b,orders,vv)]
+    vv = reshape(vv, prod(dr.grid_endo.n)*prod(dr.grid_exo.n), n_x)
+    dr.coefficients = [Dolo.filter_mcoeffs(a, b, orders, vv)]
 end
 
 function evaluate(dr::AbstractDecisionRule{CartesianGrid, CartesianGrid}, z::AbstractMatrix{Float64})
@@ -143,12 +143,12 @@ function evaluate(dr::AbstractDecisionRule{CartesianGrid, CartesianGrid}, z::Abs
     return res
 end
 
-(dr::DecisionRule{CartesianGrid, CartesianGrid})(z::AbstractMatrix{Float64}) = evaluate(dr,z)
+(dr::DecisionRule{CartesianGrid, CartesianGrid})(z::AbstractMatrix{Float64}) = evaluate(dr, z)
 (dr::DecisionRule{CartesianGrid, CartesianGrid})(z::AbstractVector{Float64}) = dr(z')[:]
-(dr::DecisionRule{CartesianGrid, CartesianGrid})(x::AbstractVector{Float64},y::AbstractVector{Float64}) = dr(cat(1,x,y))
-(dr::DecisionRule{CartesianGrid, CartesianGrid})(x::AbstractMatrix{Float64},y::AbstractMatrix{Float64}) = dr([x y])
-(dr::DecisionRule{CartesianGrid, CartesianGrid})(x::AbstractVector{Float64},y::AbstractMatrix{Float64}) = dr([repmat(x',size(y,1),1) y])
-(dr::DecisionRule{CartesianGrid, CartesianGrid})(i::Int,y::Union{AbstractVector{Float64},AbstractMatrix{Float64}}) = dr(node(dr.grid_exo,i),y)
+(dr::DecisionRule{CartesianGrid, CartesianGrid})(x::AbstractVector{Float64}, y::AbstractVector{Float64}) = dr(cat(1, x, y))
+(dr::DecisionRule{CartesianGrid, CartesianGrid})(x::AbstractMatrix{Float64}, y::AbstractMatrix{Float64}) = dr([x y])
+(dr::DecisionRule{CartesianGrid, CartesianGrid})(x::AbstractVector{Float64}, y::AbstractMatrix{Float64}) = dr([repmat(x', size(y, 1), 1) y])
+(dr::DecisionRule{CartesianGrid, CartesianGrid})(i::Int, y::Union{AbstractVector{Float64}, AbstractMatrix{Float64}}) = dr(node(dr.grid_exo, i), y)
 
 
 ####
@@ -170,7 +170,7 @@ function DecisionRule(grid_exo::UnstructuredGrid, grid_endo::CartesianGrid, valu
 end
 
 
-function set_values!(dr::AbstractDecisionRule{UnstructuredGrid, CartesianGrid}, values::Array{Matrix{Float64},1})
+function set_values!(dr::AbstractDecisionRule{UnstructuredGrid,CartesianGrid}, values::Array{Matrix{Float64},1})
     a = dr.grid_endo.min
     b = dr.grid_endo.max
     orders = dr.grid_endo.n
@@ -178,7 +178,7 @@ function set_values!(dr::AbstractDecisionRule{UnstructuredGrid, CartesianGrid}, 
 end
 
 
-function evaluate(dr::AbstractDecisionRule{UnstructuredGrid, CartesianGrid}, i::Int, z::AbstractMatrix{Float64})
+function evaluate(dr::AbstractDecisionRule{UnstructuredGrid,CartesianGrid}, i::Int, z::AbstractMatrix{Float64})
     a = dr.grid_endo.min
     b = dr.grid_endo.max
     n = dr.grid_endo.n
@@ -187,18 +187,18 @@ function evaluate(dr::AbstractDecisionRule{UnstructuredGrid, CartesianGrid}, i::
     return res
 end
 
-(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::Int,y::AbstractMatrix{Float64}) = evaluate(dr,i,y)
+(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::Int, y::AbstractMatrix{Float64}) = evaluate(dr, i, y)
 
-# (dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::AbstractMatrix{Int},y::AbstractMatrix{Float64}) =
-# vcat( [evaluate(dr, i[j,1], y[j,:]) for j=1:size(y,1)]... )
+# (dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::AbstractMatrix{Int}, y::AbstractMatrix{Float64}) =
+# vcat( [evaluate(dr, i[j, 1], y[j, :]) for j=1:size(y, 1)]... )
 
-(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::Int,y::AbstractVector{Float64}) = dr(i,y')[:]
+(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::Int, y::AbstractVector{Float64}) = dr(i, y')[:]
 
-(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::AbstractVector{Int64},y::AbstractMatrix{Float64}) =
-  vcat( [dr(i[j], y[j,:])' for j=1:size(y,1)]... )
+(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::AbstractVector{Int64}, y::AbstractMatrix{Float64}) =
+  vcat( [dr(i[j], y[j, :])' for j=1:size(y, 1)]... )
 
-(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::AbstractVector{Int64},y::AbstractVector{Float64}) =
-    vcat( [dr(i[j], y[j,:])' for j=1:size(y,1)]... )
+(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::AbstractVector{Int64}, y::AbstractVector{Float64}) =
+    vcat( [dr(i[j], y[j, :])' for j=1:size(y, 1)]... )
 #####
 ##### Cached Decision Rules (do we really need them ?)
 #####
@@ -216,14 +216,14 @@ CachedDecisionRule(process::AbstractDiscretizedProcess, grid::Grid, n_x::Int) =
 CachedDecisionRule(process::AbstractDiscretizedProcess, grid::Grid, values) =
     CachedDecisionRule(DecisionRule(process.grid, grid, values), process)
 
-set_values!(cdr::CachedDecisionRule, v) = set_values!(cdr.dr,v)
+set_values!(cdr::CachedDecisionRule, v) = set_values!(cdr.dr, v)
 
 # defaults
 
-(cdr::CachedDecisionRule)(v::Union{AbstractVector{Float64},AbstractMatrix{Float64}}) = cdr.dr(v)
-(cdr::CachedDecisionRule)(m::Union{AbstractVector{Float64},AbstractMatrix{Float64}},s::Union{AbstractVector{Float64},AbstractMatrix{Float64}}) = cdr.dr(m,s)
-(cdr::CachedDecisionRule)(i::Int,s::Union{AbstractVector{Float64},AbstractMatrix{Float64}}) = cdr.dr(node(cdr.process,i),s)
-(cdr::CachedDecisionRule)(i::Int,j::Int,s::Union{AbstractVector{Float64},AbstractMatrix{Float64}}) = cdr.dr(inode(cdr.process,i,j),s)
+(cdr::CachedDecisionRule)(v::Union{AbstractVector{Float64}, AbstractMatrix{Float64}}) = cdr.dr(v)
+(cdr::CachedDecisionRule)(m::Union{AbstractVector{Float64}, AbstractMatrix{Float64}}, s::Union{AbstractVector{Float64}, AbstractMatrix{Float64}}) = cdr.dr(m, s)
+(cdr::CachedDecisionRule)(i::Int, s::Union{AbstractVector{Float64}, AbstractMatrix{Float64}}) = cdr.dr(node(cdr.process, i), s)
+(cdr::CachedDecisionRule)(i::Int, j::Int, s::Union{AbstractVector{Float64}, AbstractMatrix{Float64}}) = cdr.dr(inode(cdr.process, i, j), s)
 
-(cdr::CachedDecisionRule{DecisionRule{UnstructuredGrid, CartesianGrid}, DiscreteMarkovProcess})(i::Int,s::Union{AbstractVector{Float64},AbstractMatrix{Float64}}) = cdr.dr(i,s)
-(cdr::CachedDecisionRule{DecisionRule{UnstructuredGrid, CartesianGrid}, DiscreteMarkovProcess})(i::Int,j::Int,s::Union{AbstractVector{Float64},AbstractMatrix{Float64}}) = cdr.dr(j,s)
+(cdr::CachedDecisionRule{DecisionRule{UnstructuredGrid, CartesianGrid}, DiscreteMarkovProcess})(i::Int, s::Union{AbstractVector{Float64}, AbstractMatrix{Float64}}) = cdr.dr(i, s)
+(cdr::CachedDecisionRule{DecisionRule{UnstructuredGrid, CartesianGrid}, DiscreteMarkovProcess})(i::Int, j::Int, s::Union{AbstractVector{Float64}, AbstractMatrix{Float64}}) = cdr.dr(j, s)
