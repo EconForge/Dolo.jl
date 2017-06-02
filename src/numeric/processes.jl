@@ -219,25 +219,27 @@ simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64}
 ```
 
 Construct `N` simulated paths of length `T` the vector autoregressive process
-`var`, starting each simulated path from `x0`
+`var`, starting each simulated path from `x0`.
 
-This function takes:
+If `irf` is `true`, then `e0` must be a vector of the same length as `var.mu`
+and `e0` will be used as the initial shocks.
 
-    - var -  a VAR1 process
-    - N - number of simulations.
-    - T - number of periods to simulate
+If `stochastic` is `true`, construct a sequence of shocks by drawing `N` paths
+of length `T` from the distribution `Normal(0, var.Sigma)` (where `0` is a
+vector of zeros of the appropriate length). Otherwise, if `stochastic` is
+false, set all shocks to 0 (unless `irf` is true -- see above).
 
-    The function returns:
-        - XN - simulated data, ordered as (n, N, T); - no need, cuz using AxisArray
+The output is an `AxisArray` contining variables, paths, and time on the 3 axes
 """
 function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64}
                   stochastic::Bool=true, irf::Bool=false, e0::Vector{Float64}=zeros(0))
 
     n = size(var.mu, 1)
-    dist = QE.MVNSampler(zeros(size(var.Sigma, 1)), var.Sigma)
     XN = zeros(N, T, n)
     E = zeros(N, T, n)
+
     if stochastic
+        dist = QE.MVNSampler(zeros(n), var.Sigma)
         for jj in 1:N
             E[jj, :, :] = rand(dist, T)'
         end
@@ -326,4 +328,3 @@ end
 @compat const AR1 = VAR1
 @compat const MarkovChain = DiscreteMarkovProcess
 @compat const Normal = MvNormal
--
