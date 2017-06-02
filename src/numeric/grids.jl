@@ -1,4 +1,4 @@
-abstract Grid
+@compat abstract type Grid end
 
 function Base.show(io::IO, grid::Grid)
     println(typeof(grid))
