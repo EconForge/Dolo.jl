@@ -205,7 +205,7 @@ function value_iteration(
     # this could be integrated in the main loop.
     verbose && println("Evaluating initial policy")
 
-    drv = evaluate_policy(model, dr; eval_options...)
+    drv = evaluate_policy(model, dr; verbose=verbose, eval_options...)
 
     verbose && println("Evaluating initial policy (done)")
 
@@ -275,10 +275,9 @@ function value_iteration(
                     upper = clamp!(upper, -Inf, 1000000)
                     lower = clamp!(lower, -1000000, Inf)
                     initial_x = x0[i][n, :]
-                    # try
                     results = optimize(
-                        DifferentiableFunction(fobj), initial_x, lower, upper,
-                        Fminbox(), optimizer=NelderMead, optimizer_o=optim_opts
+                        Optim.OnceDifferentiable(fobj), initial_x, lower, upper,
+                        Fminbox{NelderMead}(), optimizer_o=optim_opts
                     )
                     xn = Optim.minimizer(results)
                     nv = -Optim.minimum(results)/1000.0
