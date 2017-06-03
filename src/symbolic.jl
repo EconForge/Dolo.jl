@@ -2,7 +2,6 @@
 # Symbolic Model #
 # -------------- #
 #
-
 function _get_args(sm, spec)
     # get args
     args = OrderedDict{Symbol,Vector{Tuple{Symbol,Int}}}()
@@ -14,29 +13,16 @@ function _get_args(sm, spec)
     args
 end
 
-
-function temporary_equation_quickfixer(eq)
-    if (eq.head == :call) && (eq.args[1]==:(==))
-        u = eq.args[2]
-        v = eq.args[3]
-        return :($u=$v)
-    else
-        return eq
-    end
-end
-
 function Dolang.FunctionFactory(sm, func_nm::Symbol)
     spec = RECIPES[:dtcc][:specs][func_nm]
     eqs = sm.equations[func_nm]
-
-    eqs = [temporary_equation_quickfixer(eq) for eq in eqs]
 
     # get targets
     target = get(spec, :target, [nothing])[1]
     has_targets = !(target === nothing)
     if has_targets
         target_date = spec[:target][2]
-        targets = [Dolang.normalize((s,target_date)) for s in sm.symbols[Symbol(target)]]
+        targets = [Dolang.normalize((s, target_date)) for s in sm.symbols[Symbol(target)]]
     else
         targets =  Symbol[]
     end

@@ -2,7 +2,7 @@
 # Grid types #
 # ---------- #
 
-abstract AbstractGrid
+@compat abstract type AbstractGrid end
 
 immutable Cartesian <: AbstractGrid
     a::Vector{Float64}
@@ -15,7 +15,6 @@ type Domain
     min::Vector{Float64}
     max::Vector{Float64}
 end
-
 
 function Cartesian(stuff::Associative, calib::ModelCalibration)
     kind = get(stuff, :tag, nothing)
@@ -44,7 +43,7 @@ end
 # Distribution types #
 # ------------------ #
 
-abstract AbstractDistribution
+@compat abstract type AbstractDistribution end
 
 function _build_dist(data::Associative, calib::ModelCalibration)
     if data[:tag] == :Normal
@@ -61,10 +60,8 @@ end
 # Discrete Transition types #
 # ------------------------- #
 
-to_vector(tab::Int) = reshape(Array{Int}([tab]), 1)
-to_vector(tab::Float64) = reshape(Array{Float64}([tab]), 1)
-to_matrix(tab::Int) = reshape(Array{Int}([tab]), 1, 1)
-to_matrix(tab::Float64) = reshape(Array{Float64}([tab]), 1, 1)
+to_vector(tab::Number) = [tab]
+to_matrix(tab::Number) = reshape([tab], 1, 1)
 to_matrix(tab::Array) = hcat([Array{Float64}(e) for e in tab]...)
 to_matrix(tab::Array{Array{Float64,1},1}) = cat(1, [e' for e in tab]...)
 

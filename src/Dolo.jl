@@ -2,21 +2,37 @@ __precompile__()
 
 module Dolo
 
-using MacroTools
+# model import utils
 using DataStructures: OrderedDict
-using YAML: load_file, load
+import YAML; using YAML: load_file, load
 using Requests: get
+
+# solvers
 using NLsolve
 using Optim
-using QuantEcon
+
+# QuantEcon
+using QuantEcon; import QuantEcon: simulate
+const QE = QuantEcon
+
+# Dolang
 using Dolang
-using Dolang: _to_expr
-# using Distributions: MvNormal, Distribution
+using Dolang: _to_expr, inf_to_Inf, solution_order, solve_triangular_system
+
+# Numerical Tools
+using MacroTools  # used for eval_with
 import Distributions
 import ForwardDiff
-import YAML
+using splines
+
+# Simulation/presentation
+using AxisArrays
+
+# Compat across julia versions
 using Compat; import Compat: String, view
 
+
+# exports
        # model functions
 export arbitrage, transition, auxiliary, value, expectation,
        direct_response, controls_lb, controls_ub, arbitrage_2, felicity,
@@ -33,27 +49,18 @@ export time_iteration, value_iteration, steady_state_residuals, simulation
 export ModelCalibration, FlatCalibration, GroupedCalibration
 
 # set up core types
-abstract AbstractSymbolicModel{ID}
-# abstract AbstractSymbolicModel{ID} <: AbstractModel{ID}
-abstract AbstractModel{ID} <: AbstractSymbolicModel{ID}
+@compat abstract type AbstractSymbolicModel{ID} end
+@compat abstract type AbstractModel{ID} <: AbstractSymbolicModel{ID} end
 
-typealias ASModel AbstractSymbolicModel
-typealias AModel AbstractModel
+@compat const ASModel = AbstractSymbolicModel
+@compat const AModel = AbstractModel
 
 id{ID}(::AbstractModel{ID}) = ID
-
-#
-# # duplicate hierarchy to experiment with
-# @compat abstract type ASModel{ID} end                # symbolic model
-# @compat abstract type AModel{ID} <: ASModel{ID} end      # numeric model
-#
-
-
 
 # recursively make all keys at any layer of nesting a symbol
 # included here instead of util.jl so we can call it on RECIPES below
 _symbol_dict(x) = x
-@compat _symbol_dict(d::Associative) =
+_symbol_dict(d::Associative) =
     Dict{Symbol,Any}([(Symbol(k), _symbol_dict(v)) for (k, v) in d])
 
 const src_path = dirname(@__FILE__)
@@ -68,19 +75,16 @@ for f in [:arbitrage, :transition, :auxiliary, :value, :expectation,
     eval(Expr(:function, f))
 end
 
-
 include("numeric/newton.jl")
 include("numeric/grids.jl")
 include("numeric/processes.jl")
 include("numeric/decision_rules.jl")
-include("numeric/simulations.jl")
 include("numeric/derivatives.jl")
 
 include("util.jl")
 include("symbolic.jl")
 include("calibration.jl")
 include("minilang.jl")
-include("numeric.jl")
 include("model.jl")
 include("printing.jl")
 

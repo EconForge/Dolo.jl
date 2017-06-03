@@ -155,8 +155,6 @@ function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64},
     return E_V
 end
 
-absmax(x) = max( [maximum(abs(x[i])) for i=1:length(x)]... )
-
 """
 Solve for the value function and associated decision rule using value function iteration.
 
@@ -167,14 +165,16 @@ Solve for the value function and associated decision rule using value function i
 * `dr`: Solved decision rule object.
 * `drv`: Solved value function object.
 """
-function value_iteration(model, dprocess::AbstractDiscretizedProcess, grid, pdr;
-    discount_symbol=:beta,
-    maxit::Int=1000, tol_x::Float64=1e-8, tol_v::Float64=1e-8,
-    optim_options=Dict(), eval_options=Dict(),
-    verbose::Bool=true, details::Bool=true)
+function value_iteration(
+        model, dprocess::AbstractDiscretizedProcess, grid, pdr;
+        discount_symbol=:beta,
+        maxit::Int=1000, tol_x::Float64=1e-8, tol_v::Float64=1e-8,
+        optim_options=Dict(), eval_options=Dict(),
+        verbose::Bool=true, details::Bool=true
+    )
 
 
-    β=model.calibration.flat[discount_symbol]
+    β = model.calibration.flat[discount_symbol]
 
     dr = CachedDecisionRule(pdr, dprocess)
     # compute the value function
@@ -205,7 +205,7 @@ function value_iteration(model, dprocess::AbstractDiscretizedProcess, grid, pdr;
     # this could be integrated in the main loop.
     verbose && println("Evaluating initial policy")
 
-    drv = evaluate_policy(model, dr; eval_options...)
+    drv = evaluate_policy(model, dr; verbose=verbose, eval_options...)
 
     verbose && println("Evaluating initial policy (done)")
 
@@ -232,7 +232,7 @@ function value_iteration(model, dprocess::AbstractDiscretizedProcess, grid, pdr;
 
         # it += 1
         if (mode == :eval)
-    #
+
             it_eval = 0
             converged_eval = false
             while !converged_eval
@@ -241,7 +241,7 @@ function value_iteration(model, dprocess::AbstractDiscretizedProcess, grid, pdr;
                     m = node(dprocess, i)
                     for n = 1:N
                         s = endo_nodes[n, :]
-    #                     # update vals
+                        # update vals
                         nv = update_value(model, β, dprocess, drv, i, s, x0[i][n, :], p)
                         v[i][n, 1] = nv
                     end
@@ -262,7 +262,7 @@ function value_iteration(model, dprocess::AbstractDiscretizedProcess, grid, pdr;
             mode = :improve
 
         else
-    #
+
             it += 1
             for i = 1:size(res, 1)
                 m = node(dprocess, i)
@@ -275,10 +275,9 @@ function value_iteration(model, dprocess::AbstractDiscretizedProcess, grid, pdr;
                     upper = clamp!(upper, -Inf, 1000000)
                     lower = clamp!(lower, -1000000, Inf)
                     initial_x = x0[i][n, :]
-                    # try
                     results = optimize(
-                        DifferentiableFunction(fobj), initial_x, lower, upper,
-                        Fminbox(), optimizer=NelderMead, optimizer_o=optim_opts
+                        Optim.OnceDifferentiable(fobj), initial_x, lower, upper,
+                        Fminbox{NelderMead}(), optimizer_o=optim_opts
                     )
                     xn = Optim.minimizer(results)
                     nv = -Optim.minimum(results)/1000.0
@@ -312,9 +311,9 @@ function value_iteration(model, dprocess::AbstractDiscretizedProcess, grid, pdr;
             converged = ((err_x<tol_x) && (err_v<tol_v)) || (it>=maxit)
 
             mode = :eval
-    #
+
         end
-    #
+
     end
 
 

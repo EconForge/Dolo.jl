@@ -25,27 +25,24 @@ function residual(model, dprocess::AbstractDiscretizedProcess, s, x::Array{Array
     res = [zeros(size(x[1])) for i=1:length(x)]
     S = zeros(size(s))
     # X = zeros(size(x[1]))
-    for i=1:size(res, 1)
+    for i in 1:size(res, 1)
         m = node(dprocess, i)
-        for j=1:n_inodes(dprocess, i)
+        for j in 1:n_inodes(dprocess, i)
             M = inode(dprocess, i, j)
             w = iweight(dprocess, i, j)
             # Update the states
-            for n=1:N
+            for n in 1:N
                 S[n, :] = Dolo.transition(model, m, s[n, :], x[i][n, :], M, p)
             end
 
             X = dr(i, j, S)
-            for n=1:N
+            for n in 1:N
                 res[i][n, :] += w*Dolo.arbitrage(model, m, s[n, :], x[i][n, :], M, S[n, :], X[n, :], p)
             end
         end
     end
     return res
 end
-
-using NLsolve
-
 
 function residual(model, dprocess, s, x::Array{Float64,2}, p, dr)
     n_m = max(1, n_nodes(dprocess))
@@ -54,18 +51,12 @@ function residual(model, dprocess, s, x::Array{Float64,2}, p, dr)
     return stack0(res)
 end
 
-"""
-#TODO
-"""
 function destack0(x::Array{Float64,2}, n_m::Int)
     N = div(size(x, 1), n_m)
     xx = reshape(x, N, n_m, size(x, 2))
     return Array{Float64,2}[xx[:, i, :] for i=1:n_m]
 end
 
-"""
-#TODO
-"""
 function stack0(x::Array{Array{Float64,2},1})::Array{Float64,2}
      return cat(1, x...)
 end
@@ -89,7 +80,7 @@ function Base.show(io::IO, r::TimeIterationResult)
     @printf io "   * |x - x'| < %.1e: %s\n" r.x_tol r.x_converged
 end
 
- """
+"""
 Computes a global solution for a model via backward time iteration. The time iteration is applied to the residuals of the arbitrage equations.
 
 If the initial guess for the decision rule is not explicitly provided, the initial guess is provided by `ConstantDecisionRule`.
@@ -104,20 +95,20 @@ If the stochastic process for the model is not explicitly provided, the process 
 """
 function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
                         grid, init_dr;
-          verbose::Bool=true, details::Bool=true,
-          maxit::Int=100, tol_η::Float64=1e-8,
-          solver=Dict())
+                        verbose::Bool=true, details::Bool=true,
+                        maxit::Int=100, tol_η::Float64=1e-8,
+                        solver=Dict())
 
-    if get(solver,:type,nothing) == :direct
-        return time_iteration_direct(model, dprocess, grid, init_dr;
-                  verbose=verbose, details=details, maxit=maxit, tol_η=tol_η)
+    if get(solver, :type, :__missing__) == :direct
+        return time_iteration_direct(
+            model, dprocess, grid, init_dr; verbose=verbose, details=details,
+            maxit=maxit, tol_η=tol_η
+        )
     end
-
 
     endo_nodes = nodes(grid)
     N = size(endo_nodes, 1)
-    n_s_endo = size(endo_nodes,2)
-
+    n_s_endo = size(endo_nodes, 2)
     n_s_exo = n_nodes(dprocess)
 
     # initial guess
@@ -129,8 +120,8 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
     x0 = [init_dr(i, endo_nodes) for i=1:nsd]
 
     n_x = length(model.calibration[:controls])
-    lb = Array(Float64, N*nsd, n_x)
-    ub = Array(Float64, N*nsd, n_x)
+    lb = Array{Float64}(N*nsd, n_x)
+    ub = Array{Float64}(N*nsd, n_x)
     ix = 0
     for i in 1:nsd
         node_i = node(dprocess, i)
@@ -179,7 +170,7 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
     if !details
         return dr.dr
     else
-        converged = err<tol_η
+        converged = err < tol_η
         TimeIterationResult(dr.dr, it, true, converged, tol_η, err)
     end
 

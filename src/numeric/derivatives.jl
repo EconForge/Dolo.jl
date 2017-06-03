@@ -30,10 +30,10 @@ Dolo.eval_jacobian(mod, Dolo.transition!, 1, (m, s), (x,), (M, p), 1)
 """
 function eval_jacobian(m::AbstractModel, f!::Function, n::Int, before::Tuple,
                        to_diff::Tuple, after::Tuple, i::Int)
-    _f!(out, _) = f!(m, out, before..., to_diff[1:i-1]..., _,
+    _f!(out, _x) = f!(m, out, before..., to_diff[1:i-1]..., _x,
                      to_diff[i+1:end]..., after...)
-    out = Array(Float64, n, length(to_diff[i]))
-    func_out = Array(Float64, n)
+    out = Array{Float64}(n, length(to_diff[i]))
+    func_out = Array{Float64}(n)
     ForwardDiff.jacobian!(out, _f!, func_out, to_diff[i])
     out
 end
