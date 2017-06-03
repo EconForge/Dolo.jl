@@ -44,7 +44,7 @@ export arbitrage, transition, auxiliary, value, expectation,
        # dolo functions
 export yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename, id
 
-export time_iteration, value_iteration, steady_state_residuals, simulation
+export time_iteration, value_iteration, residuals, simulation
 
 export ModelCalibration, FlatCalibration, GroupedCalibration
 
