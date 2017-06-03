@@ -79,18 +79,13 @@ calibration:
       F2: 1/(1-theta*beta)
       Delta: Delta__L
 
+exogenous: !Normal
+    Sigma: [[sig_z^2]]
+
+domain:
+    z: [ -sig_z, sig_z]
+    Delta__L: [ Delta__L*0.95, Delta__L*1.05]
+
 options:
-
-    exogenous: !Normal
-        sigma: sig_z**2
-
     grid: !Cartesian
-  # grid: !SmolyakGrid
-        # a: [ -sig_z/(1-rho_z**2), Delta__L*0.95]
-        # b: [ +sig_z/(1-rho_z**2), Delta__L*1.05]
-        a: [ -sig_z, Delta__L*0.95]
-        b: [ +sig_z, Delta__L*1.05]
         orders: [10, 50]
-
-    random:
-        any: 0.1

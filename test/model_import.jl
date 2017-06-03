@@ -8,11 +8,18 @@ end
 
 @testset "Testing yaml_import" begin
     # @test import_model("https://raw.githubusercontent.com/EconForge/dolo/144965224f432c9f467f0e667bc0cc4d77caf629/examples/models/rbc.yaml")
-    @test import_model(Pkg.dir("Dolo", "examples", "models", "rbc_dtcc_ar1.yaml"))
-    @test import_model(Pkg.dir("Dolo", "examples", "models", "rbc_dtcc_mc.yaml"))
-    @test import_model(Pkg.dir("Dolo", "examples", "models", "rbc_dtcc_iid.yaml"))
-    @test import_model(Pkg.dir("Dolo", "examples", "models", "compat",  "rbc_dtmscc.yaml"))
-    @test import_model(Pkg.dir("Dolo", "examples", "models", "compat",  "rbc_dtcscc.yaml"))
+    path = Pkg.dir("Dolo", "examples", "models")
+    files = [f for f in readdir(path) if contains(f, "yaml")]
+    for fname in files
+        print("Importing ", fname,"\n")
+        model = yaml_import(joinpath(path, fname))
+        res = residuals(model)
+        if !contains(fname,"sudden_stop")
+            @test (maximum(res[:transition]) + maximum(res[:arbitrage]) )<1e-5
+        else
+            @test (maximum(res[:transition]) + maximum(res[:arbitrage])-0.215)<1e-5
+        end
+    end
 
     # TODO: re-enable once we can build objects of type MarkovChain
     # @test import_model("https://raw.githubusercontent.com/EconForge/dolo/144965224f432c9f467f0e667bc0cc4d77caf629/examples/models/sudden_stop.yaml")
