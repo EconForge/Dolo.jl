@@ -15,7 +15,7 @@ end
 #                                    "util",
 #                                    "model_types",
 #                                    "model_import"]
-tests = length(ARGS) > 0 ? ARGS : ["model_types", "test_algos"]
+tests = length(ARGS) > 0 ? ARGS : ["model_types", "model_import", "test_algos"]
 
 for t in tests
     include("$(t).jl")

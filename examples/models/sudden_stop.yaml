@@ -31,7 +31,6 @@ equations:
         - Vc = c^(1.0-sigma)/(1.0-sigma)
 
 calibration:
-
     beta: 0.95
     R: 1.03
     sigma: 2.0
@@ -46,10 +45,9 @@ calibration:
     b: 0.0
     l: 0.0
     lam: 0.0
-
     V: c^(1.0-sigma)/(1.0-sigma)/(1.0-beta)
     Vc: c^(1.0-sigma)/(1.0-sigma)
-
+    b: 0
 
 exogenous: !MarkovChain
     values: [[ 0.9 ],  # bad state

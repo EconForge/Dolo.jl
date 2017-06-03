@@ -1,4 +1,4 @@
-function steady_state_residuals(model::AModel, calibration::ModelCalibration)
+function residuals(model::AModel, calibration::ModelCalibration)
     m = calibration[:exogenous]
     s = calibration[:states]
     x = calibration[:controls]
@@ -8,8 +8,8 @@ function steady_state_residuals(model::AModel, calibration::ModelCalibration)
     return Dict(:arbitrage=>res, :transition=>S-s)
 end
 
-function steady_state_residuals(model::AModel)
-    return steady_state_residuals(model, model.calibration)
+function residuals(model::AModel)
+    return residuals(model, model.calibration)
 end
 
 function find_deterministic_equilibrium(model::AModel, calibration::ModelCalibration)
@@ -71,7 +71,7 @@ find_deterministic_equilibrium
 
 
 """
-    steady_state_residuals(model::AModel, [calib::ModelCalibration])::Dict
+    residuals(model::AModel, [calib::ModelCalibration])::Dict
 
 Compute the steady state residuals for the aribtrage and transition equations
 of `model`, when these functions are evaluated at the data in `calib`. If no
@@ -79,4 +79,4 @@ of `model`, when these functions are evaluated at the data in `calib`. If no
 
 See the docstring for `find_deterministic_equilibrium` for more information
 """
-steady_state_residuals
+residuals

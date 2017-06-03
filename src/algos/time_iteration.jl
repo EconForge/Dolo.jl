@@ -20,7 +20,7 @@ If the list of current controls `x` is provided as a two-dimensional array (`Lis
 # Returns
 * `res`: Residuals of the arbitrage equation associated with each exogenous shock.
 """
-function residual(model, dprocess::AbstractDiscretizedProcess, s, x::Array{Array{Float64,2},1}, p, dr)
+function euler_residuals(model, dprocess::AbstractDiscretizedProcess, s, x::Array{Array{Float64,2},1}, p, dr)
     N = size(s, 1)
     res = [zeros(size(x[1])) for i=1:length(x)]
     S = zeros(size(s))
@@ -44,10 +44,10 @@ function residual(model, dprocess::AbstractDiscretizedProcess, s, x::Array{Array
     return res
 end
 
-function residual(model, dprocess, s, x::Array{Float64,2}, p, dr)
+function euler_residuals(model, dprocess, s, x::Array{Float64,2}, p, dr)
     n_m = max(1, n_nodes(dprocess))
     xx = destack0(x, n_m)
-    res = residual(model, dprocess, s, xx, p, dr)
+    res = euler_residuals(model, dprocess, s, xx, p, dr)
     return stack0(res)
 end
 
@@ -137,7 +137,7 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
     dr = CachedDecisionRule(dprocess, grid, x0)
 
     # loop option
-    init_res = residual(model, dprocess, endo_nodes, x0, p, dr)
+    init_res = euler_residuals(model, dprocess, endo_nodes, x0, p, dr)
     err = maximum(abs, stack0(init_res))
     err_0 = err
 
@@ -153,7 +153,7 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
         set_values!(dr, x0)
 
         xx0 = stack0(x0)
-        fobj(u) = residual(model, dprocess, endo_nodes, u, p, dr)
+        fobj(u) = euler_residuals(model, dprocess, endo_nodes, u, p, dr)
         xx1, nit = serial_solver(fobj, xx0, lb, ub; solver...)
         x1 = destack0(xx1, nsd)
 
