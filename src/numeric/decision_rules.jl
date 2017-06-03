@@ -3,15 +3,21 @@
 # abstract AbstractCachedDecisionRule{S,T} <: AbstractDecisionRule{S,T}
 # we don't implement that using subtypes anymore
 
-type DecisionRule{S,T} <: AbstractDecisionRule{S,T}
+type DecisionRule{S,T,ITP} <: AbstractDecisionRule{S,T}
     grid_exo::S
     grid_endo::T
     n_x::Int # number of values (could be a method if there was a nice method name)
-    coefficients::Array{Array{Float64}}
+    coefficients::ITP
 end
 
 function Base.show(io::IO, dr::AbstractDecisionRule)
     println(typeof(dr))
+end
+
+# default method for when we only get a single matrix of values in values.
+# hands of to specialied methods below
+function set_values!(dr::AbstractDecisionRule, values::Array{Float64,2})
+    set_values!(dr, [values])
 end
 
 
@@ -64,7 +70,7 @@ end
 function DecisionRule(grid_exo::EmptyGrid, grid_endo::CartesianGrid, n_x::Int)
     orders = grid_endo.n
     coeffs = [zeros(n_x, (orders+2)...)]
-    return DecisionRule{EmptyGrid,CartesianGrid}(grid_exo, grid_endo, n_x, coeffs)
+    return DecisionRule(grid_exo, grid_endo, n_x, coeffs)
 end
 
 function DecisionRule(grid_exo::EmptyGrid, grid_endo::CartesianGrid, values::Array{Array{Float64,2}})
@@ -74,15 +80,11 @@ function DecisionRule(grid_exo::EmptyGrid, grid_endo::CartesianGrid, values::Arr
     return dr
 end
 
-function set_values!(dr::AbstractDecisionRule{EmptyGrid, CartesianGrid}, values::Array{Array{Float64,2},1})
+function set_values!(dr::DecisionRule{EmptyGrid, CartesianGrid}, values::Vector{Matrix{Float64}})
     a = dr.grid_endo.min
     b = dr.grid_endo.max
     orders = dr.grid_endo.n
     dr.coefficients = [filter_mcoeffs(a, b, orders, v) for v in values]
-end
-
-function set_values!(dr::AbstractDecisionRule{EmptyGrid, CartesianGrid}, values::Array{Float64,2})
-    set_values!(dr, [values])
 end
 
 function evaluate(dr::AbstractDecisionRule{EmptyGrid, CartesianGrid}, z::AbstractMatrix)
@@ -108,7 +110,7 @@ function DecisionRule(grid_exo::CartesianGrid, grid_endo::CartesianGrid, n_x::In
     # hmm kind of silently assuming we have cartesian grid
     orders = grid_exo.n + grid_endo.n
     coeffs = [zeros(n_x, (orders+2)...)]
-    return DecisionRule{CartesianGrid, CartesianGrid}(grid_exo, grid_endo, n_x, coeffs)
+    return DecisionRule(grid_exo, grid_endo, n_x, coeffs)
 end
 #
 function DecisionRule(grid_exo::CartesianGrid, grid_endo::CartesianGrid, values::Array{Array{Float64,2},1})
@@ -118,7 +120,7 @@ function DecisionRule(grid_exo::CartesianGrid, grid_endo::CartesianGrid, values:
     return dr
 end
 
-function set_values!(dr::Dolo.AbstractDecisionRule{Dolo.CartesianGrid, Dolo.CartesianGrid}, values::Array{Array{Float64,2},1})
+function set_values!(dr::Dolo.AbstractDecisionRule{Dolo.CartesianGrid, Dolo.CartesianGrid}, values::Vector{Matrix{Float64}})
     a = cat(1, dr.grid_exo.min, dr.grid_endo.min)
     b = cat(1, dr.grid_exo.max, dr.grid_endo.max)
     orders = cat(1, dr.grid_exo.n, dr.grid_endo.n)
@@ -157,7 +159,7 @@ function DecisionRule(grid_exo::UnstructuredGrid, grid_endo::CartesianGrid, n_x:
     # hmm kind of silently assuming we have cartesian grid
     orders = grid_endo.n
     coeffs = [zeros(n_x, (orders+2)...) for i in 1:n_nodes(grid_exo)]
-    return (DecisionRule{UnstructuredGrid, CartesianGrid})(grid_exo, grid_endo, n_x, coeffs)
+    return DecisionRule(grid_exo, grid_endo, n_x, coeffs)
 end
 #
 function DecisionRule(grid_exo::UnstructuredGrid, grid_endo::CartesianGrid, values::Array{Array{Float64,2}})
@@ -168,7 +170,7 @@ function DecisionRule(grid_exo::UnstructuredGrid, grid_endo::CartesianGrid, valu
 end
 
 
-function set_values!(dr::AbstractDecisionRule{UnstructuredGrid,CartesianGrid}, values::Array{Matrix{Float64},1})
+function set_values!(dr::AbstractDecisionRule{UnstructuredGrid,CartesianGrid}, values::Vector{Matrix{Float64}})
     a = dr.grid_endo.min
     b = dr.grid_endo.max
     orders = dr.grid_endo.n
