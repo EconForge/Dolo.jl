@@ -1,15 +1,5 @@
 @compat abstract type AbstractDecisionRule{S,T} end
 
-# abstract AbstractCachedDecisionRule{S,T} <: AbstractDecisionRule{S,T}
-# we don't implement that using subtypes anymore
-
-type DecisionRule{S,T,ITP} <: AbstractDecisionRule{S,T}
-    grid_exo::S
-    grid_endo::T
-    n_x::Int # number of values (could be a method if there was a nice method name)
-    coefficients::ITP
-end
-
 function Base.show(io::IO, dr::AbstractDecisionRule)
     println(typeof(dr))
 end
@@ -20,48 +10,16 @@ function set_values!(dr::AbstractDecisionRule, values::Array{Float64,2})
     set_values!(dr, [values])
 end
 
+#####
+##### Based on Splines.jl
+#####
 
-@compat type ConstantDecisionRule <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
-    constants::Vector{Float64}
+type DecisionRule{S,T,Tc} <: AbstractDecisionRule{S,T}
+    grid_exo::S
+    grid_endo::T
+    n_x::Int # number of values (could be a method if there was a nice method name)
+    coefficients::Tc
 end
-
-(dr::ConstantDecisionRule)(x::AbstractVector) = dr.constants
-(dr::ConstantDecisionRule)(x::AbstractMatrix) = repmat(dr.constants', size(x, 1), 1)
-(dr::ConstantDecisionRule)(x::AbstractVector, y::AbstractVector) = dr.constants
-(dr::ConstantDecisionRule)(x::AbstractVector, y::AbstractMatrix) = repmat( dr.constants', size(y, 1), 1)
-(dr::ConstantDecisionRule)(x::AbstractMatrix, y::AbstractVector) = repmat( dr.constants', size(x, 1), 1)
-(dr::ConstantDecisionRule)(x::AbstractMatrix, y::AbstractMatrix) = repmat( dr.constants', size(x, 1), 1)
-(dr::ConstantDecisionRule)(i::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
-(dr::ConstantDecisionRule)(i::Int, j::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
-
-
-@compat type BiTaylorExpansion <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
-    m0::Vector{Float64}
-    s0::Vector{Float64}
-    x0::Vector{Float64}
-    x_m::Matrix{Float64}
-    x_s::Matrix{Float64}
-end
-
-(dr::BiTaylorExpansion)(m::AbstractVector, s::AbstractVector) = dr.x0 + dr.x_m*(m-dr.m0) + dr.x_s*(s-dr.s0)
-(dr::BiTaylorExpansion)(m::AbstractMatrix, s::AbstractVector) = vcat([(dr(m[i, :], s))' for i=1:size(m, 1) ]...)
-(dr::BiTaylorExpansion)(m::AbstractVector, s::AbstractMatrix) = vcat([(dr(m, s[i, :]))' for i=1:size(s, 1) ]...)
-(dr::BiTaylorExpansion)(m::AbstractMatrix, s::AbstractMatrix) = vcat([(dr(m[i, :], s[i, :]))' for i=1:size(m, 1) ]...)
-
-
-function filter_mcoeffs(a::Array{Float64,1}, b::Array{Float64,1}, n::Array{Int,1}, mvalues::Array{Float64})
-    n_x = size(mvalues)[end]
-    vals = reshape(mvalues, n..., n_x)
-    coeffs = zeros(n_x, (n+2)...)
-    ii = [Colon() for i=1:(ndims(vals)-1)]
-    for i_x in 1:n_x
-        tmp = splines.filter_coeffs(a, b, n, vals[ii..., i_x])
-        coeffs[i_x, ii...] = tmp
-    end
-    return coeffs
-end
-
-
 
 #####
 ##### 1-argument decision rule
@@ -199,6 +157,148 @@ end
 
 (dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::AbstractVector{Int}, y::AbstractVector) =
     vcat( [dr(i[j], y[j, :])' for j=1:size(y, 1)]... )
+
+#####
+##### Based on BasisMatrices.jl
+#####
+
+type BMDecisionRule{S,T,Ti<:BM.Interpoland} <: AbstractDecisionRule{S,T}
+    grid_exo::S
+    grid_endo::T
+    itps::Vector{Ti}
+    n_x::Int
+end
+
+function BMDecisionRule(grid_exo::EmptyGrid, grid_endo::CartesianGrid, n_x::Int)
+    error("Not implemented")
+    basis = BM.Basis(Lin(), grid_endo.n, grid_endo.a, grid_endo.b)
+    itps = [Interpoland()]
+    return BMDecisionRule(grid_exo, grid_endo, n_x, coeffs)
+end
+
+function BMDecisionRule(grid_exo::EmptyGrid, grid_endo::CartesianGrid, values::Array{Array{Float64,2}})
+    n_x = size(values[1], 2)
+    basis = BM.Basis(BM.Lin(), grid_endo.n, grid_endo.min, grid_endo.max)
+    itps = [BM.Interpoland(basis, v) for v in values]
+    BMDecisionRule(grid_exo, grid_endo, itps, n_x)
+end
+
+function evaluate(dr::BMDecisionRule{EmptyGrid, CartesianGrid}, z::AbstractMatrix)
+    dr.itps[1](z)
+end
+
+function set_values!(dr::BMDecisionRule{EmptyGrid, CartesianGrid}, values::Vector{Matrix{Float64}})
+    for i in length(values)
+        copy!(dr.itps[i].coefs, values[i])
+        # BM.update_coefs!(dr.itps[i], values[i])
+    end
+end
+
+(dr::BMDecisionRule{EmptyGrid, CartesianGrid})(z::AbstractMatrix) = evaluate(dr, z)
+(dr::BMDecisionRule{EmptyGrid, CartesianGrid})(z::AbstractVector) = vec(dr(z'))
+(dr::BMDecisionRule{EmptyGrid, CartesianGrid})(i::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
+(dr::BMDecisionRule{EmptyGrid, CartesianGrid})(x::Union{AbstractVector,AbstractMatrix}, y::Union{AbstractVector,AbstractMatrix}) = dr(y)
+
+
+#####
+##### Based on Interpolations.jl
+#####
+
+type ITPDecisionRule{S,T,Ti<:ITP.ScaledInterpolation} <: AbstractDecisionRule{S,T}
+    grid_exo::S
+    grid_endo::T
+    itps::Vector{Ti}
+    n_x::Int
+end
+
+function ITPDecisionRule(grid_exo::EmptyGrid, grid_endo::CartesianGrid, n_x::Int)
+end
+
+function ITPDecisionRule(grid_exo::EmptyGrid, grid_endo::CartesianGrid, vals::Array{Array{Float64,2}})
+    n_x = size(vals[1], 2)
+    scales = map(linspace, grid_endo.min, grid_endo.max, grid_endo.n)
+    shape = tuple(grid_endo.n..., n_x)
+    function f(x)
+        # TODO: need to reshape x
+        static_x = reinterpret(StaticArrays.SVector{n_x,Float64}, x, (size(x, 2),))
+        itp = ITP.interpolate(static_x, ITP.BSpline(ITP.Cubic(ITP.Natural())), ITP.OnGrid())
+        return ITP.scale(itp, scales...)
+    end
+    itps = [f(v') for v in vals]
+    ITPDecisionRule(grid_exo, grid_endo, itps, n_x)
+end
+
+function evaluate(dr::ITPDecisionRule{EmptyGrid, CartesianGrid}, z::AbstractMatrix)
+    N = size(z, 1)
+    out = Array{Float64}(N, dr.n_x)
+    for i in 1:N
+        for ix_itp in 1:dr.n_x
+            out[i, ix_itp] = dr.itps[1][ix_itp][z[i, :]...]
+        end
+    end
+    out
+end
+
+function set_values!(dr::ITPDecisionRule{EmptyGrid, CartesianGrid}, values::Vector{Matrix{Float64}})
+    # there is no filtering for piecewise linear
+    for i in length(values)
+        # copy!(dr.itps[i].coefs, values[i])
+        BM.update_coefs!(dr.itps[i], values[i])
+    end
+end
+
+(dr::ITPDecisionRule{EmptyGrid, CartesianGrid})(z::AbstractMatrix) = evaluate(dr, z)
+(dr::ITPDecisionRule{EmptyGrid, CartesianGrid})(z::AbstractVector) = dr(z')[:]
+(dr::ITPDecisionRule{EmptyGrid, CartesianGrid})(i::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
+(dr::ITPDecisionRule{EmptyGrid, CartesianGrid})(x::Union{AbstractVector,AbstractMatrix}, y::Union{AbstractVector,AbstractMatrix}) = dr(y)
+
+
+
+
+
+#####
+##### Other types of AbstractDecisionRule
+#####
+
+@compat type ConstantDecisionRule <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
+    constants::Vector{Float64}
+end
+
+(dr::ConstantDecisionRule)(x::AbstractVector) = dr.constants
+(dr::ConstantDecisionRule)(x::AbstractMatrix) = repmat(dr.constants', size(x, 1), 1)
+(dr::ConstantDecisionRule)(x::AbstractVector, y::AbstractVector) = dr.constants
+(dr::ConstantDecisionRule)(x::AbstractVector, y::AbstractMatrix) = repmat( dr.constants', size(y, 1), 1)
+(dr::ConstantDecisionRule)(x::AbstractMatrix, y::AbstractVector) = repmat( dr.constants', size(x, 1), 1)
+(dr::ConstantDecisionRule)(x::AbstractMatrix, y::AbstractMatrix) = repmat( dr.constants', size(x, 1), 1)
+(dr::ConstantDecisionRule)(i::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
+(dr::ConstantDecisionRule)(i::Int, j::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
+
+
+@compat type BiTaylorExpansion <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
+    m0::Vector{Float64}
+    s0::Vector{Float64}
+    x0::Vector{Float64}
+    x_m::Matrix{Float64}
+    x_s::Matrix{Float64}
+end
+
+(dr::BiTaylorExpansion)(m::AbstractVector, s::AbstractVector) = dr.x0 + dr.x_m*(m-dr.m0) + dr.x_s*(s-dr.s0)
+(dr::BiTaylorExpansion)(m::AbstractMatrix, s::AbstractVector) = vcat([(dr(m[i, :], s))' for i=1:size(m, 1) ]...)
+(dr::BiTaylorExpansion)(m::AbstractVector, s::AbstractMatrix) = vcat([(dr(m, s[i, :]))' for i=1:size(s, 1) ]...)
+(dr::BiTaylorExpansion)(m::AbstractMatrix, s::AbstractMatrix) = vcat([(dr(m[i, :], s[i, :]))' for i=1:size(m, 1) ]...)
+
+
+function filter_mcoeffs(a::Array{Float64,1}, b::Array{Float64,1}, n::Array{Int,1}, mvalues::Array{Float64})
+    n_x = size(mvalues)[end]
+    vals = reshape(mvalues, n..., n_x)
+    coeffs = zeros(n_x, (n+2)...)
+    ii = [Colon() for i=1:(ndims(vals)-1)]
+    for i_x in 1:n_x
+        tmp = splines.filter_coeffs(a, b, n, vals[ii..., i_x])
+        coeffs[i_x, ii...] = tmp
+    end
+    return coeffs
+end
 
 #####
 ##### Cached Decision Rules (do we really need them ?)

@@ -24,6 +24,12 @@ using MacroTools  # used for eval_with
 import Distributions
 import ForwardDiff
 using splines
+import BasisMatrices
+const BM = BasisMatrices
+
+import Interpolations
+const ITP = Interpolations
+import StaticArrays
 
 # Simulation/presentation
 using AxisArrays

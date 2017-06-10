@@ -31,7 +31,7 @@ immutable UnstructuredGrid <: Grid
 end
 nodes(grid::UnstructuredGrid) = grid.nodes
 n_nodes(grid::UnstructuredGrid) = size(grid.nodes, 1)
-node(grid::UnstructuredGrid, i::Int) = grid.nodes[i, :] # fail if i!=1 ?
+node(grid::UnstructuredGrid, i::Int) = grid.nodes[i, :]
 
 
 immutable CartesianGrid <: Grid

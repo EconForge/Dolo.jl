@@ -107,13 +107,13 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
     end
 
     endo_nodes = nodes(grid)
-    N = size(endo_nodes, 1)
+    N = n_nodes(grid)
     n_s_endo = size(endo_nodes, 2)
     n_s_exo = n_nodes(dprocess)
 
     # initial guess
     # number of smooth decision rules
-    nsd = max(n_nodes(dprocess), 1)
+    nsd = max(n_s_exo, 1)
 
     p = model.calibration[:parameters]
 
