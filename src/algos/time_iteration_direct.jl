@@ -14,8 +14,8 @@ If the stochastic process for the model is not explicitly provided, the process 
 """
 function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
                                grid, init_dr::AbstractDecisionRule;
-                               verbose::Bool=true, maxit::Int=100,
-                               tol_η::Float64=1e-8, details::Bool=true)
+                               verbose::Bool=true, maxit::Int=100, trace::Bool=false,
+                               tol_η::Float64=1e-8)
 
     # Grid
     endo_nodes = nodes(grid)
@@ -29,6 +29,9 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
 
     # initial guess for controls
     x0 = [init_dr(i, endo_nodes) for i=1:nsd]
+
+    ti_trace = trace ? IterationTrace([x0]) : nothing
+
 
     # set the bound for the controls to check during the iterations not to violate them
     x_lb = Array{Float64,2}[cat(1, [Dolo.controls_lb(model, node(dprocess, i), endo_nodes[n, :], p)' for n=1:N]...) for i=1:nsd]
@@ -45,17 +48,23 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
 
     # loop option
     it = 0
+    err_0 = NaN
     err = 1.0
 
-    verbose && @printf "%-6s%-12s\n" "It" "SA"
-    verbose && println(repeat("-", 14))
+    log = TimeIterationLog()
+    start(log, verbose=verbose)
+    append!(log; verbose=verbose, it=0, err=NaN, gain=NaN, time=0.0, nit=NaN)
 
     maxabsdiff(_a, _b) = maximum(abs, _a - _b)
 
     ###############################   Iteration loop
 
     while it<maxit && err>tol_η
+
         it += 1
+
+        tic()
+
 
         set_values!(dr, x0)
         # Compute expectations function E_f and states of tomorrow
@@ -94,15 +103,19 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
             copy!(x0[i], x1[i])
         end
 
-        verbose && @printf "%-6i%-12.2e\n" it err
+        gain = err/err_0
+        err_0 = err
+
+        elapsed = toq()
+
+        append!(log; verbose=verbose, it=it, err=err, gain=gain, time=elapsed, nit=NaN)
     end
 
-    if !details
-        return dr.dr
-    else
-        converged = err<tol_η
-        TimeIterationResult(dr.dr, it, converged, true, tol_η, err)
-    end
+    stop(log, verbose=verbose)
+
+
+    converged = err<tol_η
+    TimeIterationResult(dr.dr, it, true, dprocess, converged, tol_η, err, log, ti_trace)
 
 end
 
