@@ -19,7 +19,7 @@ function sanitize(eq::Expr, dynvars::Array{Symbol,1})
     end
 end
 
-function sanitize(a,model::Dolo.SModel)
+function sanitize(a,model::Dolo.ASModel)
     dynvars = get_variables(model)
     return sanitize(a, dynvars)
 end
