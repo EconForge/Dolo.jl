@@ -61,24 +61,94 @@ function stack0(x::Array{Array{Float64,2},1})::Array{Float64,2}
      return cat(1, x...)
 end
 
+###
+
+struct TimeIterationLog
+    header::Array{String, 1}
+    keywords::Array{Symbol, 1}
+    entries::Array{Any, 1}
+end
+
+function TimeIterationLog()
+    header = [ "It", "ηₙ=|xₙ-xₙ₋₁|", "λₙ=ηₙ/ηₙ₋₁", "Time", "Newton steps"]
+    keywords = [:it, :err, :gain, :time, :nit]
+    TimeIterationLog(header, keywords, [])
+end
+
+function append!(log::TimeIterationLog; verbose=true, entry...)
+    d = Dict(entry)
+    push!(log.entries, d)
+    verbose && show_entry(log, d)
+end
+
+function start(log::TimeIterationLog; verbose=true)
+    verbose && show_start(log)
+end
+
+function stop(log::TimeIterationLog; verbose=true)
+    verbose && show_end(log)
+end
+
+function show(log::TimeIterationLog)
+    show_start(log)
+    for entry in log.entries
+        show_entry(log,entry)
+    end
+    show_end(log)
+end
+
+function show_start(log::TimeIterationLog)
+    println(repeat("-", 66))
+    @printf "%-6s%-16s%-16s%-16s%-5s\n" "It" "ηₙ=|xₙ-xₙ₋₁|" "λₙ=ηₙ/ηₙ₋₁" "Time" "Newton steps"
+    println(repeat("-", 66))
+end
+
+
+function show_entry(log::TimeIterationLog, entry)
+    it = entry[:it]
+    err = entry[:err]
+    gain = entry[:gain]
+    time = entry[:time]
+    nit = entry[:nit]
+    @printf "%-6i%-16.2e%-16.2e%-16.2e%-5i\n" it err gain time nit
+end
+
+function show_end(log::TimeIterationLog)
+    println(repeat("-", 66))
+end
+
+###
+
+
+type IterationTrace
+    trace::Array{Any,1}
+end
+
+
 type TimeIterationResult
     dr::AbstractDecisionRule
     iterations::Int
     complementarities::Bool
+    dprocess::AbstractDiscretizedProcess
     x_converged::Bool
     x_tol::Float64
     err::Float64
+    log::TimeIterationLog
+    trace::Union{Void,IterationTrace}
 end
 
 converged(r::TimeIterationResult) = r.x_converged
 function Base.show(io::IO, r::TimeIterationResult)
     @printf io "Results of Time Iteration Algorithm\n"
     @printf io " * Complementarities: %s\n" string(r.complementarities)
-    @printf io " * Decision Rule type: %s\n" string(typeof(r))
+    @printf io " * Discretized Process type: %s\n" string(typeof(r.dprocess))
+    @printf io " * Decision Rule type: %s\n" string(typeof(r.dr))
     @printf io " * Number of iterations: %s\n" string(r.iterations)
     @printf io " * Convergence: %s\n" converged(r)
     @printf io "   * |x - x'| < %.1e: %s\n" r.x_tol r.x_converged
 end
+
+
 
 """
 Computes a global solution for a model via backward time iteration. The time iteration is applied to the residuals of the arbitrage equations.
@@ -95,16 +165,18 @@ If the stochastic process for the model is not explicitly provided, the process 
 """
 function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
                         grid, init_dr;
-                        verbose::Bool=true, details::Bool=true,
-                        maxit::Int=100, tol_η::Float64=1e-8,
+                        verbose::Bool=true,
+                        maxit::Int=100, tol_η::Float64=1e-8, trace::Bool=false,
                         solver=Dict())
 
     if get(solver, :type, :__missing__) == :direct
         return time_iteration_direct(
-            model, dprocess, grid, init_dr; verbose=verbose, details=details,
+            model, dprocess, grid, init_dr; verbose=verbose,
             maxit=maxit, tol_η=tol_η
         )
     end
+
+
 
     endo_nodes = nodes(grid)
     N = size(endo_nodes, 1)
@@ -118,6 +190,8 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
     p = model.calibration[:parameters]
 
     x0 = [init_dr(i, endo_nodes) for i=1:nsd]
+
+    ti_trace = trace ? IterationTrace([x0]) : nothing
 
     n_x = length(model.calibration[:controls])
     lb = Array{Float64}(N*nsd, n_x)
@@ -137,18 +211,21 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
     dr = CachedDecisionRule(dprocess, grid, x0)
 
     # loop option
-    init_res = euler_residuals(model, dprocess, endo_nodes, x0, p, dr)
-    err = maximum(abs, stack0(init_res))
-    err_0 = err
+    # init_res = euler_residuals(model, dprocess, endo_nodes, x0, p, dr)
+    # err = maximum(abs, stack0(init_res))
+    err_0 = NaN
+    err = 1.0
 
-    verbose && @printf "%-6s%-12s%-12s%-5s\n" "It" "SA" "gain" "nit"
-    verbose && println(repeat("-", 35))
-    verbose && @printf "%-6i%-12.2e%-12.2e%-5i\n" 0 err NaN 0
+    log = TimeIterationLog()
+    start(log, verbose=verbose)
+    append!(log; verbose=verbose, it=0, err=NaN, gain=NaN, time=0.0, nit=0)
 
     it = 0
     while it<maxit && err>tol_η
 
         it += 1
+
+        tic()
 
         set_values!(dr, x0)
 
@@ -158,21 +235,25 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
         x1 = destack0(xx1, nsd)
 
         err = maximum(abs, xx1 - xx0)
+
+        trace && push!(ti_trace.trace, x1)
+
         copy!(x0, x1)
         gain = err / err_0
         err_0 = err
 
-        verbose && @printf "%-6i%-12.2e%-12.2e%-5i\n" it err gain nit
+        elapsed = toq()
+
+        append!(log; verbose=verbose, it=it, err=err, gain=gain, time=elapsed, nit=nit)
     end
+
+    stop(log, verbose=verbose)
 
     # TODO: somehow after defining `fobj` the `dr` object gets `Core.Box`ed
     #       making the return type right here non-inferrable.
-    if !details
-        return dr.dr
-    else
-        converged = err < tol_η
-        TimeIterationResult(dr.dr, it, true, converged, tol_η, err)
-    end
+
+    converged = err < tol_η
+    res = TimeIterationResult(dr.dr, it, true, dprocess, converged, tol_η, err, log, ti_trace)
 
 end
 

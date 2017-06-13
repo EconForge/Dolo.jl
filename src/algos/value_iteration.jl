@@ -3,6 +3,7 @@ type ValueIterationResult
     drv::AbstractDecisionRule
     iterations::Int
     complementarities::Bool
+    dprocess::AbstractDiscretizedProcess
     x_converged::Bool
     x_tol::Float64
     x_err::Float64
@@ -15,7 +16,8 @@ converged(r::ValueIterationResult) = r.x_converged && r.v_converged
 function Base.show(io::IO, r::ValueIterationResult)
     @printf io "Results of Value Iteration Algorithm\n"
     @printf io " * Complementarities: %s\n" string(r.complementarities)
-    @printf io " * Decision Rule type: %s\n" string(typeof(r))
+    @printf io " * Decision Rule type: %s\n" string(typeof(r.dr))
+    @printf io " * Discretized Process type: %s\n" string(typeof(r.dprocess))
     @printf io " * Number of iterations: %s\n" string(r.iterations)
     @printf io " * Convergence: %s\n" converged(r)
     @printf io "   * |x - x'| < %.1e: %s\n" r.x_tol r.x_converged
@@ -170,7 +172,7 @@ function value_iteration(
         discount_symbol=:beta,
         maxit::Int=1000, tol_x::Float64=1e-8, tol_v::Float64=1e-8,
         optim_options=Dict(), eval_options=Dict(),
-        verbose::Bool=true, details::Bool=true
+        verbose::Bool=true, trace::Bool
     )
 
 
@@ -211,6 +213,9 @@ function value_iteration(
 
     v0 = [drv(i, endo_nodes) for i=1:nsd]
     v = deepcopy(v0)
+
+    ti_trace = trace ? IterationTrace([x0, v0]) : nothing
+
 
     #Preparation for a loop
     err_v = 10.0
@@ -314,17 +319,14 @@ function value_iteration(
 
         end
 
+        trace && push!(ti_trace.trace, [x0, v0]) # this is ridiculous since only one of them is updated !
+
     end
 
+    converged_x = err_x<tol_x
+    converged_v = err_v<tol_v
+    ValueIterationResult(dr.dr, drv.dr, it, true, dprocess, converged_x, tol_x, err_x, converged_v, tol_v, err_v, it_trace)
 
-    if !details
-        dr = CachedDecisionRule(dprocess, grid, x0)
-        return (dr.dr, drv.dr)
-    else
-        converged_x = err_x<tol_x
-        converged_v = err_v<tol_v
-        ValueIterationResult(dr.dr, drv.dr, it, true, converged_x, tol_x, err_x, converged_v, tol_v, err_v)
-    end
 end
 
 # get stupid initial rule
