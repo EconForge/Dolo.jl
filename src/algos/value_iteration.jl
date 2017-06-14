@@ -172,7 +172,7 @@ function value_iteration(
         discount_symbol=:beta,
         maxit::Int=1000, tol_x::Float64=1e-8, tol_v::Float64=1e-8,
         optim_options=Dict(), eval_options=Dict(),
-        verbose::Bool=true, trace::Bool
+        verbose::Bool=true, trace::Bool=false
     )
 
 
