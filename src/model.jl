@@ -206,7 +206,7 @@ type Model{ID} <: AModel{ID}
         for eqtype in keys(model.equations)
             factory = Dolang.FunctionFactory(model,eqtype)
             model.factories[eqtype] = factory
-            code = make_method(factory)
+            code = make_function(factory)
             print_code && println(code)
             eval(Dolo, code)
         end
