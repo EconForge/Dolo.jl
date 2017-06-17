@@ -1,3 +1,5 @@
+using Optim
+
 type ValueIterationResult
     dr::AbstractDecisionRule
     drv::AbstractDecisionRule
@@ -10,6 +12,7 @@ type ValueIterationResult
     v_converged::Bool
     v_tol::Float64
     v_err::Float64
+    trace::Union{Void,IterationTrace}
 end
 
 converged(r::ValueIterationResult) = r.x_converged && r.v_converged
@@ -274,18 +277,26 @@ function value_iteration(
                 for n = 1:N
                     s = endo_nodes[n, :]
                     # optimize vals
-                    fobj(u) = -update_value(model, β, dprocess, drv, i, s, u, p)*1000.0
+                    fobj(u) = -update_value(model, β, dprocess, drv, i, s, u, p)*1000
                     lower = x_lb[i][n, :]
                     upper = x_ub[i][n, :]
                     upper = clamp!(upper, -Inf, 1000000)
                     lower = clamp!(lower, -1000000, Inf)
                     initial_x = x0[i][n, :]
                     results = optimize(
-                        Optim.OnceDifferentiable(fobj), initial_x, lower, upper,
+                        Optim.OnceDifferentiable(fobj, initial_x), initial_x, lower, upper,
                         Fminbox{NelderMead}(), optimizer_o=optim_opts
                     )
                     xn = Optim.minimizer(results)
                     nv = -Optim.minimum(results)/1000.0
+                    # ii = (fobj(initial_x))
+                    # xn, nv = goldensearch(fobj, lower, upper; maxit=1000, tol=1e-10)
+                    # jj = (fobj(xn))
+                    #
+                    # xvec =
+                    # println([m,s, lower, upper, initial_x, ii, xn, jj])
+
+
                     x[i][n, :] = xn
                     v[i][n, 1] = nv
                 end
@@ -325,7 +336,7 @@ function value_iteration(
 
     converged_x = err_x<tol_x
     converged_v = err_v<tol_v
-    ValueIterationResult(dr.dr, drv.dr, it, true, dprocess, converged_x, tol_x, err_x, converged_v, tol_v, err_v, it_trace)
+    ValueIterationResult(dr.dr, drv.dr, it, true, dprocess, converged_x, tol_x, err_x, converged_v, tol_v, err_v, ti_trace)
 
 end
 
