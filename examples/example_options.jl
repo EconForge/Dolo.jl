@@ -3,7 +3,7 @@ import Dolo
 model = Dolo.Model(Pkg.dir("Dolo","examples","models","rbc_dtcc_mc.yaml"))
 
 Dolo.time_iteration(model)
-dr0 = Dolo.time_iteration(model, details=false, tol_η=1e-6; grid=Dict(:n=>[5]))
+dr0 = Dolo.time_iteration(model, tol_η=1e-6; grid=Dict(:n=>[5])).dr
 sol = Dolo.time_iteration(model, maxit=1000; grid=Dict(:n=>[100]))
 
 # faster version: limit the number of steps in the newton solver

@@ -49,10 +49,10 @@ import YAML
         drc = Dolo.ConstantDecisionRule(model.calibration[:controls])
 
         @time ti_res = Dolo.time_iteration(model, maxit=100, verbose=true)
-        @time drd = Dolo.time_iteration_direct(model; details=false, verbose=true)
+        @time drd = Dolo.time_iteration_direct(model; verbose=true).dr
 
-        @time dr = Dolo.time_iteration_direct(model, drd; details=false, verbose=true) #, maxit=500, verbose=true)
-        @time res = Dolo.time_iteration_direct(model, drc; details=true, verbose=true)
+        @time dr = Dolo.time_iteration_direct(model, drd; verbose=true).dr #, maxit=500, verbose=true)
+        @time res = Dolo.time_iteration_direct(model, drc; verbose=true)
         @time drv = Dolo.evaluate_policy(model, dr; verbose=true)
         # @time drv = Dolo.value_iteration(model, dr; verbose=true)
 

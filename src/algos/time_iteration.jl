@@ -63,7 +63,7 @@ end
 
 ###
 
-struct TimeIterationLog
+@compat struct TimeIterationLog
     header::Array{String, 1}
     keywords::Array{Symbol, 1}
     entries::Array{Any, 1}
@@ -81,11 +81,11 @@ function append!(log::TimeIterationLog; verbose=true, entry...)
     verbose && show_entry(log, d)
 end
 
-function start(log::TimeIterationLog; verbose=true)
+function initialize(log::TimeIterationLog; verbose=true)
     verbose && show_start(log)
 end
 
-function stop(log::TimeIterationLog; verbose=true)
+function finalize(log::TimeIterationLog; verbose=true)
     verbose && show_end(log)
 end
 
@@ -216,7 +216,7 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
     err = 1.0
 
     log = TimeIterationLog()
-    start(log, verbose=verbose)
+    initialize(log, verbose=verbose)
     append!(log; verbose=verbose, it=0, err=NaN, gain=NaN, time=0.0, nit=0)
 
     it = 0
@@ -246,7 +246,7 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
         append!(log; verbose=verbose, it=it, err=err, gain=gain, time=elapsed, nit=nit)
     end
 
-    stop(log, verbose=verbose)
+    finalize(log, verbose=verbose)
 
     # TODO: somehow after defining `fobj` the `dr` object gets `Core.Box`ed
     #       making the return type right here non-inferrable.

@@ -10,7 +10,7 @@ using AxisArrays
 filename = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
 # model = Dolo.Model(Pkg.dir("Dolo", "examples", "models", "rbc_dtcc_mc.yaml"), print_code=true)
 model = Dolo.yaml_import(filename)
-@time dr = Dolo.time_iteration(model, verbose=true, maxit=10000, details=false)
+@time dr = Dolo.time_iteration(model, verbose=true, maxit=10000)
 
 ###############################################################################
 ### Simulate a model with a Markov Chain
@@ -89,7 +89,7 @@ Dolo.tabulate(model, dr, :k, bounds, model.calibration[:states], m0)
 
 filename = joinpath(path,"examples","models","rbc_dtcc_iid_ar1.yaml")
 model2 = Dolo.yaml_import(filename)
-@time dr2 = Dolo.time_iteration(model2, verbose=true, maxit=10000, details=false)
+@time dr2 = Dolo.time_iteration(model2, verbose=true, maxit=10000)
 
 driving_process = Dolo.simulate(model2.exogenous, N, T)
 sim_ar = Dolo.simulate(model2, dr2, driving_process)
@@ -158,7 +158,7 @@ model3 = Dolo.yaml_import(filename)
 n_states=5
 mc_ar = Dolo.discretize_mc(model3.exogenous;N=n_states)
 
-@time dr_armc = Dolo.time_iteration(model3, mc_ar, verbose=true, maxit=10000, details=false)
+@time dr_armc = Dolo.time_iteration(model3, mc_ar, verbose=true, maxit=10000)
 
 # If you solve a model with a continuous exogenous process using MC disretization, then to simulate you need first proved a driving process originated form this new MC. model.exogenous
 # At this point there is no option in the code. If you do not specify any driving porcess(series of shocks), then Dolo takes model.exogenous to do it itself, but then it can't combine dr(i,s) with values of shocks. Shall it be added?
