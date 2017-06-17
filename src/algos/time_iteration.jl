@@ -63,7 +63,7 @@ end
 
 ###
 
-@compat struct TimeIterationLog
+immutable TimeIterationLog
     header::Array{String, 1}
     keywords::Array{Symbol, 1}
     entries::Array{Any, 1}
