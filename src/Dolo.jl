@@ -23,7 +23,7 @@ using Dolang: _to_expr, inf_to_Inf, solution_order, solve_triangular_system
 using MacroTools  # used for eval_with
 import Distributions
 import ForwardDiff
-using splines
+# using splines
 
 # Simulation/presentation
 using AxisArrays
@@ -74,6 +74,9 @@ for f in [:arbitrage, :transition, :auxiliary, :value, :expectation,
           :direct_response, :controls_lb!, :controls_ub!, :arbitrage_2!]
     eval(Expr(:function, f))
 end
+
+include("numeric/splines/splines.jl")
+import .splines
 
 include("numeric/newton.jl")
 include("numeric/grids.jl")
