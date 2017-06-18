@@ -16,23 +16,7 @@ function filter_coeffs(a::Vector{Float64}, b::Vector{Float64}, orders::Vector{In
     return coeffs
 end
 
-function ff(a::Vector{Float64}, b::Vector{Float64}, orders::Vector{Int64}, data::Array{Float64})
 
-    dinv = (b - a)./(orders.-1)
-    d = length(a)
-    if d == 1
-        coeffs = filter_coeffs_1d(dinv,data)
-    elseif d == 2
-        coeffs = filter_coeffs_2d(dinv,data)
-    elseif d == 3
-        coeffs = filter_coeffs_3d(dinv,data)
-    elseif d == 4
-        coeffs = filter_coeffs_4d(dinv,data)
-    else
-        error()
-    end
-    return coeffs
-end
 
 # function find_coeffs_1d_old(delta_inv, M, data)
 #
@@ -121,6 +105,8 @@ end
 
 function find_coeffs_1d!(delta_inv, M, data, coefs)
 
+    # data is 1d array of length M
+    # data is 1d array of length M+2
 
     basis = [1.0/6.0, 2.0/3.0, 1.0/6.0]
     bands = zeros(M+2, 4)
@@ -159,7 +145,11 @@ end
 
 function find_coeffs_1d(delta_inv, M, data)
     coefs = zeros(M+2)
-    find_coeffs_1d!(delta_inv, M, data, coefs)
+    if length(data) == M
+        find_coeffs_1d!(delta_inv, M, data, coefs)
+    else
+        find_coeffs_1d!(delta_inv, M, data[2:end-1], coefs)
+    end
     return coefs
 end
 

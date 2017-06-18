@@ -166,7 +166,7 @@ If the stochastic process for the model is not explicitly provided, the process 
 function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
                         grid, init_dr;
                         verbose::Bool=true,
-                        maxit::Int=100, tol_η::Float64=1e-8, trace::Bool=false,
+                        maxit::Int=500, tol_η::Float64=1e-7, trace::Bool=false,
                         solver=Dict())
 
     if get(solver, :type, :__missing__) == :direct
