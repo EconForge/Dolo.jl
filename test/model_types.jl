@@ -79,6 +79,7 @@
     #
     # rbc_dict = Dolo._symbol_dict(rbc_dict)
 
+
     @testset "ModelCalibration" begin
 
         function new_mc()
@@ -143,6 +144,7 @@
             # test constructors
             gc1 = GroupedCalibration(d)
             gc2 = GroupedCalibration(:x=>[1.0, 2.0], :y=>[2.0, 3.0])
+
             @test gc1 == gc2
             @test !(gc1 === gc2)
 

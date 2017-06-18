@@ -52,7 +52,7 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
     err = 1.0
 
     log = TimeIterationLog()
-    start(log, verbose=verbose)
+    initialize(log, verbose=verbose)
     append!(log; verbose=verbose, it=0, err=NaN, gain=NaN, time=0.0, nit=NaN)
 
     maxabsdiff(_a, _b) = maximum(abs, _a - _b)
@@ -111,7 +111,7 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
         append!(log; verbose=verbose, it=it, err=err, gain=gain, time=elapsed, nit=NaN)
     end
 
-    stop(log, verbose=verbose)
+    finalize(log, verbose=verbose)
 
 
     converged = err<tol_η
