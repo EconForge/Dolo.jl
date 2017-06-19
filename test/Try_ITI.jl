@@ -3,7 +3,7 @@ path = Pkg.dir("Dolo")
 
 # Pkg.build("QuantEcon")
 import Dolo
-import Bruteforce_module
+# import Bruteforce_module
 
 ###############################################################################
 ## Markov Chain
@@ -12,7 +12,7 @@ filename = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
 # model = Dolo.Model(Pkg.dir("Dolo", "examples", "models", "rbc_dtcc_mc.yaml"), print_code=true)
 model = Dolo.yaml_import(filename)
 
-@time dr_ITI  = Bruteforce_module.improved_time_iteration(model; verbose=true, tol = 1e-06, smaxit=50)
+@time dr_ITI  = Dolo.improved_time_iteration(model; verbose=true, tol = 1e-06, smaxit=100)
 
 
 # dprocess = Dolo.discretize( model.exogenous )
@@ -91,12 +91,12 @@ plt.title("Decision Rule");
 
 filename = joinpath(path,"examples","models","rbc_dtcc_ar1.yaml")
 model_ar1 = Dolo.yaml_import(filename)
-@time dr_ITI_ar1  = Bruteforce_module.improved_time_iteration(model_ar1; verbose=true, tol = 1e-06, smaxit=50)
+@time dr_ITI_ar1  = Dolo.improved_time_iteration(model_ar1; verbose=true, tol = 1e-06, smaxit=50)
 @time dr_TI_ar1  = Dolo.time_iteration(model_ar1; tol_η=1e-08, maxit=1000)
 
 
 dprocess = Dolo.discretize( model_ar1.exogenous , [3], [2])
-@time dr2_ITI_ar1  = Bruteforce_module.improved_time_iteration(model_ar1, dprocess; verbose=true, tol = 1e-06, smaxit=50)
+@time dr2_ITI_ar1  = Dolo.improved_time_iteration(model_ar1, dprocess; verbose=true, tol = 1e-06, smaxit=50)
 @time dr2_TI_ar1  = Dolo.time_iteration(model_ar1, dprocess; tol_η=1e-08, maxit=1000)
 
 
@@ -217,7 +217,7 @@ plt.title("Decision Rule");
 
 filename = joinpath(path,"examples","models","sudden_stop.yaml")
 model_Sudden = Dolo.yaml_import(filename)
-@time dr_ITI_s  = Bruteforce_module.improved_time_iteration(model_Sudden; complementarities = true, verbose=true, tol = 1e-06, smaxit=50)
+@time dr_ITI_s  = Dolo.improved_time_iteration(model_Sudden; complementarities = true, verbose=true, tol = 1e-06, smaxit=50)
 @time dr_TI_s  = Dolo.time_iteration(model_Sudden; tol_η=1e-08, maxit=1000)
 
 
@@ -264,14 +264,3 @@ plt.plot(df[:l], df[:lam])
 plt.ylabel("Investment");
 plt.xlabel("state = k");
 plt.title("Decision Rule");
-
-
-
-################################################################################
-# Haggett 1993. Complementarities
-################################################################################
-
-filename = joinpath(path,"examples","models","haggett_1993.yaml")
-model_H = Dolo.yaml_import(filename)
-@time dr_ITI_s  = Bruteforce_module.improved_time_iteration(model_H; complementarities = true, verbose=true, tol = 1e-06, smaxit=50)
-@time dr_TI_s  = Dolo.time_iteration(model_H; tol_η=1e-08, maxit=1000)

@@ -44,7 +44,7 @@ export arbitrage, transition, auxiliary, value, expectation,
        # dolo functions
 export yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename, id
 
-export time_iteration, value_iteration, residuals, simulation
+export time_iteration, improved_time_iteration, value_iteration, residuals, simulation
 
 export ModelCalibration, FlatCalibration, GroupedCalibration
 
@@ -93,6 +93,7 @@ include("printing.jl")
 
 include("algos/steady_state.jl")
 include("algos/time_iteration.jl")
+include("algos/improved_time_iteration.jl")
 include("algos/time_iteration_direct.jl")
 include("algos/value_iteration.jl")
 include("algos/perturbation.jl")
