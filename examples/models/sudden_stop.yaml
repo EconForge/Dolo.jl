@@ -50,7 +50,7 @@ calibration:
     b: 0
 
 exogenous: !MarkovChain
-    values: [[ 0.9 ],  # bad state
+    values: [[ 0.9 - delta_y  ],  # bad state
              [ 1.0 ]]          # good state
     transitions: [[ 0.5, 0.5 ],   # probabilities   [p(L|L), p(H|L)]
                   [ 0.5, 0.5 ]]     # probabilities   [p(L|H), p(H|H)]
@@ -60,4 +60,4 @@ domain:
 
 options:
     grid: !Cartesian
-        orders: [1000]
+        orders: [100]
