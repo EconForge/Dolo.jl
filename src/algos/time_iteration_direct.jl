@@ -15,7 +15,7 @@ If the stochastic process for the model is not explicitly provided, the process 
 function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
                                grid, init_dr::AbstractDecisionRule;
                                verbose::Bool=true, maxit::Int=100, trace::Bool=false,
-                               tol_η::Float64=1e-8)
+                               tol_η::Float64=1e-7)
 
     # Grid
     endo_nodes = nodes(grid)
