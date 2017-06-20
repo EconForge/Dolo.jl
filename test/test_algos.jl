@@ -12,8 +12,8 @@ path = Dolo.pkg_path
 
         drc = Dolo.ConstantDecisionRule(model_mc.calibration[:controls])
         @time tid_res = Dolo.time_iteration_direct(model_mc, drc, verbose=true)
-        @time ti_res = Dolo.time_iteration(model_mc, tid_res.dr, verbose=false, maxit=50)
-        @time drv = Dolo.evaluate_policy(model_mc, tid_res.dr, verbose=false, maxit=50)
+        @time ti_res = Dolo.time_iteration(model_mc, tid_res.dr, verbose=false, maxit=10)
+        @time drv = Dolo.evaluate_policy(model_mc, tid_res.dr, verbose=false, maxit=10)
 
         sim = Dolo.simulate(model_mc, ti_res.dr, model_mc.exogenous) #; N=100, T=20)
         @test true
@@ -49,9 +49,9 @@ path = Dolo.pkg_path
         drc = Dolo.ConstantDecisionRule(model.calibration[:controls])
 
         @time tid_res = Dolo.time_iteration_direct(model, drc; verbose=true)
-        @time ti_res = Dolo.time_iteration(model, tid_res.dr, maxit=50, verbose=false)
-        @time drv = Dolo.evaluate_policy(model, tid_res.dr; maxit=50, verbose=false)
-        @time drv = Dolo.value_iteration(model, tid_res.dr; maxit=50, verbose=false)
+        @time ti_res = Dolo.time_iteration(model, tid_res.dr, maxit=10, verbose=false)
+        @time drv = Dolo.evaluate_policy(model, tid_res.dr; maxit=10, verbose=false)
+        @time drv = Dolo.value_iteration(model, tid_res.dr; maxit=10, verbose=true)
 
         Dolo.simulate(model, tid_res.dr)
 
@@ -90,9 +90,9 @@ path = Dolo.pkg_path
 
         @time dr = Dolo.perturbate(model)
         @time tid_res = Dolo.time_iteration_direct(model, verbose=true)
-        @time ti_res = Dolo.time_iteration(model, tid_res.dr, maxit=50, verbose=false)
-        # @time dr0, drv0 = Dolo.solve_policy(model, cdr, maxit=50, verbose=false) #, maxit=10000 )
-        @time drv = Dolo.evaluate_policy(model, tid_res.dr, maxit=50, verbose=false,)
+        @time ti_res = Dolo.time_iteration(model, tid_res.dr, maxit=10, verbose=false)
+        # @time dr0, drv0 = Dolo.solve_policy(model, cdr, maxit=10, verbose=false) #, maxit=10000 )
+        @time drv = Dolo.evaluate_policy(model, tid_res.dr, maxit=10, verbose=false,)
         model.symbols[:exogenous]
 
         Dolo.simulate(model, tid_res.dr, N=10)

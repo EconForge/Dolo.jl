@@ -325,7 +325,6 @@ function value_iteration(
             # compute diff in policy
             err_x = 0.0
             for i in 1:nsd
-                err_x = 0
                 err_x = max(err_x, maximum(abs, x[i] - x0[i]))
                 copy!(x0[i], x[i])
             end
