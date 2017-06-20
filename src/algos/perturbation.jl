@@ -1,10 +1,8 @@
 function get_ss_derivatives(model)
     m, s, x, p = model.calibration[:exogenous, :states, :controls, :parameters]
-
-    g_diff = eval_jacobians(model, transition!, length(s), (m, s, x, m), p)
-    f_diff = eval_jacobians(model, arbitrage!, length(x), (m, s, x, m, s, x), p)
-
-    return g_diff, f_diff
+    g_diff = transition(Der{1}, model, m, s, x, m, p)
+    f_diff = arbitrage(Der{1}, model, m, s, x, m, s, x, p)
+    g_diff, f_diff
 end
 
 perturbate(p::IIDExogenous) = (zeros(0), zeros(0, 0))
