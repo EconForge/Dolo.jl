@@ -2,7 +2,6 @@ julia 0.5
 MacroTools
 YAML 0.2.1
 DataStructures
-DataFrames
 AxisArrays
 NLsolve
 Optim

@@ -22,8 +22,6 @@ using Dolang: _to_expr, inf_to_Inf, solution_order, solve_triangular_system
 # Numerical Tools
 using MacroTools  # used for eval_with
 import Distributions
-import ForwardDiff
-# using splines
 
 # Simulation/presentation
 using AxisArrays
