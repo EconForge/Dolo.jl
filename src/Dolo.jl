@@ -80,7 +80,6 @@ include("numeric/newton.jl")
 include("numeric/grids.jl")
 include("numeric/processes.jl")
 include("numeric/decision_rules.jl")
-include("numeric/derivatives.jl")
 
 include("util.jl")
 include("symbolic.jl")
