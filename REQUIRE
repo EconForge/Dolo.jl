@@ -11,5 +11,4 @@ QuantEcon 0.10.1
 Distributions
 ForwardDiff
 Compat 0.17.0
-# Dolang
-# splines
+Dolang
