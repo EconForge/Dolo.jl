@@ -1,5 +1,5 @@
 
-function perfect_foresight(model, exo; T=200, verbose=true, complementarities=true)
+function perfect_foresight(model, exo::AbstractMatrix{Float64}; T=200, verbose=true, complementarities=true)
 
     T = T+1 # compat with t=0 conventions
 
