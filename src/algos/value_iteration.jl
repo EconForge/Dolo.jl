@@ -160,6 +160,23 @@ function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64},
     return E_V
 end
 
+@static if VERSION < v"0.6-"
+    function call_optim(fobj, initial_x, lower, upper, optim_opts)
+        results = optimize(
+            Optim.OnceDifferentiable(fobj), initial_x, lower, upper,
+            Fminbox(), optimizer=NelderMead,
+            x_tol=1e-10, f_tol=1e-10
+        )
+    end
+else
+    function call_optim(fobj, initial_x, lower, upper, optim_opts)
+        results = optimize(
+            Optim.OnceDifferentiable(fobj, initial_x), initial_x, lower, upper,
+            Fminbox{NelderMead}(), optimizer_o=optim_opts
+        )
+    end
+end
+
 """
 Solve for the value function and associated decision rule using value function iteration.
 
@@ -283,10 +300,7 @@ function value_iteration(
                     upper = clamp!(upper, -Inf, 1000000)
                     lower = clamp!(lower, -1000000, Inf)
                     initial_x = x0[i][n, :]
-                    results = optimize(
-                        Optim.OnceDifferentiable(fobj, initial_x), initial_x, lower, upper,
-                        Fminbox{NelderMead}(), optimizer_o=optim_opts
-                    )
+                    results = call_optim(fobj, initial_x, lower, upper, optim_opts)
                     xn = Optim.minimizer(results)
                     nv = -Optim.minimum(results)/1000.0
                     # ii = (fobj(initial_x))
