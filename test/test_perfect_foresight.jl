@@ -1,5 +1,4 @@
 import Dolo
-import Gadfly
 
 path = Dolo.pkg_path
 
