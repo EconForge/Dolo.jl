@@ -95,6 +95,7 @@ include("algos/time_iteration_direct.jl")
 include("algos/value_iteration.jl")
 include("algos/perturbation.jl")
 include("algos/simulation.jl")
+include("algos/perfect_foresight.jl")
 
 
 end # module

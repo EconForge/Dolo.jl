@@ -1,4 +1,4 @@
-function residuals(model::AModel, calibration::ModelCalibration)
+function residuals(model::AModel, calibration)
     m = calibration[:exogenous]
     s = calibration[:states]
     x = calibration[:controls]
