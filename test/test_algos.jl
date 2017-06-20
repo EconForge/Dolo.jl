@@ -11,9 +11,9 @@ path = Dolo.pkg_path
         model_mc = Dolo.yaml_import(fn)
 
         drc = Dolo.ConstantDecisionRule(model_mc.calibration[:controls])
-        @time ti_res = Dolo.time_iteration(model_mc, verbose=true, maxit=10000)
-        @time drv = Dolo.evaluate_policy(model_mc, ti_res.dr, verbose=true)
-        @time tid_res = Dolo.time_iteration_direct(model_mc, ti_res.dr, verbose=true)
+        @time tid_res = Dolo.time_iteration_direct(model_mc, drc, verbose=true)
+        @time ti_res = Dolo.time_iteration(model_mc, tid_res.dr, verbose=false, maxit=10000)
+        @time drv = Dolo.evaluate_policy(model_mc, tid_res.dr, verbose=false)
 
         sim = Dolo.simulate(model_mc, ti_res.dr, model_mc.exogenous) #; N=100, T=20)
         @test true
@@ -48,26 +48,23 @@ path = Dolo.pkg_path
 
         drc = Dolo.ConstantDecisionRule(model.calibration[:controls])
 
-        @time ti_res = Dolo.time_iteration(model, maxit=100, verbose=true)
-        @time drd = Dolo.time_iteration_direct(model; verbose=true).dr
+        @time tid_res = Dolo.time_iteration_direct(model, drc; verbose=true)
+        @time ti_res = Dolo.time_iteration(model, tid_res.dr, maxit=100, verbose=false)
 
-        @time dr = Dolo.time_iteration_direct(model, drd; verbose=true).dr #, maxit=500, verbose=true)
-        @time res = Dolo.time_iteration_direct(model, drc; verbose=true)
-        @time drv = Dolo.evaluate_policy(model, dr; verbose=true)
-        # @time drv = Dolo.value_iteration(model, dr; verbose=true)
+        @time drv = Dolo.evaluate_policy(model, tid_res.dr; verbose=false)
+        @time drv = Dolo.value_iteration(model, tid_res.dr; verbose=false)
 
-        #
-        Dolo.simulate(model, dr)
+        Dolo.simulate(model, tid_res.dr)
 
         s0 = model.calibration[:states]+0.1
-        sim = Dolo.simulate(model, dr, s0)
-        Dolo.simulate(model, dr; N=10)
+        sim = Dolo.simulate(model, tid_res.dr, s0)
+        Dolo.simulate(model, tid_res.dr; N=10)
 
 
         res = Dolo.response(model.exogenous, [0.01])
 
 
-        irf = Dolo.response(model, dr, :e_z)
+        irf = Dolo.response(model, tid_res.dr, :e_z)
 
         irf[:k]
         @test true
@@ -93,20 +90,16 @@ path = Dolo.pkg_path
         dp = Dolo.discretize(model.exogenous)
 
         @time dr = Dolo.perturbate(model)
-        cdr = Dolo.CachedDecisionRule(dr, dp)
-        @time ti_res = Dolo.time_iteration(model, dp, verbose=true)
-        @time ti_res = Dolo.time_iteration(model, verbose=true)
-        # @time dr0, drv0 = Dolo.solve_policy(model, cdr, verbose=true) #, maxit=10000 )
-        @time drv = Dolo.evaluate_policy(model, ti_res.dr, verbose=true, maxit=10000)
-        @time drd = Dolo.time_iteration_direct(model, ti_res.dr, verbose=true)
-        #
+        @time tid_res = Dolo.time_iteration_direct(model, verbose=true)
+        @time ti_res = Dolo.time_iteration(model, tid_res.dr, verbose=false)
+        # @time dr0, drv0 = Dolo.solve_policy(model, cdr, verbose=false) #, maxit=10000 )
+        @time drv = Dolo.evaluate_policy(model, tid_res.dr, verbose=false, maxit=10000)
         model.symbols[:exogenous]
 
-        Dolo.simulate(model, ti_res.dr, N=10)
-
+        Dolo.simulate(model, tid_res.dr, N=10)
         Dolo.response(model.exogenous, [0.01])
 
-        sim = Dolo.response(model, ti_res.dr, :z)
+        sim = Dolo.response(model, tid_res.dr, :z)
 
         sim[:z]
         @test true
