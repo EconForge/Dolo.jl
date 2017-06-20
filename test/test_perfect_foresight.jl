@@ -1,21 +1,27 @@
 import Dolo
 import Gadfly
 
-model = Dolo.yaml_import(
-    Pkg.dir("Dolo","examples","models","rbc_dtcc_ar1.yaml")
-    )
+path = Dolo.pkg_path
 
-# we must define the series for exogenous shocks
-n_e = length(model.symbols[:exogenous])
+@testset "testing perfect_foresight" begin
 
-T_e = 5
-exo = zeros(T_e, n_e)
-exo[1,:] = [0.00]  # this is used to determine initial steady-state of the model
-exo[2,:] = [0.01]
-exo[3,:] = [0.02]
-exo[4,:] = [0.03]
-exo[5,:] = [0.04]  # this is used to determine final steady-state
+    fn = joinpath(path, "examples", "models", "rbc_dtcc_ar1.yaml")
 
-df = Dolo.perfect_foresight(model, exo)
+    model = Dolo.yaml_import(fn)
 
-Gadfly.plot( y=df[:k] )
+    # we must define the series for exogenous shocks
+    n_e = length(model.symbols[:exogenous])
+
+    T_e = 5
+    exo = zeros(T_e, n_e)
+    exo[1,:] = [0.00]  # this is used to determine initial steady-state of the model
+    exo[2,:] = [0.01]
+    exo[3,:] = [0.02]
+    exo[4,:] = [0.03]
+    exo[5,:] = [0.04]  # this is used to determine final steady-state
+
+    df = Dolo.perfect_foresight(model, exo)
+
+    @test true
+
+end
