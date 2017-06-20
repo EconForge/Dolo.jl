@@ -106,7 +106,7 @@ end
 
 function DecisionRule(grid_exo::CartesianGrid, grid_endo::CartesianGrid, n_x::Int)
     # hmm kind of silently assuming we have cartesian grid
-    orders = grid_exo.n + grid_endo.n
+    orders = [grid_exo.n; grid_endo.n]
     coeffs = [zeros(n_x, (orders+2)...)]
     return DecisionRule{CartesianGrid, CartesianGrid}(grid_exo, grid_endo, n_x, coeffs)
 end
