@@ -1,15 +1,15 @@
 
-path = Pkg.dir("Dolo")
 
 # Pkg.build("QuantEcon")
 import Dolo
+path = Dolo.pkg_path
 # import Bruteforce_module
 
 ###############################################################################
 ## Markov Chain
 ###############################################################################
 filename = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
-# model = Dolo.Model(Pkg.dir("Dolo", "examples", "models", "rbc_dtcc_mc.yaml"), print_code=true)
+# model = Dolo.Model(joinpath(Dolo.pkg_path, "examples", "models", "rbc_dtcc_mc.yaml"), print_code=true)
 model = Dolo.yaml_import(filename)
 
 @time dr_ITI  = Dolo.improved_time_iteration(model; verbose=true, tol = 1e-06, smaxit=100)

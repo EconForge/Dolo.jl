@@ -20,7 +20,7 @@ f!(out, m, before..., to_diff[1:i-1]..., to_diff[i] ,to_diff[i+1:end]...,
 
 ```julia
 import Dolo
-mod = Dolo.yaml_import(Pkg.dir("Dolo", "examples", "models", "rbc_dtcc_iid.yaml"))
+mod = Dolo.yaml_import(joinpath(Dolo.pkg_path, "examples", "models", "rbc_dtcc_iid.yaml"))
 m, s, x, M, p = mod.calibration[:exogenous, :states, :controls, :exogenous, :parameters]
 
 # returns [0.0 1.0]
@@ -53,7 +53,7 @@ The output is a vector containing `length(to_diff)` `Matrix{Float64}` elements.
 
 ```julia
 import Dolo
-mod = Dolo.yaml_import(Pkg.dir("Dolo", "examples", "models", "rbc_dtcc_iid.yaml"))
+mod = Dolo.yaml_import(joinpath(Dolo.pkg_path, "examples", "models", "rbc_dtcc_iid.yaml"))
 m, s, x, M, p = mod.calibration[:exogenous, :states, :controls, :exogenous, :parameters]
 
 # returns [[0.975], [0.0 1.0]]

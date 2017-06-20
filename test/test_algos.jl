@@ -1,8 +1,8 @@
-path = Pkg.dir("Dolo")
 
 import Dolo
 import YAML
 
+path = Dolo.pkg_path
 @testset "testing model algos" begin
 
     @testset "testing mc models" begin
@@ -88,7 +88,7 @@ import YAML
 
         # AR1 model: this one should be exactly equivalent to rbc_dtcc_ar1
         import Dolo
-        fn = Pkg.dir("Dolo", "examples", "models", "rbc_dtcc_ar1.yaml")
+        fn = joinpath(Dolo.pkg_path, "examples", "models", "rbc_dtcc_ar1.yaml")
         model = Dolo.yaml_import(fn)
         dp = Dolo.discretize(model.exogenous)
 

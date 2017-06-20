@@ -2,7 +2,7 @@ import Dolo
 include("tmp_module.jl")
 import temp
 include("steady_state.jl")
-dolo_dir = Pkg.dir("Dolo")
+dolo_dir = Dolo.pkg_path
 
 model = Dolo.yaml_import("rbc_dtcc_iid.yaml")
 

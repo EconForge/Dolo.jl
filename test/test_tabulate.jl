@@ -1,7 +1,7 @@
-path = Pkg.dir("Dolo")
 
 import Dolo
 import PyPlot
+path = Dolo.pkg_path
 
 filename = joinpath(path,"examples","models","rbc_dtcc_iid_ar1.yaml")
 model = Dolo.yaml_import(filename)

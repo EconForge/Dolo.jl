@@ -1,4 +1,4 @@
-const path = Pkg.dir("Dolo", "examples", "models", "dynare", "EA_QUEST3.mod")
+const path = joinpath(Dolo.pkg_path, "examples", "models", "dynare", "EA_QUEST3.mod")
 const sm = Dolo.load_modfile(path)
 const ff = Dolang.FunctionFactory(sm, :dynare)
 

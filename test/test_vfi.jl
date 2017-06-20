@@ -1,6 +1,6 @@
-path = Pkg.dir("Dolo")
 
 import Dolo
+path = Dolo.pkg_path
 
 fn = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
 model_mc = Dolo.yaml_import(fn)

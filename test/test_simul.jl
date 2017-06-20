@@ -1,8 +1,8 @@
 
-path = Pkg.dir("Dolo")
 
 # Pkg.build("QuantEcon")
 import Dolo
+path = path = Dolo.pkg_path
 
 using AxisArrays
 

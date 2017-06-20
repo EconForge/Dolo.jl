@@ -1,6 +1,6 @@
 import Dolo
 
-model = Dolo.Model(Pkg.dir("Dolo","examples","models","rbc_dtcc_mc.yaml"))
+model = Dolo.Model(joinpath(Dolo.pkg_path, "examples","models","rbc_dtcc_mc.yaml"))
 
 Dolo.time_iteration(model)
 dr0 = Dolo.time_iteration(model, tol_η=1e-6; grid=Dict(:n=>[5])).dr

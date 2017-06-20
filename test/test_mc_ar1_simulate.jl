@@ -1,14 +1,14 @@
 
-path = Pkg.dir("Dolo")
 
 # Pkg.build("QuantEcon")
 import Dolo
 
+path = Dolo.pkg_path
 using AxisArrays
 
 
 filename = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
-# model = Dolo.Model(Pkg.dir("Dolo", "examples", "models", "rbc_dtcc_mc.yaml"), print_code=true)
+# model = Dolo.Model(joinpath(Dolo.pkg_path, "examples", "models", "rbc_dtcc_mc.yaml"), print_code=true)
 model = Dolo.yaml_import(filename)
 @time dr = Dolo.time_iteration(model, verbose=true, maxit=10000)
 

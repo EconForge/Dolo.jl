@@ -8,7 +8,7 @@ end
 
 @testset "Testing yaml_import" begin
     # @test import_model("https://raw.githubusercontent.com/EconForge/dolo/144965224f432c9f467f0e667bc0cc4d77caf629/examples/models/rbc.yaml")
-    path = Pkg.dir("Dolo", "examples", "models")
+    path = joinpath(Dolo.pkg_path, "examples", "models")
     files = [f for f in readdir(path) if contains(f, "yaml")]
     for fname in files
         print("Importing ", fname,"\n")
