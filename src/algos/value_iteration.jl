@@ -159,9 +159,17 @@ function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64},
     E_V = u + β.*E_V
     return E_V
 end
+function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64},
+                      x0::Float64, p::Vector{Float64})
+    update_value(model, β, dprocess, drv, i, s, [x0], p)
+end
+
 
 @static if VERSION < v"0.6-"
     function call_optim(fobj, initial_x, lower, upper, optim_opts)
+        if length(initial_x) == 1
+            return optimize(fobj, lower[1], upper[1])
+        end
         results = optimize(
             Optim.OnceDifferentiable(fobj), initial_x, lower, upper,
             Fminbox(), optimizer=NelderMead,
@@ -170,6 +178,9 @@ end
     end
 else
     function call_optim(fobj, initial_x, lower, upper, optim_opts)
+        if length(initial_x) == 1
+            return optimize(fobj, lower[1], upper[1])
+        end
         results = optimize(
             Optim.OnceDifferentiable(fobj, initial_x), initial_x, lower, upper,
             Fminbox{NelderMead}(), optimizer_o=optim_opts
@@ -325,7 +336,6 @@ function value_iteration(
             # compute diff in policy
             err_x = 0.0
             for i in 1:nsd
-                err_x = 0
                 err_x = max(err_x, maximum(abs, x[i] - x0[i]))
                 copy!(x0[i], x[i])
             end
