@@ -27,7 +27,7 @@ import Distributions
 using AxisArrays
 
 # Compat across julia versions
-using Compat; import Compat: String, view
+using Compat; import Compat: String, view, @__dot__
 
 
 # exports
