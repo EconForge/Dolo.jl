@@ -32,8 +32,9 @@ function perturbate_first_order(g_s, g_x, f_s, f_x, f_S, f_X)
 
     eigtol = 1.0+1e-6
 
-    ns = size(g_s, 1)
-    nx = size(g_x, 1)
+    ns = size(g_s, 2)
+    nx = size(g_x, 2)
+
     nv = ns + nx
 
     A = [eye(ns) zeros(ns, nx);
