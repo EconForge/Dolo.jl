@@ -211,6 +211,8 @@ type Model{ID} <: AModel{ID}
             eval(Dolo, code)
         end
 
+        eval(Dolo, build_definition_function(model))
+
         return model
     end
 

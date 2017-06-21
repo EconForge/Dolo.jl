@@ -37,7 +37,8 @@ export arbitrage, transition, auxiliary, value, expectation,
 
        # mutating version of model functions
        arbitrage!, transition!, auxiliary!, value!, expectation!,
-       direct_response, controls_lb!, controls_ub!, arbitrage_2!, felicity!
+       direct_response, controls_lb!, controls_ub!, arbitrage_2!, felicity!,
+       evaluate_definitions
 
        # dolo functions
 export yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename, id
@@ -82,10 +83,10 @@ include("numeric/processes.jl")
 include("numeric/decision_rules.jl")
 
 include("util.jl")
-include("symbolic.jl")
 include("calibration.jl")
 include("minilang.jl")
 include("model.jl")
+include("symbolic.jl")
 include("printing.jl")
 
 include("algos/steady_state.jl")
