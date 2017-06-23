@@ -1,0 +1,56 @@
+name: Neoclassical
+
+symbols:
+    states: [k]
+    controls: [i]
+    exogenous: [z]
+    rewards: [u]
+    parameters: [beta, gamma, delta, theta, rho]
+
+definitions:
+    c: exp(z)*k^theta - i
+    r_I: exp(z)*theta*k^(theta-1) + (1-delta)
+
+equations:
+    transition:
+        - k = (1-delta)*k(-1) + i(-1)
+    arbitrage:
+        - 1 - beta*( (c(1)/c)^(-gamma)*r_I(1) )
+    felicity:
+        - u = c^(1-gamma)/(1-gamma)
+
+############################
+calibration:
+
+    ## exogenous state
+    z: 0
+
+    # controls
+    i: ( (1/beta - (1-delta))/theta )^(1/(theta-1)) * delta
+
+    # states
+    k: i/delta
+
+    # auxiliary
+    c: k^theta - i
+    r_I: 1/beta
+
+    u: c^(1-gamma)/(1-gamma)
+
+    # parameters:
+    beta: 0.96
+    gamma: 4.0
+    delta: 0.1
+    theta: 0.3
+    rho: 0.0
+
+domain:
+    k: [k*0.5, k*1.5]
+
+exogenous: !VAR1
+    rho: rho
+    Sigma: [[ 0.00001 ]]
+
+options:
+    grid: !Cartesian
+        n: [10]
