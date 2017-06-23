@@ -18,8 +18,7 @@ end
 
 function Base.show(io::IO, pbr::PerturbationResult)
     @printf io "Perturbation Results\n"
-    @printf io " * Decision Rule type: %s\n" string(typeof(PerturbationResult))
-    @printf io "   * %s\n" show(pbr.solution)
+    @printf io " * Decision Rule type: %s\n" string(typeof(pbr))
     @printf io " * Blanchard-Kahn: %s\n" blanchard_kahn(pbr)
     @printf io "   * stable < %s\n" pbr.stable
     @printf io "   * determined < %s\n" pbr.determined
