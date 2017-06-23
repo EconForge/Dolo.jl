@@ -67,7 +67,11 @@ to_matrix(tab::Array{Array{Float64,1},1}) = cat(1, [e' for e in tab]...)
 
 function _build_exogenous_entry(data::Associative, calib::ModelCalibration)
 
-    if data[:tag] == :MarkovChain
+    if data[:tag] == :Product
+        p1 = _build_exogenous_entry(data[:p1], calib)
+        p2 = _build_exogenous_entry(data[:p2], calib)
+        return ProductProcess(p1,p2)
+    elseif data[:tag] == :MarkovChain
         # need to extract/clean up P and Q
         values = eval_with(calib, data[:values])
         states_values = to_matrix(values)

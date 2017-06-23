@@ -11,6 +11,7 @@
 ### Discretized process
 ###
 
+
 # date-t grid has a known structure
 type DiscretizedProcess{TG<:Grid} <: AbstractDiscretizedProcess
     grid::TG
@@ -30,6 +31,9 @@ type DiscreteMarkovProcess <: AbstractDiscretizedProcess
     transitions::Matrix{Float64}
     values::Matrix{Float64}
 end
+
+discretize(::Type{DiscreteMarkovProcess}, mp::DiscreteMarkovProcess) = mp
+discretize(mp::DiscreteMarkovProcess) = mp
 
 DiscreteMarkovProcess(transitions::Matrix{Float64}, values::Matrix{Float64}) =
     DiscreteMarkovProcess(UnstructuredGrid(values), transitions, values)
@@ -334,6 +338,23 @@ function ErgodDist(var::VAR1, N::Int, T::Int)
     return Mean_sim, Sigma_sim, R_sim
 end
 
+#### ProductProcess
+
+
+type ProductProcess <: AbstractProcess
+    process_1::AbstractProcess
+    process_2::AbstractProcess
+end
+
+function discretize(::Type{DiscreteMarkovProcess}, pp::ProductProcess; opt1=Dict(), opt2=Dict())
+    p1 = discretize(DiscreteMarkovProcess, pp.process_1; opt1...)
+    p2 = discretize(DiscreteMarkovProcess, pp.process_2; opt2...)
+    return MarkovProduct(p1,p2)
+end
+
+function discretize(pp::ProductProcess; kwargs...)
+    return discretize(DiscreteMarkovProcess, pp; kwargs...)
+end
 
 
 # compatibility names
