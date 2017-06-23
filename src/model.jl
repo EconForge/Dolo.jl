@@ -248,3 +248,17 @@ parameter, and returns the corresponding `Dolo` model object.
 function yaml_import(url; print_code::Bool=false)
     Model(url; print_code=print_code)
 end
+
+
+function features(model::Dolo.ASModel)
+    features = Dict{Symbol, Bool}()
+    features[:one_state] = (length(model.symbols[:states])==1)
+    features[:one_control] = (length(model.symbols[:controls])==1)
+    features[:one_dimensional] = features[:one_state] && features[:one_state]
+    rhs_transitions = [eq.args[3] for eq in model.equations[:transition]]
+    it = Dolang.IncidenceTable( model.equations[:transition] )
+    features[:nonstochastic_transitions] = (length( intersect(it.by_date[0], model.symbols[:exogenous] ) )==0)
+    it = Dolang.IncidenceTable( [model.equations[:controls_lb]; model.equations[:controls_lb]] )
+    features[:bounds_are_constant] = (length(it.by_var) == 1)
+    return features
+end

@@ -41,7 +41,7 @@ export arbitrage, transition, auxiliary, value, expectation,
        evaluate_definitions
 
        # dolo functions
-export yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename, id
+export yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename, id, features
 
 export time_iteration, improved_time_iteration, value_iteration, residuals, simulation
 
