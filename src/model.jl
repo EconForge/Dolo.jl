@@ -259,6 +259,6 @@ function features(model::Dolo.ASModel)
     it = Dolang.IncidenceTable( model.equations[:transition] )
     features[:nonstochastic_transitions] = (length( intersect(it.by_date[0], model.symbols[:exogenous] ) )==0)
     it = Dolang.IncidenceTable( [model.equations[:controls_lb]; model.equations[:controls_lb]] )
-    features[:bounds_are_constant] = (length(it.by_var) == 1)
+    features[:bounds_are_constant] = (length(it.by_var) == 0)
     return features
 end
