@@ -51,8 +51,8 @@ path = Dolo.pkg_path
         @time tid_res = Dolo.time_iteration_direct(model, drc; verbose=true)
         @time ti_res = Dolo.time_iteration(model, tid_res.dr, maxit=100, verbose=false)
 
-        @time drv = Dolo.evaluate_policy(model, tid_res.dr; verbose=false)
-        @time drv = Dolo.value_iteration(model, tid_res.dr; verbose=false)
+        @time drv = Dolo.evaluate_policy(model, tid_res.dr; verbose=true)
+        @time drv = Dolo.value_iteration(model, tid_res.dr; verbose=true)
 
         Dolo.simulate(model, tid_res.dr)
 
