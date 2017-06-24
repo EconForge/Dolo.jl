@@ -67,7 +67,11 @@ to_matrix(tab::Array{Array{Float64,1},1}) = cat(1, [e' for e in tab]...)
 
 function _build_exogenous_entry(data::Associative, calib::ModelCalibration)
 
-    if data[:tag] == :MarkovChain
+    if data[:tag] == :Product
+        p1 = _build_exogenous_entry(data[:p1], calib)
+        p2 = _build_exogenous_entry(data[:p2], calib)
+        return ProductProcess(p1,p2)
+    elseif data[:tag] == :MarkovChain
         # need to extract/clean up P and Q
         values = eval_with(calib, data[:values])
         states_values = to_matrix(values)
@@ -88,6 +92,20 @@ function _build_exogenous_entry(data::Associative, calib::ModelCalibration)
         Sigma = eval_with(calib, data[:Sigma])
         Sigma = to_matrix(Sigma)
         return Normal(Sigma)
+    elseif data[:tag] == :DeathProcess
+        # need to extract rho an dSigma
+        mu = eval_with(calib, data[:mu])
+        return DeathProcess(mu)
+    elseif data[:tag] == :PoissonProcess
+        # need to extract rho an dSigma
+        mu = eval_with(calib, data[:mu])
+        K = eval_with(calib, data[:K])
+        return PoissonProcess(mu, K)
+    elseif data[:tag] == :AgingProcess
+        # need to extract rho an dSigma
+        mu = eval_with(calib, data[:mu])
+        K = eval_with(calib, data[:K])
+        return AgingProcess(mu, K)
     end
     m = "don't know how to handle exogenous process of type $(data[:tag])"
     error(m)

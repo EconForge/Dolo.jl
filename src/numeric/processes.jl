@@ -11,6 +11,7 @@
 ### Discretized process
 ###
 
+
 # date-t grid has a known structure
 type DiscretizedProcess{TG<:Grid} <: AbstractDiscretizedProcess
     grid::TG
@@ -30,6 +31,9 @@ type DiscreteMarkovProcess <: AbstractDiscretizedProcess
     transitions::Matrix{Float64}
     values::Matrix{Float64}
 end
+
+discretize(::Type{DiscreteMarkovProcess}, mp::DiscreteMarkovProcess) = mp
+discretize(mp::DiscreteMarkovProcess) = mp
 
 DiscreteMarkovProcess(transitions::Matrix{Float64}, values::Matrix{Float64}) =
     DiscreteMarkovProcess(UnstructuredGrid(values), transitions, values)
@@ -334,6 +338,55 @@ function ErgodDist(var::VAR1, N::Int, T::Int)
     return Mean_sim, Sigma_sim, R_sim
 end
 
+#### ProductProcess
+
+
+type ProductProcess <: AbstractProcess
+    process_1::AbstractProcess
+    process_2::AbstractProcess
+end
+
+function discretize(::Type{DiscreteMarkovProcess}, pp::ProductProcess; opt1=Dict(), opt2=Dict())
+    p1 = discretize(DiscreteMarkovProcess, pp.process_1; opt1...)
+    p2 = discretize(DiscreteMarkovProcess, pp.process_2; opt2...)
+    return MarkovProduct(p1,p2)
+end
+
+function discretize(pp::ProductProcess; kwargs...)
+    return discretize(DiscreteMarkovProcess, pp; kwargs...)
+end
+
+
+## special processes (could be implemented as types later on)
+
+function DeathProcess(mu::Float64)
+    values = [0.0 1.0;]'
+    transitions = [(1-mu) mu; 0 1]
+    DiscreteMarkovProcess(transitions, values)
+end
+function PoissonProcess(mu::Float64, K::Int)
+    values = (0:K)[:,:]*1.0
+    transitions = zeros(K+1, K+1)
+    for i=1:K
+        transitions[i,i] = 1-mu
+        transitions[i,i+1] = mu
+    end
+    transitions[K+1,K+1] = 1
+    DiscreteMarkovProcess(transitions, values)
+end
+function AgingProcess(mu::Float64, K::Int)
+    values = zeros(K+1,2)
+    values[:,1] = 0:K
+    values[1,2] = 1
+    transitions = zeros(K+1, K+1)
+    transitions[1,1] = 1
+    for i=2:K
+        transitions[i,i+1] = (1-mu)
+        transitions[i,1] = mu
+    end
+    transitions[end,1] = 1
+    return DiscreteMarkovProcess(transitions, values)
+end
 
 
 # compatibility names
