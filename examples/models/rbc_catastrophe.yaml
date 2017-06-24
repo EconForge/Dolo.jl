@@ -4,7 +4,7 @@ model_type: dtcc
 
 symbols:
 
-   exogenous: [z, u]
+   exogenous: [z, xi]
    states: [k]
    controls: [n, i]
    expectations: [m]
@@ -13,7 +13,7 @@ symbols:
    rewards: [u]
 
 definitions:
-    y: exp(z-u)*k^alpha*n^(1-alpha)
+    y: exp(z-xi)*k^alpha*n^(1-alpha)
     c: y - i
     rk: alpha*y/k
     w: (1-alpha)*y/n
@@ -38,8 +38,8 @@ equations:
         - m = beta/c(1)^sigma*(1-delta+rk(1))
 
     direct_response:
-        - n = ((1-alpha)*exp(z-u)*k^alpha*m/chi)^(1/(eta+alpha))
-        - i = exp(z-u)*k^alpha*n^(1-alpha) - (m)^(-1/sigma)
+        - n = ((1-alpha)*exp(z-xi)*k^alpha*m/chi)^(1/(eta+alpha))
+        - i = exp(z-xi)*k^alpha*n^(1-alpha) - (m)^(-1/sigma)
 
 calibration:
 
@@ -71,7 +71,7 @@ calibration:
     c: y - i
     V: log(c)/(1-beta)
     u: c^(1-sigma)/(1-sigma) - chi*n^(1+eta)/(1+eta)
-
+    xi: 0.0
 
 domain:
     k: [k*0.5, k*1.5]
