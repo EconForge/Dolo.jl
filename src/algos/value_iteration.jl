@@ -165,7 +165,7 @@ function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64},
 end
 
 
-@static if VERSION < v"0.6-"
+@static if Pkg.installed("Optim") < v"0.9-"
     function call_optim(fobj, initial_x, lower, upper, optim_opts)
         if length(initial_x) == 1
             return optimize(fobj, lower[1], upper[1])

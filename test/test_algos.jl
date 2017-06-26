@@ -51,7 +51,7 @@ path = Dolo.pkg_path
         @time tid_res = Dolo.time_iteration_direct(model, drc; maxit=20, verbose=true)
         @time ti_res = Dolo.time_iteration(model, tid_res.dr; maxit=20, verbose=false)
 
-        if VERSION >= v"0.6-"
+        if ~( VERSION < v"0.6-" && get(ENV, "TRAVIS", "true") )
             @time sol_v = Dolo.value_iteration(model, tid_res.dr; maxit=20, verbose=true)
         end
 
@@ -93,7 +93,7 @@ path = Dolo.pkg_path
         @time dr = Dolo.perturbate(model)
         @time tid_res = Dolo.time_iteration_direct(model; maxit=20, verbose=true)
         @time ti_res = Dolo.time_iteration(model, tid_res.dr; maxit=20, verbose=false)
-        if VERSION >= v"0.6-"
+        if ~( VERSION < v"0.6-" && get(ENV, "TRAVIS", "true") )
             @time sol_v = Dolo.value_iteration(model, ti_res.dr; maxit=20, verbose=true)
         end
         model.symbols[:exogenous]
