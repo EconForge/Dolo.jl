@@ -13,6 +13,7 @@ matrix:
     - julia: nightly
 notifications:
   email: false
+# yaml syntax error there ?
 script:
     - julia -e 'Pkg.clone(pwd()); Pkg.build("Dolo"); coverage=(VERSION>=v"0.6.0"); Pkg.test("Dolo"; coverage=coverage)'
 after_success:
