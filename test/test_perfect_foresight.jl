@@ -19,7 +19,7 @@ path = Dolo.pkg_path
     exo[4,:] = [0.03]
     exo[5,:] = [0.04]  # this is used to determine final steady-state
 
-    df = Dolo.perfect_foresight(model, exo)
+    @time df = Dolo.perfect_foresight(model, exo, T=20)
 
     @test true
 

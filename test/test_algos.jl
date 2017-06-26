@@ -11,9 +11,9 @@ path = Dolo.pkg_path
         model_mc = Dolo.yaml_import(fn)
 
         drc = Dolo.ConstantDecisionRule(model_mc.calibration[:controls])
-        @time tid_res = Dolo.time_iteration_direct(model_mc, drc, verbose=true)
-        @time ti_res = Dolo.time_iteration(model_mc, tid_res.dr, verbose=false, maxit=10000)
-        @time drv = Dolo.evaluate_policy(model_mc, tid_res.dr, verbose=false)
+        @time tid_res = Dolo.time_iteration_direct(model_mc, drc; maxit=20, verbose=true)
+        @time ti_res = Dolo.time_iteration(model_mc, tid_res.dr; maxit=20, verbose=false, maxit=10000)
+        @time drv = Dolo.evaluate_policy(model_mc, tid_res.dr; maxit=20, verbose=false)
 
         sim = Dolo.simulate(model_mc, ti_res.dr, model_mc.exogenous) #; N=100, T=20)
         @test true
@@ -48,11 +48,12 @@ path = Dolo.pkg_path
 
         drc = Dolo.ConstantDecisionRule(model.calibration[:controls])
 
-        @time tid_res = Dolo.time_iteration_direct(model, drc; verbose=true)
-        @time ti_res = Dolo.time_iteration(model, tid_res.dr, maxit=100, verbose=false)
+        @time tid_res = Dolo.time_iteration_direct(model, drc; maxit=20, verbose=true)
+        @time ti_res = Dolo.time_iteration(model, tid_res.dr; maxit=20, verbose=false)
 
-        @time drv = Dolo.evaluate_policy(model, tid_res.dr; verbose=false)
-        @time drv = Dolo.value_iteration(model, tid_res.dr; verbose=false)
+        if VERSION >= v"0.6-"
+            @time sol_v = Dolo.value_iteration(model, tid_res.dr; maxit=20, verbose=true)
+        end
 
         Dolo.simulate(model, tid_res.dr)
 
@@ -90,10 +91,11 @@ path = Dolo.pkg_path
         dp = Dolo.discretize(model.exogenous)
 
         @time dr = Dolo.perturbate(model)
-        @time tid_res = Dolo.time_iteration_direct(model, verbose=true)
-        @time ti_res = Dolo.time_iteration(model, tid_res.dr, verbose=false)
-        # @time dr0, drv0 = Dolo.solve_policy(model, cdr, verbose=false) #, maxit=10000 )
-        @time drv = Dolo.evaluate_policy(model, tid_res.dr, verbose=false, maxit=10000)
+        @time tid_res = Dolo.time_iteration_direct(model; maxit=20, verbose=true)
+        @time ti_res = Dolo.time_iteration(model, tid_res.dr; maxit=20, verbose=false)
+        if VERSION >= v"0.6-"
+            @time sol_v = Dolo.value_iteration(model, ti_res.dr; maxit=20, verbose=true)
+        end
         model.symbols[:exogenous]
 
         Dolo.simulate(model, tid_res.dr, N=10)
