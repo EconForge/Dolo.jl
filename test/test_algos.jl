@@ -51,8 +51,9 @@ path = Dolo.pkg_path
         @time tid_res = Dolo.time_iteration_direct(model, drc; verbose=true)
         @time ti_res = Dolo.time_iteration(model, tid_res.dr, maxit=100, verbose=false)
 
-        @time drv = Dolo.evaluate_policy(model, tid_res.dr; verbose=true)
-        @time drv = Dolo.value_iteration(model, tid_res.dr; verbose=true)
+        if VERSION >= v"0.6-"
+            @time drv = Dolo.value_iteration(model, tid_res.dr; verbose=true)
+        end
 
         Dolo.simulate(model, tid_res.dr)
 
@@ -92,8 +93,9 @@ path = Dolo.pkg_path
         @time dr = Dolo.perturbate(model)
         @time tid_res = Dolo.time_iteration_direct(model, verbose=true)
         @time ti_res = Dolo.time_iteration(model, tid_res.dr, verbose=false)
-        # @time dr0, drv0 = Dolo.solve_policy(model, cdr, verbose=false) #, maxit=10000 )
-        @time drv = Dolo.evaluate_policy(model, tid_res.dr, verbose=false, maxit=10000)
+        if VERSION >= v"0.6-"
+            @time dr0, drv0 = Dolo.value_iteration(model, ti_res.dr, verbose=true)
+        end
         model.symbols[:exogenous]
 
         Dolo.simulate(model, tid_res.dr, N=10)
