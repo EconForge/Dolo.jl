@@ -14,8 +14,8 @@ matrix:
 notifications:
   email: false
 ## uncomment the following lines to override the default test script
-#script:
-#  - julia -e 'Pkg.clone(pwd()); Pkg.build("Dolo"); Pkg.test("Dolo"; coverage=true)'
+script:
+ - julia -e 'Pkg.clone(pwd()); Pkg.build("Dolo"); coverage = (VERSION >= v"0.6.0"); Pkg.test("Dolo"; coverage=coverage)'
 after_success:
     - echo $TRAVIS_JULIA_VERSION
     - echo $TRAVIS_OS_NAME
