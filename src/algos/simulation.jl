@@ -45,9 +45,9 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVe
     ll = [Symbol(i) for i in Ac]
 
     sim_aa = AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
-    return sim_aa
+    # return sim_aa
     # println(sim_aa)
-    # sim_def= evaluate_definitions(model, sim_aa, model.calibration[:parameters])
+    sim_def= evaluate_definitions(model, sim_aa, model.calibration[:parameters])
     return merge(sim_aa,sim_def)
 
 end
@@ -77,6 +77,7 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVe
     ns = length(s0)
     nx = length(x0)
     nsx = nx+ns
+    nm = length(model.calibration[:exogenous])
 
     s_simul = Array{Float64}(N, ns, T)
     x_simul = Array{Float64}(N, nx, T)
@@ -101,10 +102,17 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVe
             transition!(model, ss, m_val, s, x, M_val, params)
         end
     end
-    sim = cat(2, epsilons, s_simul, x_simul)::Array{Float64,3}
+
+    epsilons_values = zeros(N,nm,T)
+    for n=1:N
+      eps = dp_process.values[epsilons[n,:,:],:]
+      epsilons_values = permutedims(eps, [1, 3, 2])
+    end
+
+    sim = cat(2, epsilons, epsilons_values, s_simul, x_simul)::Array{Float64,3}
 
     model_sym = :mc_process
-    Ac = cat(1, model_sym, model.symbols[:states], model.symbols[:controls])
+    Ac = cat(1, model_sym, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
     ll = [Symbol(i) for i in Ac]
     sim_aa = AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
     sim_def=evaluate_definitions(model, sim_aa, model.calibration[:parameters])
@@ -174,7 +182,7 @@ end
  Function "response" computes the IRFs with several major options:
  - the user can provide a vector with the first values of the model's exogenous processes, e1.
  - the user can provide a name of the shock of interest and the size of the shock_name.
- - the user can provide only a name of the shock of interest. The size of the shock is assumed to be "sig_z" from the yaml file.
+ - the user can provide only a name of the shock of interest. The size of the shock is assumed to be a one standard deviation given in the yaml file.
 
  # Arguments
  * `model::NumericModel`: Model object that describes the current model environment.
@@ -187,6 +195,7 @@ end
  # Returns
  * `response`: Impulse response function.
  """
+
 
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, e1::AbstractVector; T::Int=40)
