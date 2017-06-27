@@ -166,12 +166,17 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule, dp_process::Do
     return simulate(model, dr, driving_process, dp_process)
 end
 
-function simulate(model::AbstractModel, dr::AbstractDecisionRule,
-                  s0::AbstractVector, dp_process::Dolo.DiscreteMarkovProcess;
+function simulate(model::AbstractModel, dr::AbstractDecisionRule;
                   N::Int=1, T::Int = 40 , m0::Int = 1)
+    dp_process= model.exogenous
+    return simulate(model, dr, dp_process; N=N, T=T, m0 = m0)
+end
 
-    driving_process = simulate(dp_process, N, T, m0)
-    return simulate(model, dr, driving_process, dp_process)
+function simulate(model::AbstractModel, dr::AbstractDecisionRule,
+                  driving_process::AbstractArray{Int64,2};
+                  N::Int=1, T::Int = 40 , m0::Int = 1)
+    dp_process= model.exogenous
+    return simulate(model, dr, driving_process, dp_process; N=N, T=T, m0 = m0)
 end
 
 
