@@ -3,6 +3,7 @@
 # Pkg.build("QuantEcon")
 import Dolo
 path = Dolo.pkg_path
+using AxisArrays
 
 
 ###############################################################################
