@@ -170,6 +170,23 @@ end
 ################################################################################
 ## Impulse response functions
 
+"""
+ Function "response" computes the IRFs with several major options:
+ - the user can provide a vector with the first values of the model's exogenous processes, e1.
+ - the user can provide a name of the shock of interest and the size of the shock_name.
+ - the user can provide only a name of the shock of interest. The size of the shock is assumed to be "sig_z" from the yaml file.
+
+ # Arguments
+ * `model::NumericModel`: Model object that describes the current model environment.
+ * `dr`: Solved decision rule.
+ * `e1`: the first values of the model's exogenous processes.
+   or
+   * `shock_name`: the name of the shock of interest.
+   * `Impulse`: the size of the shock.
+ * `s0`: the values of the state variables, optional.
+ # Returns
+ * `response`: Impulse response function.
+ """
 
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, e1::AbstractVector; T::Int=40)
@@ -178,6 +195,13 @@ function response(model::AbstractModel,  dr::AbstractDecisionRule,
     sim = simulate(model, dr, s0, m_simul)
     sim[1, :, :] # This is now an AxisArray which seems just fine !
 end
+
+function response(model::AbstractModel,  dr::AbstractDecisionRule,
+                  e1::AbstractVector; T::Int=40)
+    s0 = model.calibration[:states]
+    response(model, dr, s0, e1; T=T)
+end
+
 
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, shock_name::Symbol; T::Int=40)
@@ -190,23 +214,26 @@ function response(model::AbstractModel,  dr::AbstractDecisionRule,
 end
 
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
-                  shock_name::Symbol, Impulse::Float64; T::Int=40)
+                  shock_name::Symbol; kwargs...)
+    s0 = model.calibration[:states]
+    response(model, dr, s0, shock_name;  kwargs...)
+end
+
+function response(model::AbstractModel,  dr::AbstractDecisionRule,
+                  s0::AbstractVector, shock_name::Symbol, Impulse::Float64; T::Int=40)
     index_s = findfirst(model.symbols[:exogenous], shock_name)
-    # e1 = zeros(length(model.exogenous.mu))
     e1 = zeros(length(model.calibration[:exogenous]))
-    # Impulse = sqrt(diag(model.exogenous.Sigma)[index_s])
     e1[index_s] = Impulse
     s0 = model.calibration[:states]
     response(model, dr, s0, e1; T=T)
 end
 
-
-
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
-                  shock_name::Symbol; kwargs...)
+                  shock_name::Symbol, Impulse::Float64; T::Int=40)
     s0 = model.calibration[:states]
-    response(model, dr, s0, shock_name;  kwargs...)
+    response(model, dr, s0, shock_name, Impulse; T=T)
 end
+
 
 
 function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
