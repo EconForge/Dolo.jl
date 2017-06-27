@@ -17,7 +17,7 @@ path = Dolo.pkg_path
         @time drv = Dolo.evaluate_policy(model_mc, tid_res.dr; maxit=20, verbose=false)
 
         sim = Dolo.simulate(model_mc, ti_res.dr, model_mc.exogenous) #; N=100, T=20)
-        sim = Dolo.simulate(model_mc, ti_res.dr; m0=2) 
+        sim = Dolo.simulate(model_mc, ti_res.dr, 2) 
 
         k = sim[Axis{:V}(:k)]
         n = sim[Axis{:V}(:n)]
