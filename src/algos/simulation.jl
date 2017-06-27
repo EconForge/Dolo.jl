@@ -43,7 +43,13 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVe
 
     Ac = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
     ll = [Symbol(i) for i in Ac]
-    AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
+
+    sim_aa = AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
+    return sim_aa
+    # println(sim_aa)
+    # sim_def= evaluate_definitions(model, sim_aa, model.calibration[:parameters])
+    return merge(sim_aa,sim_def)
+
 end
 
 
@@ -100,7 +106,10 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVe
     model_sym = :mc_process
     Ac = cat(1, model_sym, model.symbols[:states], model.symbols[:controls])
     ll = [Symbol(i) for i in Ac]
-    AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
+    sim_aa = AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
+    sim_def=evaluate_definitions(model, sim_aa, model.calibration[:parameters])
+    return merge(sim_aa,sim_def)
+
 end
 
 ##############################################################################
@@ -173,11 +182,25 @@ end
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, shock_name::Symbol; T::Int=40)
     index_s = findfirst(model.symbols[:exogenous], shock_name)
-    e1 = zeros(length(model.exogenous.mu))
+    # e1 = zeros(length(model.exogenous.mu))
+    e1 = zeros(length(model.calibration[:exogenous]))
     Impulse = sqrt(diag(model.exogenous.Sigma)[index_s])
     e1[index_s] = Impulse
     response(model, dr, s0, e1; T=T)
 end
+
+function response(model::AbstractModel,  dr::AbstractDecisionRule,
+                  shock_name::Symbol, Impulse::Float64; T::Int=40)
+    index_s = findfirst(model.symbols[:exogenous], shock_name)
+    # e1 = zeros(length(model.exogenous.mu))
+    e1 = zeros(length(model.calibration[:exogenous]))
+    # Impulse = sqrt(diag(model.exogenous.Sigma)[index_s])
+    e1[index_s] = Impulse
+    s0 = model.calibration[:states]
+    response(model, dr, s0, e1; T=T)
+end
+
+
 
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   shock_name::Symbol; kwargs...)
