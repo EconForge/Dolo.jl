@@ -3,7 +3,8 @@
 # Pkg.build("QuantEcon")
 import Dolo
 path = Dolo.pkg_path
-# import Bruteforce_module
+using AxisArrays
+
 
 ###############################################################################
 ## Markov Chain
@@ -13,7 +14,6 @@ filename = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
 model = Dolo.yaml_import(filename)
 
 @time dr_ITI  = Dolo.improved_time_iteration(model; verbose=true, tol = 1e-06, smaxit=100)
-
 
 # dprocess = Dolo.discretize( model.exogenous )
 # init_dr = Dolo.ConstantDecisionRule(model.calibration[:controls])
@@ -93,7 +93,6 @@ filename = joinpath(path,"examples","models","rbc_dtcc_ar1.yaml")
 model_ar1 = Dolo.yaml_import(filename)
 @time dr_ITI_ar1  = Dolo.improved_time_iteration(model_ar1; verbose=true, tol = 1e-06, smaxit=50)
 @time dr_TI_ar1  = Dolo.time_iteration(model_ar1; tol_η=1e-08, maxit=1000)
-
 
 dprocess = Dolo.discretize( model_ar1.exogenous , [3], [2])
 @time dr2_ITI_ar1  = Dolo.improved_time_iteration(model_ar1, dprocess; verbose=true, tol = 1e-06, smaxit=50)

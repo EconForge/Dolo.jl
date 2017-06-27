@@ -1,6 +1,7 @@
 
 import Dolo
 import YAML
+using AxisArrays
 
 path = Dolo.pkg_path
 @testset "testing model algos" begin
@@ -16,6 +17,15 @@ path = Dolo.pkg_path
         @time drv = Dolo.evaluate_policy(model_mc, tid_res.dr; maxit=20, verbose=false)
 
         sim = Dolo.simulate(model_mc, ti_res.dr, model_mc.exogenous) #; N=100, T=20)
+        sim = Dolo.simulate(model_mc, ti_res.dr, 2) 
+
+        k = sim[Axis{:V}(:k)]
+        n = sim[Axis{:V}(:n)]
+        z = sim[Axis{:V}(:z)]
+        y = sim[Axis{:V}(:y)]
+        alpha= model_mc.calibration.flat[:alpha]
+        exp(z).*k.^alpha.*n.^(1-alpha)== y
+
         @test true
     end
 
@@ -61,8 +71,9 @@ path = Dolo.pkg_path
 
         res = Dolo.response(model.exogenous, [0.01])
 
-
         irf = Dolo.response(model, tid_res.dr, :e_z)
+
+        irf = Dolo.response(model, tid_res.dr, :e_z, -0.01)
 
         irf[:k]
         @test true
@@ -98,6 +109,8 @@ path = Dolo.pkg_path
         Dolo.response(model.exogenous, [0.01])
 
         sim = Dolo.response(model, tid_res.dr, :z)
+
+        irf = Dolo.response(model, tid_res.dr, :z, -0.01)
 
         sim[:z]
         @test true
