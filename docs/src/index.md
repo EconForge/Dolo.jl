@@ -14,3 +14,8 @@ Sophisticated solution routines are available: local perturbations, perfect fore
 
 
 ## Installation
+
+Install as a standard Julia package: `Pkg.add("Dolo")`.
+Try with a docker container:
+    - `docker run -t -i -p8888:8888 albop/donolab`
+    - open `localhost:8888` with Google Chrome

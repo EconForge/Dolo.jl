@@ -7,8 +7,8 @@ types of the model. This data is held in a `Model` object whose
 API is described in this chapter. Models are created by writing
 a Yaml files as described in the the previous chapter.
 
-Numerical Model Object
-----------------------
+Model Object
+------------
 
 As previously, let's consider, the Real Business Cycle example, from the
 introduction. The model object can be created using the yaml file:

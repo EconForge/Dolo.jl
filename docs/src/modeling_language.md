@@ -102,21 +102,21 @@ Sections
 
 A dolo model consists in the following 4 or 5 parts:
 
--   a symbols section where all symbols used in the model must be
+-   a `symbols` section where all symbols used in the model must be
     defined
--   an equations containing the list of equations
--   a calibration section providing numeric values for the symbols
--   an options section containing additional informations
--   a covariances or markov\_chain section where exogenous shocks are
-    defined
+-   an `equations` section containing the list of equations
+-   a `calibration` section providing numeric values for the symbols
+-   an `exogenous` section describes the exogenous process
+-   a `domain` function defining boundaries for state-space
+-   an options `options` section provides additional options, regarding
+the discretization of endogenous variables
 
 These section have context dependent rules. We now review each of them
 in detail:
 
 ### Declaration section
 
-This section is introduced by the symbols keyword. All symbols appearing
-in the model must be defined there.
+This section is introduced by the `symbols` keyword. All symbols appearing in the model must be defined there.
 
 Symbols must be valid Julia identifiers (alphanumeric not beginning
 with a number) and are case sensitive. Greek letters (save for lambda
@@ -128,8 +128,9 @@ Symbols are sorted by type as in the following example:
 
 ``` {.sourceCode .yaml}
 symbols:
-  variables: [a, b]
-  shocks: [e]
+  states: [a, b]
+  controls [x, y]
+  exogenous: [e]
   parameters: [rho]
 ```
 
@@ -141,23 +142,9 @@ Note that each type of symbol is associated with a symbol list (as
 > A common mistake consists in forgetting the commas, and use spaces
 > only. This doesn't work since two symbols are recognized as one.
 
-The expected types depend on the model that is being written:
+It is always necessary to provide `states`, `controls`, `exogenous` and `parameters` symbols. For some solution methods, additional symbols may be used to go with according equation types (see next section).
+By convention, all symbols except for `exogenous` and `parameters` are referred to as (endogenous) `variables`.
 
--   For Dynare models, all endogenous variables must be listed as
-    variables with the exogenous shocks being listed as shocks (as in
-    the example above).
-
-> **note**
->
-> The variables, shocks and parameters keywords correspond to the var,
-> varexo and param keywords in Dynare respectively.
-
-- Global models require the definition of the parameters, and to provide
-a list of states and controls. Mixed states model also require
-markov\_states that follow a discrete markov chain, while continuous
-states model need to identify the i.i.d shocks that hit the model. If
-the corresponding equations are given (see next subsection) optional
-symbols can also be defined. Among them: values, expectations.
 
 ### Declaration of equations
 
@@ -169,9 +156,12 @@ as usual functions
 (sqrt, log, exp, sin, cos, tan, asin, acos, atan, sinh, cosh, tanh, asinh, acosh, atanh).
 The definitions of these functions match the definitions from the numpy
 package. All symbols appearing in an expression must either be declared
-in the symbols section or be one of the predefined functions. Any symbol
-s that is not a parameter is assumed to be considered at date t. Values
-at date t+1 and t-1 are denoted by s(1) and s(-1) respectively.
+in the symbols section or be one of the predefined functions.  Values
+at date t+1, t and  t-1 are denoted by s(1), s(0) and s(-1) respectively.
+
+> **note**
+> In the current implmentation, variables without a time subscript are considered to be taken at date t, i.e. `v` is read as `v(0)`. This behaviour might change in the future so that *sanitized* form `v(0)` is
+encouraged.
 
 All equations are implicitly enclosed by the expectation operator
 $E_t\left[\cdots \right]$. Consequently, the law of motion for the
@@ -210,6 +200,8 @@ by =. There are two types of equation blocks:
     > must match the declaration order (more in section Y).
 
 - definition blocks
+
+[TODO: auxiliary equations are outdated !]
 
 > Definition blocks differ from condition blocks in that they define a
 > group of variables (`states` or `auxiliaries`) as a function of the
@@ -282,11 +274,12 @@ issuing any warning.
 > No clear policy has been established yet about how to deal with
 > undeclared symbols in the calibration section. Avoid them.
 
-### Shock specification
+### Specification of the exogenous process
 
-The way shocks are specified depends on the type of model. They are
-constructed using a the rules for mini-languages defined in section
-\[ref\].
+[TODO: update]
+
+It is possible to define many diffrent types of shocks for the exogenous
+process.
 
 #### Distribution
 
@@ -364,29 +357,36 @@ MarkovChain, AR1, MarkovTensor
 > > >     >             method: rouwenhorst   # the alternative is tauchen
 > > >     > ```
 > > >
+
+
+### Domain
+
+The boundaries between which the endogenous processes must be solved
+are specifed in a `domain` section. For each state, a two elements list
+is expected containing the lower and upper bounds must be provided. These boundaries, can be supplied as expression evaluated using the values from
+the calibration section.
+
+For instance
+
+``` {.sourceCode .yaml}
+domain:
+    k: [0.5*k, 1.5*k]
+    z: [1-asig_z*2, 1+asig_z*2]
+```
+
+provides boundaries for productivity process `z` (equal to two standard deviations) and for the capital ($50%$ and $150%$ of the steady-state).
+
 ### Options
 
-The options section contains all informations necessary to solve the
-model. It can also contain arbitrary additional informations. The
-section follows the mini-language convention, with all calibrated values
-replaced by scalars and all keywords allowed.
-
-Global solutions require the definition of an approximation space. The
-lower, upper bounds and approximation orders (number of nodes in each
-dimension) are defined as in the following example:
+The `options` section contains optional informations to be used for the discretization of the endogenous grid, or for interpolation. It can also hold arbitrary information. Here is an examples
 
 ``` {.sourceCode .yaml}
 options:
-    Approximation:
-        a: [ 1-2*asig_z, k*0.9 ]
-        b: [ 1+2*asig_z, k*1.1 ]
-        orders: [10, 50]
+    grid: !Cartesian
+        n: [10, 50]
+    interp_type: spline
     arbitrary_information
 ```
 
-This reads as follows: the upper and lower bounds for the productivity
-process are 1 minus and plus two times its asymptotic standard
-deviation. The boundaries for the capital level are defined by a 10%
-bracket around its steady-state value (or the one defined in the
-calibration section). 10 points are used to discretize the state-space
-for the productivity process and 50 are used for the capital level.
+> **note**
+> Contrary to other sections (`domain`, `exogenous`), the options section is *not* evaluated using values from the calibration section. It can contain Dolo objects (like `Cartesian` above).

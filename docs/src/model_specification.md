@@ -54,9 +54,24 @@ dr(2, [2.5;2.5;2.5])     # evaluates at a list of point
 
 ### Valid equations
 
-The various equations understood by Dolo are descrbed below:
+The various equations understood by Dolo are described in this section, and summarized in the
+following table:
 
-<!-- would be cool to know how to make comments ;-) -->
+
+|    Function                       | Standard name                 | Short name | Definition                                    |
+|:---------------------------------:|:-----------------------------:|:----------:|:---------------------------------------------:|
+| Transitions                       | ``transition``                | ``g``      | ``s = g(m(-1),s(-1),x(-1),m)``                      |
+| Lower bound                       | ``controls_lb``               | ``lb``     | ``x_lb = lb(m,s)``                              |
+| Upper bound                       | ``controls_ub``               | ``ub``     | ``x_ub = ub(m,s)``                              |
+| Auxiliary                         | ``auxiliary``                 | ``a``      | ``y = a(m,s,x)``                                |
+| Utility                           | ``utility``                   | ``u``      | ``r = u(m,s,x)``                                |
+| Value updating                    | ``value_updating``            | ``w``      | ``v = w(m,s,x,v,m(1),s(1),x(1),w(1))``               |
+| Arbitrage                         | ``arbitrage``                 | ``f``      | ``0=f(m,s,x,m(1),s(1),x(1)``                    |
+| Expectations                      | ``expectation``               | ``h``      | ``z=h(m(1),s(1),x(1))``                            |
+| Generalized expectations          | ``expectation_2``             | ``h_2``    | ``z=h_2(m,s,x,m(1),s(1),x(1))``                 |
+| Arbitrage (explicit expectations) | ``arbitrage_2``               | ``f_2``    | ``0=f_2(m,s,x,z)``                              |
+| Direct response                   | ``direct_response``           | ``d``      | ``x=d(m,s,z)``                                  |
+
 
 #### Transitions
 
@@ -67,7 +82,7 @@ Transitions are given by a function $g$ such that at all times:
 
 $$s_t = g(m_{t-1}, s_{t-1}, x_{t-1}, m_t)$$
 
-where $\m_t$ is a vector-valued exogenous process.
+where $m_t$ is a vector-valued exogenous process.
 
 > **note**
 >
