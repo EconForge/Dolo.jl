@@ -393,3 +393,4 @@ end
 @compat const AR1 = VAR1
 @compat const MarkovChain = DiscreteMarkovProcess
 @compat const Normal = MvNormal
+@compat const GDP = DiscretizedProcess

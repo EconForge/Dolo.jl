@@ -10,7 +10,14 @@ makedocs(
     pages=[
         "Guide" => [
             "index.md",
+            "modeling_language.md",
+            "model_specification.md",
+            "algos.md",
+            "simulate.md"
         ],
+        # "Developpers" => [
+        #     "model_api.md"
+        # ]
     ],
 )
 
