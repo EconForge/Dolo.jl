@@ -100,7 +100,9 @@ function get_gf_derivatives(model::AbstractModel)
     return g_s, g_x, f_s, f_x, f_S, f_X
 end
 
-
+"""
+TBD
+"""
 function perturbate(model::Model)
 
     g_s, g_x, f_s, f_x, f_S, f_X = get_gf_derivatives(model)

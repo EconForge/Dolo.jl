@@ -179,27 +179,12 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
     return simulate(model, dr, driving_process, dp_process; N=N, T=T, m0 = m0)
 end
 
-
+"""
+This is the one we document.
+"""
+simulate
 ################################################################################
 ## Impulse response functions
-
-"""
- Function "response" computes the IRFs with several major options:
- - the user can provide a vector with the first values of the model's exogenous processes, e1.
- - the user can provide a name of the shock of interest and the size of the shock_name.
- - the user can provide only a name of the shock of interest. The size of the shock is assumed to be a one standard deviation given in the yaml file.
-
- # Arguments
- * `model::NumericModel`: Model object that describes the current model environment.
- * `dr`: Solved decision rule.
- * `e1`: the first values of the model's exogenous processes.
-   or
-   * `shock_name`: the name of the shock of interest.
-   * `Impulse`: the size of the shock.
- * `s0`: the values of the state variables, optional.
- # Returns
- * `response`: Impulse response function.
- """
 
 
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
@@ -233,6 +218,24 @@ function response(model::AbstractModel,  dr::AbstractDecisionRule,
     response(model, dr, s0, shock_name;  kwargs...)
 end
 
+
+"""
+Function "response" computes the IRFs with several major options:
+- the user can provide a vector with the first values of the model's exogenous processes, e1.
+- the user can provide a name of the shock of interest and the size of the shock_name.
+- the user can provide only a name of the shock of interest. The size of the shock is assumed to be a one standard deviation given in the yaml file.
+
+# Arguments
+* `model::NumericModel`: Model object that describes the current model environment.
+* `dr`: Solved decision rule.
+* `e1`: the first values of the model's exogenous processes.
+  or
+  * `shock_name`: the name of the shock of interest.
+  * `Impulse`: the size of the shock.
+* `s0`: the values of the state variables, optional.
+# Returns
+* `response`: Impulse response function.
+"""
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, shock_name::Symbol, Impulse::Float64; T::Int=40)
     index_s = findfirst(model.symbols[:exogenous], shock_name)
@@ -296,26 +299,12 @@ function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
     tabulate(model, dr, state, s0, m0;  n_steps=100)
 end
 
+
 function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol; n_steps=100)
     s0 = model.calibration[:states]
     tabulate(model, dr, state, s0;  n_steps=100)
 end
 
-#
-# using PyPlot
-# function plot(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
-#                   bounds::Array{Float64,1}, s0::AbstractVector, m0::AbstractVector,
-#                   plot_controls::Vector{Symbol};  n_steps=100)
-#
-#
-#     df = tabulate(model, dr, state, bounds, s0, m0;  n_steps=100)
-#
-#     for j in plot_controls
-#       fig = PyPlot.figure(j, figsize=(3, 3))
-#       fig
-#       PyPlot.plot(df[state], df[j], label=j)
-#       PyPlot.legend()
-#       # PyPlot.xlabel('state = {} | mstate = {}'.format(state, i0))
-#     end
-#
-# end
+"""
+That's how we tabulate functions.
+"""
