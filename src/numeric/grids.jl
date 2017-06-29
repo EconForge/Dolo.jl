@@ -1,7 +1,7 @@
 @compat abstract type Grid end
 
 function Base.show(io::IO, grid::Grid)
-    println(typeof(grid))
+    print(io, typeof(grid))
 end
 
 function mlinspace(min, max, n)
@@ -49,19 +49,23 @@ n_nodes(grid::Grid) = size(grid.nodes, 1)
 node(grid::Grid, i::Int) = grid.nodes[i, :]
 
 immutable SmolyakGrid <: Grid
-
-    min::Vector{Float64}
-    max::Vector{Float64}
-    mu::Vector{Int}
+    smol_params::BM.SmolyakParams{Float64,Vector{Int}}
     nodes::Matrix{Float64}
+    B_nodes::Matrix{Float64}
 
-    function SmolyakGrid(min::Array{Float64,1}, max::Array{Float64,1}, mu::Int64)
-        return new(min, max, [mu for i=1:length(min)])
+    function SmolyakGrid(min::Vector{Float64}, max::Vector{Float64}, mu::Vector{Int})
+        d = length(min)
+        dim_err = DimensionMismatch("min was length $d, max and mu must match")
+        length(max) == d || throw(dim_err)
+        length(mu) == d || throw(dim_err)
+
+        sp = BM.SmolyakParams(d, mu, min, max)
+        nodes = BM.nodes(sp)
+        B_nodes = BM.evalbase(sp, nodes)
+        return new(sp, nodes, B_nodes)
     end
+end
 
-    function SmolyakGrid(min::Array{Float64,1}, max::Array{Float64,1}, mu::Array{Int64,1})
-        nodes = zeros(10, 10) # TODO !!!!
-        return new(min, max, mu, nodes)
-    end
-
+function SmolyakGrid(min::Array{Float64,1}, max::Array{Float64,1}, mu::Int)
+    return SmolyakGrid(min, max, fill(mu, length(min)))
 end

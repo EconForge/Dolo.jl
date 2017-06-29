@@ -151,7 +151,7 @@ function get_grid(model::ASModel; options=Dict())
         orders = get(grid_dict, :orders, [20 for i=1:d])
         grid = CartesianGrid(domain.min, domain.max, orders)
     elseif grid_dict[:tag] == :Smolyak
-        mu = grid_dict[:mu]
+        mu = get(grid_dict, :mu, 3)
         grid = SmolyakGrid(domain.min, domain.max, mu)
     else
         error("Unknown grid type.")
@@ -225,7 +225,7 @@ end
 _numeric_mod_type{ID}(::Model{ID}) = Model{ID}
 
 function Base.show(io::IO, model::Model)
-    println("Model")
+    print(io, "Model")
 end
 
 #### import functions

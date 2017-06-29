@@ -10,3 +10,4 @@ QuantEcon 0.10.1
 Distributions
 Compat 0.17.0
 Dolang
+BasisMatrices 0.3.0
