@@ -225,7 +225,7 @@ end
 _numeric_mod_type{ID}(::Model{ID}) = Model{ID}
 
 function Base.show(io::IO, model::Model)
-    println("Model")
+    print(io, "Model")
 end
 
 #### import functions

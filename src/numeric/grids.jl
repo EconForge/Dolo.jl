@@ -1,7 +1,7 @@
 @compat abstract type Grid end
 
 function Base.show(io::IO, grid::Grid)
-    print(typeof(grid))
+    print(io, typeof(grid))
 end
 
 function mlinspace(min, max, n)
