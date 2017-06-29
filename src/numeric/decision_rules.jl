@@ -180,6 +180,8 @@ end
 #### 2 continous arguments d.r.
 ####
 
+## Splines!
+
 function DecisionRule(grid_exo::UnstructuredGrid, grid_endo::CartesianGrid, n_x::Int)
     # hmm kind of silently assuming we have cartesian grid
     orders = grid_endo.n
@@ -195,7 +197,7 @@ function DecisionRule(grid_exo::UnstructuredGrid, grid_endo::CartesianGrid, valu
 end
 
 
-function set_values!(dr::AbstractDecisionRule{UnstructuredGrid,CartesianGrid}, values::Array{Matrix{Float64},1})
+function set_values!(dr::CubicSplineDR{UnstructuredGrid,CartesianGrid}, values::Array{Matrix{Float64},1})
     a = dr.grid_endo.min
     b = dr.grid_endo.max
     orders = dr.grid_endo.n
@@ -203,7 +205,7 @@ function set_values!(dr::AbstractDecisionRule{UnstructuredGrid,CartesianGrid}, v
 end
 
 
-function evaluate(dr::AbstractDecisionRule{UnstructuredGrid,CartesianGrid}, i::Int, z::AbstractMatrix)
+function evaluate(dr::CubicSplineDR{UnstructuredGrid,CartesianGrid}, i::Int, z::AbstractMatrix)
     a = dr.grid_endo.min
     b = dr.grid_endo.max
     n = dr.grid_endo.n
@@ -212,17 +214,40 @@ function evaluate(dr::AbstractDecisionRule{UnstructuredGrid,CartesianGrid}, i::I
     return res
 end
 
-(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::Int, y::AbstractMatrix) = evaluate(dr, i, y)
+## Smolyak!
 
-# (dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::AbstractMatrix{Int}, y::AbstractMatrix) =
+function DecisionRule(grid_exo::UnstructuredGrid, grid_endo::SmolyakGrid, n_x::Int)
+    coeffs = [Array{Float64}(n_nodes(grid_endo), n_x) for i in 1:n_nodes(grid_exo)]
+    DecisionRule(grid_exo, grid_endo, n_x, coeffs)
+end
+
+function DecisionRule(grid_exo::UnstructuredGrid, grid_endo::SmolyakGrid, values::Vector{Matrix{Float64}})
+    n_x = size(values[1], 2)
+    dr = DecisionRule(grid_exo, grid_endo, n_x)
+    set_values!(dr, values)
+    return dr
+end
+
+function set_values!(dr::SmolyakDR{UnstructuredGrid}, values::Vector{Matrix{Float64}})
+    for i in 1:length(values)
+        A_ldiv_B!(dr.coefficients[i], dr.grid_endo.B_nodes, values[i])
+    end
+end
+
+function evaluate(dr::SmolyakDR{UnstructuredGrid}, i::Int, z::AbstractMatrix)
+    BM.evalbase(dr.grid_endo.smol_params, z) * dr.coefficients[i]
+end
+
+
+## Common routines for grid_exo <: UnstructuredGrid
+(dr::DecisionRule{UnstructuredGrid})(i::Int, y::AbstractMatrix) = evaluate(dr, i, y)
+# (dr::DecisionRule{UnstructuredGrid})(i::AbstractMatrix{Int}, y::AbstractMatrix) =
 # vcat( [evaluate(dr, i[j, 1], y[j, :]) for j=1:size(y, 1)]... )
 
-(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::Int, y::AbstractVector) = dr(i, y')[:]
-
-(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::AbstractVector{Int}, y::AbstractMatrix) =
+(dr::DecisionRule{UnstructuredGrid})(i::Int, y::AbstractVector) = dr(i, y')[:]
+(dr::DecisionRule{UnstructuredGrid})(i::AbstractVector{Int}, y::AbstractMatrix) =
   vcat( [dr(i[j], y[j, :])' for j=1:size(y, 1)]... )
-
-(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::AbstractVector{Int}, y::AbstractVector) =
+(dr::DecisionRule{UnstructuredGrid})(i::AbstractVector{Int}, y::AbstractVector) =
     vcat( [dr(i[j], y[j, :])' for j=1:size(y, 1)]... )
 
 #####
@@ -250,8 +275,8 @@ set_values!(cdr::CachedDecisionRule, v) = set_values!(cdr.dr, v)
 (cdr::CachedDecisionRule)(i::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(node(cdr.process, i), s)
 (cdr::CachedDecisionRule)(i::Int, j::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(inode(cdr.process, i, j), s)
 
-@compat (cdr::CachedDecisionRule{<:DecisionRule{UnstructuredGrid, CartesianGrid}, DiscreteMarkovProcess})(i::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(i, s)
-@compat (cdr::CachedDecisionRule{<:DecisionRule{UnstructuredGrid, CartesianGrid}, DiscreteMarkovProcess})(i::Int, j::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(j, s)
+@compat (cdr::CachedDecisionRule{<:DecisionRule{UnstructuredGrid}, DiscreteMarkovProcess})(i::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(i, s)
+@compat (cdr::CachedDecisionRule{<:DecisionRule{UnstructuredGrid}, DiscreteMarkovProcess})(i::Int, j::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(j, s)
 
 # --------------- #
 # Helper function #
