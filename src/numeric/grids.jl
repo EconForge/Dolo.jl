@@ -69,3 +69,21 @@ end
 function SmolyakGrid(min::Array{Float64,1}, max::Array{Float64,1}, mu::Int)
     return SmolyakGrid(min, max, fill(mu, length(min)))
 end
+
+immutable RandomGrid <: Grid
+    min::Vector{Float64}
+    max::Vector{Float64}
+    n::Int
+    nodes::Matrix{Float64}
+    function RandomGrid(min, max, n)
+        d = length(min)
+        dim_err = DimensionMismatch("min was length $d, max must be also")
+        length(max) == d || throw(dim_err)
+        all(max .> min) || error("max must be greater than min")
+
+        nodes = rand(n, d)  # on [0, 1]
+        nodes .= nodes .* (max - min)' .+ min' # scale/shift to [min, max]
+
+        return new(min, max, n, nodes)
+    end
+end
