@@ -17,7 +17,7 @@ path = Dolo.pkg_path
         @time drv = Dolo.evaluate_policy(model_mc, tid_res.dr; maxit=20, verbose=false)
 
         sim = Dolo.simulate(model_mc, ti_res.dr, model_mc.exogenous) #; N=100, T=20)
-        sim = Dolo.simulate(model_mc, ti_res.dr, 2) 
+        sim = Dolo.simulate(model_mc, ti_res.dr, 2)
 
         k = sim[Axis{:V}(:k)]
         n = sim[Axis{:V}(:n)]
@@ -74,6 +74,11 @@ path = Dolo.pkg_path
         irf = Dolo.response(model, tid_res.dr, :e_z)
 
         irf = Dolo.response(model, tid_res.dr, :e_z, -0.01)
+
+
+        # check with random and Smolyak grid
+        @time Dolo.time_iteration(model, grid=Dict(:tag => :Random, :N => 200))
+        @time Dolo.time_iteration(model, grid=Dict(:tag => :Smolyak, :mu => 3))
 
         irf[:k]
         @test true
