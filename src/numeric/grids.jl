@@ -1,7 +1,7 @@
 @compat abstract type Grid end
 
 function Base.show(io::IO, grid::Grid)
-    println(typeof(grid))
+    print(typeof(grid))
 end
 
 function mlinspace(min, max, n)
@@ -51,6 +51,7 @@ node(grid::Grid, i::Int) = grid.nodes[i, :]
 immutable SmolyakGrid <: Grid
     smol_params::BM.SmolyakParams{Float64,Vector{Int}}
     nodes::Matrix{Float64}
+    B_nodes::Matrix{Float64}
 
     function SmolyakGrid(min::Vector{Float64}, max::Vector{Float64}, mu::Vector{Int})
         d = length(min)
@@ -60,7 +61,8 @@ immutable SmolyakGrid <: Grid
 
         sp = BM.SmolyakParams(d, mu, min, max)
         nodes = BM.nodes(sp)
-        return new(sp, nodes)
+        B_nodes = BM.evalbase(sp, nodes)
+        return new(sp, nodes, B_nodes)
     end
 end
 
