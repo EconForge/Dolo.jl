@@ -1,19 +1,15 @@
 @compat abstract type AbstractDecisionRule{S,T} end
 
-# abstract AbstractCachedDecisionRule{S,T} <: AbstractDecisionRule{S,T}
-# we don't implement that using subtypes anymore
-
-type DecisionRule{S,T} <: AbstractDecisionRule{S,T}
-    grid_exo::S
-    grid_endo::T
-    n_x::Int # number of values (could be a method if there was a nice method name)
-    coefficients::Array{Array{Float64}}
-end
-
 function Base.show(io::IO, dr::AbstractDecisionRule)
     println(typeof(dr))
 end
 
+# abstract AbstractCachedDecisionRule{S,T} <: AbstractDecisionRule{S,T}
+# we don't implement that using subtypes anymore
+
+# ---------------------- #
+# Constant decision rule #
+# ---------------------- #
 
 @compat type ConstantDecisionRule <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
     constants::Vector{Float64}
@@ -28,6 +24,9 @@ end
 (dr::ConstantDecisionRule)(i::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
 (dr::ConstantDecisionRule)(i::Int, j::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
 
+# ------------------------------ #
+# 2-dimensional Taylor Expansion #
+# ------------------------------ #
 
 @compat type BiTaylorExpansion <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
     m0::Vector{Float64}
@@ -42,20 +41,16 @@ end
 (dr::BiTaylorExpansion)(m::AbstractVector, s::AbstractMatrix) = vcat([(dr(m, s[i, :]))' for i=1:size(s, 1) ]...)
 (dr::BiTaylorExpansion)(m::AbstractMatrix, s::AbstractMatrix) = vcat([(dr(m[i, :], s[i, :]))' for i=1:size(m, 1) ]...)
 
+# -------------------------- #
+# Cubic spline DecisionRules #
+# -------------------------- #
 
-function filter_mcoeffs(a::Array{Float64,1}, b::Array{Float64,1}, n::Array{Int,1}, mvalues::Array{Float64})
-    n_x = size(mvalues)[end]
-    vals = reshape(mvalues, n..., n_x)
-    coeffs = zeros(n_x, (n+2)...)
-    ii = [Colon() for i=1:(ndims(vals)-1)]
-    for i_x in 1:n_x
-        tmp = splines.filter_coeffs(a, b, n, vals[ii..., i_x])
-        coeffs[i_x, ii...] = tmp
-    end
-    return coeffs
+type DecisionRule{S,T} <: AbstractDecisionRule{S,T}
+    grid_exo::S
+    grid_endo::T
+    n_x::Int # number of values (could be a method if there was a nice method name)
+    coefficients::Array{Array{Float64}}
 end
-
-
 
 #####
 ##### 1-argument decision rule
@@ -225,3 +220,19 @@ set_values!(cdr::CachedDecisionRule, v) = set_values!(cdr.dr, v)
 
 (cdr::CachedDecisionRule{DecisionRule{UnstructuredGrid, CartesianGrid}, DiscreteMarkovProcess})(i::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(i, s)
 (cdr::CachedDecisionRule{DecisionRule{UnstructuredGrid, CartesianGrid}, DiscreteMarkovProcess})(i::Int, j::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(j, s)
+
+# --------------- #
+# Helper function #
+# --------------- #
+
+function filter_mcoeffs(a::Array{Float64,1}, b::Array{Float64,1}, n::Array{Int,1}, mvalues::Array{Float64})
+    n_x = size(mvalues)[end]
+    vals = reshape(mvalues, n..., n_x)
+    coeffs = zeros(n_x, (n+2)...)
+    ii = [Colon() for i=1:(ndims(vals)-1)]
+    for i_x in 1:n_x
+        tmp = splines.filter_coeffs(a, b, n, vals[ii..., i_x])
+        coeffs[i_x, ii...] = tmp
+    end
+    return coeffs
+end
