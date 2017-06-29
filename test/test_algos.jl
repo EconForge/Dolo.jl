@@ -79,8 +79,8 @@ path = Dolo.pkg_path
 
 
         # check with random and Smolyak grid
-        @time Dolo.time_iteration(model, grid=Dict(:tag => :Random, :N => 200))
-        @time Dolo.time_iteration(model, grid=Dict(:tag => :Smolyak, :mu => 3))
+        @time Dolo.time_iteration(model, maxit=20, grid=Dict(:tag => :Random, :N => 200))
+        @time Dolo.time_iteration(model, maxit=20, grid=Dict(:tag => :Smolyak, :mu => 3))
 
         irf[:k]
         @test true
