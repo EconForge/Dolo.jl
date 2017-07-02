@@ -1,19 +1,15 @@
-@compat abstract type AbstractDecisionRule{S,T} end
+@compat abstract type AbstractDecisionRule{S<:Grid,T<:Grid} end
+
+function Base.show(io::IO, dr::AbstractDecisionRule)
+    println(io, typeof(dr))
+end
 
 # abstract AbstractCachedDecisionRule{S,T} <: AbstractDecisionRule{S,T}
 # we don't implement that using subtypes anymore
 
-type DecisionRule{S,T} <: AbstractDecisionRule{S,T}
-    grid_exo::S
-    grid_endo::T
-    n_x::Int # number of values (could be a method if there was a nice method name)
-    coefficients::Array{Array{Float64}}
-end
-
-function Base.show(io::IO, dr::AbstractDecisionRule)
-    println(typeof(dr))
-end
-
+# ---------------------- #
+# Constant decision rule #
+# ---------------------- #
 
 @compat type ConstantDecisionRule <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
     constants::Vector{Float64}
@@ -28,6 +24,9 @@ end
 (dr::ConstantDecisionRule)(i::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
 (dr::ConstantDecisionRule)(i::Int, j::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
 
+# ------------------------------ #
+# 2-dimensional Taylor Expansion #
+# ------------------------------ #
 
 @compat type BiTaylorExpansion <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
     m0::Vector{Float64}
@@ -42,50 +41,45 @@ end
 (dr::BiTaylorExpansion)(m::AbstractVector, s::AbstractMatrix) = vcat([(dr(m, s[i, :]))' for i=1:size(s, 1) ]...)
 (dr::BiTaylorExpansion)(m::AbstractMatrix, s::AbstractMatrix) = vcat([(dr(m[i, :], s[i, :]))' for i=1:size(m, 1) ]...)
 
+# -------------------------- #
+# Cubic spline DecisionRules #
+# -------------------------- #
 
-function filter_mcoeffs(a::Array{Float64,1}, b::Array{Float64,1}, n::Array{Int,1}, mvalues::Array{Float64})
-    n_x = size(mvalues)[end]
-    vals = reshape(mvalues, n..., n_x)
-    coeffs = zeros(n_x, (n+2)...)
-    ii = [Colon() for i=1:(ndims(vals)-1)]
-    for i_x in 1:n_x
-        tmp = splines.filter_coeffs(a, b, n, vals[ii..., i_x])
-        coeffs[i_x, ii...] = tmp
-    end
-    return coeffs
+type DecisionRule{S<:Grid,T<:Grid,TCoef} <: AbstractDecisionRule{S,T}
+    grid_exo::S
+    grid_endo::T
+    n_x::Int # number of values (could be a method if there was a nice method name)
+    coefficients::TCoef
 end
 
+function set_values!(dr::DecisionRule{EmptyGrid}, values::Array{Float64,2})
+    set_values!(dr, [values])
+end
 
+@compat const CubicSplineDR{S<:Grid,T<:Grid} = DecisionRule{S,T,<:Vector{<:Array{Float64}}}
+@compat const SmolyakDR{S<:Grid} = DecisionRule{S,SmolyakGrid,Vector{Matrix{Float64}}}
+@compat const CompletePolyDR{S<:Grid} = DecisionRule{S,RandomGrid,Vector{Matrix{Float64}}}
 
 #####
 ##### 1-argument decision rule
 #####
 
+## Splines!
+
 function DecisionRule(grid_exo::EmptyGrid, grid_endo::CartesianGrid, n_x::Int)
     orders = grid_endo.n
     coeffs = [zeros(n_x, (orders+2)...)]
-    return DecisionRule{EmptyGrid,CartesianGrid}(grid_exo, grid_endo, n_x, coeffs)
+    return DecisionRule(grid_exo, grid_endo, n_x, coeffs)
 end
 
-function DecisionRule(grid_exo::EmptyGrid, grid_endo::CartesianGrid, values::Array{Array{Float64,2}})
-    n_x = size(values[1], 2)
-    dr = DecisionRule(grid_exo, grid_endo, n_x)
-    set_values!(dr, values)
-    return dr
-end
-
-function set_values!(dr::AbstractDecisionRule{EmptyGrid, CartesianGrid}, values::Array{Array{Float64,2},1})
+function set_values!(dr::CubicSplineDR{EmptyGrid, CartesianGrid}, values::Array{Array{Float64,2},1})
     a = dr.grid_endo.min
     b = dr.grid_endo.max
     orders = dr.grid_endo.n
     dr.coefficients = [filter_mcoeffs(a, b, orders, v) for v in values]
 end
 
-function set_values!(dr::AbstractDecisionRule{EmptyGrid, CartesianGrid}, values::Array{Float64,2})
-    set_values!(dr, [values])
-end
-
-function evaluate(dr::AbstractDecisionRule{EmptyGrid, CartesianGrid}, z::AbstractMatrix)
+function evaluate(dr::CubicSplineDR{EmptyGrid, CartesianGrid}, z::AbstractMatrix)
     a = dr.grid_endo.min
     b = dr.grid_endo.max
     n = dr.grid_endo.n
@@ -94,10 +88,56 @@ function evaluate(dr::AbstractDecisionRule{EmptyGrid, CartesianGrid}, z::Abstrac
     return res
 end
 
-(dr::DecisionRule{EmptyGrid, CartesianGrid})(z::AbstractMatrix) = evaluate(dr, z)
-(dr::DecisionRule{EmptyGrid, CartesianGrid})(z::AbstractVector) = dr(z')[:]
-(dr::DecisionRule{EmptyGrid, CartesianGrid})(i::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
-(dr::DecisionRule{EmptyGrid, CartesianGrid})(x::Union{AbstractVector,AbstractMatrix}, y::Union{AbstractVector,AbstractMatrix}) = dr(y)
+## Smolyak!
+
+function DecisionRule(grid_exo::EmptyGrid, grid_endo::SmolyakGrid, n_x::Int)
+    coeffs = [Array{Float64}(n_nodes(grid_endo), n_x)]
+    return DecisionRule(grid_exo, grid_endo, n_x, coeffs)
+end
+
+function set_values!(dr::SmolyakDR{EmptyGrid}, values::Vector{Matrix{Float64}})
+    for i in 1:length(values)
+        A_ldiv_B!(dr.coefficients[i], dr.grid_endo.B_nodes, values[i])
+    end
+end
+
+function evaluate(dr::SmolyakDR{EmptyGrid}, z::AbstractMatrix)
+    B = BM.evalbase(dr.grid_endo.smol_params, z)
+    B*dr.coefficients[1]
+end
+
+## Complete polynomials
+
+function DecisionRule(grid_exo::EmptyGrid, grid_endo::RandomGrid, n_x::Int)
+    n_s = size(nodes(grid_endo), 2)
+    coeffs = [Array{Float64}(BM.n_complete(n_s, 3), n_x)]
+    return DecisionRule(grid_exo, grid_endo, n_x, coeffs)
+end
+
+function set_values!(dr::CompletePolyDR{EmptyGrid}, values::Vector{Matrix{Float64}})
+    B_grid = BM.complete_polynomial(nodes(dr.grid_endo), 3)
+    for i in 1:length(values)
+        A_ldiv_B!(dr.coefficients[i], B_grid, values[i])
+    end
+end
+
+function evaluate(dr::CompletePolyDR{EmptyGrid}, z::AbstractMatrix)
+    B = BM.complete_polynomial(z, 3)
+    B*dr.coefficients[1]
+end
+
+## Common routines for grid_exo <: EmptyGrid
+function DecisionRule(grid_exo::EmptyGrid, grid_endo, values::Vector{Matrix{Float64}})
+    n_x = size(values[1], 2)
+    dr = DecisionRule(grid_exo, grid_endo, n_x)
+    set_values!(dr, values)
+    return dr
+end
+
+(dr::DecisionRule{EmptyGrid})(z::AbstractMatrix) = evaluate(dr, z)
+(dr::DecisionRule{EmptyGrid})(z::AbstractVector) = vec(dr(z'))
+(dr::DecisionRule{EmptyGrid})(i::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
+(dr::DecisionRule{EmptyGrid})(x::Union{AbstractVector,AbstractMatrix}, y::Union{AbstractVector,AbstractMatrix}) = dr(y)
 
 
 ####
@@ -108,7 +148,7 @@ function DecisionRule(grid_exo::CartesianGrid, grid_endo::CartesianGrid, n_x::In
     # hmm kind of silently assuming we have cartesian grid
     orders = [grid_exo.n; grid_endo.n]
     coeffs = [zeros(n_x, (orders+2)...)]
-    return DecisionRule{CartesianGrid, CartesianGrid}(grid_exo, grid_endo, n_x, coeffs)
+    return DecisionRule(grid_exo, grid_endo, n_x, coeffs)
 end
 #
 function DecisionRule(grid_exo::CartesianGrid, grid_endo::CartesianGrid, values::Array{Array{Float64,2},1})
@@ -141,6 +181,7 @@ function evaluate(dr::AbstractDecisionRule{CartesianGrid,CartesianGrid}, z::Abst
     return res
 end
 
+
 (dr::DecisionRule{CartesianGrid, CartesianGrid})(z::AbstractMatrix) = evaluate(dr, z)
 (dr::DecisionRule{CartesianGrid, CartesianGrid})(z::AbstractVector) = dr(z')[:]
 (dr::DecisionRule{CartesianGrid, CartesianGrid})(x::AbstractVector, y::AbstractVector) = dr(cat(1, x, y))
@@ -153,22 +194,16 @@ end
 #### 2 continous arguments d.r.
 ####
 
+## Splines!
+
 function DecisionRule(grid_exo::UnstructuredGrid, grid_endo::CartesianGrid, n_x::Int)
     # hmm kind of silently assuming we have cartesian grid
     orders = grid_endo.n
     coeffs = [zeros(n_x, (orders+2)...) for i in 1:n_nodes(grid_exo)]
-    return (DecisionRule{UnstructuredGrid, CartesianGrid})(grid_exo, grid_endo, n_x, coeffs)
-end
-#
-function DecisionRule(grid_exo::UnstructuredGrid, grid_endo::CartesianGrid, values::Array{Array{Float64,2}})
-    n_x = size(values[1], 2)
-    dr = DecisionRule(grid_exo, grid_endo, n_x)
-    set_values!(dr, values)
-    return dr
+    return DecisionRule(grid_exo, grid_endo, n_x, coeffs)
 end
 
-
-function set_values!(dr::AbstractDecisionRule{UnstructuredGrid,CartesianGrid}, values::Array{Matrix{Float64},1})
+function set_values!(dr::CubicSplineDR{UnstructuredGrid,CartesianGrid}, values::Array{Matrix{Float64},1})
     a = dr.grid_endo.min
     b = dr.grid_endo.max
     orders = dr.grid_endo.n
@@ -176,7 +211,7 @@ function set_values!(dr::AbstractDecisionRule{UnstructuredGrid,CartesianGrid}, v
 end
 
 
-function evaluate(dr::AbstractDecisionRule{UnstructuredGrid,CartesianGrid}, i::Int, z::AbstractMatrix)
+function evaluate(dr::CubicSplineDR{UnstructuredGrid,CartesianGrid}, i::Int, z::AbstractMatrix)
     a = dr.grid_endo.min
     b = dr.grid_endo.max
     n = dr.grid_endo.n
@@ -185,17 +220,62 @@ function evaluate(dr::AbstractDecisionRule{UnstructuredGrid,CartesianGrid}, i::I
     return res
 end
 
-(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::Int, y::AbstractMatrix) = evaluate(dr, i, y)
+## Smolyak!
 
-# (dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::AbstractMatrix{Int}, y::AbstractMatrix) =
+function DecisionRule(grid_exo::UnstructuredGrid, grid_endo::SmolyakGrid, n_x::Int)
+    coeffs = [Array{Float64}(n_nodes(grid_endo), n_x) for i in 1:n_nodes(grid_exo)]
+    DecisionRule(grid_exo, grid_endo, n_x, coeffs)
+end
+
+function set_values!(dr::SmolyakDR{UnstructuredGrid}, values::Vector{Matrix{Float64}})
+    for i in 1:length(values)
+        A_ldiv_B!(dr.coefficients[i], dr.grid_endo.B_nodes, values[i])
+    end
+end
+
+function evaluate(dr::SmolyakDR{UnstructuredGrid}, i::Int, z::AbstractMatrix)
+    BM.evalbase(dr.grid_endo.smol_params, z) * dr.coefficients[i]
+end
+
+## Complete polynomials
+
+function DecisionRule(grid_exo::UnstructuredGrid, grid_endo::RandomGrid, n_x::Int)
+    n_s = size(nodes(grid_endo), 2)
+    coeffs = [
+        Array{Float64}(BM.n_complete(n_s, 3), n_x)
+        for i in 1:n_nodes(grid_exo)
+    ]
+    return DecisionRule(grid_exo, grid_endo, n_x, coeffs)
+end
+
+function set_values!(dr::CompletePolyDR{UnstructuredGrid}, values::Vector{Matrix{Float64}})
+    B_grid = BM.complete_polynomial(nodes(dr.grid_endo), 3)
+    for i in 1:length(values)
+        A_ldiv_B!(dr.coefficients[i], B_grid, values[i])
+    end
+end
+
+function evaluate(dr::CompletePolyDR{UnstructuredGrid}, i::Int, z::AbstractMatrix)
+    B = BM.complete_polynomial(z, 3)
+    B*dr.coefficients[i]
+end
+
+## Common routines for grid_exo <: UnstructuredGrid
+function DecisionRule(grid_exo::UnstructuredGrid, grid_endo, values::Array{Array{Float64,2}})
+    n_x = size(values[1], 2)
+    dr = DecisionRule(grid_exo, grid_endo, n_x)
+    set_values!(dr, values)
+    return dr
+end
+
+(dr::DecisionRule{UnstructuredGrid})(i::Int, y::AbstractMatrix) = evaluate(dr, i, y)
+# (dr::DecisionRule{UnstructuredGrid})(i::AbstractMatrix{Int}, y::AbstractMatrix) =
 # vcat( [evaluate(dr, i[j, 1], y[j, :]) for j=1:size(y, 1)]... )
 
-(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::Int, y::AbstractVector) = dr(i, y')[:]
-
-(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::AbstractVector{Int}, y::AbstractMatrix) =
+(dr::DecisionRule{UnstructuredGrid})(i::Int, y::AbstractVector) = dr(i, reshape(y, 1, length(y)))[:]
+(dr::DecisionRule{UnstructuredGrid})(i::AbstractVector{Int}, y::AbstractMatrix) =
   vcat( [dr(i[j], y[j, :])' for j=1:size(y, 1)]... )
-
-(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::AbstractVector{Int}, y::AbstractVector) =
+(dr::DecisionRule{UnstructuredGrid})(i::AbstractVector{Int}, y::AbstractVector) =
     vcat( [dr(i[j], y[j, :])' for j=1:size(y, 1)]... )
 
 #####
@@ -205,8 +285,6 @@ type CachedDecisionRule{T,S}
     dr::T
     process::S
 end
-
-@compat const AbstractADecisionRule = Union{DecisionRule,CachedDecisionRule}
 
 CachedDecisionRule(process::AbstractDiscretizedProcess, grid::Grid, n_x::Int) =
     CachedDecisionRule(DecisionRule(process.grid, grid, n_x), process)
@@ -223,5 +301,21 @@ set_values!(cdr::CachedDecisionRule, v) = set_values!(cdr.dr, v)
 (cdr::CachedDecisionRule)(i::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(node(cdr.process, i), s)
 (cdr::CachedDecisionRule)(i::Int, j::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(inode(cdr.process, i, j), s)
 
-(cdr::CachedDecisionRule{DecisionRule{UnstructuredGrid, CartesianGrid}, DiscreteMarkovProcess})(i::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(i, s)
-(cdr::CachedDecisionRule{DecisionRule{UnstructuredGrid, CartesianGrid}, DiscreteMarkovProcess})(i::Int, j::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(j, s)
+@compat (cdr::CachedDecisionRule{<:DecisionRule{UnstructuredGrid}, DiscreteMarkovProcess})(i::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(i, s)
+@compat (cdr::CachedDecisionRule{<:DecisionRule{UnstructuredGrid}, DiscreteMarkovProcess})(i::Int, j::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(j, s)
+
+# --------------- #
+# Helper function #
+# --------------- #
+
+function filter_mcoeffs(a::Array{Float64,1}, b::Array{Float64,1}, n::Array{Int,1}, mvalues::Array{Float64})
+    n_x = size(mvalues)[end]
+    vals = reshape(mvalues, n..., n_x)
+    coeffs = zeros(n_x, (n+2)...)
+    ii = [Colon() for i=1:(ndims(vals)-1)]
+    for i_x in 1:n_x
+        tmp = splines.filter_coeffs(a, b, n, vals[ii..., i_x])
+        coeffs[i_x, ii...] = tmp
+    end
+    return coeffs
+end

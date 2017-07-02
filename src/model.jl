@@ -9,6 +9,7 @@ end
 const yaml_types = let
     pairs = [("!Cartesian", :Cartesian),
             ("!Smolyak", :Smolyak),
+            ("!Random", :Random),
              ("!Normal", :Normal),
              ("!MarkovChain", :MarkovChain),
              ("!Product", :Product),
@@ -151,8 +152,11 @@ function get_grid(model::ASModel; options=Dict())
         orders = get(grid_dict, :orders, [20 for i=1:d])
         grid = CartesianGrid(domain.min, domain.max, orders)
     elseif grid_dict[:tag] == :Smolyak
-        mu = grid_dict[:mu]
+        mu = get(grid_dict, :mu, 3)
         grid = SmolyakGrid(domain.min, domain.max, mu)
+    elseif grid_dict[:tag] == :Random
+        n = get(grid_dict, :N, 200)
+        grid = RandomGrid(domain.min, domain.max, n)
     else
         error("Unknown grid type.")
     end
@@ -225,7 +229,7 @@ end
 _numeric_mod_type{ID}(::Model{ID}) = Model{ID}
 
 function Base.show(io::IO, model::Model)
-    println("Model")
+    print(io, "Model")
 end
 
 #### import functions
