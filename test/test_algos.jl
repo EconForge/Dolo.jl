@@ -17,7 +17,8 @@ path = Dolo.pkg_path
         @time drv = Dolo.evaluate_policy(model_mc, tid_res.dr; maxit=20, verbose=false)
 
         sim = Dolo.simulate(model_mc, ti_res.dr, model_mc.exogenous) #; N=100, T=20)
-        sim = Dolo.simulate(model_mc, ti_res.dr, 2) 
+        sim = Dolo.simulate(model_mc, ti_res.dr, i0= 2)
+        sim = Dolo.simulate(model_mc, ti_res.dr)
 
         k = sim[Axis{:V}(:k)]
         n = sim[Axis{:V}(:n)]
@@ -65,7 +66,7 @@ path = Dolo.pkg_path
         Dolo.simulate(model, tid_res.dr)
 
         s0 = model.calibration[:states]+0.1
-        sim = Dolo.simulate(model, tid_res.dr, s0)
+        sim = Dolo.simulate(model, tid_res.dr; s0=s0)
         Dolo.simulate(model, tid_res.dr; N=10)
 
 
@@ -105,7 +106,7 @@ path = Dolo.pkg_path
 
         model.symbols[:exogenous]
 
-        Dolo.simulate(model, tid_res.dr, N=10)
+        Dolo.simulate(model, tid_res.dr; m0=[0.015], N=10)
         Dolo.response(model.exogenous, [0.01])
 
         sim = Dolo.response(model, tid_res.dr, :z)

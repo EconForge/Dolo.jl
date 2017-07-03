@@ -6,7 +6,6 @@ import Dolo
 path = Dolo.pkg_path
 using AxisArrays
 
-
 filename = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
 # model = Dolo.Model(joinpath(Dolo.pkg_path, "examples", "models", "rbc_dtcc_mc.yaml"), print_code=true)
 model = Dolo.yaml_import(filename)
@@ -20,8 +19,15 @@ T= 50
 Index_mc = Dolo.simulate(model.exogenous, N, T, 1)
 
 s0=model.calibration[:states]
+s0=repmat(s0,N)
+typeof(s0)<:AbstractVector
+Index_mc.data
 
-sim = Dolo.simulate(model, dr, s0, Index_mc, model.exogenous)
+dp_process=model.exogenous
+
+sim = Dolo.simulate(model, dr.dr, Index_mc, model.exogenous)
+sim = Dolo.simulate(model, dr.dr; i0=2)
+sim = Dolo.simulate(model, dr.dr)
 
 Tvalues = linspace(1, sim[Axis{:T}][end], sim[Axis{:T}][end])
 
@@ -87,12 +93,16 @@ Dolo.tabulate(model, dr, :k, bounds, model.calibration[:states], m0)
 
 ####################################################################################
 
-filename = joinpath(path,"examples","models","rbc_dtcc_iid_ar1.yaml")
+filename = joinpath(path,"examples","models","rbc_dtcc_ar1.yaml")
 model2 = Dolo.yaml_import(filename)
 @time dr2 = Dolo.time_iteration(model2, verbose=true, maxit=10000)
 
 driving_process = Dolo.simulate(model2.exogenous, N, T)
-sim_ar = Dolo.simulate(model2, dr2, driving_process)
+dprocess = model2.exogenous
+sim_ar = Dolo.simulate(model2, dr2.dr, driving_process)
+sim_ar = Dolo.simulate(model2, dr2.dr, dprocess; m0=[0.1], N=20)
+sim_ar = Dolo.simulate(model2, dr2.dr)
+
 
 Tvalues = linspace(1, sim_ar[Axis{:T}][end], sim_ar[Axis{:T}][end])
 

@@ -1,8 +1,8 @@
 ###########################################################################
 # For Float
 
-function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector,
-                  driving_process::AbstractArray{Float64,3})
+function simulate(model::AbstractModel, dr::AbstractDecisionRule,
+                  driving_process::AbstractArray{Float64,3}; s0::AbstractVector=model.calibration[:states])
 
     # driving_process: (ne, N, T)
 
@@ -55,14 +55,15 @@ end
 
 ###########################################################################
 # For Int (MC)
-function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector,
-                  driving_process::AbstractMatrix{Int}, dp_process::DiscreteMarkovProcess)
+function simulate(model::AbstractModel, dr::AbstractDecisionRule,
+                  driving_process::AbstractMatrix{Int}, dp_process::DiscreteMarkovProcess;
+                  s0::AbstractVector=model.calibration[:states])
 
     # driving_process: (ne, N, T)
 
     # extract data from model
-    calib = model.calibration
-    params = calib[:parameters]
+    # calib = model.calibration
+    params = model.calibration[:parameters]
 
     N = size(driving_process, 2)
     T = size(driving_process, 1)
@@ -106,7 +107,7 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVe
     epsilons_values = zeros(N,nm,T)
     for n=1:N
       eps = dp_process.values[epsilons[n,:,:],:]
-      epsilons_values = permutedims(eps, [1, 3, 2])
+      epsilons_values[n,:,:] = permutedims(eps, [1, 3, 2])
     end
 
     sim = cat(2, epsilons, epsilons_values, s_simul, x_simul)::Array{Float64,3}
@@ -122,62 +123,85 @@ end
 
 ##############################################################################
 # Sub-cases for |Floats|
-function simulate(model::AbstractModel, dr::AbstractDecisionRule,
-                  driving_process::AbstractArray{Float64,3})
+# function simulate(model::AbstractModel, dr::AbstractDecisionRule,
+#                   driving_process::AbstractArray{Float64,3})
+#     s0 = model.calibration[:states]
+#     return simulate(model, dr, s0, driving_process)
+# end
 
-    s0 = model.calibration[:states]
-    return simulate(model, dr, s0, driving_process)
-end
-
+##############################################################################
 ## methods which simulate the process
 ##
 
+function simulate(model::AbstractModel, dr::AbstractDecisionRule, dprocess::DiscreteMarkovProcess;
+                  i0::Int=default_index(dprocess), s0::AbstractVector=model.calibration[:states], N::Int=1, T::Int=40)
+    driving_process = simulate(dprocess, N, T, i0)
+    return simulate(model, dr, driving_process, dprocess; s0=s0)
+end
+
+
+function simulate(model::AbstractModel, dr::AbstractDecisionRule, dprocess::ContinuousProcess;
+                  m0::AbstractVector=model.calibration[:exogenous], s0::AbstractVector=model.calibration[:states],
+                  N::Int=1, T::Int=40)
+    driving_process = simulate(dprocess, N, T, m0)
+    return simulate(model, dr, driving_process; s0 = s0)
+end
+
+
+function simulate(model::AbstractModel, dr::AbstractDecisionRule; kwargs...)
+    dprocess = model.exogenous
+    return simulate(model, dr, dprocess; kwargs...)
+end
+
+
+
 # Unless stochastic and return_indexes are always == true, it will work
-function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector,
-                  m0::Union{Int,AbstractVector}; N=1, T=40)
-      driving_process = simulate(model.exogenous, N, T, m0)
-    return simulate(model, dr, s0, driving_process)
-end
+# function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector,
+#                   m0::Union{Int,AbstractVector}; N=1, T=40)
+#       driving_process = simulate(model.exogenous, N, T, m0)
+#     return simulate(model, dr, s0, driving_process)
+# end
+#
+#
+# function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector;
+#                   N=1, T=40)
+#         m0 = model.calibration[:exogenous]
+#         driving_process = simulate(model.exogenous, N, T, m0)
+#     return simulate(model, dr, s0, driving_process)
+# end
+#
+# function simulate(model::AbstractModel,  dr::AbstractDecisionRule; N=1, T=40)
+#     s0 = model.calibration[:states]
+#     return simulate(model, dr, s0; N=N, T=T)
+# end
 
-
-function simulate(model::AbstractModel, dr::AbstractDecisionRule, s0::AbstractVector;
-                  N=1, T=40)
-        m0 = model.calibration[:exogenous]
-        driving_process = simulate(model.exogenous, N, T, m0)
-    return simulate(model, dr, s0, driving_process)
-end
-
-function simulate(model::AbstractModel,  dr::AbstractDecisionRule; N=1, T=40)
-    s0 = model.calibration[:states]
-    return simulate(model, dr, s0; N=N, T=T)
-end
 ##############################################################################
 # Sub-cases for |Int|
 
-function simulate(model::AbstractModel, dr::AbstractDecisionRule,
-                  driving_process::AbstractArray{Int64,2}, dp_process::Dolo.DiscreteMarkovProcess)
-    s0 = model.calibration[:states]
-    return simulate(model, dr, s0, driving_process, dp_process)
-end
-
-function simulate(model::AbstractModel, dr::AbstractDecisionRule, dp_process::Dolo.DiscreteMarkovProcess;
-                  N::Int=1, T::Int = 40 , m0::Int = 1)
-    driving_process = simulate(dp_process, N, T, m0)
-    return simulate(model, dr, driving_process, dp_process)
-end
-
-function simulate(model::AbstractModel, dr::AbstractDecisionRule, m0::Int;
-                  N::Int=1, T::Int = 40)
-    dp_process= model.exogenous
-    return simulate(model, dr, dp_process; N=N, T=T, m0 = m0)
-end
-
-function simulate(model::AbstractModel, dr::AbstractDecisionRule,
-                  driving_process::AbstractArray{Int64,2}, m0::Int;
-                  N::Int=1, T::Int = 40)
-    dp_process= model.exogenous
-    return simulate(model, dr, driving_process, dp_process; N=N, T=T, m0 = m0)
-end
+# function simulate(model::AbstractModel, dr::AbstractDecisionRule,
+#                   driving_process::AbstractArray{Int64,2}, dp_process::Dolo.DiscreteMarkovProcess)
+#     s0 = model.calibration[:states]
+#     return simulate(model, dr, s0, driving_process, dp_process)
+# end
+#
+# function simulate(model::AbstractModel, dr::AbstractDecisionRule, dp_process::Dolo.DiscreteMarkovProcess;
+#                   N::Int=1, T::Int = 40 , m0::Int = 1)
+#     driving_process = simulate(dp_process, N, T, m0)
+#     return simulate(model, dr, driving_process, dp_process)
+# end
+#
+# function simulate(model::AbstractModel, dr::AbstractDecisionRule, m0::Int;
+#                   N::Int=1, T::Int = 40)
+#     dp_process= model.exogenous
+#     return simulate(model, dr, dp_process; N=N, T=T, m0 = m0)
+# end
+#
+# function simulate(model::AbstractModel, dr::AbstractDecisionRule,
+#                   driving_process::AbstractArray{Int64,2}, m0::Int;
+#                   N::Int=1, T::Int = 40)
+#     dp_process= model.exogenous
+#     return simulate(model, dr, driving_process, dp_process; N=N, T=T, m0 = m0)
+# end
 
 """
 This is the one we document.
