@@ -30,6 +30,7 @@ type DiscreteMarkovProcess <: AbstractDiscretizedProcess
     grid::UnstructuredGrid
     transitions::Matrix{Float64}
     values::Matrix{Float64}
+    i0::Int
 end
 
 discretize(::Type{DiscreteMarkovProcess}, mp::DiscreteMarkovProcess) = mp
@@ -38,11 +39,16 @@ discretize(mp::DiscreteMarkovProcess) = mp
 DiscreteMarkovProcess(transitions::Matrix{Float64}, values::Matrix{Float64}) =
     DiscreteMarkovProcess(UnstructuredGrid(values), transitions, values)
 
+DiscreteMarkovProcess(grid::UnstructuredGrid, transitions::Matrix{Float64}, values::Matrix{Float64}) =
+    DiscreteMarkovProcess(grid, transitions, values, 1)
+
+
 n_nodes(dp::DiscreteMarkovProcess) = size(dp.values, 1)
 n_inodes(dp::DiscreteMarkovProcess, i::Int) = size(dp.values, 1)
 inode(dp::DiscreteMarkovProcess, i::Int, j::Int) = dp.values[j, :]
 iweight(dp::DiscreteMarkovProcess, i::Int, j::Int) = dp.transitions[i, j]
 node(dp::DiscreteMarkovProcess, i) = dp.values[i, :]
+default_index(dp::DiscreteMarkovProcess) = dp.i0
 
 
 function MarkovProduct(mc1::DiscreteMarkovProcess, mc2::DiscreteMarkovProcess)
@@ -129,7 +135,7 @@ end
 function simulate(process::DiscreteMarkovProcess, N::Int, T::Int, m0::AbstractVector{Float64})
     # try to find index in process.values. IF we do, then simulate using
     # the corresponding row index. If we don't, then throw an error
-    for i in size(process.values, 1)
+    for i in 1:size(process.values, 1)
         if process.values[i, :] == m0
             return simulate(process, N, T, i)
         end
@@ -385,7 +391,9 @@ function AgingProcess(mu::Float64, K::Int)
         transitions[i,1] = mu
     end
     transitions[end,1] = 1
-    return DiscreteMarkovProcess(transitions, values)
+    dp = DiscreteMarkovProcess(transitions, values)
+    dp.i0 = 2
+    dp
 end
 
 

@@ -15,7 +15,7 @@ model = Dolo.yaml_import(filename)
 
 @time dr_ITI  = Dolo.improved_time_iteration(model; verbose=true, tol = 1e-06, smaxit=100)
 
-# dprocess = Dolo.discretize( model.exogenous )
+dprocess = Dolo.discretize( model.exogenous )
 # init_dr = Dolo.ConstantDecisionRule(model.calibration[:controls])
 # @time dr_ITI_2  = Bruteforce_module.improved_time_iteration(model, dprocess,init_dr)
 
@@ -97,7 +97,6 @@ model_ar1 = Dolo.yaml_import(filename)
 dprocess = Dolo.discretize( model_ar1.exogenous , [3], [2])
 @time dr2_ITI_ar1  = Dolo.improved_time_iteration(model_ar1, dprocess; verbose=true, tol = 1e-06, smaxit=50)
 @time dr2_TI_ar1  = Dolo.time_iteration(model_ar1, dprocess; tol_η=1e-08, maxit=1000)
-
 
 ################################################################################
 df_ITI = Dolo.tabulate(model_ar1, dr2_ITI_ar1.dr, :k)
