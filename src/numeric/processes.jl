@@ -393,7 +393,7 @@ function AgingProcess(mu::Float64, K::Int)
     transitions[end,1] = 1
     dp = DiscreteMarkovProcess(transitions, values)
     dp.i0 = 2
-    return DiscreteMarkovProcess(transitions, values)
+    dp
 end
 
 
