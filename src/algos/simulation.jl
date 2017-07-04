@@ -133,6 +133,26 @@ end
 ## methods which simulate the process
 ##
 
+"""
+This function simulates a model given a decision rule.
+
+# Arguments
+* `model::NumericModel`: Model object that describes the current model environment.
+* `dr`: Solved decision rule.
+* optional:
+  * `driving process` simulated series of a model's exogenous process.
+  If  `driving process` is not provided, then:
+  * `dprocess`: exogenous processes; default: model.exogenous.
+  * `s0::ListOfPoints`: List of initial state variable values; default: model.calibration[:states]
+  * `N`: number of simulations; default: 1.
+  * `T`: number of periods of simulations; default: 40.
+  * `i0`: initial state of a discretized exogenous process; default: default_index(dprocess).
+  or
+  * `m0::ListOfPoints`: List of initial values of a continuous exogenous process; default: model.calibration[:exogenous].
+# Returns
+* `simulate`: simulated time series.
+"""
+
 function simulate(model::AbstractModel, dr::AbstractDecisionRule, dprocess::DiscreteMarkovProcess;
                   i0::Int=default_index(dprocess), s0::AbstractVector=model.calibration[:states], N::Int=1, T::Int=40)
     driving_process = simulate(dprocess, N, T, i0)
@@ -215,7 +235,7 @@ function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, e1::AbstractVector; T::Int=40)
     m_sim = response(model.exogenous, e1; T=T)
     m_simul = reshape(m_sim, 1, size(m_sim)...)
-    sim = simulate(model, dr, s0, m_simul)
+    sim = simulate(model, dr, m_simul; s0=s0)
     sim[1, :, :] # This is now an AxisArray which seems just fine !
 end
 
@@ -244,7 +264,7 @@ end
 
 
 """
-Function "response" computes the IRFs with several major options:
+Function "response" computes the impulse response functions with several major options:
 - the user can provide a vector with the first values of the model's exogenous processes, e1.
 - the user can provide a name of the shock of interest and the size of the shock_name.
 - the user can provide only a name of the shock of interest. The size of the shock is assumed to be a one standard deviation given in the yaml file.
@@ -252,11 +272,12 @@ Function "response" computes the IRFs with several major options:
 # Arguments
 * `model::NumericModel`: Model object that describes the current model environment.
 * `dr`: Solved decision rule.
-* `e1`: the first values of the model's exogenous processes.
-  or
+* `e1::ListOfPoints`: List of initial model's exogenous processes values.
+* If e1 is not provided, then:
   * `shock_name`: the name of the shock of interest.
-  * `Impulse`: the size of the shock.
-* `s0`: the values of the state variables, optional.
+* optional:
+  * `Impulse`: the size of the shock; default: one standard deviation.
+  * `s0::ListOfPoints`: List of initial state variable values; default: model.calibration[:states]
 # Returns
 * `response`: Impulse response function.
 """
