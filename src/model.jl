@@ -125,10 +125,6 @@ function get_calibration(model::ASModel)
     end
     # so far _calib is a symbolic calibration
     calibration = solve_triangular_system(_calib)
-    # if  isempty(calibration)
-    #   msg = string("bla")
-    #   error(msg)
-    # end
     symbols = get_symbols(model)
     return ModelCalibration(calibration, symbols)
 end
