@@ -90,7 +90,7 @@ MvNormal(sigma::Float64) = MvNormal(reshape([sigma], 1, 1))
 
 function discretize(mvn::MvNormal)
     n = fill(5, size(mvn.mu))
-    x, w = QE.qnwnorm(n, mvn.mu, mvn.Sigma)
+    x, w = QE.qnwnorm(n, mvn.mu, diagm(vec(mvn.Sigma)))
     DiscretizedIIDProcess(x, w)
 end
 
@@ -211,7 +211,7 @@ function discretize(::Type{DiscreteMarkovProcess}, var::VAR1; N::Int=3)
 
     # it would be good to have a special type of VAR1 process
     # which has a scalar autoregressive term
-    R = var.R
+    R =  var.R
     d = size(R, 1)
     ρ = R[1, 1]
     @assert maximum(abs, R-eye(d)*ρ)<1e-16

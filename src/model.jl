@@ -125,6 +125,10 @@ function get_calibration(model::ASModel)
     end
     # so far _calib is a symbolic calibration
     calibration = solve_triangular_system(_calib)
+    # if  isempty(calibration)
+    #   msg = string("bla")
+    #   error(msg)
+    # end
     symbols = get_symbols(model)
     return ModelCalibration(calibration, symbols)
 end
@@ -150,6 +154,11 @@ function get_grid(model::ASModel; options=Dict())
     if grid_dict[:tag] == :Cartesian
         orders = get(grid_dict, :orders, [20 for i=1:d])
         grid = CartesianGrid(domain.min, domain.max, orders)
+        if length(orders)!=length(model.calibration[:exogenous])
+            msg = string("Check the dimension of the matrix given in the yaml file, section: options-grid-orders. ",
+                         "Expected to be of dimension $([1, length(model.calibration[:exogenous])])")
+            error(msg)
+        end
     elseif grid_dict[:tag] == :Smolyak
         mu = grid_dict[:mu]
         grid = SmolyakGrid(domain.min, domain.max, mu)
