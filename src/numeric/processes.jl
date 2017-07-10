@@ -90,7 +90,7 @@ MvNormal(sigma::Float64) = MvNormal(reshape([sigma], 1, 1))
 
 function discretize(mvn::MvNormal)
     n = fill(5, size(mvn.mu))
-    x, w = QE.qnwnorm(n, mvn.mu, diagm(vec(mvn.Sigma)))
+    x, w = QE.qnwnorm(n, mvn.mu, mvn.Sigma)
     DiscretizedIIDProcess(x, w)
 end
 
