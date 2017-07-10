@@ -151,7 +151,7 @@ function get_grid(model::ASModel; options=Dict())
     if grid_dict[:tag] == :Cartesian
         orders = get(grid_dict, :orders, [20 for i=1:d])
         grid = CartesianGrid(domain.min, domain.max, orders)
-        if length(model.calibration[:exogenous])>1 && length(orders)!=length(model.calibration[:exogenous])
+        if !(typeof(model.exogenous)<:Dolo.DiscreteMarkovProcess) && length(model.calibration[:exogenous])>1 && length(orders)!=length(model.calibration[:exogenous])
             msg = string("Check the dimension of the matrix given in the yaml file, section: options-grid-orders. ",
                          "Expected to be of dimension $([1, length(model.calibration[:exogenous])])")
             error(msg)
