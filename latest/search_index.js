@@ -29,7 +29,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Dolo.jl",
     "title": "Installation",
     "category": "section",
-    "text": ""
+    "text": "To install latest stable release: Pkg.add(\"Dolo\")."
 },
 
 {
