@@ -14,3 +14,5 @@ Sophisticated solution routines are available: local perturbations, perfect fore
 
 
 ## Installation
+
+To install latest stable release: `Pkg.add("Dolo")`.
