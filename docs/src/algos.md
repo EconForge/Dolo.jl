@@ -121,10 +121,10 @@ The stacked system of equations satisfied by the solution is:
 
 
 >|      Transition         |   Arbitrage           |     
->| -------------  |:-------------|
+>| :-------------  |:-------------|
 >| $s_0 = \overline{s_0}$   | $f(m_0, s_0, x_0, m_1, s_1, x_1) \perp \underline{u} <= x_0 <= \overline{u}$ |
 >| $s_1 = g(m_0, s_0, x_0, m_1)$      |  $f(m_1, s_1, x_1, m_2, s_2, x_2) \perp \underline{u} <= x_1 <= \overline{u}$ |  
-> | ... | ... | 
+> | ... | ... |
 >| $s_T = g(m_{T-1}, s_{T-1}, x_{T-1}, m_T)$ | $f(m_T, s_T, x_T, m_T, s_T, x_T) \perp \underline{u} <= x_T <= \overline{u}$  |
 
 The system is solved using a nonlinear solver.
