@@ -21,7 +21,7 @@ order.
 ### State-space
 
 Decisions are characterized by a vector $m$ of *exogenous* variables (exogenous states)
-and by a $s$ of endogenous *states* (exogenous states).
+and by a vector $s$ of endogenous *states*.
 The unknown vector of controls $x$ is a
 function $\varphi$ of the states such that:
 
@@ -38,15 +38,15 @@ dr = time_iteration(model)
 m0 = model.calibration[:states]
 s0 = model.calibration[:states]
 dr(m0,s0)                               # evaluates at the steady-state
-dr([0.0;-0.01;-0.1], [2.5;2.5;2.5])     # evaluates at a list of point
+dr([0.0;-0.01;-0.1], [2.5;2.5;2.5])     # evaluates at a list of points
 ```
 
 A decision rule is defined on two discretized grids: one for the exogenous states
 and one for the endogenous ones. If the exogenous grid points are numbered by $i$,
-we can define non-ambiguously $x = \varphi(i,s)$ as  $\varphi(m_i,s)$, which corresponds to the following codes:
+we can define non-ambiguously $x = \varphi(i,s)$ as  $\varphi(m_i,s)$, which corresponds to the following code:
 ``` {.sourceCode .julia}
 dr(2,s0)                 # evaluates at the second exogenous point
-dr(2, [2.5;2.5;2.5])     # evaluates at a list of point
+dr(2, [2.5;2.5;2.5])     # evaluates at a list of points
 ```
 
 
@@ -67,17 +67,17 @@ Transitions are given by a function $g$ such that at all times:
 
 $$s_t = g(m_{t-1}, s_{t-1}, x_{t-1}, m_t)$$
 
-where $\m_t$ is a vector-valued exogenous process.
+where $m_t$ is a vector-valued exogenous process.
 
 > **note**
 >
 > In the RBC model, the vector of endogenous states is $s_t=(a_t,k_t)$. The
-> transitions are (note )
+> transitions are:
 >
 > > $a_t = \rho a_{t-1} + \epsilon_t$
 > > $k_t = (1-\delta)k_{t-1} + i_{t-1}$
 >
-> If $\epsilon_t$ follow a normal law with variance $\sigma_{\epsilon}$, the yaml file is amended with:
+> If $\epsilon_t$ follow a normal distribution with variance $\sigma_{\epsilon}$, the yaml file is amended with:
 >
 > ``` {.sourceCode .yaml}
 > symbols:
@@ -94,9 +94,9 @@ where $\m_t$ is a vector-valued exogenous process.
 > ```
 >
 > Note that transition equations must list states in declaration order.
-> Also, in this example productivity process $a_t$ is essentially an exogenous
+> Also, in this example the productivity process $a_t$ is essentially an exogenous
 > AR1 process. Declaring it as such (instead of $\epsilon$), provides additional
-information to the solvers and can lead to faster solution time.
+> information to the solvers and can lead to faster solution time.
 
 
 #### Auxiliary variables / Definitions
@@ -146,9 +146,8 @@ case in cannot be used to solve for the Bellman equation.
 > **note**
 >
 > Our RBC example defines the value as
-> $v_t = \frac{(c_t)^{1-\gamma}}{1-\gamma} + \beta E_t v_{t+1}$. This
-> information is coded using: \#\# TODO add labour to utility
->
+> $v_t = \frac{(c_t)^{1-\gamma}}{1-\gamma}-\chi \frac{(n_t)^{1+\eta}}/{1+\eta} + \beta E_t v_{t+1}$. This
+> information is coded using: 
 > ``` {.sourceCode .yaml}
 > symbols:
 >     ...
@@ -157,7 +156,7 @@ case in cannot be used to solve for the Bellman equation.
 > equations:
 >     ...
 >     utility:
->         - r = c^(1-gamma)/(1-gamma)
+>         - r = c^(1-gamma)/(1-gamma)- chi*n^(1+eta)/(1+eta)
 >
 > calibration:
 >     ...
@@ -170,7 +169,7 @@ case in cannot be used to solve for the Bellman equation.
     - short name: `w`
 
 A more general updating equation can be useful to express non-separable
-utilities or prices. the vector of (generalized) values $v^{*}$ are
+utilities or prices. The vector of (generalized) values $v^{*}$ are
 defined by a function `w` such that:
 
 $$v_t = w(m_t,s_t,x_t,v_t,m_{t+1},s_{t+1},x_{t+1},v_{t+1})$$
@@ -184,7 +183,7 @@ $$v_t = \max_{x_t} \left( w(m_t,s_t,x_t,v_t,m_{t+1},s_{t+1},x_{t+1},v_{t+1}) \ri
 > **note**
 >
 > Instead of defining the rewards of the RBC example, one can instead
-> define a value updating equation instead:
+> define a value updating equation:
 >
 > ``` {.sourceCode .yaml}
 > symbols:
@@ -281,13 +280,13 @@ Bellman problem, but that is not true in general.
 >     - w - chi*n^eta*c^sigma                       | 0 <= n <= inf
 > ```
 >
-> Putting the complementarity conditions close to the Euler equations,
+> Putting the complementarity conditions next to the Euler equations,
 > instead of entering them as separate equations, helps to check the
 > sign of the Euler residuals when constraints are binding. Here, when
 > investment is less desirable, the first expression becomes bigger.
-> When the representative is prevented to invest less due to the
-> constraint (i.e. $i_t=0$), the expression is then *positive*
-> consistently with the complementarity conventions.
+> When the representative agent is prevented from investing less due to the
+> constraint (i.e. $i_t=0$), the expression is then *positive*,
+> consistent with the complementarity conventions.
 
 #### Expectations
 
@@ -300,7 +299,7 @@ such that:
 $$z_t = E_t \left[ h(m_{t+1}, s_{t+1},x_{t+1}) \right]$$
 
 ``` {.sourceCode .}
-In the RBC example, one can define. the expected value tomorrow of one additional unit invested tomorrow:
+In the RBC example, one can define the expected value tomorrow of one additional unit invested tomorrow:
 
 .. math::
 
