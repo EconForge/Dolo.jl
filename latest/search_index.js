@@ -121,11 +121,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "modeling_language.html#Domain-1",
+    "page": "The dolo language",
+    "title": "Domain",
+    "category": "section",
+    "text": "The domain section defines lower and upper bounds for the exogenous and endogenous states. For example, in the RBC model, we write:domain:\n  z: [-2*sig_z/(1-rho^2)^0.5,  2*sig_z/(1-rho^2)^0.5]\n  k: [ k*0.5, k*1.5]The part for z sets the bounds for the productivity process to be two times its asymptotic standard deviation. The boundaries for capital are a 50% bracket around its steady-state level. "
+},
+
+{
     "location": "modeling_language.html#Options-1",
     "page": "The dolo language",
     "title": "Options",
     "category": "section",
-    "text": "The options section contains all informations necessary to solve the model. It can also contain arbitrary additional informations. The section follows the mini-language convention, with all calibrated values replaced by scalars and all keywords allowed.Global solutions require the definition of an approximation space. The lower, upper bounds and approximation orders (number of nodes in each dimension) are defined as in the following example:options:\n    Approximation:\n        a: [ 1-2*asig_z, k*0.9 ]\n        b: [ 1+2*asig_z, k*1.1 ]\n        orders: [10, 50]\n    arbitrary_informationThis reads as follows: the upper and lower bounds for the productivity process are 1 minus and plus two times its asymptotic standard deviation. The boundaries for the capital level are defined by a 10% bracket around its steady-state value (or the one defined in the calibration section). 10 points are used to discretize the state-space for the productivity process and 50 are used for the capital level."
+    "text": "The options sections contains extra information needed to solve the model.The section follows the mini-language convention, with all calibrated values replaced by scalars and all keywords allowed.Here we can define the grids and specify their type, Cartesian. We can also specify how many grid points we want for z and k. Here we choose 5 points for z and 50 points for k. Note that the grid points are listed in accordance with the declaration order of the variables.options:\n  grid: !Cartesian\n        orders: [5, 50]"
 },
 
 {
