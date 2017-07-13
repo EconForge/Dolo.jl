@@ -282,88 +282,51 @@ issuing any warning.
 > No clear policy has been established yet about how to deal with
 > undeclared symbols in the calibration section. Avoid them.
 
-### Shock specification
+### Exogenous Shocks 
 
-The way shocks are specified depends on the type of model. They are
-constructed using a the rules for mini-languages defined in section
-\[ref\].
+Exogenous shock processes are specified in the section `exogenous` . Dolo accepts various exogenous processes such as poisson processes, markov chains, normal shocks, AR1 processes, and ageing processes. To specify the type of process, we need a yaml tag.
 
-#### Distribution
+Below are some examples on how to specify different exogenous processes.
 
-For Dynare and continuous-states models, one has to specifiy a
-multivariate distribution of the i.i.d. process for the vector of
-`shocks` (otherwise shocks are assumed to be constantly 0). This is done
-in the distribution section. A gaussian distrubution (only one supported
-so far), is specified by supplying the covariance matrix as a list of
-lists as in the following example.
+Markov Chain:
 
 ``` {.sourceCode .yaml}
-distribution:
-
-    Normal: [
-            [sigma_1, 0.0],
-            [0.0, sigma_2]
-        ]
+exogenous:!MarkovChain
+    values: [[-0.01],[0.01]]
+    transitions: [[0.9, 0.1], [0.1, 0.9]]
+```
+AR1:
+``` {.sourceCode .yaml}
+exogenous:!VAR1
+    rho: 0.8
+    Sigma: [[0.016^2]]
+    N: 5
 ```
 
-#### Markov chains
+Ageing Process:
+```{.sourceCode .yaml}
+exogenous:!Aging Process
+    mu: 0.02
+    K: 8
+```
+Normal Shock:
+```{.sourceCode .yaml}
+exogenous:!Normal
+  Sigma: [[0.016^2]]
+```
+If we have more than one exogenous process we can use the `!Product` tag. Here is a model with an AR1 and an Ageing Process:
 
-When the model is driven by an exogenous discrete markov chain, that is
-for DTMSCC models, shocks are defined in the `discrete_transition`
-section. The objects allowed in this section are:
-MarkovChain, AR1, MarkovTensor
-
-> markov chain can be constructed in several ways:
->
-> > -   by listing directly a list of states, and a transition matrix as
-> >     in :
-> >
-> >     > ``` {.sourceCode .yaml}
-> >     > discrete_transition:
-> >     >     MarkovChain:   # a markov chain is defined by providing:
-> >     >         - [ [0.0, -0.02]           # a list of markov states
-> >     >             [0.0,  0.02]
-> >     >             [-0.1, 0.02]]
-> >     >         - [ [ 0.98, 0.01, 0.01],   # a transition matrix
-> >     >             [ 0.10, 0.01, 0.90],
-> >     >             [ 0.05, 0.05, 0.90] ]
-> >     > ```
-> >
-> > > -   by using primitives to construct a discretized process from an
-> > >     AR1:
-> > >
-> > >     > ``` {.sourceCode .yaml}
-> > >     > discrete_transition:
-> > >     >     AR1:
-> > >     >         rho: 0.9
-> > >     >         sigma: [
-> > >     >                 [0.01, 0.001]
-> > >     >                 [0.001, 0.02]
-> > >     >             ]
-> > >     >         N: 3
-> > >     >         method: rouwenhorst   # the alternative is tauchen
-> > >     > ```
-> > >
-> > > -   by combining two processes together:
-> > >
-> > >     > ``` {.sourceCode .yaml}
-> > >     > discrete_transition:
-> > >     >     MarkovTensor:
-> > >     >         - AR1:
-> > >     >             rho: 0.9
-> > >     >             sigma: [
-> > >     >                     [0.01, 0.001]
-> > >     >                     [0.001, 0.02]
-> > >     >                 ]
-> > >     >             N: 3
-> > >     >             method: rouwenhorst   # the alternative is tauchen
-> > >     >         - AR1:
-> > >     >             rho: 0.9
-> > >     >             sigma: 0.01
-> > >     >             N: 2
-> > >     >             method: rouwenhorst   # the alternative is tauchen
-> > >     > ```
-> > >
+```{.sourceCode .yaml}
+exogenous: !Product
+    p1: !VAR1 # Income Process
+         rho: 0.75
+         Sigma: [[sig_y^2]]
+         N: 3
+         
+    p2: !AgingProcess
+        mu: 0.02
+        K: 8
+ ```
 
 ### Domain
 The domain section defines lower and upper bounds for the exogenous and endogenous states. For example, in the RBC model, we write:
