@@ -91,6 +91,11 @@ function _build_exogenous_entry(data::Associative, calib::ModelCalibration)
         # need to extract rho an dSigma
         Sigma = eval_with(calib, data[:Sigma])
         Sigma = to_matrix(Sigma)
+        if size(Sigma, 1) != size(Sigma, 2)
+            sz = size(Sigma)
+            msg = "Covariance matrix must be square. Found a $sz matrix"
+            throw(DimensionMismatch(msg))
+        end
         return Normal(Sigma)
     elseif data[:tag] == :DeathProcess
         # need to extract rho an dSigma
