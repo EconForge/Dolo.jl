@@ -281,89 +281,64 @@ issuing any warning.
 >
 > No clear policy has been established yet about how to deal with
 > undeclared symbols in the calibration section. Avoid them.
+### Exogenous Shocks 
 
-### Shock specification
+Exogenous shock processes are specified in the section `exogenous` . Dolo accepts various exogenous processes such as normally distributed iid shocks, VAR1 processes, and Markov Chain processes. Dolo also allows for specific types of Markov Chains such as Poisson Processes, Aging Processes, and Death Processes.
 
-The way shocks are specified depends on the type of model. They are
-constructed using a the rules for mini-languages defined in section
-\[ref\].
-
-#### Distribution
-
-For Dynare and continuous-states models, one has to specifiy a
-multivariate distribution of the i.i.d. process for the vector of
-`shocks` (otherwise shocks are assumed to be constantly 0). This is done
-in the distribution section. A gaussian distrubution (only one supported
-so far), is specified by supplying the covariance matrix as a list of
-lists as in the following example.
-
-``` {.sourceCode .yaml}
-distribution:
-
-    Normal: [
-            [sigma_1, 0.0],
-            [0.0, sigma_2]
-        ]
+Here are examples of how to define different processes. Note the use of yaml tags.
+Normal Shock: It has mean zero and variance `Sigma`. 
+```{.sourceCode .yaml}
+exogenous:!Normal
+   Sigma: [[0.016^2]]
+```
+VAR1: `rho` is the persistence (only one allowed for now). `Sigma` is the covariance matrix. (Note: if a scalar `sigma` is given, it will be converted to `[[sigma]]` to indicate that it is the variance (not covariance) of the process).  
+```{.sourceCode .yaml}
+exogenous:!VAR1 
+    rho: 0.9
+    sigma: [[0.01, 0.001],
+             [0.001, 0.02]]
+    N: 3
+```
+Markov Chain: 
+```{.sourceCode .yaml}
+exogenous: !MarkovChain
+  values: [[-0.01],[0.01]]
+  transitions: [[0.9, 0.1], [0.1, 0.9]]
+```
+Poisson Process: `K` is the number of nodes and `mu` is the probability of a new arrival.
+```{.sourceCode .yaml}
+exogenous: !PoissonProcess
+  mu: 0.05
+  K: 10
 ```
 
-#### Markov chains
+Aging Process: `mu` is the probability of death and `K` is the maximum age. Note this also encompasses an indicator for death, so in the definition of exogenous variables you will need a variable for age and an indicator for death. 
 
-When the model is driven by an exogenous discrete markov chain, that is
-for DTMSCC models, shocks are defined in the `discrete_transition`
-section. The objects allowed in this section are:
-MarkovChain, AR1, MarkovTensor
+```{.sourceCode .yaml}
+exogenous:!AgingProcess
+  mu: 0.02
+  K: 8
+```
 
-> markov chain can be constructed in several ways:
->
-> > -   by listing directly a list of states, and a transition matrix as
-> >     in :
-> >
-> >     > ``` {.sourceCode .yaml}
-> >     > discrete_transition:
-> >     >     MarkovChain:   # a markov chain is defined by providing:
-> >     >         - [ [0.0, -0.02]           # a list of markov states
-> >     >             [0.0,  0.02]
-> >     >             [-0.1, 0.02]]
-> >     >         - [ [ 0.98, 0.01, 0.01],   # a transition matrix
-> >     >             [ 0.10, 0.01, 0.90],
-> >     >             [ 0.05, 0.05, 0.90] ]
-> >     > ```
-> >
-> > > -   by using primitives to construct a discretized process from an
-> > >     AR1:
-> > >
-> > >     > ``` {.sourceCode .yaml}
-> > >     > discrete_transition:
-> > >     >     AR1:
-> > >     >         rho: 0.9
-> > >     >         sigma: [
-> > >     >                 [0.01, 0.001]
-> > >     >                 [0.001, 0.02]
-> > >     >             ]
-> > >     >         N: 3
-> > >     >         method: rouwenhorst   # the alternative is tauchen
-> > >     > ```
-> > >
-> > > -   by combining two processes together:
-> > >
-> > >     > ``` {.sourceCode .yaml}
-> > >     > discrete_transition:
-> > >     >     MarkovTensor:
-> > >     >         - AR1:
-> > >     >             rho: 0.9
-> > >     >             sigma: [
-> > >     >                     [0.01, 0.001]
-> > >     >                     [0.001, 0.02]
-> > >     >                 ]
-> > >     >             N: 3
-> > >     >             method: rouwenhorst   # the alternative is tauchen
-> > >     >         - AR1:
-> > >     >             rho: 0.9
-> > >     >             sigma: 0.01
-> > >     >             N: 2
-> > >     >             method: rouwenhorst   # the alternative is tauchen
-> > >     > ```
-> > >
+Death Process: `mu` is the probability of dying.
+```{.sourceCode .yaml}
+exogenous:!DeathProcess
+  mu:0.02
+```
+We can also specify more than one process. For instance if we want to combine a VAR1 and an Aging Process we use the tag `Product` and write:
+```{.sourceCode .yaml}
+exogenous: !Product
+    p1: !VAR1 
+         rho: 0.75
+         Sigma: [[0.015^2]]
+         N: 3
+         
+    p2: !AgingProcess
+        mu: 0.02
+        K: 8
+```
+
+
 
 ### Domain
 The domain section defines lower and upper bounds for the exogenous and endogenous states. For example, in the RBC model, we write:
