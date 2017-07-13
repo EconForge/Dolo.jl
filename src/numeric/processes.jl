@@ -211,7 +211,7 @@ function discretize(::Type{DiscreteMarkovProcess}, var::VAR1; N::Int=3)
 
     # it would be good to have a special type of VAR1 process
     # which has a scalar autoregressive term
-    R = var.R
+    R =  var.R
     d = size(R, 1)
     ρ = R[1, 1]
     @assert maximum(abs, R-eye(d)*ρ)<1e-16
