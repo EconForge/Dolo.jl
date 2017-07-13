@@ -25,6 +25,7 @@ import Distributions
 
 # Simulation/presentation
 using AxisArrays
+using StringDistances
 
 # Compat across julia versions
 using Compat; import Compat: String, view, @__dot__

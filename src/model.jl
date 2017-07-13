@@ -63,19 +63,30 @@ function get_equations(model::ASModel)
 
     # prep equations: parse to Expr
     _eqs = OrderedDict{Symbol,Vector{Expr}}()
-    for k in keys(recipe[:specs])
-        if k in keys(eqs)
-            # we handle these separately
-            (k in [:arbitrage,]) && continue
-            these_eq = get(eqs, (k), [])
-            # verify that we have at least 1 equation if section is required
-            if !get(recipe[:specs][k], :optional, false)
-                length(these_eq) == 0 && error("equation section $k required")
-            end
-            # finally pass in the expressions
-            _eqs[k] = Expr[_to_expr(eq) for eq in these_eq]
-        end
+    # for k in Dolo.keys(recipe[:specs])
+    for k in Dolo.keys(eqs)
+      if !(k in Dolo.keys(recipe[:specs]))
+           ii=0
+           dist = zeros(length(Dolo.keys(recipe[:specs])))
+           for kk in Dolo.keys(recipe[:specs])
+             ii+=1
+             dist[ii]=compare(Hamming(), string(kk), string(k))
+           end
+           kk = collect(keys(Dolo.keys(recipe[:specs]).dict))[findmax(dist)[2]]
+           msg = string("You are using a wrong name for a sub-section title.`$(k)` is not accepted. ",
+                        "Maybe you meant `$(kk)`?")
+           error(msg)
+      end
+      (k in [:arbitrage,]) && continue
+      these_eq = get(eqs, (k), [])
+      # verify that we have at least 1 equation if section is required
+      if !get(recipe[:specs][k], :optional, false)
+          length(these_eq) == 0 && error("equation section $k required")
+      end
+      # finally pass in the expressions
+      _eqs[k] = Expr[_to_expr(eq) for eq in these_eq]
     end
+    # end
     # handle the arbitrage, arbitrage_exp, controls_lb, and controls_ub
     if haskey(recipe[:specs], :arbitrage) && (:arbitrage in keys(eqs))
         c_lb, c_ub, arb = _handle_arbitrage(eqs[:arbitrage],
@@ -150,6 +161,11 @@ function get_grid(model::ASModel; options=Dict())
     if grid_dict[:tag] == :Cartesian
         orders = get(grid_dict, :orders, [20 for i=1:d])
         grid = CartesianGrid(domain.min, domain.max, orders)
+        if !(typeof(model.exogenous)<:Union{Dolo.DiscreteMarkovProcess,Dolo.ProductProcess} ) && length(model.calibration[:exogenous])>1 && length(orders)!=length(model.calibration[:exogenous])
+            msg = string("Check the dimension of the matrix given in the yaml file, section: options-grid-orders. ",
+                         "Expected to be of dimension $([1, length(model.calibration[:exogenous])])")
+            error(msg)
+        end
     elseif grid_dict[:tag] == :Smolyak
         mu = grid_dict[:mu]
         grid = SmolyakGrid(domain.min, domain.max, mu)
