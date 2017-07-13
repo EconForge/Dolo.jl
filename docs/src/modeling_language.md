@@ -11,13 +11,13 @@ YAML stands for Yet Another Markup Language. It is a serialization
 language that allows complex data structures in a human-readable way.
 Atomic elements are floats, integers and strings. An ordered list can be
 defined by separating elements with commas and enclosing them with
-squere brackets:
+square brackets:
 
 ``` {.sourceCode .yaml}
 [1,2,3]
 ```
 
-Equivalently, it can be done on several line, by prepending - to each
+Equivalently, it can be done on several lines, by prepending - to each
 line
 
 ``` {.sourceCode .yaml}
@@ -26,14 +26,14 @@ line
 - third element   # this is interpreted as ``'third element'``
 ```
 
-Associative arrays map keys to (simple strings to arbitrary values) as
+Associative arrays map keys(simple strings) to arbitrary values as
 in the following example:
 
 ``` {.sourceCode .yaml}
 {age: 18, name: peter}
 ```
 
-Mappings can also be defined on severaly lines, structures can be nested by using indentation (use spaces no tabs):
+Mappings can also be defined on several lines, and structures can be nested by using indentation (use spaces no tabs):
 
 ``` {.sourceCode .yaml}
 age: 18
@@ -47,7 +47,7 @@ friends:
 
 The correspondance between the yaml definition and the resulting Julia
 object is very transparent. YAML mappings and lists are converted to
-Julia dictionaries and arrays respectiveley.
+Julia dictionaries and arrays respectively.
 
 
 Special objects from the Dolo language can be created by adding a tag to yaml nodes
@@ -100,13 +100,13 @@ writing yaml files.
 Sections
 --------
 
-A dolo model consists in the following 4 or 5 parts:
+A dolo model consists of the following 4 or 5 parts:
 
 -   a symbols section where all symbols used in the model must be
     defined
--   an equations containing the list of equations
+-   an equations section containing the list of equations
 -   a calibration section providing numeric values for the symbols
--   an options section containing additional informations
+-   an options section containing additional information
 -   a covariances or markov\_chain section where exogenous shocks are
     defined
 
@@ -122,7 +122,7 @@ Symbols must be valid Julia identifiers (alphanumeric not beginning
 with a number) and are case sensitive. Greek letters (save for lambda
 which is a keyword) are recognized. Subscripts and superscripts can be
 denoted by \_ and \_\_ respectively. For instance beta\_i\_1\_\_d will
-be pretty printed as $beta_{i,1}^d$.
+be printed nicely as $beta_{i,1}^d$.
 
 Symbols are sorted by type as in the following example:
 
@@ -138,7 +138,7 @@ Note that each type of symbol is associated with a symbol list (as
 
 > **note**
 >
-> A common mistake consists in forgetting the commas, and use spaces
+> A common mistake consists in forgetting the commas, and using spaces
 > only. This doesn't work since two symbols are recognized as one.
 
 The expected types depend on the model that is being written:
@@ -237,7 +237,7 @@ in the declaration order.
 > appear on the left hand side. Also, these variables are defined
 > recursively: `c`, `rk` and `w` depend on the value for `y`. In
 > contrast to the calibration block, the definition order matters.
-> Assuming that variables where listed as (`c,y,rk,w`) the following
+> Assuming that variables were listed as (`c,y,rk,w`) the following
 > block would provide incorrect result since `y` is not known when `c`
 > is evaluated.
 >
@@ -253,9 +253,9 @@ in the declaration order.
 
 The role of the calibration section consists in providing values for the
 parameters and the variables. The calibration of all parameters
-appearing in the equation is of course strictly necessary while the the
+appearing in the equation is of course strictly necessary while the 
 calibration of other types of variables is useful to define the
-steady-state or an initial guess to the steady-state.
+steady-state or an initial guess of the steady-state.
 
 The calibrated values are also substituted in other sections, including
 the shocks and options section. This is particularly useful to make the
@@ -295,7 +295,7 @@ multivariate distribution of the i.i.d. process for the vector of
 `shocks` (otherwise shocks are assumed to be constantly 0). This is done
 in the distribution section. A gaussian distrubution (only one supported
 so far), is specified by supplying the covariance matrix as a list of
-list as in the following example.
+lists as in the following example.
 
 ``` {.sourceCode .yaml}
 distribution:
