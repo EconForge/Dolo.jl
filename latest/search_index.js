@@ -97,27 +97,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "modeling_language.html#Shock-specification-1",
+    "location": "modeling_language.html#Exogenous-Shocks-1",
     "page": "The dolo language",
-    "title": "Shock specification",
+    "title": "Exogenous Shocks",
     "category": "section",
-    "text": "The way shocks are specified depends on the type of model. They are constructed using a the rules for mini-languages defined in section [ref]."
-},
-
-{
-    "location": "modeling_language.html#Distribution-1",
-    "page": "The dolo language",
-    "title": "Distribution",
-    "category": "section",
-    "text": "For Dynare and continuous-states models, one has to specifiy a multivariate distribution of the i.i.d. process for the vector of shocks (otherwise shocks are assumed to be constantly 0). This is done in the distribution section. A gaussian distrubution (only one supported so far), is specified by supplying the covariance matrix as a list of lists as in the following example.distribution:\n\n    Normal: [\n            [sigma_1, 0.0],\n            [0.0, sigma_2]\n        ]"
-},
-
-{
-    "location": "modeling_language.html#Markov-chains-1",
-    "page": "The dolo language",
-    "title": "Markov chains",
-    "category": "section",
-    "text": "When the model is driven by an exogenous discrete markov chain, that is for DTMSCC models, shocks are defined in the discrete_transition section. The objects allowed in this section are: MarkovChain, AR1, MarkovTensormarkov chain can be constructed in several ways:by listing directly a list of states, and a transition matrix as   in :\ndiscrete_transition:\n    MarkovChain:   # a markov chain is defined by providing:\n        - [ [0.0, -0.02]           # a list of markov states\n            [0.0,  0.02]\n            [-0.1, 0.02]]\n        - [ [ 0.98, 0.01, 0.01],   # a transition matrix\n            [ 0.10, 0.01, 0.90],\n            [ 0.05, 0.05, 0.90] ]by using primitives to construct a discretized process from an   AR1:\ndiscrete_transition:\n    AR1:\n        rho: 0.9\n        sigma: [\n                [0.01, 0.001]\n                [0.001, 0.02]\n            ]\n        N: 3\n        method: rouwenhorst   # the alternative is tauchen\nby combining two processes together:\ndiscrete_transition:\n    MarkovTensor:\n        - AR1:\n            rho: 0.9\n            sigma: [\n                    [0.01, 0.001]\n                    [0.001, 0.02]\n                ]\n            N: 3\n            method: rouwenhorst   # the alternative is tauchen\n        - AR1:\n            rho: 0.9\n            sigma: 0.01\n            N: 2\n            method: rouwenhorst   # the alternative is tauchen"
+    "text": "Exogenous shock processes are specified in the section exogenous . Dolo accepts various exogenous processes such as normally distributed iid shocks, VAR1 processes, and Markov Chain processes. Dolo also allows for specific types of Markov Chains such as Poisson Processes, Aging Processes, and Death Processes.Here are examples of how to define different processes. Note the use of yaml tags. Normal Shock: It has mean zero and variance Sigma. exogenous:!Normal\n   Sigma: [[0.016^2]]VAR1: rho is the persistence (only one allowed for now). Sigma is the covariance matrix. (Note: if a scalar sigma is given, it will be converted to [[sigma]] to indicate that it is the variance (not covariance) of the process).  exogenous:!VAR1 \n    rho: 0.9\n    sigma: [[0.01, 0.001],\n             [0.001, 0.02]]\n    N: 3Markov Chain: exogenous: !MarkovChain\n  values: [[-0.01],[0.01]]\n  transitions: [[0.9, 0.1], [0.1, 0.9]]Poisson Process: K is the number of nodes and mu is the probability of a new arrival.exogenous: !PoissonProcess\n  mu: 0.05\n  K: 10Aging Process: mu is the probability of death and K is the maximum age. Note this also encompasses an indicator for death, so in the definition of exogenous variables you will need a variable for age and an indicator for death. exogenous:!AgingProcess\n  mu: 0.02\n  K: 8Death Process: mu is the probability of dying.exogenous:!DeathProcess\n  mu:0.02We can also specify more than one process. For instance if we want to combine a VAR1 and an Aging Process we use the tag Product and write:exogenous: !Product\n    p1: !VAR1 \n         rho: 0.75\n         Sigma: [[0.015^2]]\n         N: 3\n         \n    p2: !AgingProcess\n        mu: 0.02\n        K: 8"
 },
 
 {
