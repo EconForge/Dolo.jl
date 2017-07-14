@@ -281,52 +281,64 @@ issuing any warning.
 >
 > No clear policy has been established yet about how to deal with
 > undeclared symbols in the calibration section. Avoid them.
-
 ### Exogenous Shocks 
 
-Exogenous shock processes are specified in the section `exogenous` . Dolo accepts various exogenous processes such as poisson processes, markov chains, normal shocks, AR1 processes, and ageing processes. To specify the type of process, we need a yaml tag.
+Exogenous shock processes are specified in the section `exogenous` . Dolo accepts various exogenous processes such as normally distributed iid shocks, VAR1 processes, and Markov Chain processes. Dolo also allows for specific types of Markov Chains such as Poisson Processes, Aging Processes, and Death Processes.
 
-Below are some examples on how to specify different exogenous processes.
-
-Markov Chain:
-
-``` {.sourceCode .yaml}
-exogenous:!MarkovChain
-    values: [[-0.01],[0.01]]
-    transitions: [[0.9, 0.1], [0.1, 0.9]]
-```
-AR1:
-``` {.sourceCode .yaml}
-exogenous:!VAR1
-    rho: 0.8
-    Sigma: [[0.016^2]]
-    N: 5
-```
-
-Ageing Process:
-```{.sourceCode .yaml}
-exogenous:!Aging Process
-    mu: 0.02
-    K: 8
-```
-Normal Shock:
+Here are examples of how to define different processes. Note the use of yaml tags.
+Normal Shock: It has mean zero and variance `Sigma`. 
 ```{.sourceCode .yaml}
 exogenous:!Normal
-  Sigma: [[0.016^2]]
+   Sigma: [[0.016^2]]
 ```
-If we have more than one exogenous process we can use the `!Product` tag. Here is a model with an AR1 and an Ageing Process:
+VAR1: `rho` is the persistence (only one allowed for now). `Sigma` is the covariance matrix. (Note: if a scalar `sigma` is given, it will be converted to `[[sigma]]` to indicate that it is the variance (not covariance) of the process).  
+```{.sourceCode .yaml}
+exogenous:!VAR1 
+    rho: 0.9
+    sigma: [[0.01, 0.001],
+             [0.001, 0.02]]
+    N: 3
+```
+Markov Chain: 
+```{.sourceCode .yaml}
+exogenous: !MarkovChain
+  values: [[-0.01],[0.01]]
+  transitions: [[0.9, 0.1], [0.1, 0.9]]
+```
+Poisson Process: `K` is the number of nodes and `mu` is the probability of a new arrival.
+```{.sourceCode .yaml}
+exogenous: !PoissonProcess
+  mu: 0.05
+  K: 10
+```
+
+Aging Process: `mu` is the probability of death and `K` is the maximum age. Note this also encompasses an indicator for death, so in the definition of exogenous variables you will need a variable for age and an indicator for death. 
 
 ```{.sourceCode .yaml}
+exogenous:!AgingProcess
+  mu: 0.02
+  K: 8
+```
+
+Death Process: `mu` is the probability of dying.
+```{.sourceCode .yaml}
+exogenous:!DeathProcess
+  mu:0.02
+```
+We can also specify more than one process. For instance if we want to combine a VAR1 and an Aging Process we use the tag `Product` and write:
+```{.sourceCode .yaml}
 exogenous: !Product
-    p1: !VAR1 # Income Process
+    p1: !VAR1 
          rho: 0.75
-         Sigma: [[sig_y^2]]
+         Sigma: [[0.015^2]]
+
          N: 3
          
     p2: !AgingProcess
         mu: 0.02
         K: 8
- ```
+
+```
 
 ### Domain
 The domain section defines lower and upper bounds for the exogenous and endogenous states. For example, in the RBC model, we write:

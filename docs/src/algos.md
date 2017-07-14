@@ -9,15 +9,15 @@ Value function algorithms require a Bellman representation of the model:
 
 where $g$ is the transition function, $u$ the instantaneous felicity function and $\beta$ the time-discount parameter.
 
-The solution of this problems produces naturally to functions $x=\varphi(m,s)$ and  $V=\varphi(m,s)$ for the controls and the value function respectively.
+The solution of this problem produces naturally two functions, $x=\varphi(m,s)$ and  $V=\varphi(m,s)$, for the controls and the value function respectively.
 
-Given an initial value function $V^n(m,s)$ applying the maximum operator produces a new, improved, value function $\tilde{V}^n(m,s)$ and a corresponding policy rule $x=\varphi^n(m,s)$. This is an *improvement* step.
+Given an initial value function $V^n(m,s)$ applying the maximum operator produces a new and improved value function $\tilde{V}^n(m,s)$ and a corresponding policy rule $x=\varphi^n(m,s)$. This is an *improvement* step.
 
 Note that at this stage, $\tilde{V}^n$ is not the value of following $\varphi^n$ forever. An evaluation step performs the recursion (note the absence of a $\max$):
 
 > $x_t=\varphi^n(m_s, s_t)$
 > $s_t = {\color{red} g} \left( m_{t-1}, s_{t-1}, x_{t-1}, m_t \right)$
-> $V^{k+1}(m_t, s_t) = {\color{red} u}\left(m_t, s_t, x_t\right) + {\color{blue} \beta} E_{m_t} V^k\left(m_{t+1}, s_{t+1}\right)$
+> $V^{n+1}_{k+1}(m_t, s_t) = {\color{red} u}\left(m_t, s_t, x_t\right) + {\color{blue} \beta} E_{m_t} V^{n+1}_{k}\left(m_{t+1}, s_{t+1}\right)$
 
 Starting from the initial guess, $\tilde{V}^{n+1}$, this recursion converges to the value $V^{n+1}()$ associated to $\varphi^{n+1}()$. If high accuracy is not required, it is common to restrict the number of steps to perform a *partial evaluation*.
 
@@ -28,11 +28,11 @@ The value function algorithm implemented in Dolo follows the following scheme:
     - perform one improvement step to get $\varphi^{n+1}()$, $\tilde{V}^{n+1}()$
     - perform a partial evaluation of $\varphi^{n+1}()$
     starting from $\tilde{V}^{n+1}()$ to get $V^{n+1}()$ using at most $K$ steps.
-3. Compute $\eta_{n+1}=|\varphi^n-\varphi^{n+1}|$ and $\epsilon_{n+1}=|\varphi^n-\varphi^{n+1}|$
+3. Compute $\eta_{n+1}=|\varphi^n-\varphi^{n+1}|$ and $\epsilon_{n+1}=|V^n-V^{n+1}|$
     - if $\eta_{n+1}<\tau_{\eta}$ and $\epsilon_{n+1}<\tau_{\epsilon}$, return
     - else return to step 2.
 
-This algorihtm is controlled by the precision parameters $\tau_{\eta}$, $\tau_{\epsilon}$ and the evaluation length $K$. Note that setting $K=0$ corresponds to the naive (but robust ?) VFI algorithm while $K$ high corresponds to Howard improvements which converge faster: convergence of the outer loop $\varphi^n$ is quadratic instead of geometric.
+This algorithm is controlled by the precision parameters $\tau_{\eta}$, $\tau_{\epsilon}$ and the evaluation length $K$. Note that setting $K=0$ corresponds to the naive (but robust ?) VFI algorithm while $K$ high corresponds to Howard improvements which converge faster: convergence of the outer loop $\varphi^n$ is quadratic instead of geometric.
 
 ```@docs
 value_iteration
@@ -52,7 +52,7 @@ equation.
 
 The time iteration algorithm consists in approximating the optimal
 controls as a function of exogenous and endogenous controls
-$x_t = \varphi(m_t,s_t)$. At step $n$, the current guess for the control, $x(s_t) = \varphi^n(m_t, s_t)$, serves as the control being exercised next period.
+$x_t = \varphi(m_t,s_t)$. At step $n$, the current guess for the control, $x(s_t) = \varphi^n(m_t, s_t)$, serves as the control being used next period.
 
 Here is an outline of the algorithm:
 
@@ -111,14 +111,13 @@ state $s_0$ is given exogenously, or determined so that it corresponds for a ste
 determined by assuming the exogenous process satisfies $m_t=m_T$ for all
 $t\leq T$ and optimality conditions are satisfied in the last period:
 
-$f(m_T, s_T, x_T, m_T,s_T, x_T) \perp \underline{u} <= x_T <= \overline{u}$.
+$f(m_T, s_T, x_T, m_T,s_T, x_T) \perp \underline{u} \leq x_T \leq \overline{u}$.
 
 We assume that $\underline{u}$ and $\overline{u}$ are constants. This is
 not a big restriction since the model can always be reformulated in
 order to meet that constraint, by adding more equations.
 
 The stacked system of equations satisfied by the solution is:
-
 
 >|      Transition         |   Arbitrage           |     
 >| :-------------  |:-------------|
