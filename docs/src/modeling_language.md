@@ -331,14 +331,14 @@ exogenous: !Product
     p1: !VAR1 
          rho: 0.75
          Sigma: [[0.015^2]]
+
          N: 3
          
     p2: !AgingProcess
         mu: 0.02
         K: 8
+
 ```
-
-
 
 ### Domain
 The domain section defines lower and upper bounds for the exogenous and endogenous states. For example, in the RBC model, we write:
