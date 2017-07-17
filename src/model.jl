@@ -186,7 +186,7 @@ function get_exogenous(model::ASModel)
     return exogenous
 end
 
-function set_calibration(model::ASModel, key::Symbol, value::Union{Real,Expr, Symbol})
+function set_calibration!(model::ASModel, key::Symbol, value::Union{Real,Expr, Symbol})
     model.data[:calibration][key] = value
 end
 
@@ -260,6 +260,31 @@ function Model(url::AbstractString; print_code=false)
     return Model{id}(data; print_code=print_code, filename=fname)
 end
 
+function set_calibration!(model::Model, key::Symbol, value::Union{Real,Expr, Symbol})
+    model.data[:calibration][key] = value
+    model.calibration = get_calibration(model)
+    model.exogenous = get_exogenous(model)
+    model.domain = get_domain(model)
+    # model.options = get_options(model) # we don't substitute calib here
+    model.grid = get_grid(model)
+    model.calibration
+end
+
+function set_calibration!{T}(model::Model, values::Associative{Symbol,T})
+    for (key,value) in values
+        model.data[:calibration][key] = value
+    end
+    model.calibration = get_calibration(model)
+    model.exogenous = get_exogenous(model)
+    model.domain = get_domain(model)
+    # model.options = get_options(model) # we don't substitute calib here
+    model.grid = get_grid(model)
+    model.calibration
+end
+
+function set_calibration!(model::Model; kwargs...)
+    set_calibration!(model, Dict(kwargs))
+end
 
 """
 Imports the model from a yaml file specified by the `url` input
