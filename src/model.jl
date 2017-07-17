@@ -270,6 +270,22 @@ function set_calibration!(model::Model, key::Symbol, value::Union{Real,Expr, Sym
     model.calibration
 end
 
+function set_calibration!(model::Model, values)
+    for (key,value) in values
+        model.data[:calibration][key] = value
+    end
+    model.calibration = get_calibration(model)
+    model.exogenous = get_exogenous(model)
+    model.domain = get_domain(model)
+    # model.options = get_options(model) # we don't substitute calib here
+    model.grid = get_grid(model)
+    model.calibration
+end
+
+function set_calibration!(model::Model; kwargs...)
+    set_calibration!(model, kwargs)
+end
+
 """
 Imports the model from a yaml file specified by the `url` input
 parameter, and returns the corresponding `Dolo` model object.
