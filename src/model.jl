@@ -270,7 +270,7 @@ function set_calibration!(model::Model, key::Symbol, value::Union{Real,Expr, Sym
     model.calibration
 end
 
-function set_calibration!(model::Model, values)
+function set_calibration!{T}(model::Model, values::Associative{Symbol,T})
     for (key,value) in values
         model.data[:calibration][key] = value
     end
@@ -283,7 +283,7 @@ function set_calibration!(model::Model, values)
 end
 
 function set_calibration!(model::Model; kwargs...)
-    set_calibration!(model, kwargs)
+    set_calibration!(model, Dict(kwargs))
 end
 
 """
