@@ -50,8 +50,6 @@ let
     Base.get(f::Function, c::Calib, key) = get(f, c.d, key)
     Base.merge!{T<:Calib}(c::T, others::T...) =
         T(merge!(c.d, [o.d for o in others]...))
-    Base.show(io::IO, c::Calib) = show(io, c.d)
-    # Base.showdict(io::IO, c::Calib) = Base.showdict(io, c.d)
     Base.copy{T<:Calib}(c::T) = T(copy(c.d))
     Base.deepcopy{T<:Calib}(c::T) = T(deepcopy(c.d))
 end
