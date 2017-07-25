@@ -1,19 +1,25 @@
 """
 Document pf.
 """
-function perfect_foresight(model, exo::AbstractMatrix{Float64}; T=200, verbose=true, complementarities=true)
+function perfect_foresight(model, exo::Dict; T=200, verbose=true, complementarities=true)
 
     T = T+1 # compat with t=0 conventions
 
-    T_e = size(exo, 1)
     n_e = length(model.symbols[:exogenous])
     n_s = length(model.symbols[:states])
     n_x = length(model.symbols[:controls])
 
     driving_process = zeros(T, n_e)
-    driving_process[1:T_e,:] = exo
-    for t=(T_e+1):T
-        driving_process[t,:] = exo[end,:]
+
+    for key in keys(exo)
+      T_e = length(exo[key])
+      ind = find(model.symbols[:exogenous] .== key)
+      driving_process[1:T_e,ind] = exo[key]
+
+      for t=(T_e+1):T
+        driving_process[t,ind] =  exo[key][end]
+      end
+
     end
 
     # find initial steady-state
