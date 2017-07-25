@@ -4,23 +4,24 @@ path = Dolo.pkg_path
 
 @testset "testing perfect_foresight" begin
 
-    fn = joinpath(path, "examples", "models", "rbc_dtcc_ar1.yaml")
+    joinpath(path, "examples", "models", "rbc_dtcc_ar1.yaml");
 
-    model = Dolo.yaml_import(fn)
+    # Test with two shocks
+    fn = joinpath(path, "examples", "models", "rbc_catastrophe.yaml");
 
-    # we must define the series for exogenous shocks
-    n_e = length(model.symbols[:exogenous])
+    model = Dolo.yaml_import(fn);
 
-    T_e = 5
-    exo = zeros(T_e, n_e)
-    exo[1,:] = [0.00]  # this is used to determine initial steady-state of the model
-    exo[2,:] = [0.01]
-    exo[3,:] = [0.02]
-    exo[4,:] = [0.03]
-    exo[5,:] = [0.04]  # this is used to determine final steady-state
+    # Provide the shocks
+    # If not provided will be equal to zero by default
+    # Vector sizes for each shock can be different
+    # The order the shocks are defined are irrelevant: pf fuction finds the index for each shock
+
+    exo = Dict(:z =>  [0.00, 0.01, 0.02, 0.03, 0.04], :xi =>  [0, 0, 0, 0, 0, 0])
+    # or
+    exo = Dict(:xi =>  [0, 0, 0, 0, 0, 0] , :z =>  [0.00, 0.01, 0.02, 0.03, 0.04])
+    # or
+    exo = Dict(:z =>  [0.00, 0.01, 0.02, 0.03, 0.04])
 
     @time df = Dolo.perfect_foresight(model, exo, T=20)
-
-    @test true
 
 end
