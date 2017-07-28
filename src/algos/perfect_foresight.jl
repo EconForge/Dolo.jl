@@ -118,8 +118,8 @@ function perfect_foresight(model, exo::AbstractMatrix{Float64}; T=200, verbose=t
 
 end
 
-
-function perfect_foresight(model, exo::Dict{Symbol,Any}; kwargs... )
+# Constructs the matrix exo given a dictionary exo and calls the original method
+function perfect_foresight(model, exo::Dict{Symbol,Array{Float64,1}}; kwargs... )
 
   n_e = length(model.symbols[:exogenous])
   T_e = maximum(length(e) for e in values(exo))
