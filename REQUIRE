@@ -1,5 +1,5 @@
 julia 0.5
-MacroTools 0.3.3
+MacroTools
 YAML 0.2.1
 DataStructures
 AxisArrays
