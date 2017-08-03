@@ -2,7 +2,6 @@
 import Dolo
 import YAML
 using AxisArrays
-import QuantEcon
 
 path = Dolo.pkg_path
 @testset "testing model algos" begin
