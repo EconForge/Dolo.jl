@@ -1,7 +1,6 @@
 import Dolo
 import Distributions
 
-
 # test IID-Normal
 mu = [0.0, 0.0]
 Sigma = [1.0 0.0; 0.0 2.0]
@@ -14,8 +13,16 @@ dp = Dolo.discretize(d)
 # test VAR
 var = Dolo.VAR1([0.0,0.0],[0.99 0.0; 0.0 0.08],eye(2)*0.01)
 
+@time sim = Dolo.simulate(var, 500, 500)
 
-sim = Dolo.simulate(var, 5, 200)
+
+Tvalues = linspace(1, sim[Axis{:T}][end], sim[Axis{:T}][end])
+import PyPlot
+plt = PyPlot;
+fig = plt.figure("Markov Chaine")
+PyPlot.plot(Tvalues, sim[1,1,:])
+
+
 sim = Dolo.simulate(var, 5, 200, [0.8, 0.8])
 sim = Dolo.simulate(var, 1, 200, [0.8, 0.8]; stochastic=false)
 
@@ -26,13 +33,6 @@ irf = Dolo.response(var, [0.1, 0.3])
 irf = Dolo.response(var, [0.8, 0.8], [0.1, 0.3])
 irf = Dolo.response(var, [0.8, 0.8], 2)
 irf = Dolo.response(var)
-
-import PyPlot
-
-
-
-
-
 
 
 import temp

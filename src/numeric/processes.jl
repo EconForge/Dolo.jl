@@ -257,31 +257,29 @@ function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64};
                   stochastic::Bool=true, irf::Bool=false, e0::Vector{Float64}=zeros(0))
 
     n = size(var.mu, 1)
-    XN = zeros(N, T, n)
-    E = zeros(N, T, n)
+    XN = zeros(n, N, T)
+    E = zeros(n, N, T)
 
     if stochastic
         dist = QE.MVNSampler(zeros(n), var.Sigma)
         for jj in 1:N
-            E[jj, :, :] = rand(dist, T)'
+            E[:, jj, :] = rand(dist, T)
         end
     end
 
     if irf
-        E[:, 1, :] = e0
+        E[:, 1, :] = repmat(e0,1,N)
     end
 
     # Initial conditions
     for i in 1:N
-        XN[i, 1, :] = x0
-        for jj in 1:N, ii in 1:T-1
-            XN[jj, ii+1, :] = var.mu+var.R*(XN[jj, ii, :]-var.mu)+E[jj, ii, :]
+        XN[:, i, 1] = x0
+        for  ii in 1:T-1
+            XN[:, i, ii+1] = var.mu+var.R*(XN[:, i, ii]-var.mu)+E[:, i, ii]
         end
     end
-    XN = permutedims(XN, [3, 1, 2])
     AxisArray(XN, Axis{:V}(1:n), Axis{:N}(1:N), Axis{:T}(1:T))
 end
-
 
 function simulate(var::VAR1, N::Int, T::Int; kwargs...)
     return simulate(var, N, T, var.mu; kwargs...)
