@@ -1,6 +1,6 @@
 include("linter.jl")
 
-filename = Pkg.dir("Dolo","examples/models/rbc_dtcc_iid.yaml")
+filename = Pkg.dir("Dolo","linter/models/rbc_dtcc_iid.yaml")
 filename
 
 
@@ -16,6 +16,7 @@ errors, warnings = DoloLinter.check(filename)
 import DoloLinter: Location, LinterException
 node = DoloLinter.yaml_node_from_file(filename)
 
+node
 
 loc = Location(node.start_mark, node.end_mark)
 exc = LinterException("hi", loc, "<file>")

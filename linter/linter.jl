@@ -4,7 +4,7 @@ module DoloLinter
 
     import YAML
 
-    function yaml_node_from_file(fn::AbstractString)
+    function yaml_node_from_string(fn::AbstractString)
 
         # Didn't find how to access the top node more easily.
         #
@@ -32,7 +32,14 @@ module DoloLinter
         yml_types["tag:yaml.org,2002:map"] = ((c,n)->n)
 
 
-        return YAML.load_file(fn, yml_types)
+        return YAML.load(fn, yml_types)
+    end
+
+
+    function yaml_node_from_file(fn::AbstractString)
+        txt = open(readstring, fn)
+        txt = replace(txt, "\r", "")
+        return yaml_node_from_string(txt)
     end
 
     Base.getindex(d::YAML.SequenceNode, k::Integer) = d.value[k]
