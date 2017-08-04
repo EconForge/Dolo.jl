@@ -5,8 +5,8 @@ model_type: dtcc
 symbols:
 
    exogenous: [e_z]
-   states: [z, k]
-   controls: [n, i]
+   #states: [z, k]
+   #controls: [n, i]
    strange_params: [i,i]
    expectations: [m]
    values: [V]
