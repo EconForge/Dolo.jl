@@ -104,8 +104,8 @@ module DoloLinter
 
         ### so far, this is just an example
 
-        errors = []
-        warnings = []
+        errors = LinterWarning[]
+        warnings = LinterWarning[]
 
         # check symbol names:
         required_symbol_types = ["states", "controls", "exogenous", "parameters"]
@@ -114,13 +114,13 @@ module DoloLinter
         sym_names = keys(d[:symbols])
         for s in required_symbol_types
             if !(s in sym_names)
-                msg = string("Missing symbol of type: ", s)
+                msg = string("Missing symbol: '", s, "'")
                 push!(errors, LinterWarning(msg, get_loc(d[:symbols]), filename))
             end
         end
         for (i,sg) in enumerate(keys(d["symbols"]))
             if !(sg in cat(1,known_symbol_types))
-                msg = string("Unknown symbol type: ", sg)
+                msg = string("Unknown symbol: '", sg, "'")
                 # get precise location
                 loc = get_loc(d["symbols"].value[i][1])
                 push!(warnings, LinterWarning(msg, loc, filename))
@@ -135,5 +135,20 @@ module DoloLinter
         d = yaml_node_from_file(fn)
         errs, wars = check(d, fn)
     end
+
+   function format_human(errors::Vector{LinterWarning}, warnings::Vector{LinterWarning})
+     #errors = convert(Vector{LinterWarning}, errors)
+     #warnings = convert(Vector{LinterWarning}, warnings)
+       # ouptputs all errors then all warnings, line-by-line
+       # example from python's `dolo-lint --format=human examples/models/rbc_dtcc_iid.yaml`
+       # error: 12, 30: Symbol 'beta' already declared as 'parameters'. (pos (12, 16))
+      for err in cat(1,errors,warnings)
+        print_with_color(:light_red, "error: ")
+        println( err.msg, ", pos( ", err.loc.start_mark, " - ", err.loc.end_mark, " ) ")
+        #println( "error: " , err.msg, "  , pos( ", err.loc.start_mark, " - ", err.loc.end_mark, " ) ")
+
+
+      end
+   end
 
 end
