@@ -1,5 +1,5 @@
 include("linter.jl")
-import DoloLinter: check
+import DoloLinter: check, format_human
 
 
 using ArgParse
@@ -23,9 +23,7 @@ format = parsed_args["format"]
 errors, warnings = check(filename)
 
 if format == "human"
-    for err in cat(1,errors,warnings)
-        println(err)
-    end
+    return format_human(errors,warnings)
 else
-    throw(Exception("Format '", format, "' not implemented (yet)."))
+    println("Format '", format, "' not implemented (yet).")
 end
