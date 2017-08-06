@@ -3,7 +3,7 @@ name: Real Business Cycle
 model_type: dtcc
 
 symbols:
-
+   1param : bla
    exogenous: [e_z]
    #states: [z, k]
    #controls: [n, i]
