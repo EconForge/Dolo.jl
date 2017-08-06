@@ -95,11 +95,11 @@ optional_symbol_types = [ "values", "rewards", "expectations"]
 ```
 ***
 - categories
-	missing (error)
-	non-existing (warning)
+	- missing (error)
+	- non-existing (warning)
 - identifiers
-	each symbol should be a string
-	a valid identifier
+	- each symbol should be a string
+	- a valid identifier
 - no repetition
 
 ***
