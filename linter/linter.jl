@@ -87,20 +87,23 @@ module DoloLinter
     end
 
     type LinterWarning <: Exception
+        errvalue::AbstractString
+        errtype::AbstractString
         msg::AbstractString
         loc::Location
         src::AbstractString
+
     end
 
-    LinterException(msg::AbstractString, loc::Location) = LinterException(msg, loc, "<string>")
+    #LinterException(msg::AbstractString, loc::Location) = LinterException(msg, loc, "<string>")
 
-    LinterWarning(msg::AbstractString, loc::Location) = LinterWarning(msg, loc, "<string>")
+    LinterWarning(msg::AbstractString, loc::Location) = LinterWarning(msg, loc, "<string>", errtype)
 
     function get_loc(d)
         Location(d.start_mark, d.end_mark)
     end
 
-    function check(d::YAML.MappingNode, filename="<string>")
+    function check_symbols(d::YAML.MappingNode, filename="<string>")
 
         ### so far, this is just an example
 
@@ -112,43 +115,83 @@ module DoloLinter
         optional_symbol_types = [ "values", "rewards", "expectations"]
         known_symbol_types = cat(1, required_symbol_types, optional_symbol_types)
         sym_names = keys(d[:symbols])
+
         for s in required_symbol_types
             if !(s in sym_names)
-                msg = string("Missing symbol: '", s, "'")
-                push!(errors, LinterWarning(msg, get_loc(d[:symbols]), filename))
+                errvalue = string(s)
+                errtype = "Missing symbol"
+                msg = ""
+                loc = get_loc(d[:symbols])
+                # push!(errors/warnings, LinterWarning(errvalue, errtype, msg, loc, src)
+                push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
             end
         end
+
         for (i,sg) in enumerate(keys(d["symbols"]))
             if !(sg in cat(1,known_symbol_types))
-                msg = string("Unknown symbol: '", sg, "'")
+                errvalue = string(sg)
+                errtype = "Unknown symbol"
+                msg = ""
                 # get precise location
                 loc = get_loc(d["symbols"].value[i][1])
-                push!(warnings, LinterWarning(msg, loc, filename))
+                push!(warnings, LinterWarning(errvalue, errtype, msg, loc, filename))
             end
         end
+
+        for (i,sg) in enumerate(keys(d["symbols"]))
+            if  typeof(sg) != String
+                errvalue = string(sg)
+                errtype = "Invalid symbol"
+                msg = "symbol should be an alphanumeric string"
+                # get precise location
+                loc = get_loc(d["symbols"].value[i][1])
+                push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
+
+            elseif tryparse(Float64,string(sg)[1:1]).hasvalue == true
+                errvalue = string(sg)
+                errtype = "Invalid symbol"
+                msg = "symbol should not start with a number"
+                loc = get_loc(d["symbols"].value[i][1])
+                push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
+            end
+        end
+
 
         return [errors, warnings]
 
     end
 
-    function check(fn::AbstractString)
+    function check_symbols(fn::AbstractString)
         d = yaml_node_from_file(fn)
-        errs, wars = check(d, fn)
+        errs, wars = check_symbols(d, fn)
     end
 
-   function format_human(errors::Vector{LinterWarning}, warnings::Vector{LinterWarning})
-     #errors = convert(Vector{LinterWarning}, errors)
-     #warnings = convert(Vector{LinterWarning}, warnings)
-       # ouptputs all errors then all warnings, line-by-line
-       # example from python's `dolo-lint --format=human examples/models/rbc_dtcc_iid.yaml`
-       # error: 12, 30: Symbol 'beta' already declared as 'parameters'. (pos (12, 16))
-      for err in cat(1,errors,warnings)
-        print_with_color(:light_red, "error: ")
-        println( err.msg, ", pos( ", err.loc.start_mark, " - ", err.loc.end_mark, " ) ")
-        #println( "error: " , err.msg, "  , pos( ", err.loc.start_mark, " - ", err.loc.end_mark, " ) ")
+
+  function print_error(err::LinterWarning)
+    print_with_color(:light_red, "error: ")
+    print(err.errtype)
+    print_with_color(:light_green, " '",err.errvalue,"' ")
+    print(err.msg)
+    println("at '",err.src, "', pos(line ", string(err.loc.start_mark.line) , ")")
+  end
+
+  function print_warning(err::LinterWarning)
+    print_with_color(:light_blue, "warning: ")
+    print(err.errtype)
+    print_with_color(:light_green, " '",err.errvalue,"' ")
+    print(err.msg)
+    println("at '",err.src, "', pos(line ", string(err.loc.start_mark.line) , ")")
+  end
 
 
-      end
-   end
+  function format_human(errors::Vector{LinterWarning}, warnings::Vector{LinterWarning})
+    for err in cat(1,errors)
+        print_error(err)
+    end
+
+    for err in cat(1,warnings)
+        print_warning(err)
+    end
+  end
 
 end
