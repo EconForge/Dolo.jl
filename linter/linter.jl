@@ -142,10 +142,18 @@ module DoloLinter
             if  typeof(sg) != String
                 errvalue = string(sg)
                 errtype = "Invalid symbol"
-                msg = "symbol should be an alphanumeric string"
+                msg = "symbol should be a string"
                 # get precise location
                 loc = get_loc(d["symbols"].value[i][1])
                 push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
+
+            elseif all(isalnum, sg) == false
+              errvalue = string(sg)
+              errtype = "Invalid symbol"
+              msg = "symbol should be an 'alphanumeric' string"
+              # get precise location
+              loc = get_loc(d["symbols"].value[i][1])
+              push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
 
             elseif tryparse(Float64,string(sg)[1:1]).hasvalue == true
                 errvalue = string(sg)
@@ -171,16 +179,16 @@ module DoloLinter
     print_with_color(:light_red, "error: ")
     print(err.errtype)
     print_with_color(:light_green, " '",err.errvalue,"' ")
-    print(err.msg)
-    println("at '",err.src, "', pos(line ", string(err.loc.start_mark.line) , ")")
+    print(":" , err.msg)
+    println(" at '",err.src, "', pos(line ", string(err.loc.start_mark.line) , ")")
   end
 
   function print_warning(err::LinterWarning)
     print_with_color(:light_blue, "warning: ")
     print(err.errtype)
     print_with_color(:light_green, " '",err.errvalue,"' ")
-    print(err.msg)
-    println("at '",err.src, "', pos(line ", string(err.loc.start_mark.line) , ")")
+    print(":" , err.msg)
+    println(" at '",err.src, "', pos(line ", string(err.loc.start_mark.line) , ")")
   end
 
 
