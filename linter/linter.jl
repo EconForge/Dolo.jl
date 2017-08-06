@@ -127,6 +127,8 @@ module DoloLinter
             end
         end
 
+
+
         for (i,sg) in enumerate(keys(d["symbols"]))
             if !(sg in cat(1,known_symbol_types))
                 errvalue = string(sg)
@@ -138,30 +140,35 @@ module DoloLinter
             end
         end
 
-        for (i,sg) in enumerate(keys(d["symbols"]))
+        for (i,m) in enumerate(values(d["symbols"]))
+          for (j, n) in enumerate(values(d["symbols"])[i])
+            sg =n.value
+            #Do we really need to check this? 'String'
             if  typeof(sg) != String
                 errvalue = string(sg)
-                errtype = "Invalid symbol"
+                errtype = "Invalid identifier"
                 msg = "symbol should be a string"
                 # get precise location
                 loc = get_loc(d["symbols"].value[i][1])
                 push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
 
-            elseif all(isalnum, sg) == false
+            # Check if the symbol is alphanumeric except underscore
+            elseif match(r"^[a-zA-Z0-9_]*$",sg) == nothing
               errvalue = string(sg)
-              errtype = "Invalid symbol"
-              msg = "symbol should be an 'alphanumeric' string"
+              errtype = "Invalid identifier"
+              msg = "symbol should be an 'alphanumeric' string (except '__' or '_')"
               # get precise location
               loc = get_loc(d["symbols"].value[i][1])
               push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
 
             elseif tryparse(Float64,string(sg)[1:1]).hasvalue == true
                 errvalue = string(sg)
-                errtype = "Invalid symbol"
+                errtype = "Invalid identifier"
                 msg = "symbol should not start with a number"
                 loc = get_loc(d["symbols"].value[i][1])
                 push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
             end
+          end
         end
 
 
@@ -180,7 +187,7 @@ module DoloLinter
     print(err.errtype)
     print_with_color(:light_green, " '",err.errvalue,"' ")
     print(":" , err.msg)
-    println(" at '",err.src, "', pos(line ", string(err.loc.start_mark.line) , ")")
+    println(" [ '",err.src, "', pos(line ", string(err.loc.start_mark.line) , ")]")
   end
 
   function print_warning(err::LinterWarning)
@@ -188,7 +195,7 @@ module DoloLinter
     print(err.errtype)
     print_with_color(:light_green, " '",err.errvalue,"' ")
     print(":" , err.msg)
-    println(" at '",err.src, "', pos(line ", string(err.loc.start_mark.line) , ")")
+    println(" [ '",err.src, "', pos(line ", string(err.loc.start_mark.line) , ")]")
   end
 
 
