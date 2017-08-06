@@ -3,11 +3,13 @@ name: Real Business Cycle
 model_type: dtcc
 
 symbols:
-   1param : bla
+   para]m : a
+   [a,b] : c
    exogenous: [e_z]
    #states: [z, k]
-   #controls: [n, i]
+   controls: [n, i]
    strange_params: [i,i]
+   1param : b
    expectations: [m]
    values: [V]
    parameters: [beta, sigma, beta, eta, chi, delta, alpha, rho, zbar, sig_z]
