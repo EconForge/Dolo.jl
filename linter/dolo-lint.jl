@@ -1,5 +1,5 @@
 include("linter.jl")
-import DoloLinter: check, format_human
+import DoloLinter: check_symbols, format_human
 
 
 using ArgParse
@@ -20,7 +20,7 @@ parsed_args = parse_args(ARGS, s)
 filename = parsed_args["filename"]
 format = parsed_args["format"]
 
-errors, warnings = check(filename)
+errors, warnings = check_symbols(filename)
 
 if format == "human"
     return format_human(errors,warnings)
