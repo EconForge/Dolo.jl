@@ -103,6 +103,21 @@ module DoloLinter
         Location(d.start_mark, d.end_mark)
     end
 
+    function check_name(d)
+      if !("name" in keys(d)) || typeof(d["name"] ) != String || typeof(d["name"] ) == ""
+        return false
+      end
+    end
+
+
+    function check_symbol_validity(sym)
+      # Not sure if it is necesarry to check if that's a string: yaml structure saves by default as string(??)
+      if  typeof(sym) != String || match(r"^[a-zA-Z0-9_]*$",sym) == nothing || tryparse(Float64,string(sym)[1:1]).hasvalue || string(sym)[1:1] == "_"
+        return false
+      end
+    end
+
+
     function check_symbols(d::YAML.MappingNode, filename="<string>")
 
         ### so far, this is just an example
@@ -110,16 +125,39 @@ module DoloLinter
         errors = LinterWarning[]
         warnings = LinterWarning[]
 
+        # check model type and model name
+        if check_name(d) == false
+          msg = ""
+          errvalue = "name"
+          if !("name" in keys(d))
+            errtype = "Missing model section"
+            loc = get_loc(d)
+          else typeof(d["name"].value ) != String || d["name"].value == ""
+            errvalue = string(d["name"].value)
+            errtype = "Invalid model name"
+            loc = get_loc(d["name"])
+            msg = "Model name should be non-empty string"
+          # push!(errors/warnings, LinterWarning(errvalue, errtype, msg, loc, src)
+          end
+          push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
+        end
+
+
+
         # check symbol names:
         required_symbol_types = ["states", "controls", "exogenous", "parameters"]
         optional_symbol_types = [ "values", "rewards", "expectations"]
         known_symbol_types = cat(1, required_symbol_types, optional_symbol_types)
         sym_names = keys(d[:symbols])
+        syms = []
+        for sym in cat(1,values(d["symbols"])...)
+          push!(syms, sym.value)
+        end
 
         for s in required_symbol_types
             if !(s in sym_names)
                 errvalue = string(s)
-                errtype = "Missing symbol"
+                errtype = "Missing symbol type"
                 msg = ""
                 loc = get_loc(d[:symbols])
                 # push!(errors/warnings, LinterWarning(errvalue, errtype, msg, loc, src)
@@ -127,12 +165,10 @@ module DoloLinter
             end
         end
 
-
-
         for (i,sg) in enumerate(keys(d["symbols"]))
             if !(sg in cat(1,known_symbol_types))
                 errvalue = string(sg)
-                errtype = "Unknown symbol"
+                errtype = "Unknown symbol type"
                 msg = ""
                 # get precise location
                 loc = get_loc(d["symbols"].value[i][1])
@@ -142,31 +178,36 @@ module DoloLinter
 
         for (i,m) in enumerate(values(d["symbols"]))
           for (j, n) in enumerate(values(d["symbols"])[i])
-            sg =n.value
-            #Do we really need to check this? 'String'
-            if  typeof(sg) != String
-                errvalue = string(sg)
-                errtype = "Invalid identifier"
-                msg = "symbol should be a string"
-                # get precise location
-                loc = get_loc(d["symbols"].value[i][1])
-                push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
-
-            # Check if the symbol is alphanumeric except underscore
-            elseif match(r"^[a-zA-Z0-9_]*$",sg) == nothing
-              errvalue = string(sg)
-              errtype = "Invalid identifier"
-              msg = "symbol should be an 'alphanumeric' string (except '__' or '_')"
+            sym =n.value
+            if check_symbol_validity(sym) == false
+              errvalue = string(sym)
+              errtype = "Invalid symbol"
+              loc = get_loc(n)
               # get precise location
-              loc = get_loc(d["symbols"].value[i][1])
+              if  typeof(sym) != String
+                msg = "symbol should be a string"
+              elseif match(r"^[a-zA-Z0-9_]*$",sym) == nothing
+                msg = "symbol should be an 'alphanumeric' string"
+              elseif tryparse(Float64,string(sym)[1:1]).hasvalue || string(sym)[1:1] == "_"
+                msg = "symbol should not start with a number or an underscore"
+              end
               push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
+            end
+          end
+        end
 
-            elseif tryparse(Float64,string(sg)[1:1]).hasvalue == true
-                errvalue = string(sg)
-                errtype = "Invalid identifier"
-                msg = "symbol should not start with a number"
-                loc = get_loc(d["symbols"].value[i][1])
-                push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
+        for (i, snode) in enumerate(cat(1,values(d["symbols"])...))
+          ### define a seperate function here to use if already_declared(sym) == true ...
+          ## for now leave like this
+          if count(c -> c == snode.value, collect(syms)) > 1
+            floc = findfirst(syms, snode.value)
+            if i > floc
+              loc_first = get_loc(cat(1,values(d["symbols"])...)[floc])
+              loc = get_loc(snode)
+              errvalue = snode.value
+              errtype = "Invalid symbol"
+              msg = string(snode.value, " already declared at line ", string(loc_first.start_mark.line))
+              push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
             end
           end
         end
@@ -183,19 +224,30 @@ module DoloLinter
 
 
   function print_error(err::LinterWarning)
-    print_with_color(:light_red, "error: ")
+    print_with_color(:light_red, "error ")
+    print("at line ",err.loc.start_mark.line, ", column ",err.loc.start_mark.column, " : ")
     print(err.errtype)
-    print_with_color(:light_green, " '",err.errvalue,"' ")
-    print(":" , err.msg)
-    println(" [ '",err.src, "', pos(line ", string(err.loc.start_mark.line) , ")]")
+    if err.msg != ""
+      print_with_color(:light_green, " '",err.errvalue,"' ")
+      println(">> ", err.msg)
+    else
+      print_with_color(:light_green, " '",err.errvalue,"' ")
+      println()
+    end
+
   end
 
   function print_warning(err::LinterWarning)
-    print_with_color(:light_blue, "warning: ")
+    print_with_color(:light_blue, "warning ")
+    print("at line ",err.loc.start_mark.line, ", colummn ",err.loc.start_mark.column, " : ")
     print(err.errtype)
-    print_with_color(:light_green, " '",err.errvalue,"' ")
-    print(":" , err.msg)
-    println(" [ '",err.src, "', pos(line ", string(err.loc.start_mark.line) , ")]")
+    if err.msg != ""
+      print_with_color(:light_green, " '",err.errvalue,"' ")
+      println(">> ", err.msg)
+    else
+      print_with_color(:light_green, " '",err.errvalue,"' ")
+      println()
+    end
   end
 
 
