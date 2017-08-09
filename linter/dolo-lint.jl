@@ -1,6 +1,10 @@
-include("linter.jl")
-import DoloLinter: check_symbols, format_human
+__precompile__(true)
+module DoloLinter
+    import YAML
+    include("../src/linter.jl")
+end
 
+import DoloLinter: check_symbols, format_human
 
 using ArgParse
 
