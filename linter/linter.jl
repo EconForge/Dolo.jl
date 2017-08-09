@@ -148,14 +148,22 @@ module DoloLinter
         required_symbol_types = ["states", "controls", "exogenous", "parameters"]
         optional_symbol_types = [ "values", "rewards", "expectations"]
         known_symbol_types = cat(1, required_symbol_types, optional_symbol_types)
-        sym_names = keys(d[:symbols])
-        syms = []
-        for sym in cat(1,values(d["symbols"])...)
-          push!(syms, sym.value)
+
+        model_symbol_types = keys(d[:symbols])
+        model_symbols = []
+        model_symbols_vec = []
+        for key in keys(d[:symbols])
+            n = length(d[:symbols][key].value)
+            for i=1:n
+                # would be cooler to do directly for sym in syms[vg]
+                sym = d[:symbols][key].value[i]
+                push!(model_symbols_vec, (key, sym.value, sym))
+                push!(model_symbols, sym.value)
+            end
         end
 
         for s in required_symbol_types
-            if !(s in sym_names)
+            if !(s in model_symbol_types)
                 errvalue = string(s)
                 errtype = "Missing symbol type"
                 msg = ""
@@ -196,26 +204,70 @@ module DoloLinter
           end
         end
 
-        for (i, snode) in enumerate(cat(1,values(d["symbols"])...))
-          ### define a seperate function here to use if already_declared(sym) == true ...
-          ## for now leave like this
-          if count(c -> c == snode.value, collect(syms)) > 1
-            floc = findfirst(syms, snode.value)
+        for (i,symnode) in enumerate(model_symbols_vec)
+          if count(c -> c == symnode[2], collect(model_symbols)) > 1
+            floc = findfirst(model_symbols, symnode[2])
+            loc_first = get_loc(model_symbols_vec[floc][3])
             if i > floc
-              loc_first = get_loc(cat(1,values(d["symbols"])...)[floc])
-              loc = get_loc(snode)
-              errvalue = snode.value
+              errvalue = symnode[2]
               errtype = "Invalid symbol"
-              msg = string(snode.value, " already declared at line ", string(loc_first.start_mark.line))
+              loc = get_loc(symnode[3])
+              msg = string(symnode[2], " already declared as '", symnode[1] , " at line ",loc_first.start_mark.line, ", column ",loc_first.start_mark.column)
               push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
             end
           end
         end
 
+        for (i, sym) in enumerate(keys(d["definitions"]))
+
+          if check_symbol_validity(sym) == false
+            errvalue = string(sym)
+            errtype = "Invalid definition"
+            loc = get_loc(d["definitions"].value[i][1])
+            # get precise location
+            if  typeof(sym) != String
+              msg = "symbol should be a string"
+            elseif match(r"^[a-zA-Z0-9_]*$",sym) == nothing
+              msg = "symbol should be an 'alphanumeric' string"
+            elseif tryparse(Float64,string(sym)[1:1]).hasvalue || string(sym)[1:1] == "_"
+              msg = "symbol should not start with a number or an underscore"
+            end
+            push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
+          end
+
+        end
+
+        for (i, key) in enumerate(keys(d["definitions"]))
+          if (key in model_symbols)
+            floc = findfirst(model_symbols, key)
+            loc_first = get_loc(model_symbols_vec[floc][3])
+            declared_sym_type = model_symbols_vec[floc][1]
+
+            errvalue = key
+            errtype = "Invalid definition"
+            loc = get_loc(d["definitions"].value[i][1])
+            msg = string(key, "  already declared in symbols section as '", declared_sym_type , "' at line",loc_first.start_mark.line, ", column ",loc_first.start_mark.column)
+            push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
+
+          elseif count(c -> c == key, collect( keys(d["definitions"]))) > 1
+            floc = findfirst(keys(d["definitions"]), key)
+            loc_first = get_loc(d["definitions"].value[floc][1])
+            if i > floc
+              errvalue = key
+              errtype = "Invalid definition"
+              loc = get_loc(d["definitions"].value[i][1])
+              msg = string(key, " already declared in definitions section at line ",loc_first.start_mark.line, ", column ",loc_first.start_mark.column)
+              push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
+
+            end
+          end
+        end
 
         return [errors, warnings]
 
     end
+
+
 
     function check_symbols(fn::AbstractString)
         d = yaml_node_from_file(fn)

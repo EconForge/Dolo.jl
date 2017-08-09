@@ -7,108 +7,10 @@ filename
 import DoloLinter
 DL = DoloLinter
 
-
+model_symbol_types = keys(d[:symbols])
 errors, warnings = DoloLinter.check_symbols(filename)
 
 
-
-# import yaml structure:
-import DoloLinter: Location, LinterException, get_loc, LinterWarning
-node = DoloLinter.yaml_node_from_file(filename)
-
-function check_name(d)
-  if !("name" in keys(d)) || d["name"] == ""
-    return false
-  end
-end
-
-function check_model_type(d)
-  if !("model_type" in keys(d)) || d["model_type"] == ""
-    return false
-  end
-end
-
-d= node
-
-check_name(node)
-
-check_model_type(d)
-node[":type"]
-
-loc = Location(node.start_mark, node.end_mark)
-exc = LinterException("hi", loc, "<file>")
-
-
-#### Some trials to find the repeating value in symbols ###~
-# find
-# - First occurence (location, symbol type)
-# - Location of second or later occurence
-# - Push as error if symbol != first_occurence_symbol
-
-d = node
-
-for (i, key)  in keys(node["symbols"])
-  for (j, sd) in enumerate(node["symbols"]["key"].value)
-    if count(c -> c == sd.value, collect(syms)) > 1
-      floc = findfirst(syms, sd.value)
-      if i > floc
-        loc = get_loc(cat(1,values(d["symbols"])...)[floc])
-        loc_reoccur = get_loc(sd)
-        err_value = sd.value
-        errtype = "Invalid symbol"
-          msg = string(sd.value, "already declared")
-          push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
-        end
-    end
-  end
-
-end
-
-d = node
-syms = []
-for sym in cat(1,values(d["symbols"])...)
-  push!(syms, sym.value)
-end
-
-cat(1,values(d["symbols"])...)
-d["symbols"]
-cat(1,values(d["symbols"])...)
-
-for (i, sd) in enumerate(cat(1,values(d["symbols"])...))
-  if count(c -> c == sd.value, collect(syms)) > 1
-    floc = findfirst(syms, sd.value)
-    if i > floc
-      loc_first = get_loc(cat(1,values(d["symbols"])...)[floc])
-      loc = get_loc(sd)
-      errvalue = sd.value
-      errtype = "Invalid symbol"
-      msg = string(sd.value, " already declared at line ", string(loc_first.start_mark.line))
-      push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
-    end
-  end
-end
-
-keys(d["symbols"])
-cat(1,(d["symbols"]["parameters"].value)...)
-values(d["symbols"])
-values(d["symbols"])
-cat(1,values(d["symbols"])...)
-symnodef
-
-for (i ,key) in enumerate(keys(d["symbols"]))
-  for (j ,symnode) in enumerate(d["symbols"][key].value)
-    if count(c -> c == symnode.value, collect(syms)) > 1
-      floc = findfirst(syms, symnode.value)
-      if symnode != cat(1,values(d["symbols"])...)[floc]
-        loc = get_loc(symnode)
-        errvalue = symnode.value
-        errtype = "Invalid symbol"
-        msg = string(symnode, " already declared in section ", )
-        push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
-      end
-    end
-  end
-end
 
 function format_human(exc::Union{LinterException, LinterWarning})
     # Output should be a nice one line human-readable strings

@@ -13,8 +13,10 @@ symbols:
 definitions:
     y: exp(z)*k^alpha*n^(1-alpha)
     c: y - i
-    rk: alpha*y/k
-    w: (1-alpha)*y/n
+    rk%: alpha*y/k
+    _w: (1-alpha)*y/n
+    c: hello
+    n: alpha/beta
 
 equations:
 
