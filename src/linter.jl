@@ -97,7 +97,7 @@ function get_loc(d)
 end
 
 function check_name(d)
-  if !("name" in keys(d)) || typeof(d["name"] ) != String || typeof(d["name"] ) == ""
+  if !("name" in keys(d)) || typeof(d["name"].value ) != String || d["name"].value == ""
     return false
   end
 end
@@ -110,6 +110,174 @@ function check_symbol_validity(sym)
   end
 end
 
+#function check_equations(d::YAML.MappingNode, filename="<string>")
+#Known_equation_types -> ["transition", "arbitrage", "value", "felicity", "expectation"]
+#end
+
+function check_model_sections(d::YAML.MappingNode, filename="<string>")
+  errors = LinterWarning[]
+  warnings = LinterWarning[]
+
+  # Can add other reauired models sections: symbols, equations ...
+  if check_name(d) == false
+    if !("name" in keys(d))
+      msg = ""
+      errvalue = "name"
+      errtype = "Missing model part"
+      loc = get_loc(d)
+    elseif typeof(d["name"].value ) != String || d["name"].value == ""
+      errvalue = string(d["name"].value)
+      errtype = "Invalid model name"
+      loc = get_loc(d["name"])
+      msg = "Model name should be non-empty string"
+          # push!(errors/warnings, LinterWarning(errvalue, errtype, msg, loc, src)
+    end
+
+    push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
+
+  end
+
+  return [errors, warnings]
+end
+
+function check_calibration(d::YAML.MappingNode, filename="<string>")
+  errors = LinterWarning[]
+  warnings = LinterWarning[]
+
+  model_symbol_types = keys(d[:symbols])
+  model_symbols = []
+  model_symbols_vec = []
+  for key in keys(d[:symbols])
+      n = length(d[:symbols][key].value)
+      for i=1:n
+          # would be cooler to do directly for sym in syms[vg]
+          sym = d[:symbols][key].value[i]
+          push!(model_symbols_vec, (key, sym.value, sym))
+          push!(model_symbols, sym.value)
+      end
+  end
+
+
+  for (i, key) in enumerate(keys(d["calibration"]))
+    if !(key in model_symbols)
+
+      errvalue = key
+      errtype = "Calibration not in symbols"
+      loc = get_loc(d["calibration"].value[i][1])
+      msg = string(key, " is not declared in the symbols section ")
+      push!(warnings, LinterWarning(errvalue, errtype, msg, loc, filename))
+
+    elseif count(c -> c == key, collect( keys(d["calibration"]))) > 1
+      floc = findfirst(keys(d["calibration"]), key)
+      loc_first = get_loc(d["calibration"].value[floc][1])
+      if i > floc
+        errvalue = key
+        errtype = "Invalid calibration"
+        loc = get_loc(d["calibration"].value[i][1])
+        msg = string(key, " already declared in calibration section at line ",loc_first.start_mark.line, ", column ",loc_first.start_mark.column)
+        push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
+
+      end
+    end
+
+
+
+  end
+
+  return [errors, warnings]
+end
+
+function check_equations(d::YAML.MappingNode, filename="<string>")
+  errors = LinterWarning[]
+  warnings = LinterWarning[]
+
+  # check symbol names:
+  required_equation_types = ["transition"]
+  optional_equation_types = ["arbitrage", "value", "felicity", "expectation"]
+  known_equation_types = cat(1, required_equation_types, optional_equation_types)
+
+  model_equation_types = keys(d[:equations])
+
+  node_transition = YAML.ScalarNode[]
+  node_arbitrage = YAML.ScalarNode[]
+  for eq in d[:equations].value
+    if eq[1].value == "transition"
+      node_transition = eq[1]
+    elseif eq[1].value == "arbitrage"
+      node_arbitrage = eq[1]
+    end
+
+  end
+
+
+
+  for s in required_equation_types
+      if !(s in model_equation_types)
+          errvalue = string(s)
+          errtype = "Missing equation type"
+          msg = ""
+          loc = get_loc(d[:equations])
+          # push!(errors/warnings, LinterWarning(errvalue, errtype, msg, loc, src)
+          push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
+      end
+  end
+
+  for (i,sg) in enumerate(keys(d["equations"]))
+      if !(sg in cat(1,known_equation_types))
+          errvalue = string(sg)
+          errtype = "Unknown equation type"
+          msg = ""
+          # get precise location
+          loc = get_loc(d["equations"].value[i][1])
+          push!(warnings, LinterWarning(errvalue, errtype, msg, loc, filename))
+      end
+  end
+
+
+  if ("transition" in model_equation_types) && ("states" in keys(d[:symbols]))
+    n_transition = length(d[:equations]["transition"].value)
+    n_states = length(d[:symbols]["states"].value)
+
+
+
+    if n_transition != n_states
+
+      errvalue = string(node_transition.value)
+      errtype = "Invalid number of equations"
+      msg = "Number of transition equations should be equal to number of states"
+      # get precise location
+      loc = get_loc(node_transition)
+
+      push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
+    end
+
+
+
+
+  end
+
+
+  if ("arbitrage" in model_equation_types) && ("controls" in keys(d[:symbols]))
+    n_arbitrage = length(d[:equations]["arbitrage"].value)
+    n_controls = length(d[:symbols]["controls"].value)
+
+
+    if n_arbitrage != n_controls
+      errvalue = string(node_arbitrage.value)
+      errtype = "Invalid number of equations"
+      msg = "Number of arbitrage equations should be equal to number of controls"
+      # get precise location
+      loc = get_loc(node_arbitrage.value)
+      push!(warnings, LinterWarning(errvalue, errtype, msg, loc, filename))
+    end
+
+
+  end
+
+  return [errors, warnings]
+end
+
+
 
 function check_symbols(d::YAML.MappingNode, filename="<string>")
 
@@ -117,24 +285,6 @@ function check_symbols(d::YAML.MappingNode, filename="<string>")
 
     errors = LinterWarning[]
     warnings = LinterWarning[]
-
-    # check model type and model name
-    if check_name(d) == false
-      msg = ""
-      errvalue = "name"
-      if !("name" in keys(d))
-        errtype = "Missing model section"
-        loc = get_loc(d)
-      else typeof(d["name"].value ) != String || d["name"].value == ""
-        errvalue = string(d["name"].value)
-        errtype = "Invalid model name"
-        loc = get_loc(d["name"])
-        msg = "Model name should be non-empty string"
-      # push!(errors/warnings, LinterWarning(errvalue, errtype, msg, loc, src)
-      end
-      push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
-    end
-
 
 
     # check symbol names:
@@ -154,6 +304,9 @@ function check_symbols(d::YAML.MappingNode, filename="<string>")
             push!(model_symbols, sym.value)
         end
     end
+
+
+
 
     for s in required_symbol_types
         if !(s in model_symbol_types)
@@ -256,10 +409,32 @@ function check_symbols(d::YAML.MappingNode, filename="<string>")
       end
     end
 
+    for (i,symnode) in enumerate(model_symbols_vec)
+      if !(symnode[2] in keys(d["calibration"]))
+          errvalue = symnode[2]
+          errtype = "Symbol not calibrated"
+          loc = get_loc(symnode[3])
+          msg = string(symnode[2], " not found in calibration section")
+          push!(warnings, LinterWarning(errvalue, errtype, msg, loc, filename))
+      end
+    end
+
     return [errors, warnings]
 
 end
 
+
+
+
+function check_equations(fn::AbstractString)
+    d = yaml_node_from_file(fn)
+    errs, wars = check_equations(d, fn)
+end
+
+function check_calibration(fn::AbstractString)
+    d = yaml_node_from_file(fn)
+    errs, wars = check_calibration(d, fn)
+end
 
 
 function check_symbols(fn::AbstractString)
@@ -267,6 +442,15 @@ function check_symbols(fn::AbstractString)
     errs, wars = check_symbols(d, fn)
 end
 
+function check_model_sections(fn::AbstractString)
+    d = yaml_node_from_file(fn)
+    errs, wars = check_model_sections(d, fn)
+end
+
+function check_model(fn::AbstractString)
+    d = yaml_node_from_file(fn)
+    errs, wars = check_model(d, fn)
+end
 
 function print_error(err::LinterWarning)
 print_with_color(:light_red, "error ")
@@ -305,6 +489,8 @@ for err in cat(1,warnings)
     print_warning(err)
 end
 end
+
+
 
 function lint(filename::AbstractString; format=:human)
 

@@ -1,8 +1,10 @@
+name:
+
 model_type: dtcc
 
 symbols:
    exogenous: [e_z]
-   #states: [z, k]
+   states: [z, k]
    controls: [n, i*$]
    strange_params: [i, beta]
    expectations: [15b]
@@ -26,7 +28,7 @@ equations:
 
 
     transition:
-        - z = rho*z(-1) + e_z
+        #- z = rho*z(-1) + e_z
         - k = (1-delta)*k(-1) + i(-1)
 
     value:
@@ -53,6 +55,7 @@ calibration:
     sigma: 5
     eta: 1
     sig_z: 0.016
+    alpha: 0.55
     zbar: 0.0
     chi : w/c^sigma/n^eta
     c_i: 1.5
