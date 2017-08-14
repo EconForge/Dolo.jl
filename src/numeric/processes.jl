@@ -154,8 +154,6 @@ function simulate_values(process::DiscreteMarkovProcess, N::Int, T::Int, i0::Int
     AxisArray(out_values, Axis{:n}(1:n_values), Axis{:T}(1:T), Axis{:N}(1:N))
 end
 
-discretize(dmp::DiscreteMarkovProcess) = dmp
-
 
 # VAR 1
 
