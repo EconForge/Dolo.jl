@@ -501,5 +501,5 @@ function lint(filename::AbstractString; format=:human)
   else
       println("Format '", format, "' not implemented (yet).")
   end
-
+  return cat(1, errors, warnings)
 end
