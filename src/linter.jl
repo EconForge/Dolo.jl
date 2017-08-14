@@ -105,7 +105,7 @@ end
 
 function check_symbol_validity(sym)
   # Not sure if it is necesarry to check if that's a string: yaml structure saves by default as string(??)
-  if  typeof(sym) != String || match(r"^[a-zA-Z0-9_]*$",sym) == nothing || tryparse(Float64,string(sym)[1:1]).hasvalue || string(sym)[1:1] == "_"
+  if  typeof(sym) != String || match(r"^[a-zA-Z0-9_]*$",sym) == nothing || string(sym)[1:1] == "_"
     return false
   end
 end
