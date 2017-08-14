@@ -342,7 +342,7 @@ function check_symbols(d::YAML.MappingNode, filename="<string>")
             msg = "symbol should be a string"
           elseif match(r"^[a-zA-Z0-9_]*$",sym) == nothing
             msg = "symbol should be an 'alphanumeric' string"
-          elseif tryparse(Float64,string(sym)[1:1]).hasvalue || string(sym)[1:1] == "_"
+          elseif string(sym)[1:1] == "_"
             msg = "symbol should not start with a number or an underscore"
           end
           push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
@@ -375,7 +375,7 @@ function check_symbols(d::YAML.MappingNode, filename="<string>")
           msg = "symbol should be a string"
         elseif match(r"^[a-zA-Z0-9_]*$",sym) == nothing
           msg = "symbol should be an 'alphanumeric' string"
-        elseif tryparse(Float64,string(sym)[1:1]).hasvalue || string(sym)[1:1] == "_"
+        elseif string(sym)[1:1] == "_"
           msg = "symbol should not start with a number or an underscore"
         end
         push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
