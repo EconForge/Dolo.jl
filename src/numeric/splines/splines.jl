@@ -1,7 +1,7 @@
 module splines
 
 export filter_coeffs, interpolant_cspline, filter_coeffs
-export eval_UC_spline, eval_UC_spline_G, eval_UC_multi_spline, eval_UC_multi_spline!
+export eval_UC_spline, eval_UC_spline_G, eval_UC_multi_spline, eval_UC_spline!
 
 include("csplines.jl")
 include("splines_filter.jl")

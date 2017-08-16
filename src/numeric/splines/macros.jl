@@ -109,7 +109,7 @@ function create_local_parameters(d)
     lines = []
     for i=1:d
         bl = quote
-            $(U("x",i)) = S[n,$i]
+            $(U("x",i)) = S[n][$i]
             $(U("u",i)) = ($(U("x",i)) - $(U("start",i)))*$(U("dinv",i))
             $(U("i",i)) = (floor(Int,$(U("u",i)) ))
             $(U("i",i)) = max( min($(U("i",i)),$(U("M",i))-2), 0 )
@@ -173,7 +173,7 @@ end
 
 function create_function_multi_spline(d,extrap="natural")
     expr = quote
-        function $(Symbol(string("eval_UC_multi_spline_",d,"d")))( a, b, orders, C, S, V, Ad, dAd)
+        function eval_UC_spline!(a, b, orders, C, S::Vector{SVector{$d,Float64}}, V::Vector{SVector{$d,Float64}})
             K = size(C,1)
             $(create_parameters(d)...)
             N = size(S,1)
@@ -181,17 +181,10 @@ function create_function_multi_spline(d,extrap="natural")
             for n=1:N
                 $(create_local_parameters(d)...)
                 $(create_Phi(d,extrap,false)...)
-                for k=1:K
-                    V[k,n] = $( tensor_prod([string("Phi_",i) for i=1:d], Int64[], true) )
-                end
-
+                V[n] = $( tensor_prod([string("Phi_",i) for i=1:d], Int64[], false) )
             end
             # )
         end
     end
     return expr
 end
-
-
-
-create_function_multi_spline(1)

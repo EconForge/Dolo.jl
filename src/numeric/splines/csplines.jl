@@ -1,5 +1,7 @@
 include("macros.jl")
 
+using StaticArrays
+
 Ad = [
    [-1.0/6.0  3.0/6.0 -3.0/6.0 1.0/6.0];
    [ 3.0/6.0 -6.0/6.0  0.0/6.0 4.0/6.0];
@@ -20,40 +22,44 @@ d2Ad = [
    [ 0.0 0.0 -3.0  1.0];
    [ 0.0 0.0  1.0  0.0]
 ]
+#
+# function eval_UC_spline(smin, smax, orders, C, S)
+#
+#     d = size(S,2)
+#     N = size(S,1)
+#
+#     vals = zeros(N)
+#     eval_UC_spline!(smin, smax, orders, C, S, vals)
+#     return vals
+#
+# end
+#
+# function eval_UC_spline_G(a, b, orders, C, S)
+#
+#     d = size(S,2)
+#     N = size(S,1)
+#
+#     vals = zeros(N)
+#     grad = zeros(N,d)
+#
+#     eval_UC_spline_G!(a, b, orders, C, S, vals, grad)
+#
+#     return (vals, grad)
+#
+# end
 
-function eval_UC_spline(smin, smax, orders, C, S)
+function eval_UC_spline!(a, b, orders, C::Array{SVector{n_x,Float64}}, S::Matrix) where n_x
 
-    d = size(S,2)
-    N = size(S,1)
+    d = size(S,1)
+    N = size(S,2)
 
-    vals = zeros(N)
-    eval_UC_spline!(smin, smax, orders, C, S, vals)
-    return vals
+    V = zeros(n_x,N)
 
-end
+    SS = reinterpret(SVector{d,Float64}, S, (N,))
+    VV = reinterpret(SVector{n_x,Float64}, V, (N,))
+    eval_UC_spline!(a, b, orders, C, SS, VV)
 
-function eval_UC_spline_G(a, b, orders, C, S)
-
-    d = size(S,2)
-    N = size(S,1)
-
-    vals = zeros(N)
-    grad = zeros(N,d)
-
-    eval_UC_spline_G!(a, b, orders, C, S, vals, grad)
-
-    return (vals, grad)
-
-end
-
-function eval_UC_multi_spline(a, b, orders, C, S)
-
-    d = size(S,2)
-    N = size(S,1)
-    K = size(C,1) # number of splines to evaluate
-    vals = zeros(K,N)
-    eval_UC_multi_spline!(a, b, orders, C, S, vals)
-    return vals
+    return V
 
 end
 
@@ -74,23 +80,22 @@ end
 # with this approach functions don't get cached either (yet)
 # but it's cleaner
 
-@generated function eval_UC_spline!(a, b, orders, C, S, V)
-    d = C.parameters[2]
-    # the speed penalty of extrapolating points when iterating over point
-    # seems very small so this is the default
-    fun = (create_function(d,"natural"))
-    return fun.args[2].args[2]
-end
+# @generated function eval_UC_spline!(a, b, orders, C, S, V)
+#     d = C.parameters[2]
+#     # the speed penalty of extrapolating points when iterating over point
+#     # seems very small so this is the default
+#     fun = (create_function(d,"natural"))
+#     return fun.args[2].args[2]
+# end
+#
+#
+# @generated function eval_UC_spline_G!(a, b, orders, C, S, V, dV)
+#     d = C.parameters[2]
+#     fun = (create_function_with_gradient(d,"natural"))
+#     return fun.args[2].args[2]
+# end
 
-
-@generated function eval_UC_spline_G!(a, b, orders, C, S, V, dV)
-    d = C.parameters[2]
-    fun = (create_function_with_gradient(d,"natural"))
-    return fun.args[2].args[2]
-end
-
-@generated function eval_UC_multi_spline!(a, b, orders, C, S, V)
-    d = C.parameters[2]-1 # first dimension of C indexes the splines
+@generated function eval_UC_spline!(a, b, orders, C, S::Vector{SVector{d,Float64}}, V) where d
     # the speed penalty of extrapolating points when iterating over point
     # seems very small so this is the default
     fun = (create_function_multi_spline(d,"natural"))
