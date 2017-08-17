@@ -396,7 +396,7 @@ end
 
 
 # compatibility names
-@compat const AR1 = VAR1
-@compat const MarkovChain = DiscreteMarkovProcess
-@compat const Normal = MvNormal
-@compat const GDP = DiscretizedProcess
+const AR1 = VAR1
+const MarkovChain = DiscreteMarkovProcess
+const Normal = MvNormal
+const GDP = DiscretizedProcess

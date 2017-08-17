@@ -22,7 +22,7 @@ GroupedCalibration(pairs::Pair{Symbol,Vector{Float64}}...) =
 
 # use let block so `Calib` isn't a member of the Dolo module
 let
-    @compat const Calib = Union{FlatCalibration,GroupedCalibration}
+    const Calib = Union{FlatCalibration,GroupedCalibration}
 
     Base.getindex(c::Calib, n::Symbol) = c.d[n]
     Base.getindex(c::Calib, nms::Symbol...) = [c[n] for n in nms]

@@ -15,7 +15,7 @@ function Base.show(io::IO, dr::AbstractDecisionRule)
 end
 
 
-@compat type ConstantDecisionRule <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
+type ConstantDecisionRule <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
     constants::Vector{Float64}
 end
 
@@ -29,7 +29,7 @@ end
 (dr::ConstantDecisionRule)(i::Int, j::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
 
 
-@compat type BiTaylorExpansion <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
+type BiTaylorExpansion <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
     m0::Vector{Float64}
     s0::Vector{Float64}
     x0::Vector{Float64}
@@ -206,7 +206,7 @@ type CachedDecisionRule{T,S}
     process::S
 end
 
-@compat const AbstractADecisionRule = Union{DecisionRule,CachedDecisionRule}
+const AbstractADecisionRule = Union{DecisionRule,CachedDecisionRule}
 
 CachedDecisionRule(process::AbstractDiscretizedProcess, grid::Grid, n_x::Int) =
     CachedDecisionRule(DecisionRule(process.grid, grid, n_x), process)
