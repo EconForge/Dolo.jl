@@ -45,11 +45,11 @@ end
 # Cubic spline DecisionRules #
 # -------------------------- #
 
-type DecisionRule{S<:Grid,T<:Grid,TCoef} <: AbstractDecisionRule{S,T}
+type DecisionRule{S<:Grid,T<:Grid,Titp} <: AbstractDecisionRule{S,T}
     grid_exo::S
     grid_endo::T
     n_x::Int # number of values (could be a method if there was a nice method name)
-    coefficients::TCoef
+    itp::Titp
 end
 
 function set_values!(dr::DecisionRule{EmptyGrid}, values::Array{Float64,2})
@@ -76,14 +76,14 @@ function set_values!(dr::CubicSplineDR{EmptyGrid, CartesianGrid}, values::Array{
     a = dr.grid_endo.min
     b = dr.grid_endo.max
     orders = dr.grid_endo.n
-    dr.coefficients = [filter_mcoeffs(a, b, orders, v) for v in values]
+    dr.itp = [filter_mcoeffs(a, b, orders, v) for v in values]
 end
 
 function evaluate(dr::CubicSplineDR{EmptyGrid, CartesianGrid}, z::AbstractMatrix)
     a = dr.grid_endo.min
     b = dr.grid_endo.max
     n = dr.grid_endo.n
-    cc = dr.coefficients[1]
+    cc = dr.itp[1]
     res = splines.eval_UC_multi_spline(a, b, n, cc, z)'
     return res
 end
@@ -97,13 +97,13 @@ end
 
 function set_values!(dr::SmolyakDR{EmptyGrid}, values::Vector{Matrix{Float64}})
     for i in 1:length(values)
-        A_ldiv_B!(dr.coefficients[i], dr.grid_endo.B_nodes, values[i])
+        A_ldiv_B!(dr.itp[i], dr.grid_endo.B_nodes, values[i])
     end
 end
 
 function evaluate(dr::SmolyakDR{EmptyGrid}, z::AbstractMatrix)
     B = BM.evalbase(dr.grid_endo.smol_params, z)
-    B*dr.coefficients[1]
+    B*dr.itp[1]
 end
 
 ## Complete polynomials
@@ -117,13 +117,13 @@ end
 function set_values!(dr::CompletePolyDR{EmptyGrid}, values::Vector{Matrix{Float64}})
     B_grid = BM.complete_polynomial(nodes(dr.grid_endo), 3)
     for i in 1:length(values)
-        A_ldiv_B!(dr.coefficients[i], B_grid, values[i])
+        A_ldiv_B!(dr.itp[i], B_grid, values[i])
     end
 end
 
 function evaluate(dr::CompletePolyDR{EmptyGrid}, z::AbstractMatrix)
     B = BM.complete_polynomial(z, 3)
-    B*dr.coefficients[1]
+    B*dr.itp[1]
 end
 
 ## Common routines for grid_exo <: EmptyGrid
@@ -169,14 +169,14 @@ function set_values!(dr::Dolo.AbstractDecisionRule{Dolo.CartesianGrid, Dolo.Cart
         vv[n, :, :] = values[n]
     end
     vv = reshape(vv, prod(dr.grid_endo.n)*prod(dr.grid_exo.n), n_x)
-    dr.coefficients = [Dolo.filter_mcoeffs(a, b, orders, vv)]
+    dr.itp = [Dolo.filter_mcoeffs(a, b, orders, vv)]
 end
 
 function evaluate(dr::AbstractDecisionRule{CartesianGrid,CartesianGrid}, z::AbstractMatrix)
     a = cat(1, dr.grid_exo.min, dr.grid_endo.min)
     b = cat(1, dr.grid_exo.max, dr.grid_endo.max)
     n = cat(1, dr.grid_exo.n, dr.grid_endo.n)
-    cc = dr.coefficients[1]
+    cc = dr.itp[1]
     res = splines.eval_UC_multi_spline(a, b, n, cc, z)'
     return res
 end
@@ -207,7 +207,7 @@ function set_values!(dr::CubicSplineDR{UnstructuredGrid,CartesianGrid}, values::
     a = dr.grid_endo.min
     b = dr.grid_endo.max
     orders = dr.grid_endo.n
-    dr.coefficients = [filter_mcoeffs(a, b, orders, vals) for vals in values]
+    dr.itp = [filter_mcoeffs(a, b, orders, vals) for vals in values]
 end
 
 
@@ -215,7 +215,7 @@ function evaluate(dr::CubicSplineDR{UnstructuredGrid,CartesianGrid}, i::Int, z::
     a = dr.grid_endo.min
     b = dr.grid_endo.max
     n = dr.grid_endo.n
-    cc = dr.coefficients[i]
+    cc = dr.itp[i]
     res = splines.eval_UC_multi_spline(a, b, n, cc, z)'
     return res
 end
@@ -229,12 +229,12 @@ end
 
 function set_values!(dr::SmolyakDR{UnstructuredGrid}, values::Vector{Matrix{Float64}})
     for i in 1:length(values)
-        A_ldiv_B!(dr.coefficients[i], dr.grid_endo.B_nodes, values[i])
+        A_ldiv_B!(dr.itp[i], dr.grid_endo.B_nodes, values[i])
     end
 end
 
 function evaluate(dr::SmolyakDR{UnstructuredGrid}, i::Int, z::AbstractMatrix)
-    BM.evalbase(dr.grid_endo.smol_params, z) * dr.coefficients[i]
+    BM.evalbase(dr.grid_endo.smol_params, z) * dr.itp[i]
 end
 
 ## Complete polynomials
@@ -251,13 +251,13 @@ end
 function set_values!(dr::CompletePolyDR{UnstructuredGrid}, values::Vector{Matrix{Float64}})
     B_grid = BM.complete_polynomial(nodes(dr.grid_endo), 3)
     for i in 1:length(values)
-        A_ldiv_B!(dr.coefficients[i], B_grid, values[i])
+        A_ldiv_B!(dr.itp[i], B_grid, values[i])
     end
 end
 
 function evaluate(dr::CompletePolyDR{UnstructuredGrid}, i::Int, z::AbstractMatrix)
     B = BM.complete_polynomial(z, 3)
-    B*dr.coefficients[i]
+    B*dr.itp[i]
 end
 
 ## Common routines for grid_exo <: UnstructuredGrid
