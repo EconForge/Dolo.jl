@@ -26,7 +26,7 @@ path = Dolo.pkg_path
         z = sim[Axis{:V}(:z)]
         y = sim[Axis{:V}(:y)]
         alpha= model_mc.calibration.flat[:alpha]
-        exp(z).*k.^alpha.*n.^(1-alpha)== y
+        exp.(z).*k.^alpha.*n.^(1-alpha)== y
 
         @test true
     end

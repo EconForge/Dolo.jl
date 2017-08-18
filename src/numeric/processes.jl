@@ -37,7 +37,7 @@ discretize(::Type{DiscreteMarkovProcess}, mp::DiscreteMarkovProcess) = mp
 discretize(mp::DiscreteMarkovProcess) = mp
 
 DiscreteMarkovProcess(transitions::Matrix{Float64}, values::Matrix{Float64}) =
-    DiscreteMarkovProcess(UnstructuredGrid(values), transitions, values)
+    DiscreteMarkovProcess(UnstructuredGrid{size(values,2)}(values), transitions, values)
 
 DiscreteMarkovProcess(grid::UnstructuredGrid, transitions::Matrix{Float64}, values::Matrix{Float64}) =
     DiscreteMarkovProcess(grid, transitions, values, 1)
@@ -70,7 +70,7 @@ type DiscretizedIIDProcess <: AbstractDiscretizedProcess
     integration_weights::Vector{Float64}
 end
 
-DiscretizedIIDProcess(x, w) = DiscretizedIIDProcess(EmptyGrid(), x, w)
+DiscretizedIIDProcess(x, w) = DiscretizedIIDProcess(EmptyGrid{size(x,2)}(), x, w)
 
 n_nodes(dp::DiscretizedIIDProcess) = 0
 n_inodes(dp::DiscretizedIIDProcess, i::Int) = size(dp.integration_nodes, 1)
@@ -197,7 +197,7 @@ function discretize(var::VAR1, n_states::Array{Int,1}, n_integration::Array{Int,
     sig = diag(S)
     min = var.mu - n_std*sqrt.(sig)
     max = var.mu + n_std*sqrt.(sig)
-    grid = CartesianGrid(min,max,n_states)
+    grid = CartesianGrid{length(min)}(min,max,n_states)
     # discretize innovations
     x,w = QE.qnwnorm(n_integration, zeros(size(var.Sigma,1)), var.Sigma)
     integration_nodes = [ cat(1,[(M + R*(node(grid, i)-M) + x[j,:])' for j=1:size(x,1)]...) for i in 1:n_nodes(grid)]

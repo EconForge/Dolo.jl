@@ -150,13 +150,13 @@ function get_grid(model::ASModel; options=Dict())
     end
     if grid_dict[:tag] == :Cartesian
         orders = get(grid_dict, :orders, [20 for i=1:d])
-        grid = CartesianGrid(domain.min, domain.max, orders)
+        grid = CartesianGrid{d}(domain.min, domain.max, orders)
     elseif grid_dict[:tag] == :Smolyak
         mu = get(grid_dict, :mu, 3)
-        grid = SmolyakGrid(domain.min, domain.max, mu)
+        grid = SmolyakGrid{d}(domain.min, domain.max, mu)
     elseif grid_dict[:tag] == :Random
         n = get(grid_dict, :N, 200)
-        grid = RandomGrid(domain.min, domain.max, n)
+        grid = RandomGrid{d}(domain.min, domain.max, n)
     else
         error("Unknown grid type.")
     end
