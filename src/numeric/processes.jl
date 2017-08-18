@@ -37,7 +37,7 @@ discretize(::Type{DiscreteMarkovProcess}, mp::DiscreteMarkovProcess) = mp
 discretize(mp::DiscreteMarkovProcess) = mp
 
 DiscreteMarkovProcess(transitions::Matrix{Float64}, values::Matrix{Float64}) =
-    DiscreteMarkovProcess(UnstructuredGrid(values), transitions, values)
+    DiscreteMarkovProcess(UnstructuredGrid{size(values,2)}(values), transitions, values)
 
 DiscreteMarkovProcess(grid::UnstructuredGrid, transitions::Matrix{Float64}, values::Matrix{Float64}) =
     DiscreteMarkovProcess(grid, transitions, values, 1)
