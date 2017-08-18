@@ -1,15 +1,12 @@
-@compat const CompletePolyDR{S<:Grid} = DecisionRule{S,<:RandomGrid,Vector{Matrix{Float64}}}
+@compat const CompletePolyDR{S<:Grid,nx} = DecisionRule{S,<:RandomGrid,nx,Vector{Matrix{Float64}}}
 
 #####
 ##### 1-argument decision rule
 #####
 
-## Complete polynomials
-
-function DecisionRule(grid_exo::EmptyGrid, grid_endo::RandomGrid, n_x::Int)
-    n_s = size(nodes(grid_endo), 2)
-    coeffs = [Array{Float64}(BM.n_complete(n_s, 3), n_x)]
-    return DecisionRule(grid_exo, grid_endo, n_x, coeffs)
+function DecisionRule{n_s,nx}(grid_exo::EmptyGrid, grid_endo::RandomGrid{n_s}, ::Union{Val{nx},Type{Val{nx}}})
+    coeffs = [Array{Float64}(BM.n_complete(n_s, 3), nx)]
+    return DecisionRule(grid_exo, grid_endo, coeffs, Val{nx})
 end
 
 function set_values!(dr::CompletePolyDR{<:EmptyGrid}, values::Vector{Matrix{Float64}})
@@ -28,15 +25,12 @@ end
 #### UnstructuredGrid × CartesianGrid 2 continous arguments d.r.
 ####
 
-## Complete polynomials
-
-function DecisionRule(grid_exo::UnstructuredGrid, grid_endo::RandomGrid, n_x::Int)
-    n_s = size(nodes(grid_endo), 2)
+function DecisionRule{n_s,nx}(grid_exo::UnstructuredGrid, grid_endo::RandomGrid{n_s}, ::Union{Val{nx},Type{Val{nx}}})
     coeffs = [
         Array{Float64}(BM.n_complete(n_s, 3), n_x)
         for i in 1:n_nodes(grid_exo)
     ]
-    return DecisionRule(grid_exo, grid_endo, n_x, coeffs)
+    return DecisionRule(grid_exo, grid_endo, coeffs, Val{nx})
 end
 
 function set_values!(dr::CompletePolyDR{<:UnstructuredGrid}, values::Vector{Matrix{Float64}})

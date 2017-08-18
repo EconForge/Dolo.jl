@@ -1,12 +1,12 @@
-@compat const SmolyakDR{S<:Grid} = DecisionRule{S,<:SmolyakGrid,Vector{Matrix{Float64}}}
+@compat const SmolyakDR{S<:Grid,nx} = DecisionRule{S,<:SmolyakGrid,nx,Vector{Matrix{Float64}}}
 
 #####
 ##### 1-argument decision rule
 #####
 
-function DecisionRule(grid_exo::EmptyGrid, grid_endo::SmolyakGrid, n_x::Int)
-    coeffs = [Array{Float64}(n_nodes(grid_endo), n_x)]
-    return DecisionRule(grid_exo, grid_endo, n_x, coeffs)
+function DecisionRule{nx}(grid_exo::EmptyGrid, grid_endo::SmolyakGrid, ::Union{Val{nx},Type{Val{nx}}})
+    coeffs = [Array{Float64}(n_nodes(grid_endo), nx)]
+    return DecisionRule(grid_exo, grid_endo, coeffs, Val{nx})
 end
 
 function set_values!(dr::SmolyakDR{<:EmptyGrid}, values::Vector{Matrix{Float64}})
@@ -26,9 +26,9 @@ end
 
 ## Smolyak!
 
-function DecisionRule(grid_exo::UnstructuredGrid, grid_endo::SmolyakGrid, n_x::Int)
-    coeffs = [Array{Float64}(n_nodes(grid_endo), n_x) for i in 1:n_nodes(grid_exo)]
-    DecisionRule(grid_exo, grid_endo, n_x, coeffs)
+function DecisionRule{nx}(grid_exo::UnstructuredGrid, grid_endo::SmolyakGrid, ::Union{Val{nx},Type{Val{nx}}})
+    coeffs = [Array{Float64}(n_nodes(grid_endo), nx) for i in 1:n_nodes(grid_exo)]
+    DecisionRule(grid_exo, grid_endo, coeffs, Val{nx})
 end
 
 function set_values!(dr::SmolyakDR{<:UnstructuredGrid}, values::Vector{Matrix{Float64}})

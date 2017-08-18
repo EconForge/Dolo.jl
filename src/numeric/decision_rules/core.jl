@@ -1,4 +1,4 @@
-@compat abstract type AbstractDecisionRule{S<:Grid,T<:Grid} end
+@compat abstract type AbstractDecisionRule{S<:Grid,T<:Grid,nx} end
 
 function Base.show(io::IO, dr::AbstractDecisionRule)
     println(io, typeof(dr))
@@ -8,16 +8,25 @@ end
 # Constant decision rule #
 # ---------------------- #
 
-@compat type ConstantDecisionRule <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
+@compat type ConstantDecisionRule{nx} <: AbstractDecisionRule{EmptyGrid,EmptyGrid,nx}
     constants::Vector{Float64}
+end
+
+function ConstantDecisionRule(constants::Vector{Float64})
+    nx = length(constants)
+    ConstantDecisionRule{nx}(constants)
+end
+
+function ConstantDecisionRule{nx}(constants::Value{nx}) =
+    ConstantDecisionRule{nx}(collect(constants))
 end
 
 (dr::ConstantDecisionRule)(x::AbstractVector) = dr.constants
 (dr::ConstantDecisionRule)(x::AbstractMatrix) = repmat(dr.constants', size(x, 1), 1)
 (dr::ConstantDecisionRule)(x::AbstractVector, y::AbstractVector) = dr.constants
-(dr::ConstantDecisionRule)(x::AbstractVector, y::AbstractMatrix) = repmat( dr.constants', size(y, 1), 1)
-(dr::ConstantDecisionRule)(x::AbstractMatrix, y::AbstractVector) = repmat( dr.constants', size(x, 1), 1)
-(dr::ConstantDecisionRule)(x::AbstractMatrix, y::AbstractMatrix) = repmat( dr.constants', size(x, 1), 1)
+(dr::ConstantDecisionRule)(x::AbstractVector, y::AbstractMatrix) = repmat(dr.constants', size(y, 1), 1)
+(dr::ConstantDecisionRule)(x::AbstractMatrix, y::AbstractVector) = repmat(dr.constants', size(x, 1), 1)
+(dr::ConstantDecisionRule)(x::AbstractMatrix, y::AbstractMatrix) = repmat(dr.constants', size(x, 1), 1)
 (dr::ConstantDecisionRule)(i::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
 (dr::ConstantDecisionRule)(i::Int, j::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
 
@@ -25,7 +34,7 @@ end
 # 2-dimensional Taylor Expansion #
 # ------------------------------ #
 
-@compat type BiTaylorExpansion <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
+@compat type BiTaylorExpansion{nx} <: AbstractDecisionRule{EmptyGrid,EmptyGrid,nx}
     m0::Vector{Float64}
     s0::Vector{Float64}
     x0::Vector{Float64}
@@ -42,11 +51,18 @@ end
 # DecisionRule #
 # ------------ #
 
-type DecisionRule{S<:Grid,T<:Grid,Titp} <: AbstractDecisionRule{S,T}
+type DecisionRule{S<:Grid,T<:Grid,nx,Titp} <: AbstractDecisionRule{S,T,nx}
     grid_exo::S
     grid_endo::T
-    n_x::Int # number of values (could be a method if there was a nice method name)
     itp::Titp
+
+    function (::Type{DecisionRule{S,T,nx,Titp}}){S,T,Titp,nx}(grid_exo::S, grid_endo::T, itp::Titp)
+        new{S,T,nx,Titp}(grid_exo, grid_endo, itp)
+    end
+end
+
+function DecisionRule{S,T,nx,Titp}(grid_exo::S, grid_endo::T, itp::Titp, ::Union{Val{nx},Type{Val{nx}}})
+    DecisionRule{typeof(grid_exo),typeof(grid_endo),nx,typeof(itp)}(grid_exo, grid_endo, itp)
 end
 
 function set_values!(dr::T, values::Array{Float64,2}) where T <: DecisionRule{<:EmptyGrid}
@@ -54,9 +70,17 @@ function set_values!(dr::T, values::Array{Float64,2}) where T <: DecisionRule{<:
 end
 
 ## Common routines for grid_exo <: EmptyGrid
+
+function DecisionRule(grid_exo::EmptyGrid, grid_endo::CartesianGrid, values::Vector{Point{n_x}}) where n_x
+    dr = DecisionRule(grid_exo, grid_endo, Val{n_x})
+    set_values!(dr, values)
+    return dr
+end
+
+# COMPAT
 function DecisionRule(grid_exo::EmptyGrid, grid_endo, values::Vector{Matrix{Float64}})
     n_x = size(values[1], 2)
-    dr = DecisionRule(grid_exo, grid_endo, n_x)
+    dr = DecisionRule(grid_exo, grid_endo, Val{n_x})
     set_values!(dr, values)
     return dr
 end
@@ -69,7 +93,7 @@ end
 ## Common routines for grid_exo <: UnstructuredGrid
 function DecisionRule(grid_exo::UnstructuredGrid, grid_endo, values::Array{Array{Float64,2}})
     n_x = size(values[1], 2)
-    dr = DecisionRule(grid_exo, grid_endo, n_x)
+    dr = DecisionRule(grid_exo, grid_endo, Val{n_x})
     set_values!(dr, values)
     return dr
 end
@@ -108,21 +132,5 @@ set_values!(cdr::CachedDecisionRule, v) = set_values!(cdr.dr, v)
 (cdr::CachedDecisionRule)(i::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(node(cdr.process, i), s)
 (cdr::CachedDecisionRule)(i::Int, j::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(inode(cdr.process, i, j), s)
 
-@compat (cdr::CachedDecisionRule{<:DecisionRule{<:UnstructuredGrid}, DiscreteMarkovProcess})(i::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(i, s)
-@compat (cdr::CachedDecisionRule{<:DecisionRule{<:UnstructuredGrid}, DiscreteMarkovProcess})(i::Int, j::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(j, s)
-
-# --------------- #
-# Helper function #
-# --------------- #
-
-function filter_mcoeffs(a::Array{Float64,1}, b::Array{Float64,1}, n::Array{Int,1}, mvalues::Array{Float64})
-    n_x = size(mvalues)[end]
-    vals = reshape(mvalues, n..., n_x)
-    coeffs = zeros(n_x, (n+2)...)
-    ii = [Colon() for i=1:(ndims(vals)-1)]
-    for i_x in 1:n_x
-        tmp = splines.filter_coeffs(a, b, n, vals[ii..., i_x])
-        coeffs[i_x, ii...] = tmp
-    end
-    return coeffs
-end
+(cdr::CachedDecisionRule{<:DecisionRule{<:UnstructuredGrid}, DiscreteMarkovProcess})(i::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(i, s)
+(cdr::CachedDecisionRule{<:DecisionRule{<:UnstructuredGrid}, DiscreteMarkovProcess})(i::Int, j::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(j, s)

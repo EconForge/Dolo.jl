@@ -6,6 +6,7 @@ module Dolo
 using DataStructures: OrderedDict
 import YAML; using YAML: load_file, load
 using Requests: get
+using StaticArrays
 
 # solvers
 using NLsolve
@@ -27,6 +28,7 @@ const BM = BasisMatrices
 
 # Simulation/presentation
 using AxisArrays
+using StringDistances
 
 # Compat across julia versions
 using Compat; import Compat: String, view, @__dot__
@@ -43,7 +45,7 @@ export arbitrage, transition, auxiliary, value, expectation,
        evaluate_definitions
 
        # dolo functions
-export yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename, id, features
+export yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename, id, features, set_calibration!
 
 export time_iteration, improved_time_iteration, value_iteration, residuals,
         response, simulate, perfect_foresight, time_iteration_direct, find_deterministic_equilibrium, perturbate
@@ -55,10 +57,21 @@ export AbstractModel, AbstractDecisionRule
 @compat abstract type AbstractSymbolicModel{ID} end
 @compat abstract type AbstractModel{ID} <: AbstractSymbolicModel{ID} end
 
-@compat const ASModel = AbstractSymbolicModel
-@compat const AModel = AbstractModel
+const ASModel = AbstractSymbolicModel
+const AModel = AbstractModel
 
 id{ID}(::AbstractModel{ID}) = ID
+
+
+# conventions for list of points
+@compat Point{d} = SVector{d,Float64}
+@compat Value{n} = SVector{n,Float64}
+@compat ListOfPoints{d} = Vector{Point{d}}
+@compat ListOfValues{n} = Vector{Value{n}}
+
+vector_to_matrix(v) = Matrix(vec(v)')
+# vector_to_matrix(v::Vector) = Matrix(v')
+# vector_to_matrix(v::RowVector) = Matrix(v)
 
 # recursively make all keys at any layer of nesting a symbol
 # included here instead of util.jl so we can call it on RECIPES below
@@ -80,6 +93,8 @@ end
 
 include("numeric/splines/splines.jl")
 import .splines
+import .splines: eval_UC_spline, eval_UC_spline!, prefilter!
+
 
 include("numeric/newton.jl")
 include("numeric/grids.jl")
