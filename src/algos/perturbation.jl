@@ -123,9 +123,9 @@ function perturbate(model::Model)
     if size(R, 1)>0
         C_exo = C[:, 1:length(_m)]
         C_endo = C[:, (length(_m)+1):end]
-        dr = BiTaylorExpansion(_m, _s, x, C_exo, C_endo)
+        dr = BiTaylorExpansion{nx}(_m, _s, x, C_exo, C_endo)
     else
-        dr = BiTaylorExpansion(_m, _s, x, zeros(nx, length(_m)), C)
+        dr = BiTaylorExpansion{nx}(_m, _s, x, zeros(nx, length(_m)), C)
     end
 
     tol = 1e-6 # minimum distance betweel lam_n and lam_{n+1}

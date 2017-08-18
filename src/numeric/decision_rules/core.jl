@@ -1,4 +1,4 @@
-@compat abstract type AbstractDecisionRule{S<:Grid,T<:Grid} end
+@compat abstract type AbstractDecisionRule{S<:Grid,T<:Grid,nx} end
 
 function Base.show(io::IO, dr::AbstractDecisionRule)
     println(io, typeof(dr))
@@ -8,8 +8,13 @@ end
 # Constant decision rule #
 # ---------------------- #
 
-@compat type ConstantDecisionRule <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
+@compat type ConstantDecisionRule{nx} <: AbstractDecisionRule{EmptyGrid,EmptyGrid,nx}
     constants::Vector{Float64}
+end
+
+function ConstantDecisionRule(constants::Vector{Float64})
+    nx = length(constants)
+    ConstantDecisionRule{nx}(constants)
 end
 
 (dr::ConstantDecisionRule)(x::AbstractVector) = dr.constants
@@ -25,7 +30,7 @@ end
 # 2-dimensional Taylor Expansion #
 # ------------------------------ #
 
-@compat type BiTaylorExpansion <: AbstractDecisionRule{EmptyGrid,EmptyGrid}
+@compat type BiTaylorExpansion{nx} <: AbstractDecisionRule{EmptyGrid,EmptyGrid,nx}
     m0::Vector{Float64}
     s0::Vector{Float64}
     x0::Vector{Float64}
@@ -42,11 +47,18 @@ end
 # DecisionRule #
 # ------------ #
 
-type DecisionRule{S<:Grid,T<:Grid,Titp} <: AbstractDecisionRule{S,T}
+type DecisionRule{S<:Grid,T<:Grid,nx,Titp} <: AbstractDecisionRule{S,T,nx}
     grid_exo::S
     grid_endo::T
-    n_x::Int # number of values (could be a method if there was a nice method name)
     itp::Titp
+
+    function (::Type{DecisionRule{S,T,nx,Titp}}){S,T,Titp,nx}(grid_exo::S, grid_endo::T, itp::Titp)
+        new{S,T,nx,Titp}(grid_exo, grid_endo, itp)
+    end
+end
+
+function DecisionRule{S,T,nx,Titp}(grid_exo::S, grid_endo::T, itp::Titp, ::Union{Val{nx},Type{Val{nx}}})
+    DecisionRule{typeof(grid_exo),typeof(grid_endo),nx,typeof(itp)}(grid_exo, grid_endo, itp)
 end
 
 function set_values!(dr::T, values::Array{Float64,2}) where T <: DecisionRule{<:EmptyGrid}
@@ -56,7 +68,7 @@ end
 ## Common routines for grid_exo <: EmptyGrid
 function DecisionRule(grid_exo::EmptyGrid, grid_endo, values::Vector{Matrix{Float64}})
     n_x = size(values[1], 2)
-    dr = DecisionRule(grid_exo, grid_endo, n_x)
+    dr = DecisionRule(grid_exo, grid_endo, Val{n_x})
     set_values!(dr, values)
     return dr
 end
@@ -69,7 +81,7 @@ end
 ## Common routines for grid_exo <: UnstructuredGrid
 function DecisionRule(grid_exo::UnstructuredGrid, grid_endo, values::Array{Array{Float64,2}})
     n_x = size(values[1], 2)
-    dr = DecisionRule(grid_exo, grid_endo, n_x)
+    dr = DecisionRule(grid_exo, grid_endo, Val{n_x})
     set_values!(dr, values)
     return dr
 end
