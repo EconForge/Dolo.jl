@@ -6,6 +6,7 @@ module Dolo
 using DataStructures: OrderedDict
 import YAML; using YAML: load_file, load
 using Requests: get
+using StaticArrays
 
 # solvers
 using NLsolve
@@ -79,6 +80,8 @@ end
 
 include("numeric/splines/splines.jl")
 import .splines
+import .splines: eval_UC_spline, eval_UC_spline!, prefilter!
+
 
 include("numeric/newton.jl")
 include("numeric/grids.jl")

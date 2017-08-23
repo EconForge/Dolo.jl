@@ -1,5 +1,10 @@
 @compat abstract type AbstractDecisionRule{S,T} end
 
+
+vector_to_matrix(v::Vector) = Matrix(v')
+vector_to_matrix(v::RowVector) = Matrix(v)
+
+
 # abstract AbstractCachedDecisionRule{S,T} <: AbstractDecisionRule{S,T}
 # we don't implement that using subtypes anymore
 
@@ -7,7 +12,7 @@ type DecisionRule{S,T} <: AbstractDecisionRule{S,T}
     grid_exo::S
     grid_endo::T
     n_x::Int # number of values (could be a method if there was a nice method name)
-    coefficients::Array{Array{Float64}}
+    coefficients::Array
 end
 
 function Base.show(io::IO, dr::AbstractDecisionRule)
@@ -41,6 +46,7 @@ end
 (dr::BiTaylorExpansion)(m::AbstractMatrix, s::AbstractVector) = vcat([(dr(m[i, :], s))' for i=1:size(m, 1) ]...)
 (dr::BiTaylorExpansion)(m::AbstractVector, s::AbstractMatrix) = vcat([(dr(m, s[i, :]))' for i=1:size(s, 1) ]...)
 (dr::BiTaylorExpansion)(m::AbstractMatrix, s::AbstractMatrix) = vcat([(dr(m[i, :], s[i, :]))' for i=1:size(m, 1) ]...)
+(dr::BiTaylorExpansion)(i::Int64, s::AbstractMatrix) = dr(s)
 
 
 function filter_mcoeffs(a::Array{Float64,1}, b::Array{Float64,1}, n::Array{Int,1}, mvalues::Array{Float64})
@@ -63,35 +69,63 @@ end
 
 function DecisionRule(grid_exo::EmptyGrid, grid_endo::CartesianGrid, n_x::Int)
     orders = grid_endo.n
-    coeffs = [zeros(n_x, (orders+2)...)]
+    coeffs = zeros(SVector{n_x,Float64}, (orders+2)...)
     return DecisionRule{EmptyGrid,CartesianGrid}(grid_exo, grid_endo, n_x, coeffs)
 end
 
-function DecisionRule(grid_exo::EmptyGrid, grid_endo::CartesianGrid, values::Array{Array{Float64,2}})
+function DecisionRule(grid_exo::EmptyGrid, grid_endo::CartesianGrid, values::Vector{Matrix{Float64}})
     n_x = size(values[1], 2)
     dr = DecisionRule(grid_exo, grid_endo, n_x)
     set_values!(dr, values)
     return dr
 end
 
-function set_values!(dr::AbstractDecisionRule{EmptyGrid, CartesianGrid}, values::Array{Array{Float64,2},1})
-    a = dr.grid_endo.min
-    b = dr.grid_endo.max
-    orders = dr.grid_endo.n
-    dr.coefficients = [filter_mcoeffs(a, b, orders, v) for v in values]
+
+function set_values!(ddr::Dolo.DecisionRule{EmptyGrid,CartesianGrid}, V::Array{SVector{n_x,Float64},d}) where n_x where d
+    n = ddr.grid_endo.n
+    C = ddr.coefficients
+    ind = [2:(n[i]+1) for i=1:length(n)]
+    C[ind...] = V
+    prefilter!(C)
 end
 
-function set_values!(dr::AbstractDecisionRule{EmptyGrid, CartesianGrid}, values::Array{Float64,2})
-    set_values!(dr, [values])
+function set_values!(ddr::Dolo.DecisionRule{EmptyGrid,CartesianGrid}, V::Vector{Vector{SVector{n_x,Float64}}}) where n_x
+    set_values!(ddr, V[1])
 end
+
+function set_values!(ddr::AbstractDecisionRule{EmptyGrid,CartesianGrid}, values::Matrix{Float64})
+    n = ddr.grid_endo.n
+    n_x = size(values,2)
+    V = reshape(values, n..., n_x)
+    perm = cat(1,[ndims(V)],1:(length(n)))
+    W = reinterpret(SVector{n_x,Float64}, permutedims(V, perm), tuple(n...))
+    set_values!(ddr, W)
+end
+
+function set_values!(dr::AbstractDecisionRule{EmptyGrid, CartesianGrid}, values::Vector{Matrix{Float64}})
+    set_values!(dr, values[1])
+end
+
+
+
+# the future...
+function evaluate(dr::Dolo.DecisionRule{EmptyGrid,CartesianGrid},points::Vector{SVector{d, Float64}}) where d
+    a = SVector{d,Float64}(dr.grid_endo.min)
+    b = SVector{d,Float64}(dr.grid_endo.max)
+    n = SVector{d,Int64}(dr.grid_endo.n)
+    C = dr.coefficients
+    return eval_UC_spline(a,b,n,C,points)
+end
+
 
 function evaluate(dr::AbstractDecisionRule{EmptyGrid, CartesianGrid}, z::AbstractMatrix)
-    a = dr.grid_endo.min
-    b = dr.grid_endo.max
-    n = dr.grid_endo.n
-    cc = dr.coefficients[1]
-    res = splines.eval_UC_multi_spline(a, b, n, cc, z)'
-    return res
+    a = (dr.grid_endo.min)
+    b = (dr.grid_endo.max)
+    n = (dr.grid_endo.n)
+    n_x = length(dr.coefficients[1])
+    dims = cat(1,[n_x],n+2)
+    C = reinterpret(Float64,dr.coefficients,tuple(dims...))
+    eval_UC_spline(a,b,n,C,z')'
 end
 
 (dr::DecisionRule{EmptyGrid, CartesianGrid})(z::AbstractMatrix) = evaluate(dr, z)
@@ -129,20 +163,20 @@ function set_values!(dr::Dolo.AbstractDecisionRule{Dolo.CartesianGrid, Dolo.Cart
         vv[n, :, :] = values[n]
     end
     vv = reshape(vv, prod(dr.grid_endo.n)*prod(dr.grid_exo.n), n_x)
-    dr.coefficients = [Dolo.filter_mcoeffs(a, b, orders, vv)]
+    dr.coefficients = Dolo.filter_mcoeffs(a, b, orders, vv)
 end
 
 function evaluate(dr::AbstractDecisionRule{CartesianGrid,CartesianGrid}, z::AbstractMatrix)
     a = cat(1, dr.grid_exo.min, dr.grid_endo.min)
     b = cat(1, dr.grid_exo.max, dr.grid_endo.max)
     n = cat(1, dr.grid_exo.n, dr.grid_endo.n)
-    cc = dr.coefficients[1]
-    res = splines.eval_UC_multi_spline(a, b, n, cc, z)'
+    cc = dr.coefficients
+    res = splines.eval_UC_spline(a, b, n, cc, z')'
     return res
 end
 
 (dr::DecisionRule{CartesianGrid, CartesianGrid})(z::AbstractMatrix) = evaluate(dr, z)
-(dr::DecisionRule{CartesianGrid, CartesianGrid})(z::AbstractVector) = dr(z')[:]
+(dr::DecisionRule{CartesianGrid, CartesianGrid})(z::AbstractVector) = dr(vector_to_matrix(z))[:]
 (dr::DecisionRule{CartesianGrid, CartesianGrid})(x::AbstractVector, y::AbstractVector) = dr(cat(1, x, y))
 (dr::DecisionRule{CartesianGrid, CartesianGrid})(x::AbstractMatrix, y::AbstractMatrix) = dr([x y])
 (dr::DecisionRule{CartesianGrid, CartesianGrid})(x::AbstractVector, y::AbstractMatrix) = dr([repmat(x', size(y, 1), 1) y])
@@ -175,13 +209,12 @@ function set_values!(dr::AbstractDecisionRule{UnstructuredGrid,CartesianGrid}, v
     dr.coefficients = [filter_mcoeffs(a, b, orders, vals) for vals in values]
 end
 
-
 function evaluate(dr::AbstractDecisionRule{UnstructuredGrid,CartesianGrid}, i::Int, z::AbstractMatrix)
     a = dr.grid_endo.min
     b = dr.grid_endo.max
     n = dr.grid_endo.n
     cc = dr.coefficients[i]
-    res = splines.eval_UC_multi_spline(a, b, n, cc, z)'
+    res = splines.eval_UC_spline(a, b, n, cc, z')'
     return res
 end
 
@@ -190,7 +223,7 @@ end
 # (dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::AbstractMatrix{Int}, y::AbstractMatrix) =
 # vcat( [evaluate(dr, i[j, 1], y[j, :]) for j=1:size(y, 1)]... )
 
-(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::Int, y::AbstractVector) = dr(i, y')[:]
+(dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::Int, y::AbstractVector) = dr(i, vector_to_matrix(y))[:]
 
 (dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::AbstractVector{Int}, y::AbstractMatrix) =
   vcat( [dr(i[j], y[j, :])' for j=1:size(y, 1)]... )
@@ -222,6 +255,7 @@ set_values!(cdr::CachedDecisionRule, v) = set_values!(cdr.dr, v)
 (cdr::CachedDecisionRule)(m::Union{AbstractVector,AbstractMatrix}, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(m, s)
 (cdr::CachedDecisionRule)(i::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(node(cdr.process, i), s)
 (cdr::CachedDecisionRule)(i::Int, j::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(inode(cdr.process, i, j), s)
+
 
 (cdr::CachedDecisionRule{DecisionRule{UnstructuredGrid, CartesianGrid}, DiscreteMarkovProcess})(i::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(i, s)
 (cdr::CachedDecisionRule{DecisionRule{UnstructuredGrid, CartesianGrid}, DiscreteMarkovProcess})(i::Int, j::Int, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(j, s)
