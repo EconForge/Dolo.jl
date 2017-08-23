@@ -4,8 +4,7 @@ module DoloLinter
     include("../src/linter.jl")
 end
 
-import DoloLinter: check_model, check_symbols, format_human, check_model_sections, check_equations, check_calibration
-
+import DoloLinter: lint
 using ArgParse
 
 s = ArgParseSettings()
@@ -24,23 +23,4 @@ parsed_args = parse_args(ARGS, s)
 filename = parsed_args["filename"]
 format = parsed_args["format"]
 
-errors, warnings = check_model_sections(filename)
-
-errors2, warnings2 = check_symbols(filename)
-append!(errors, errors2)
-append!(warnings, warnings2)
-
-errors2, warnings2 = check_equations(filename)
-append!(errors, errors2)
-append!(warnings, warnings2)
-
-errors2, warnings2 = check_calibration(filename)
-append!(errors, errors2)
-append!(warnings, warnings2)
-
-
-if format == "human"
-    return format_human(errors,warnings)
-else
-    println("Format '", format, "' not implemented (yet).")
-end
+lint(filename)

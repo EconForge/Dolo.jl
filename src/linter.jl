@@ -494,7 +494,15 @@ end
 
 function lint(filename::AbstractString; format=:human)
 
-  errors, warnings = check_symbols(filename)
+  funnames = [check_model_sections, check_symbols, check_equations, check_calibration]
+  errors = LinterWarning[]
+  warnings = LinterWarning[]
+
+  for fun in funnames
+    errors2, warnings2 = fun(filename)
+    append!(errors, errors2)
+    append!(warnings, warnings2)
+  end
 
   if format == :human
       format_human(errors,warnings)
