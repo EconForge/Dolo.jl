@@ -234,32 +234,50 @@ end
 function DecisionRule(grid_exo::UnstructuredGrid, grid_endo::CartesianGrid, n_x::Int)
     # hmm kind of silently assuming we have cartesian grid
     orders = grid_endo.n
-    coeffs = [zeros(n_x, (orders+2)...) for i in 1:n_nodes(grid_exo)]
+    coeffs = [zeros(Point{n_x}, (orders+2)...) for i in 1:n_nodes(grid_exo)]
     return (DecisionRule{UnstructuredGrid, CartesianGrid})(grid_exo, grid_endo, n_x, coeffs)
 end
 #
-function DecisionRule(grid_exo::UnstructuredGrid, grid_endo::CartesianGrid, values::Array{Array{Float64,2}})
+
+function DecisionRule(grid_exo::UnstructuredGrid, grid_endo::CartesianGrid, values::Vector{Array{Float64,2}})
     n_x = size(values[1], 2)
     dr = DecisionRule(grid_exo, grid_endo, n_x)
     set_values!(dr, values)
     return dr
 end
 
-
-function set_values!(dr::AbstractDecisionRule{UnstructuredGrid,CartesianGrid}, values::Array{Matrix{Float64},1})
-    a = dr.grid_endo.min
-    b = dr.grid_endo.max
+function set_values!(dr::AbstractDecisionRule{UnstructuredGrid,CartesianGrid}, values::Vector{Vector{Point{n_x}}}) where n_x
     orders = dr.grid_endo.n
-    dr.coefficients = [filter_mcoeffs(a, b, orders, vals) for vals in values]
+    inds = [2:(o+1) for o in orders]
+    for (i,C) in enumerate(dr.coefficients)
+        C[inds...] = reshape(values[i],orders...)
+        prefilter!(C)
+    end
 end
 
-function evaluate(dr::AbstractDecisionRule{UnstructuredGrid,CartesianGrid}, i::Int, z::AbstractMatrix)
+function set_values!(dr::AbstractDecisionRule{UnstructuredGrid,CartesianGrid}, values::Array{Matrix{Float64},1})
+    N,n_x = size(values[1])
+    vals = [reinterpret(Point{n_x},v',(N,)) for v in values]
+    set_values!(dr, vals)
+end
+
+
+function evaluate(dr::AbstractDecisionRule{UnstructuredGrid,CartesianGrid}, i::Int, z::Vector{Point{d}}) where d
     a = dr.grid_endo.min
     b = dr.grid_endo.max
     n = dr.grid_endo.n
     cc = dr.coefficients[i]
-    res = splines.eval_UC_spline(a, b, n, cc, z')'
+    res = splines.eval_UC_spline(a, b, n, cc, z)
     return res
+end
+
+function evaluate(dr::AbstractDecisionRule{UnstructuredGrid,CartesianGrid}, i::Int, z::AbstractMatrix)
+    N,d = size(z)
+    zz = reinterpret(Point{d},z',(N,))
+    oo = evaluate(dr,i,zz)
+    n_x = length(oo[1])
+    o = reinterpret(Float64, oo, (n_x,N))
+    return o'
 end
 
 (dr::DecisionRule{UnstructuredGrid, CartesianGrid})(i::Int, y::AbstractMatrix) = evaluate(dr, i, y)
