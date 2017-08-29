@@ -66,8 +66,10 @@ id{ID}(::AbstractModel{ID}) = ID
 @compat Value{n} = SVector{n,Float64}
 @compat ListOfPoints{d} = Vector{Point{d}}
 @compat ListOfValues{n} = Vector{Value{n}}
-vector_to_matrix(v::Vector) = Matrix(v')
-vector_to_matrix(v::RowVector) = Matrix(v)
+
+vector_to_matrix(v::Vector) = Matrix(vec(v)')
+# vector_to_matrix(v::Vector) = Matrix(v')
+# vector_to_matrix(v::RowVector) = Matrix(v)
 
 # recursively make all keys at any layer of nesting a symbol
 # included here instead of util.jl so we can call it on RECIPES below
