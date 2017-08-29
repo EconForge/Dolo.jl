@@ -62,10 +62,10 @@ id{ID}(::AbstractModel{ID}) = ID
 
 
 # conventions for list of points
-Point{d} = SVector{d,Float64}
-Value{n} = SVector{n,Float64}
-ListOfPoints{d} = Vector{Point{d}}
-ListOfValues{n} = Vector{Value{n}}
+@compat Point{d} = SVector{d,Float64}
+@compat Value{n} = SVector{n,Float64}
+@compat ListOfPoints{d} = Vector{Point{d}}
+@compat ListOfValues{n} = Vector{Value{n}}
 vector_to_matrix(v::Vector) = Matrix(v')
 vector_to_matrix(v::RowVector) = Matrix(v)
 
