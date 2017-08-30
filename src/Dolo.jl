@@ -54,8 +54,8 @@ export AbstractModel, AbstractDecisionRule
 @compat abstract type AbstractSymbolicModel{ID} end
 @compat abstract type AbstractModel{ID} <: AbstractSymbolicModel{ID} end
 
-@compat const ASModel = AbstractSymbolicModel
-@compat const AModel = AbstractModel
+const ASModel = AbstractSymbolicModel
+const AModel = AbstractModel
 
 id{ID}(::AbstractModel{ID}) = ID
 
