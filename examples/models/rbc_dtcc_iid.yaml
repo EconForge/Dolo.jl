@@ -82,4 +82,4 @@ exogenous: !Normal
 
 options:
     grid: !Cartesian
-        orders: [5, 50]
+        orders: [5, 500]

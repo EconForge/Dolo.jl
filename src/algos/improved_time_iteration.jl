@@ -1,5 +1,5 @@
 include("ITI_additional.jl")
-
+using JLD
 
 """
 Computes a global solution for a model via backward Improved Time Iteration. The algorithm is applied to the residuals of the arbitrage equations. The idea is to solve the system G(x) = 0 as a big nonlinear system in x, where the inverted Jacobian matrix is approximated by an infinite sum (Neumann series).
@@ -136,6 +136,10 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
                 M[i_m,j_m,n,:,:] = X[n,:,:]\M[i_m,j_m,n,:,:]
             end
         end
+      end
+
+      if it==1
+          save("myfile.jld", "res", res, "dres", dres, "jres", jres, "fut_S", fut_S)
       end
 
       ####################

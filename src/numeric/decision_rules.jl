@@ -1,3 +1,4 @@
+
 @compat abstract type AbstractDecisionRule{S,T} end
 
 
@@ -77,6 +78,10 @@ function evaluate(dr::Dolo.DecisionRule{EmptyGrid,CartesianGrid},points::Vector{
     return eval_UC_spline(a,b,n,C,points)
 end
 
+(dr::DecisionRule{EmptyGrid, CartesianGrid})(z::ListOfPoints{d}) where d = evaluate(dr, z)
+(dr::DecisionRule{EmptyGrid, CartesianGrid})(z::Point{d}) where d = evaluate(dr, [z])[1]
+
+
 # compatibility with multiple exogenous d.r.
 
 function DecisionRule(grid_exo::EmptyGrid, grid_endo::CartesianGrid, values::Vector{Vector{Point{n_x}}}) where n_x
@@ -86,6 +91,8 @@ end
 function set_values!(ddr::Dolo.DecisionRule{EmptyGrid,CartesianGrid}, V::Vector{Vector{Value{n_x}}}) where n_x
     set_values!(ddr, V[1])
 end
+
+
 
 # backward compatibility
 
@@ -276,6 +283,12 @@ CachedDecisionRule(process::AbstractDiscretizedProcess, grid::Grid, values) =
 set_values!(cdr::CachedDecisionRule, v) = set_values!(cdr.dr, v)
 
 # defaults
+
+(cdr::CachedDecisionRule)(v::Point{d}) where d = cdr.dr(v)
+(cdr::CachedDecisionRule)(v::ListOfPoints{d}) where d = cdr.dr(v)
+(cdr::CachedDecisionRule)(i::Int, v::ListOfPoints{d}) where d = cdr.dr(node(cdr.process, i), v)
+(cdr::CachedDecisionRule)(i::Int, j::Int, v::ListOfPoints{d}) where d = cdr.dr(inode(cdr.process, i, j), v)
+
 
 (cdr::CachedDecisionRule)(v::Union{AbstractVector,AbstractMatrix}) = cdr.dr(v)
 (cdr::CachedDecisionRule)(m::Union{AbstractVector,AbstractMatrix}, s::Union{AbstractVector,AbstractMatrix}) = cdr.dr(m, s)
