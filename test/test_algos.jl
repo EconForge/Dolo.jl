@@ -108,7 +108,7 @@ path = Dolo.pkg_path
         @time dr = Dolo.perturbate(model)
         @time tid_res = Dolo.time_iteration_direct(model; maxit=20, verbose=true)
         @time ti_res = Dolo.time_iteration(model, tid_res.dr; maxit=20, verbose=false)
-        @time sol_v = Dolo.value_iteration(model, ti_res.dr; maxit=20, verbose=true)
+        @time sol_v = Dolo.value_iteration(model, ti_res.dr; maxit=3, verbose=true)
 
         model.symbols[:exogenous]
 

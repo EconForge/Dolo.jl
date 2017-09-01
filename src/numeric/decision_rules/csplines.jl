@@ -1,18 +1,18 @@
-@compat const CubicSplineDR{S<:Grid,T<:Grid,nx} = DecisionRule{S,T,nx,<:Array{<:Point}}
+@compat const CubicSplineDR{S<:Grid,T<:Grid,n_x} = DecisionRule{S,T,n_x,<:Union{<:Array{<:Point},<:Array{<:Array{<:Point}}}}
 
 #####
 ##### 1-argument decision rule
 #####
 
-function DecisionRule{nx}(grid_exo::EmptyGrid, grid_endo::CartesianGrid, ::Union{Val{nx},Type{Val{nx}}})
+function DecisionRule{n_x}(grid_exo::EmptyGrid, grid_endo::CartesianGrid, ::Union{Val{n_x},Type{Val{n_x}}})
     orders = grid_endo.n
     coeffs = zeros(SVector{n_x,Float64}, (orders+2)...)
-    return DecisionRule(grid_exo, grid_endo, coeffs, Val{nx})
+    return DecisionRule(grid_exo, grid_endo, coeffs, Val{n_x})
 end
 
 function set_values!(dr::CubicSplineDR{<:EmptyGrid,<:CartesianGrid},  V::Array{Value{n_x},d}) where n_x where d
-    n = ddr.grid_endo.n
-    C = ddr.itp
+    n = dr.grid_endo.n
+    C = dr.itp
     ind = [2:(n[i]+1) for i=1:length(n)]
     C[ind...] = V
     prefilter!(C)
@@ -40,7 +40,7 @@ end
 
 function DecisionRule(grid_exo::EmptyGrid, grid_endo::CartesianGrid, values::Vector{Matrix{Float64}})
     n_x = size(values[1], 2)
-    dr = DecisionRule(grid_exo, grid_endo, n_x)
+    dr = DecisionRule(grid_exo, grid_endo, Val{n_x})
     set_values!(dr, values)
     return dr
 end
@@ -70,11 +70,11 @@ end
 #### 2 CartesianGrid continous arguments d.r.
 ####
 
-function DecisionRule{nx}(grid_exo::CartesianGrid, grid_endo::CartesianGrid, ::Union{Val{nx},Type{Val{nx}}})
+function DecisionRule{n_x}(grid_exo::CartesianGrid, grid_endo::CartesianGrid, ::Union{Val{n_x},Type{Val{n_x}}})
     # hmm kind of silently assuming we have cartesian grid
     orders = [grid_exo.n; grid_endo.n]
     coeffs = zeros(Point{n_x}, (orders+2)...)
-    return DecisionRule(grid_exo, grid_endo, coeffs, Val{nx})
+    return DecisionRule(grid_exo, grid_endo, coeffs, Val{n_x})
 end
 
 function set_values!(dr::CubicSplineDR{<:CartesianGrid,<:CartesianGrid}, V::Array{Value{n_x},d}) where n_x where d
@@ -96,13 +96,13 @@ end
 
 ## COMPAT
 function DecisionRule(grid_exo::CartesianGrid, grid_endo::CartesianGrid, values::Vector{Matrix{Float64}})
-    nx = size(values[1], 2)
-    dr = DecisionRule(grid_exo, grid_endo, Val{nx})
+    n_x = size(values[1], 2)
+    dr = DecisionRule(grid_exo, grid_endo, Val{n_x})
     set_values!(dr, values)
     return dr
 end
 
-function set_values!(dr::CubicSplineDR{<:CartesianGrid,<:CartesianGrid,n_x}, values::Vector{Matrix{Float64}})
+function set_values!(dr::CubicSplineDR{<:CartesianGrid,<:CartesianGrid,n_x}, values::Vector{Matrix{Float64}}) where n_x
     a = cat(1, dr.grid_exo.min, dr.grid_endo.min)
     b = cat(1, dr.grid_exo.max, dr.grid_endo.max)
     orders = cat(1, dr.grid_exo.n, dr.grid_endo.n)
@@ -119,7 +119,7 @@ function set_values!(dr::CubicSplineDR{<:CartesianGrid,<:CartesianGrid,n_x}, val
     set_values!(dr, V)
 end
 
-function evaluate(dr::CubicSplineDR{<:CartesianGrid,<:CartesianGrid,n_x}, z::AbstractMatrix)
+function evaluate(dr::CubicSplineDR{<:CartesianGrid,<:CartesianGrid,n_x}, z::AbstractMatrix) where n_x
     N,ns = size(z)
     zz = reinterpret(Point{ns}, z', (N,))
     res = evaluate(dr, zz)
@@ -131,18 +131,18 @@ end
 (dr::DecisionRule{<:CartesianGrid, <:CartesianGrid})(z::AbstractVector) = vec(dr(vector_to_matrix(z)))
 (dr::DecisionRule{<:CartesianGrid, <:CartesianGrid})(x::AbstractVector, y::AbstractVector) = dr(cat(1, x, y))
 (dr::DecisionRule{<:CartesianGrid, <:CartesianGrid})(x::AbstractMatrix, y::AbstractMatrix) = dr([x y])
-(dr::DecisionRule{<:CartesianGrid, <:CartesianGrid})(x::AbstractVector, y::AbstractMatrix) = dr([vector_to_matrix(x'), size(y, 1), 1) y])
+(dr::DecisionRule{<:CartesianGrid, <:CartesianGrid})(x::AbstractVector, y::AbstractMatrix) = dr([repmat(vector_to_matrix(x'), size(y, 1), 1) y])
 (dr::DecisionRule{<:CartesianGrid, <:CartesianGrid})(i::Int, y::Union{AbstractVector,AbstractMatrix}) = dr(node(dr.grid_exo, i), y)
 
 ####
 #### UnstructuredGrid × CartesianGrid 2 continous arguments d.r.
 ####
 
-function DecisionRule{nx}(grid_exo::UnstructuredGrid, grid_endo::CartesianGrid, ::Union{Val{nx},Type{Val{nx}}})
+function DecisionRule{n_x}(grid_exo::UnstructuredGrid, grid_endo::CartesianGrid, ::Union{Val{n_x},Type{Val{n_x}}})
     # hmm kind of silently assuming we have cartesian grid
     orders = grid_endo.n
     coeffs = [zeros(Point{n_x}, (orders+2)...) for i in 1:n_nodes(grid_exo)]
-    return DecisionRule(grid_exo, grid_endo, coeffs, Val{nx})
+    return DecisionRule(grid_exo, grid_endo, coeffs, Val{n_x})
 end
 
 function set_values!(dr::CubicSplineDR{<:UnstructuredGrid,<:CartesianGrid}, values::Vector{Vector{Point{n_x}}}) where n_x
@@ -166,18 +166,18 @@ end
 
 function DecisionRule(grid_exo::UnstructuredGrid, grid_endo::CartesianGrid, values::Vector{Matrix{Float64}})
     n_x = size(values[1],2)
-    dr = DecisionRule(grid_exo, grid_endo, n_x)
+    dr = DecisionRule(grid_exo, grid_endo, Val{n_x})
     set_values!(dr, values)
     return dr
 end
 
-function set_values!(dr::CubicSplineDR{<:UnstructuredGrid,<:CartesianGrid,n_x}, values::Vector{Matrix{Float64}})
+function set_values!(dr::CubicSplineDR{<:UnstructuredGrid,<:CartesianGrid,n_x}, values::Vector{Matrix{Float64}}) where n_x
     N = size(values[1], 1)
     vals = [reinterpret(Point{n_x},v',(N,)) for v in values]
     set_values!(dr, vals)
 end
 
-function evaluate(dr::CubicSplineDR{<:UnstructuredGrid,<:CartesianGrid,n_x}, i::Int, z::AbstractMatrix)
+function evaluate(dr::CubicSplineDR{<:UnstructuredGrid,<:CartesianGrid,n_x}, i::Int, z::AbstractMatrix) where n_x
     N,d = size(z)
     zz = reinterpret(Point{d},z',(N,))
     oo = evaluate(dr,i,zz)

@@ -17,7 +17,7 @@ function ConstantDecisionRule(constants::Vector{Float64})
     ConstantDecisionRule{nx}(constants)
 end
 
-function ConstantDecisionRule{nx}(constants::Value{nx}) =
+function ConstantDecisionRule{nx}(constants::Value{nx})
     ConstantDecisionRule{nx}(collect(constants))
 end
 
