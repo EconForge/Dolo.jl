@@ -145,7 +145,7 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
       ####################
       # Invert Jacobians
       t2 = time();
-      tot, it_invert, lam0 = invert_jac(res,dres,jres,fut_S, ddr_filt; verbose=verbose_jac, maxit = smaxit)
+      tot, it_invert, lam0, errors = invert_jac(res,dres,jres,fut_S, ddr_filt; verbose=verbose_jac, maxit = smaxit)
 
       t3 = time();
 

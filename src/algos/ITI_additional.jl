@@ -177,104 +177,177 @@ function destack0(x::Array{Float64,3},n_m::Int)
   return [xx[i, :, :] for i=1:n_m]
 end
 
-function d_filt_dx(res::Array{Float64,3},jres::Array{Float64,5},S_ij::Array{Float64,4},
-  dumdr; precomputed::Bool=false)
-  n_m=size(jres,1)
-  n_mt=size(jres,2)
-  set_values!(dumdr,destack0(res, n_m))
-  for i in 1:n_m
-    res[i,:,:] = 0
-    for j in 1:n_mt
-      A = jres[i,j,:,:,:]
-      if precomputed== false
-        # B = dumdr(j,S_ij[i,j,:,:])
-        B = dumdr(i,j,S_ij[i,j,:,:])
-      else
-        B = dumdr(i,j) #,fut_S[i,j,:,:])
-      end
-      res[i,:,:] += ssmul(A,B)
-    end
-  end
-  return res
+####
+
+
+function to_LOP(mat::Matrix{Float64})
+    N,d = size(mat)
+    reinterpret(Point{d}, mat', (N,))
 end
 
+function to_LOJ(mat::Array{Float64})
+    # list of jacobians
+    N,d = size(mat)
+    reinterpret(SMatrix{d,d,Float64,d*d}, permutedims(mat,[2,3,1]), (N,))
+end
+
+function reorder_data(dprocess, res, dres, jres, fut_S)
+
+    R_i = [to_LOP(res[i,:,:]) for i=1:size(res,1)]
+    D_i =  [to_LOJ(dres[i,:,:,:]) for i=1:size(res,1)]
+    J_ij = typeof(D_i[1])[to_LOJ(jres[i,j,:,:,:]) for i=1:size(jres,1), j=1:size(jres,2)]
+    S_ij = typeof(R_i[1])[to_LOP(fut_S[i,j,:,:]) for i=1:size(fut_S,1), j=1:size(fut_S,2)]
+
+    Π_i = deepcopy(R_i)
+    π_i = deepcopy(R_i)
+
+    return R_i, D_i, J_ij, S_ij
+
+end
+
+function invert!(A)
+    # A[i] <- (A[i])^(-1)
+    N = length(A)
+    for n=1:N
+        A[n] = inv(A[n])
+    end
+end
+
+function premult!(A,B)
+    # B[i] <- A[i]*B[i]
+    N = length(A)
+    for n=1:N
+        B[n] = A[n]*B[n]
+    end
+end
+
+function addmul!(O,A,B)
+    # O[i] <- A[i]*B[i]
+    N = length(A)
+    for n=1:N
+        O[n] += A[n]*B[n]
+    end
+end
+
+
+import Base
+function Base.maxabs(v::ListOfPoints{d}) where d
+    m = 0.0
+    for n = 1:length(v)
+        mm = maximum(abs, v[n])
+        if mm>m
+            m = mm
+        end
+    end
+    m
+end
+
+function Base.maxabs(v::Vector{ListOfPoints{d}}) where d
+    maximum(maxabs.(v))
+end
+
+
+function d_filt_dx!(Π_i::Vector{ListOfPoints{n_x}}, π_i::Vector{ListOfPoints{n_x}}, M_ij, S_ij::Matrix{ListOfPoints{d}}, dumdr::Dolo.CachedDecisionRule) where n_x where d
+    n_m,n_mt = size(M_ij)
+    Dolo.set_values!(dumdr,π_i)
+    for i in 1:n_m
+        Π_i[i][:] *= 0
+        for j in 1:n_mt
+            A = M_ij[i,j]
+            B = dumdr(i,j,S_ij[i,j])
+            addmul!(Π_i[i],A,B)
+        end
+    end
+end
+
+function from_LOP(lop)
+    d = length(lop[1])
+    N = length(lop)
+    return reinterpret(Float64, lop, (d,N))'
+end
 
 function invert_jac(res::Array{Float64,3},dres::Array{Float64,4},jres::Array{Float64,5},
-  fut_S::Array{Float64,4}, dumdr; tol::Float64=1e-10,
-  maxit::Int=1000, verbose::Bool=false)
-  n_m, N_s, n_x = size(res)
-  ddx = zeros(n_m,N_s,n_x)
-  # A=deepcopy(dres)
-  # B = deepcopy(res)
-  # for i_m in 1:n_m
-  #     for n in 1:N_s
-  #        ddx[i_m,n,:]= invert(A[i_m,n,:,:],collect(B[i_m,n,:]))[2]
-  #     end
-  # end
-  A=copy(dres)
-  B = copy(res)
-  for i_m in 1:n_m
-    for n in 1:N_s
-      ddx[i_m,n,:]= A[i_m,n,:,:]\B[i_m,n,:]
+            fut_S::Array{Float64,4}, dumdr; tol::Float64=1e-10,
+            maxit::Int=1000, verbose::Bool=false)
+
+    dprocess = dumdr.process
+    R_i, D_i, J_ij, S_ij = reorder_data(dprocess, res, dres, jres, fut_S)
+    sol, it, lam, errors =  invert_jac(R_i, D_i, J_ij, S_ij, dumdr, tol=tol, maxit=maxit, verbose=verbose)
+    n_ms = length(sol)
+    N = length(sol[1])
+    n_x = length(sol[1][1])
+    rsol = cat(1, [reshape(from_LOP(tt),1,N,n_x) for tt in sol]...)
+    return rsol, it, lam, errors
+end
+
+function invert_jac(R_i, D_i, M_ij, S_ij, dumdr; tol::Float64=1e-10,
+            maxit::Int=1000, verbose::Bool=false)
+
+    dprocess = dumdr.process
+
+    Dinv = deepcopy(D_i)
+    for i=1:length(Dinv)
+        invert!(Dinv[i])
     end
-  end
+
+    # already inverted before
+    # M_ij = deepcopy(J_ij)
+    # for i=1:size(M_ij,1)
+    #     for j=1:size(M_ij,2)
+    #         premult!(Dinv[i],M_ij[i,j])
+    #         # M_ij[i,j][:] *= Dolo.iweight(dprocess,i,j)
+    #     end
+    # end
+
+    lam = -1.0
+    lam_max = -1.0
 
 
-  # if filt == nothing
-  #   error("No filter supplied.")
-  # else
-  #   dumdr = filt
-  # end
-
-  lam = -1.0
-  lam_max = -1.0
-  err_0 = maximum(abs, ddx)
-  tot = deepcopy(ddx)
-
-  if verbose==true
+    if verbose==true
     print("Starting inversion")
-  end
-  err=err_0
+    end
 
 
-  verbose && println(repeat("-", 35))
-  verbose && @printf "%-6s%-12s%-5s\n" "err" "gain" "gain_max"
-  verbose && println(repeat("-", 35))
-  precomputed=false
+    verbose && println(repeat("-", 35))
+    verbose && @printf "%-6s%-12s%-5s\n" "err" "gain" "gain_max"
+    verbose && println(repeat("-", 35))
+    precomputed=false
 
-  it = 0
-  while it<maxit && err>tol
-    it +=1
+    π_i = deepcopy(R_i)
+    for i=1:length(Dinv)
+        premult!(Dinv[i], π_i[i])
+    end
+    Π_i = deepcopy(π_i)
+    tot = deepcopy(π_i) # should premult by D_i
 
-    ddx = d_filt_dx(ddx,jres,fut_S,dumdr; precomputed=precomputed)
-    # might also work
-    # d_filt_dx(ddx,jres,fut_S,n_m,N,n_x,dumdr; precomputed=precomputed)
+    err_0 = maxabs(π_i)
+    err = 10000
 
-    err = maximum(abs, ddx)
-    lam = err/err_0
-    lam_max = max(lam_max, lam)
-    tot += ddx
-    err_0 = err
-    verbose && @printf "%-6f%-12.2e%-5.2e\n" err lam lam_max
-  end
-  if err<tol
-    ddx = d_filt_dx(ddx,jres,fut_S,dumdr; precomputed=precomputed)
-    err = maximum(abs, ddx)
+    errors = [err_0]
 
-    lam = err/err_0
-    lam_max = max(lam_max, lam)
-  end
+    it = 0
+    while it<maxit && err>tol
+        it +=1
+        d_filt_dx!(Π_i, π_i, M_ij, S_ij, dumdr)
+        π_i = Π_i
+        err = maxabs(Π_i)
+        push!(errors, err)
+        lam = err/err_0
+        lam_max = max(lam_max, lam)
+        err_0 = err
+        verbose && @printf "%-6f%-12.2e%-5.2e\n" err lam lam_max
+        for i=1:length(tot)
+            tot[i] += Π_i[i]
+        end
+    end
 
-  tot += ddx*lam/(1-lam)
-  return tot, it, lam
+
+    return tot, it, lam, errors
+
 end
 
-function invert_jac(res::AbstractArray,dres::AbstractArray,jres::Array{Float64,5},
-  fut_S::Array{Float64,4}; tol::Float64=1e-10,
-  maxit::Int=1000, verbose::Bool=false)
-  return error("No filter supplied.")
-end
 
+####
 
 type ImprovedTimeIterationResult
   dr::AbstractDecisionRule
