@@ -109,7 +109,7 @@ function create_local_parameters(d)
     lines = []
     for i=1:d
         bl = quote
-            $(U("x",i)) = S[n,$i]
+            $(U("x",i)) = S[n][$i]
             $(U("u",i)) = ($(U("x",i)) - $(U("start",i)))*$(U("dinv",i))
             $(U("i",i)) = (floor(Int,$(U("u",i)) ))
             $(U("i",i)) = max( min($(U("i",i)),$(U("M",i))-2), 0 )
@@ -128,7 +128,7 @@ end
 
 function create_function(d,extrap="natural")
     expr = quote
-        function $(Symbol(string("eval_UC_spline_",d,"d")))( a, b, orders, C, S, V, Ad, dAd)
+        function $(Symbol(string("eval_UC_spline!")))( a, b, orders, C::Array{T,d}, S::Vector{SVector{d,Float64}}, V::Vector{T}) where d where T
             $(create_parameters(d)...)
             N = size(S,1)
             # @fastmath @inbounds @simd( # doesn't seem to make any difference
@@ -142,56 +142,3 @@ function create_function(d,extrap="natural")
     end
     return expr
 end
-
-function create_function_with_gradient(d,extrap="natural")
-
-    grad_allocs = []
-    for j in 1:d
-        phis = [string("Phi_",i) for i = 1:d]
-        phis[j] = string("dPhi_",j)
-        push!( grad_allocs, phis )
-        # push!( grad_allocs, :( dV[n,j] = $(tensor_prod(phis, Int64[])) ) )
-    end
-    # println(grad_allocs)
-
-    expr = quote
-        function $(Symbol(string("eval_UC_spline_",d,"d")))( a, b, orders, C, S, V, dV, Ad, dAd)
-            $(create_parameters(d)...)
-            N = size(S,1)
-            # @fastmath @inbounds @simd( # doesn't seem to make any difference
-            for n=1:N
-                $(create_local_parameters(d)...)
-                $(create_Phi(d,extrap,true)...)
-                V[n] = $(tensor_prod([string("Phi_",i) for i=1:d], Int64[]))
-                $([     :( dV[n,$j] = $(tensor_prod(grad_allocs[j], Int64[])) )    for j=1:d]...)
-            end
-            # )
-        end
-    end
-    return expr
-end
-
-function create_function_multi_spline(d,extrap="natural")
-    expr = quote
-        function $(Symbol(string("eval_UC_multi_spline_",d,"d")))( a, b, orders, C, S, V, Ad, dAd)
-            K = size(C,1)
-            $(create_parameters(d)...)
-            N = size(S,1)
-            # @fastmath @inbounds @simd( # doesn't seem to make any difference
-            for n=1:N
-                $(create_local_parameters(d)...)
-                $(create_Phi(d,extrap,false)...)
-                for k=1:K
-                    V[k,n] = $( tensor_prod([string("Phi_",i) for i=1:d], Int64[], true) )
-                end
-
-            end
-            # )
-        end
-    end
-    return expr
-end
-
-
-
-create_function_multi_spline(1)
