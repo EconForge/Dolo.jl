@@ -11,3 +11,5 @@ Distributions
 Compat 0.17.0
 Dolang
 BasisMatrices 0.3.0
+StringDistances
+StaticArrays
