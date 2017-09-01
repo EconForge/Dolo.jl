@@ -268,7 +268,7 @@ function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64};
     end
 
     if irf
-        E[:, 1, :] = repmat(e0,1,N)
+        E[:, 1, :] = repmat(e0,1,T)
     end
 
     # Initial conditions

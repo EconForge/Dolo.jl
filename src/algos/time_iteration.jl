@@ -31,14 +31,9 @@ function euler_residuals(model, dprocess::AbstractDiscretizedProcess, s, x::Arra
             M = inode(dprocess, i, j)
             w = iweight(dprocess, i, j)
             # Update the states
-            for n in 1:N
-                S[n, :] = Dolo.transition(model, m, s[n, :], x[i][n, :], M, p)
-            end
-
+            S[:,:] = Dolo.transition(model, m, s, x[i], M, p)
             X = dr(i, j, S)
-            for n in 1:N
-                res[i][n, :] += w*Dolo.arbitrage(model, m, s[n, :], x[i][n, :], M, S[n, :], X[n, :], p)
-            end
+            res[i][:,:] += w*Dolo.arbitrage(model, m, s, x[i], M, S, X, p)
         end
     end
     return res
