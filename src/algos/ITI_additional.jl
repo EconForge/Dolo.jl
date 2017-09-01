@@ -196,7 +196,9 @@ function reorder_data(dprocess, res, dres, jres, fut_S)
     R_i = [to_LOP(res[i,:,:]) for i=1:size(res,1)]
     D_i =  [to_LOJ(dres[i,:,:,:]) for i=1:size(res,1)]
     J_ij = typeof(D_i[1])[to_LOJ(jres[i,j,:,:,:]) for i=1:size(jres,1), j=1:size(jres,2)]
-    S_ij = typeof(R_i[1])[to_LOP(fut_S[i,j,:,:]) for i=1:size(fut_S,1), j=1:size(fut_S,2)]
+
+    d = size(fut_S,4)
+    S_ij = Vector{Point{d}}[to_LOP(fut_S[i,j,:,:]) for i=1:size(fut_S,1), j=1:size(fut_S,2)]
 
     Π_i = deepcopy(R_i)
     π_i = deepcopy(R_i)

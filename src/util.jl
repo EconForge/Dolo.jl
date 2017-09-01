@@ -27,3 +27,22 @@ function rmerge(def_s::Associative, add_s::Associative)
     end
     return resp
 end
+
+
+function to_LOP(mat::Matrix{Float64})
+    N,d = size(mat)
+    reinterpret(Point{d}, mat', (N,))
+end
+
+function to_LOJ(mat::Array{Float64})
+    # list of jacobians
+    N,d = size(mat)
+    reinterpret(SMatrix{d,d,Float64,d*d}, permutedims(mat,[2,3,1]), (N,))
+end
+
+
+function from_LOP(lop)
+    d = length(lop[1])
+    N = length(lop)
+    return reinterpret(Float64, lop, (d,N))'
+end

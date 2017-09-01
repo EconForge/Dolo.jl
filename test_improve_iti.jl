@@ -3,14 +3,10 @@ import Dolo: Point,ListOfPoints
 using StaticArrays
 
 
-model = Dolo.yaml_import(joinpath(Dolo.pkg_path, "examples","models","rbc_dtcc_iid.yaml"))
+model = Dolo.yaml_import(joinpath(Dolo.pkg_path, "examples","models","rbc_dtcc_ar1.yaml"));
 
-grid = model.grid
-dprocess = Dolo.discretize(model.exogenous)
-n_m = Dolo.n_nodes(dprocess)
-init_dr = Dolo.ConstantDecisionRule(model.calibration[:controls])
 
-@time sol_iti = Dolo.improved_time_iteration(model);
+@time sol_iti = Dolo.improved_time_iteration(model; verbose=true);
 
 @time sol_ti = Dolo.time_iteration(model, verbose=true; tol_η=1e-10, maxit=2000)
 # @profile Dolo.improved_time_iteration(model);

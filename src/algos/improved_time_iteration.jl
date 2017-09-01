@@ -138,9 +138,9 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
         end
       end
 
-      if it==1
-          save("myfile.jld", "res", res, "dres", dres, "jres", jres, "fut_S", fut_S)
-      end
+    #   if it==1
+    #       save("myfile.jld", "res", res, "dres", dres, "jres", jres, "fut_S", fut_S)
+    #   end
 
       ####################
       # Invert Jacobians
