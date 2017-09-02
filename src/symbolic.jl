@@ -13,7 +13,7 @@ function _get_args(sm, spec)
     args
 end
 
-function Dolang.FunctionFactory(sm, func_nm::Symbol)
+function Dolang.FunctionFactory(sm::Model, func_nm::Symbol)
     spec = RECIPES[:dtcc][:specs][func_nm]
     eqs = sm.equations[func_nm]
 
