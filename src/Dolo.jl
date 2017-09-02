@@ -23,6 +23,8 @@ using Dolang: _to_expr, inf_to_Inf, solution_order, solve_triangular_system
 # Numerical Tools
 using MacroTools  # used for eval_with
 import Distributions
+import BasisMatrices
+const BM = BasisMatrices
 
 # Simulation/presentation
 using AxisArrays
@@ -55,8 +57,8 @@ export AbstractModel, AbstractDecisionRule
 @compat abstract type AbstractSymbolicModel{ID} end
 @compat abstract type AbstractModel{ID} <: AbstractSymbolicModel{ID} end
 
-@compat const ASModel = AbstractSymbolicModel
-@compat const AModel = AbstractModel
+const ASModel = AbstractSymbolicModel
+const AModel = AbstractModel
 
 id{ID}(::AbstractModel{ID}) = ID
 
