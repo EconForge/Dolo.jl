@@ -209,7 +209,7 @@ end
 
 function  improved_time_iteration(model, init_dr; grid=Dict(), kwargs...)
     dprocess = discretize( model.exogenous )
-    return time_iteration(model, dprocess, init_dr; grid=grid, kwargs...)
+    return improved_time_iteration(model, dprocess, init_dr; grid=grid, kwargs...)
 end
 
 # function improved_time_iteration(model, maxbsteps::Int=10, verbose::Bool=false,
