@@ -99,7 +99,10 @@ import .splines: eval_UC_spline, eval_UC_spline!, prefilter!
 include("numeric/newton.jl")
 include("numeric/grids.jl")
 include("numeric/processes.jl")
-include("numeric/decision_rules.jl")
+include("numeric/decision_rules/core.jl")
+include("numeric/decision_rules/csplines.jl")
+include("numeric/decision_rules/constructor.jl")
+
 
 include("util.jl")
 include("calibration.jl")
