@@ -1,42 +1,65 @@
-@compat const SmolyakDR{S<:Grid,nx} = DecisionRule{S,<:SmolyakGrid,nx,Vector{Matrix{Float64}}}
+struct SmolyakDR{S<:Grid,T<:SmolyakGrid,nx} <: AbstractDecisionRule{S,T,nx}
+    grid_exo::S
+    grid_endo::T
+    coefs::Vector{Matrix{Float64}}
+end
 
 #####
 ##### 1-argument decision rule
 #####
 
-function DecisionRule{nx}(grid_exo::EmptyGrid, grid_endo::SmolyakGrid, ::Union{Val{nx},Type{Val{nx}}})
-    coeffs = [Array{Float64}(n_nodes(grid_endo), nx)]
-    return DecisionRule(grid_exo, grid_endo, coeffs, Val{nx})
+function SmolyakDR(
+        grid_exo::S, grid_endo::T, ::Union{Val{nx},Type{Val{nx}}}
+    ) where S <: EmptyGrid where T <: SmolyakGrid where nx
+    coefs = [Array{Float64}(n_nodes(grid_endo), nx)]
+    SmolyakDR{S,T,nx}(grid_exo, grid_endo, coefs)
 end
 
-function set_values!(dr::SmolyakDR{<:EmptyGrid}, values::Vector{Matrix{Float64}})
+function set_values!(
+        dr::SmolyakDR{<:G}, values::Vector{Matrix{Float64}}
+    ) where G <: Union{EmptyGrid,UnstructuredGrid}
     for i in 1:length(values)
-        A_ldiv_B!(dr.itp[i], dr.grid_endo.B_nodes, values[i])
+        A_ldiv_B!(dr.coefs[i], dr.grid_endo.B_nodes, values[i])
+    end
+end
+
+function set_values!(
+        dr::SmolyakDR{<:G,<:SmolyakGrid,nx},
+        values::Vector{<:Array{Value{nx}}}
+    ) where G <: Union{EmptyGrid,UnstructuredGrid} where nx
+    for i in 1:length(values)
+        N = length(values[i])
+        data = reinterpret(Float64, values[i], (nx,N))'
+        A_ldiv_B!(dr.coefs[i], dr.grid_endo.B_nodes, data)
     end
 end
 
 function evaluate(dr::SmolyakDR{<:EmptyGrid}, z::AbstractMatrix)
     B = BM.evalbase(dr.grid_endo.smol_params, z)
-    B*dr.itp[1]
+    B*dr.coefs[1]
+end
+
+function evaluate(dr::SmolyakDR{<:EmptyGrid,SmolyakGrid{d}}, points::Vector{Point{d}}) where d
+    N = length(points)
+    mat = reinterpret(Float64, points, (d, N))'
+    evaluate(dr, mat)
 end
 
 ####
 #### UnstructuredGrid × CartesianGrid 2 continous arguments d.r.
 ####
 
-## Smolyak!
-
-function DecisionRule{nx}(grid_exo::UnstructuredGrid, grid_endo::SmolyakGrid, ::Union{Val{nx},Type{Val{nx}}})
-    coeffs = [Array{Float64}(n_nodes(grid_endo), nx) for i in 1:n_nodes(grid_exo)]
-    DecisionRule(grid_exo, grid_endo, coeffs, Val{nx})
-end
-
-function set_values!(dr::SmolyakDR{<:UnstructuredGrid}, values::Vector{Matrix{Float64}})
-    for i in 1:length(values)
-        A_ldiv_B!(dr.itp[i], dr.grid_endo.B_nodes, values[i])
-    end
+function SmolyakDR{nx}(grid_exo::UnstructuredGrid, grid_endo::SmolyakGrid, ::Union{Val{nx},Type{Val{nx}}})
+    coefs = [Array{Float64}(n_nodes(grid_endo), nx) for i in 1:n_nodes(grid_exo)]
+    SmolyakDR{typeof(grid_exo),typeof(grid_endo),nx}(grid_exo, grid_endo, coefs)
 end
 
 function evaluate(dr::SmolyakDR{<:UnstructuredGrid}, i::Int, z::AbstractMatrix)
-    BM.evalbase(dr.grid_endo.smol_params, z) * dr.itp[i]
+    BM.evalbase(dr.grid_endo.smol_params, z) * dr.coefs[i]
+end
+
+function evaluate(dr::SmolyakDR{<:UnstructuredGrid}, i::Int, z::Vector{Point{d}}) where d
+    N = length(z)
+    mat = reinterpret(Float64, z, (d, N))
+    BM.evalbase(dr.grid_endo.smol_params, z)*mat'
 end
