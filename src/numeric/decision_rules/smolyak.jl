@@ -27,9 +27,15 @@ function set_values!(
         dr::SmolyakDR{<:G,<:SmolyakGrid,nx},
         values::Vector{<:Array{Value{nx}}}
     ) where G <: Union{EmptyGrid,UnstructuredGrid} where nx
+    if length(values) != length(dr.coefs)
+        msg = "The length of values ($(length(values))) is not the same "
+        msg *= "as the length of the coefficient Vector ($(length(dr.coefs)))"
+        error(msg)
+    end
+
     for i in 1:length(values)
         N = length(values[i])
-        data = reinterpret(Float64, values[i], (nx,N))'
+        data = reinterpret(Float64, values[i], (nx, N))'
         A_ldiv_B!(dr.coefs[i], dr.grid_endo.B_nodes, data)
     end
 end
@@ -55,11 +61,18 @@ function SmolyakDR{nx}(grid_exo::UnstructuredGrid, grid_endo::SmolyakGrid, ::Uni
 end
 
 function evaluate(dr::SmolyakDR{<:UnstructuredGrid}, i::Int, z::AbstractMatrix)
+    @boundscheck begin
+        n_funcs = length(dr.coefs)
+        if i > n_funcs
+            msg = "Only $n_funcs are known, but function $i was requested"
+            throw(BoundsError(msg))
+        end
+    end
     BM.evalbase(dr.grid_endo.smol_params, z) * dr.coefs[i]
 end
 
 function evaluate(dr::SmolyakDR{<:UnstructuredGrid}, i::Int, z::Vector{Point{d}}) where d
     N = length(z)
-    mat = reinterpret(Float64, z, (d, N))
-    BM.evalbase(dr.grid_endo.smol_params, z)*mat'
+    mat = reinterpret(Float64, z, (d, N))'
+    evaluate(dr, i, mat)
 end
