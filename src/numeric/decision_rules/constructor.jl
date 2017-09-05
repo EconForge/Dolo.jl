@@ -1,7 +1,10 @@
 # cubic is default
 
-abstract type Linear end
-abstract type Cubic end
+struct Linear end
+struct Cubic end
+
+struct CompletePolnomial{order} end
+struct Smolyak end
 
 # incomplete type inference:
 DecisionRule(exo_grid, endo_grid, i::Int64) = DecisionRule(exo_grid, endo_grid, Val{i})
@@ -21,6 +24,26 @@ function DecisionRule(exo_grid::CartesianGrid, endo_grid::CartesianGrid, ::Type{
     CubicDR(exo_grid, endo_grid, Val{nx})
 end
 
+# Smolyak interpolation
+function DecisionRule(
+        exo_grid::S, endo_grid::SmolyakGrid, ::Type{Val{nx}}, ::Type{Smolyak}
+    ) where S <: Union{EmptyGrid,<:UnstructuredGrid} where nx
+    SmolyakDR(exo_grid, endo_grid, Val{nx})
+end
+
+# Complete polynomials
+function DecisionRule(
+        exo_grid::S, endo_grid::RandomGrid, ::Type{Val{nx}}, ::Type{CompletePolnomial{order}}
+    ) where S <: Union{EmptyGrid,<:UnstructuredGrid} where nx where order
+    CompletePolyDR(exo_grid, endo_grid, Val{nx}, order)
+end
+
+# default to order 3
+function DecisionRule(
+        exo_grid::S, endo_grid::RandomGrid, ::Type{Val{nx}}, ::Type{<:CompletePolnomial}
+    ) where S <: Union{EmptyGrid,<:UnstructuredGrid} where nx
+    CompletePolyDR(exo_grid, endo_grid, Val{nx})
+end
 
 # generic constructors
 
