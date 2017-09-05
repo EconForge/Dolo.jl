@@ -33,14 +33,14 @@ end
 
 # Complete polynomials
 function DecisionRule(
-        exo_grid::S, endo_grid::RandomGrid, ::Type{Val{nx}}, ::Type{CompletePolnomial{order}}
+        exo_grid::S, endo_grid::Grid, ::Type{Val{nx}}, ::Type{CompletePolnomial{order}}
     ) where S <: Union{EmptyGrid,<:UnstructuredGrid} where nx where order
     CompletePolyDR(exo_grid, endo_grid, Val{nx}, order)
 end
 
 # default to order 3
 function DecisionRule(
-        exo_grid::S, endo_grid::RandomGrid, ::Type{Val{nx}}, ::Type{<:CompletePolnomial}
+        exo_grid::S, endo_grid::Grid, ::Type{Val{nx}}, ::Type{<:CompletePolnomial}
     ) where S <: Union{EmptyGrid,<:UnstructuredGrid} where nx
     CompletePolyDR(exo_grid, endo_grid, Val{nx})
 end

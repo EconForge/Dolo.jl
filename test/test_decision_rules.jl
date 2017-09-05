@@ -35,11 +35,22 @@ dr(1, [0.1 0.5])
     grid_exo = Dolo.EmptyGrid()
     grid_exo2 = Dolo.UnstructuredGrid{2}(rand(1, 2))
     grid_rand = Dolo.RandomGrid{2}([0.0, 0.0], [1.0, 1.0,], 50)
-    pts = rand(10000, 2)
+    pts = rand(200, 2)
     pts_vec = reinterpret(Point{2}, pts', (size(pts, 1),))
+    test_sets = [
+        (grid_smol, Dolo.SmolyakDR, Dolo.Smolyak),
+        (grid_rand, Dolo.CompletePolyDR, Dolo.CompletePolnomial{3}),
+        (grid_rand, Dolo.CompletePolyDR, Dolo.CompletePolnomial),
+        (grid_rand, Dolo.CompletePolyDR, Dolo.CompletePolnomial{2}),
+        (grid_smol, Dolo.CompletePolyDR, Dolo.CompletePolnomial{3}),
+        (grid_smol, Dolo.CompletePolyDR, Dolo.CompletePolnomial),
+        (grid_smol, Dolo.CompletePolyDR, Dolo.CompletePolnomial{2}),
+        (grid_exo2, Dolo.CompletePolyDR, Dolo.CompletePolnomial{3}),
+        (grid_exo2, Dolo.CompletePolyDR, Dolo.CompletePolnomial),
+        (grid_exo2, Dolo.CompletePolyDR, Dolo.CompletePolnomial{2}),
+    ]
 
-    @testset for (grid_endo, dr_name, drT) in [(grid_smol, Dolo.SmolyakDR, Dolo.Smolyak),
-                                               (grid_rand, Dolo.CompletePolyDR, Dolo.CompletePolnomial{3})]
+    @testset for (grid_endo, dr_name, drT) in test_sets
 
        g = nodes(grid_endo)
        sg_vals = [sin.(g[:, 1]) cos.(g[:, 2])]
