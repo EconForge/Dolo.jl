@@ -102,6 +102,7 @@ include("numeric/processes.jl")
 include("numeric/decision_rules/core.jl")
 include("numeric/decision_rules/csplines.jl")
 include("numeric/decision_rules/constructor.jl")
+include("numeric/decision_rules/compat.jl")
 
 
 include("util.jl")

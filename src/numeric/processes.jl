@@ -70,7 +70,7 @@ type DiscretizedIIDProcess <: AbstractDiscretizedProcess
     integration_weights::Vector{Float64}
 end
 
-DiscretizedIIDProcess(x, w) = DiscretizedIIDProcess(EmptyGrid{size(x,2)}(), x, w)
+DiscretizedIIDProcess(x, w) = DiscretizedIIDProcess(EmptyGrid(), x, w)
 
 n_nodes(dp::DiscretizedIIDProcess) = 0
 n_inodes(dp::DiscretizedIIDProcess, i::Int) = size(dp.integration_nodes, 1)
