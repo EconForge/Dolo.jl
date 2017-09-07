@@ -13,11 +13,6 @@ function DecisionRule(exo_grid, endo_grid, values::Vector{Matrix{Float64}}, tt)
     DecisionRule(exo_grid, endo_grid, vals, tt)
 end
 
-to_LOP(::Type{Point{d}}, mat::Array) where d = reinterpret(Point{d}, mat', (size(mat,1),))
-to_LOP(::Type{Point{d}}, mat::AbstractArray) where d = to_LOP(Point{d}, Array(mat))
-to_LOP(mat::AbstractArray) = to_LOP(Point{size(mat,2)} ,mat)
-
-
 # EmptyGrid x CartesianGrid
 
 function evaluate(dr::AbstractDecisionRule{EmptyGrid, CartesianGrid{d}, n_x}, z::AbstractMatrix{Float64}) where n_x where d
