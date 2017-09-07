@@ -83,5 +83,5 @@ set_values!(cdr::CachedDecisionRule, v) = set_values!(cdr.dr, v)
 (cdr::CachedDecisionRule)(i::Int, s::Union{AbstractVector,AbstractMatrix}) = evaluate(cdr.dr,node(cdr.process, i), s)
 (cdr::CachedDecisionRule)(i::Int, j::Int, s::Union{AbstractVector,AbstractMatrix}) = evaluate(cdr.dr,inode(cdr.process, i, j), s)
 
-(cdr::CachedDecisionRule{<:AbstractDecisionRule{<:UnstructuredGrid,<:CartesianGrid}, <:DiscreteMarkovProcess})(i::Int, s::Union{AbstractVector,AbstractMatrix}) = evaluate(cdr.dr,i, s)
-(cdr::CachedDecisionRule{<:AbstractDecisionRule{<:UnstructuredGrid,<:CartesianGrid}, <:DiscreteMarkovProcess})(i::Int, j::Int, s::Union{AbstractVector,AbstractMatrix}) = evaluate(cdr.dr,j, s)
+(cdr::CachedDecisionRule{<:AbstractDecisionRule{<:UnstructuredGrid,<:CartesianGrid}, <:DiscreteMarkovProcess})(i::Int, s::Union{AbstractVector,AbstractMatrix}) = evaluate(cdr.dr, i, s)
+(cdr::CachedDecisionRule{<:AbstractDecisionRule{<:UnstructuredGrid,<:CartesianGrid}, <:DiscreteMarkovProcess})(i::Int, j::Int, s::Union{AbstractVector,AbstractMatrix}) = evaluate(cdr.dr, j, s)
