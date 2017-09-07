@@ -69,6 +69,11 @@ id{ID}(::AbstractModel{ID}) = ID
 @compat ListOfPoints{d} = Vector{Point{d}}
 @compat ListOfValues{n} = Vector{Value{n}}
 
+#(compat)
+to_LOP(::Type{Point{d}}, mat::Array) where d = reinterpret(Point{d}, mat', (size(mat,1),))
+to_LOP(::Type{Point{d}}, mat::AbstractArray) where d = to_LOP(Point{d}, Array(mat))
+to_LOP(mat::AbstractArray) = to_LOP(Point{size(mat,2)} ,mat)
+
 vector_to_matrix(v) = Matrix(vec(v)')
 # vector_to_matrix(v::Vector) = Matrix(v')
 # vector_to_matrix(v::RowVector) = Matrix(v)
@@ -95,13 +100,18 @@ include("numeric/splines/splines.jl")
 import .splines
 import .splines: eval_UC_spline, eval_UC_spline!, prefilter!
 
+include("util.jl")
 
 include("numeric/newton.jl")
 include("numeric/grids.jl")
 include("numeric/processes.jl")
-include("numeric/decision_rules.jl")
+include("numeric/decision_rules/core.jl")
+include("numeric/decision_rules/csplines.jl")
+include("numeric/decision_rules/constructor.jl")
+include("numeric/decision_rules/compat.jl")
+include("numeric/decision_rules/smolyak.jl")
+include("numeric/decision_rules/complete.jl")
 
-include("util.jl")
 include("calibration.jl")
 include("minilang.jl")
 include("model.jl")
@@ -116,6 +126,5 @@ include("algos/value_iteration.jl")
 include("algos/perturbation.jl")
 include("algos/simulation.jl")
 include("algos/perfect_foresight.jl")
-
 
 end # module

@@ -70,7 +70,7 @@ type DiscretizedIIDProcess <: AbstractDiscretizedProcess
     integration_weights::Vector{Float64}
 end
 
-DiscretizedIIDProcess(x, w) = DiscretizedIIDProcess(EmptyGrid{size(x,2)}(), x, w)
+DiscretizedIIDProcess(x, w) = DiscretizedIIDProcess(EmptyGrid(), x, w)
 
 n_nodes(dp::DiscretizedIIDProcess) = 0
 n_inodes(dp::DiscretizedIIDProcess, i::Int) = size(dp.integration_nodes, 1)
@@ -153,9 +153,6 @@ function simulate_values(process::DiscreteMarkovProcess, N::Int, T::Int, i0::Int
     end
     AxisArray(out_values, Axis{:n}(1:n_values), Axis{:T}(1:T), Axis{:N}(1:N))
 end
-
-discretize(dmp::DiscreteMarkovProcess) = dmp
-
 
 # VAR 1
 

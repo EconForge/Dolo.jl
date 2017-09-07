@@ -1,4 +1,14 @@
-@compat abstract type Grid{N} end
+@compat abstract type Grid{d} end
+
+import Base
+
+Base.ndims(grid::Grid{d}) where d = d
+
+function nodes(::Type{ListOfPoints}, grid::Grid{d}) where d
+    ss = nodes(grid)
+    N = size(ss,1)
+    reinterpret(Point{d}, ss', (N,))
+end
 
 function Base.show(io::IO, grid::Grid)
     print(io, typeof(grid))
@@ -9,7 +19,7 @@ function mlinspace(min, max, n)
     return QE.gridmake(nodes...)
 end
 
-immutable EmptyGrid{N} <: Grid{N}
+immutable EmptyGrid <: Grid{0}
     # this grid does not exist ;-)
 end
 
