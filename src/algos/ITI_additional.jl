@@ -180,17 +180,6 @@ end
 ####
 
 
-function to_LOP(mat::Matrix{Float64})
-    N,d = size(mat)
-    reinterpret(Point{d}, mat', (N,))
-end
-
-function to_LOJ(mat::Array{Float64})
-    # list of jacobians
-    N,d = size(mat)
-    reinterpret(SMatrix{d,d,Float64,d*d}, permutedims(mat,[2,3,1]), (N,))
-end
-
 function reorder_data(dprocess, res, dres, jres, fut_S)
 
     R_i = [to_LOP(res[i,:,:]) for i=1:size(res,1)]
@@ -262,11 +251,6 @@ function d_filt_dx!(Π_i::Vector{ListOfPoints{n_x}}, π_i::Vector{ListOfPoints{n
     end
 end
 
-function from_LOP(lop)
-    d = length(lop[1])
-    N = length(lop)
-    return reinterpret(Float64, lop, (d,N))'
-end
 
 function invert_jac(res::Array{Float64,3},dres::Array{Float64,4},jres::Array{Float64,5},
             fut_S::Array{Float64,4}, dumdr; tol::Float64=1e-10,

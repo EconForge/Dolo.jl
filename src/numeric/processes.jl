@@ -7,10 +7,19 @@
 
 @compat abstract type AbstractDiscretizedProcess <: DiscreteProcess end
 
+# this is a bit crude but not performance critical, for now
+function node(::Type{Point}, dp::DiscreteProcess, i::Int)
+    v = node(dp, i)
+    SVector{length(v)}(v)
+end
+function inode(::Type{Point}, dp::DiscreteProcess, i::Int, j::Int)
+    v = inode(dp, i, j)
+    SVector{length(v)}(v)
+end
+
 ###
 ### Discretized process
 ###
-
 
 # date-t grid has a known structure
 type DiscretizedProcess{TG<:Grid} <: AbstractDiscretizedProcess
@@ -37,7 +46,7 @@ discretize(::Type{DiscreteMarkovProcess}, mp::DiscreteMarkovProcess) = mp
 discretize(mp::DiscreteMarkovProcess) = mp
 
 DiscreteMarkovProcess(transitions::Matrix{Float64}, values::Matrix{Float64}) =
-    DiscreteMarkovProcess(UnstructuredGrid(values), transitions, values)
+    DiscreteMarkovProcess(UnstructuredGrid{size(values,2)}(values), transitions, values)
 
 DiscreteMarkovProcess(grid::UnstructuredGrid, transitions::Matrix{Float64}, values::Matrix{Float64}) =
     DiscreteMarkovProcess(grid, transitions, values, 1)
@@ -154,9 +163,6 @@ function simulate_values(process::DiscreteMarkovProcess, N::Int, T::Int, i0::Int
     AxisArray(out_values, Axis{:n}(1:n_values), Axis{:T}(1:T), Axis{:N}(1:N))
 end
 
-discretize(dmp::DiscreteMarkovProcess) = dmp
-
-
 # VAR 1
 
 type VAR1 <: ContinuousProcess
@@ -197,7 +203,7 @@ function discretize(var::VAR1, n_states::Array{Int,1}, n_integration::Array{Int,
     sig = diag(S)
     min = var.mu - n_std*sqrt.(sig)
     max = var.mu + n_std*sqrt.(sig)
-    grid = CartesianGrid(min,max,n_states)
+    grid = CartesianGrid{length(min)}(min,max,n_states)
     # discretize innovations
     x,w = QE.qnwnorm(n_integration, zeros(size(var.Sigma,1)), var.Sigma)
     integration_nodes = [ cat(1,[(M + R*(node(grid, i)-M) + x[j,:])' for j=1:size(x,1)]...) for i in 1:n_nodes(grid)]
@@ -396,7 +402,7 @@ end
 
 
 # compatibility names
-@compat const AR1 = VAR1
-@compat const MarkovChain = DiscreteMarkovProcess
-@compat const Normal = MvNormal
-@compat const GDP = DiscretizedProcess
+const AR1 = VAR1
+const MarkovChain = DiscreteMarkovProcess
+const Normal = MvNormal
+const GDP = DiscretizedProcess

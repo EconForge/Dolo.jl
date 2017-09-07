@@ -23,6 +23,8 @@ using Dolang: _to_expr, inf_to_Inf, solution_order, solve_triangular_system
 # Numerical Tools
 using MacroTools  # used for eval_with
 import Distributions
+import BasisMatrices
+const BM = BasisMatrices
 
 # Simulation/presentation
 using AxisArrays
@@ -55,8 +57,8 @@ export AbstractModel, AbstractDecisionRule
 @compat abstract type AbstractSymbolicModel{ID} end
 @compat abstract type AbstractModel{ID} <: AbstractSymbolicModel{ID} end
 
-@compat const ASModel = AbstractSymbolicModel
-@compat const AModel = AbstractModel
+const ASModel = AbstractSymbolicModel
+const AModel = AbstractModel
 
 id{ID}(::AbstractModel{ID}) = ID
 
@@ -67,9 +69,6 @@ id{ID}(::AbstractModel{ID}) = ID
 @compat ListOfPoints{d} = Vector{Point{d}}
 @compat ListOfValues{n} = Vector{Value{n}}
 
-vector_to_matrix(v) = Matrix(vec(v)')
-# vector_to_matrix(v::Vector) = Matrix(v')
-# vector_to_matrix(v::RowVector) = Matrix(v)
 
 # recursively make all keys at any layer of nesting a symbol
 # included here instead of util.jl so we can call it on RECIPES below
@@ -93,13 +92,18 @@ include("numeric/splines/splines.jl")
 import .splines
 import .splines: eval_UC_spline, eval_UC_spline!, prefilter!
 
+include("util.jl")
 
 include("numeric/newton.jl")
 include("numeric/grids.jl")
 include("numeric/processes.jl")
-include("numeric/decision_rules.jl")
+include("numeric/decision_rules/core.jl")
+include("numeric/decision_rules/csplines.jl")
+include("numeric/decision_rules/constructor.jl")
+include("numeric/decision_rules/compat.jl")
+include("numeric/decision_rules/smolyak.jl")
+include("numeric/decision_rules/complete.jl")
 
-include("util.jl")
 include("calibration.jl")
 include("minilang.jl")
 include("model.jl")
@@ -114,6 +118,5 @@ include("algos/value_iteration.jl")
 include("algos/perturbation.jl")
 include("algos/simulation.jl")
 include("algos/perfect_foresight.jl")
-
 
 end # module

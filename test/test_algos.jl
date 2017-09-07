@@ -17,6 +17,7 @@ path = Dolo.pkg_path
         @time drv = Dolo.evaluate_policy(model_mc, tid_res.dr; maxit=20, verbose=false)
 
         sim = Dolo.simulate(model_mc, ti_res.dr, model_mc.exogenous) #; N=100, T=20)
+
         sim = Dolo.simulate(model_mc, ti_res.dr, i0= 2)
         sim = Dolo.simulate(model_mc, ti_res.dr)
 
@@ -25,7 +26,7 @@ path = Dolo.pkg_path
         z = sim[Axis{:V}(:z)]
         y = sim[Axis{:V}(:y)]
         alpha= model_mc.calibration.flat[:alpha]
-        exp(z).*k.^alpha.*n.^(1-alpha)== y
+        exp.(z).*k.^alpha.*n.^(1-alpha)== y
 
         @test true
     end
@@ -76,6 +77,11 @@ path = Dolo.pkg_path
 
         irf = Dolo.response(model, tid_res.dr, :e_z, -0.01)
 
+
+        # check with random and Smolyak grid
+        # @time Dolo.time_iteration(model, maxit=20, grid=Dict(:tag => :Random, :N => 200))
+        # @time Dolo.time_iteration(model, maxit=20, grid=Dict(:tag => :Smolyak, :mu => 3))
+
         irf[:k]
         @test true
     end
@@ -102,7 +108,7 @@ path = Dolo.pkg_path
         @time dr = Dolo.perturbate(model)
         @time tid_res = Dolo.time_iteration_direct(model; maxit=20, verbose=true)
         @time ti_res = Dolo.time_iteration(model, tid_res.dr; maxit=20, verbose=false)
-        @time sol_v = Dolo.value_iteration(model, ti_res.dr; maxit=20, verbose=true)
+        @time sol_v = Dolo.value_iteration(model, ti_res.dr; maxit=3, verbose=true)
 
         model.symbols[:exogenous]
 

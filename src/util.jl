@@ -29,20 +29,25 @@ function rmerge(def_s::Associative, add_s::Associative)
 end
 
 
-function to_LOP(mat::Matrix{Float64})
-    N,d = size(mat)
-    reinterpret(Point{d}, mat', (N,))
-end
+vector_to_matrix(v) = Matrix(vec(v)')
+# vector_to_matrix(v::Vector) = Matrix(v')
+# vector_to_matrix(v::RowVector) = Matrix(v)
 
-function to_LOJ(mat::Array{Float64})
-    # list of jacobians
-    N,d = size(mat)
-    reinterpret(SMatrix{d,d,Float64,d*d}, permutedims(mat,[2,3,1]), (N,))
-end
+
+#(compat)
+to_LOP(::Type{Point{d}}, mat::Matrix) where d = reinterpret(Point{d}, mat', (size(mat,1),))
+to_LOP(::Type{Point{d}}, mat::AbstractMatrix) where d = to_LOP(Point{d}, Array(mat))
+to_LOP(mat::AbstractArray) = to_LOP(Point{size(mat,2)} ,mat)
 
 
 function from_LOP(lop)
     d = length(lop[1])
     N = length(lop)
     return reinterpret(Float64, lop, (d,N))'
+end
+
+function to_LOJ(mat::Array{Float64,3})
+    # list of jacobians
+    N,d = size(mat)
+    reinterpret(SMatrix{d,d,Float64,d*d}, permutedims(mat,[2,3,1]), (N,))
 end

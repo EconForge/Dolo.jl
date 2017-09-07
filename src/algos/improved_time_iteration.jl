@@ -210,6 +210,12 @@ function improved_time_iteration(model, dprocess::AbstractDiscretizedProcess; gr
     return improved_time_iteration(model, dprocess, init_dr; grid=grid, kwargs...)
 end
 
+
+function  improved_time_iteration(model, init_dr; grid=Dict(), kwargs...)
+    dprocess = discretize( model.exogenous )
+    return improved_time_iteration(model, dprocess, init_dr; grid=grid, kwargs...)
+end
+
 # function improved_time_iteration(model, maxbsteps::Int=10, verbose::Bool=false,
 #                                  tol::Float64=1e-8, smaxit::Int=500, maxit::Int=1000,
 #                                  complementarities::Bool=true, compute_radius::Bool=false)

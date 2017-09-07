@@ -158,3 +158,57 @@ function prefilter!(data::Array{T,3}) where T
         end
     end
 end
+
+
+function prefilter!(data::Array{T,4}) where T
+    I,J,K,L = size(data)
+
+    M = L-2
+    bands = zeros(M+2,3)
+    bb = zeros(T,M+2)
+    for i=1:I
+        for j=1:J
+            for k=1:K
+                dat = view(data,i,j,k,:)
+                fill_bands!(M, bands, bb, dat)
+                prefilter!(dat, bands, bb)
+            end
+        end
+    end
+    M = K-2
+    bands = zeros(M+2,3)
+    bb = zeros(T,M+2)
+    for i=1:I
+        for j=1:J
+            for l=1:L
+                dat = view(data,i,j,:,l)
+                fill_bands!(M, bands, bb, dat)
+                prefilter!(dat, bands, bb)
+            end
+        end
+    end
+    M = J-2
+    bands = zeros(M+2, 3)
+    bb = zeros(T,M+2)
+    for i=1:I
+        for k=1:K
+            for l=1:L
+                dat = view(data, i,:, k,l)
+                fill_bands!(M, bands, bb, dat)
+                prefilter!(dat, bands, bb)
+            end
+        end
+    end
+    M = I-2
+    bands = zeros(M+2, 3)
+    bb = zeros(T,M+2)
+    for j=1:J
+        for k=1:K
+            for l=1:L
+                dat = view(data, :, j,k,l)
+                fill_bands!(M, bands, bb, dat)
+                prefilter!(dat, bands, bb)
+            end
+        end
+    end
+end
