@@ -7,10 +7,19 @@
 
 @compat abstract type AbstractDiscretizedProcess <: DiscreteProcess end
 
+# this is a bit crude but not performance critical, for now
+function node(::Type{Point}, dp::DiscreteProcess, i::Int)
+    v = node(dp, i)
+    SVector{length(v)}(v)
+end
+function inode(::Type{Point}, dp::DiscreteProcess, i::Int, j::Int)
+    v = inode(dp, i, j)
+    SVector{length(v)}(v)
+end
+
 ###
 ### Discretized process
 ###
-
 
 # date-t grid has a known structure
 type DiscretizedProcess{TG<:Grid} <: AbstractDiscretizedProcess
@@ -70,7 +79,7 @@ type DiscretizedIIDProcess <: AbstractDiscretizedProcess
     integration_weights::Vector{Float64}
 end
 
-DiscretizedIIDProcess(x, w) = DiscretizedIIDProcess(EmptyGrid{size(x,2)}(), x, w)
+DiscretizedIIDProcess(x, w) = DiscretizedIIDProcess(EmptyGrid(), x, w)
 
 n_nodes(dp::DiscretizedIIDProcess) = 0
 n_inodes(dp::DiscretizedIIDProcess, i::Int) = size(dp.integration_nodes, 1)
@@ -153,9 +162,6 @@ function simulate_values(process::DiscreteMarkovProcess, N::Int, T::Int, i0::Int
     end
     AxisArray(out_values, Axis{:n}(1:n_values), Axis{:T}(1:T), Axis{:N}(1:N))
 end
-
-discretize(dmp::DiscreteMarkovProcess) = dmp
-
 
 # VAR 1
 

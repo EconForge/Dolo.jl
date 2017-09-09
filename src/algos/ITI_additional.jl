@@ -9,18 +9,12 @@ function euler_residuals(model, s::AbstractArray, x::Array{Array{Float64,2},1}, 
       set_values!(dr,x)
     end
 
-    # s = model.grid.nodes
     N_s = size(s,1) # Number of gris points for endo_var
     n_s = size(s,2) # Number of states
     n_x = size(x[1],2) # Number of controls
 
-    # P = dprocess.values
-    # Q = dprocess.transitions
-
-    # n_ms = Dolo.n_nodes(dprocess)  # number of exo states today
     n_ms = size(x,1)  # number of exo states today
     n_mst = n_inodes(dprocess,1)  # number of exo states tomorrow
-    # n_mv = size(Dolo.node(dprocess, 1),1)  # number of exo variable
 
     res = zeros(n_ms, N_s, n_x)
 
@@ -35,12 +29,12 @@ function euler_residuals(model, s::AbstractArray, x::Array{Array{Float64,2},1}, 
 
 
     for i_ms in 1:n_ms
-       m_prep = [node(dprocess,i_ms)' for i in 1:N_s]
-       m=(hcat([e' for e in m_prep]...))'
+
+       m = node(dprocess,i_ms)
 
        for I_ms in 1:n_mst
-          M_prep = [inode(dprocess, i_ms, I_ms)' for i in 1:N_s]
-          M=(hcat([e' for e in M_prep]...))'
+
+          M = inode(dprocess, i_ms, I_ms)
           w = iweight(dprocess, i_ms, I_ms)
           S = transition(model, m, s, x[i_ms], M, parms)
 
@@ -82,7 +76,7 @@ end
 
 
 ######################
-function SerialDifferentiableFunction(f, epsilon=1e-8)
+function SerialDifferentiableFunction(f, epsilon=1e-6)
 
     function df(x::AbstractVector)
 
@@ -180,17 +174,6 @@ end
 ####
 
 
-function to_LOP(mat::Matrix{Float64})
-    N,d = size(mat)
-    reinterpret(Point{d}, mat', (N,))
-end
-
-function to_LOJ(mat::Array{Float64})
-    # list of jacobians
-    N,d = size(mat)
-    reinterpret(SMatrix{d,d,Float64,d*d}, permutedims(mat,[2,3,1]), (N,))
-end
-
 function reorder_data(dprocess, res, dres, jres, fut_S)
 
     R_i = [to_LOP(res[i,:,:]) for i=1:size(res,1)]
@@ -262,11 +245,6 @@ function d_filt_dx!(Π_i::Vector{ListOfPoints{n_x}}, π_i::Vector{ListOfPoints{n
     end
 end
 
-function from_LOP(lop)
-    d = length(lop[1])
-    N = length(lop)
-    return reinterpret(Float64, lop, (d,N))'
-end
 
 function invert_jac(res::Array{Float64,3},dres::Array{Float64,4},jres::Array{Float64,5},
             fut_S::Array{Float64,4}, dumdr; tol::Float64=1e-10,
@@ -282,7 +260,7 @@ function invert_jac(res::Array{Float64,3},dres::Array{Float64,4},jres::Array{Flo
     return rsol, it, lam, errors
 end
 
-function invert_jac(R_i, D_i, M_ij, S_ij, dumdr; tol::Float64=1e-10,
+function invert_jac(R_i, D_i, J_ij, S_ij, dumdr; tol::Float64=1e-10,
             maxit::Int=1000, verbose::Bool=false)
 
     dprocess = dumdr.process
@@ -292,14 +270,13 @@ function invert_jac(R_i, D_i, M_ij, S_ij, dumdr; tol::Float64=1e-10,
         invert!(Dinv[i])
     end
 
-    # already inverted before
-    # M_ij = deepcopy(J_ij)
-    # for i=1:size(M_ij,1)
-    #     for j=1:size(M_ij,2)
-    #         premult!(Dinv[i],M_ij[i,j])
-    #         # M_ij[i,j][:] *= Dolo.iweight(dprocess,i,j)
-    #     end
-    # end
+    M_ij = deepcopy(J_ij)
+    for i=1:size(M_ij,1)
+        for j=1:size(M_ij,2)
+            premult!(Dinv[i],M_ij[i,j])
+            # M_ij[i,j][:] *= Dolo.iweight(dprocess,i,j)
+        end
+    end
 
     lam = -1.0
     lam_max = -1.0

@@ -238,7 +238,7 @@ function value_iteration(
     # this could be integrated in the main loop.
     verbose && println("Evaluating initial policy")
 
-    drv = evaluate_policy(model, dr; verbose=verbose, eval_options...)
+    drv = evaluate_policy(model, dr; verbose=false, eval_options...)
 
     verbose && println("Evaluating initial policy (done)")
 

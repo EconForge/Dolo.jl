@@ -28,12 +28,9 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
                                  tol::Float64=1e-8, smaxit::Int=500, maxit::Int=1000,
                                  complementarities::Bool=false, compute_radius::Bool=false, details::Bool=true)
 
-   # x_lb = model.functions['controls_lb']
-   # x_ub = model.functions['controls_ub']
 
    parms = model.calibration[:parameters]
 
-  #  n_m = Dolo.n_nodes(dprocess) # number of exo states today
    n_m = max(n_nodes(dprocess), 1) # number of exo states today
    n_mt = n_inodes(dprocess,1)  # number of exo states tomorrow
    n_s = length(model.symbols[:states]) # number of endo states
@@ -41,9 +38,7 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
    s = nodes(grid)
    N_s = size(s,1)
    n_x = size(model.calibration[:controls],1)
-  #  N_m = Dolo.n_nodes(dprocess) # number of grid points for exo_vars
 
-  #  x0 = [repmat(model.calibration[:controls]',N_s) for i in 1:N_m] #n_x N_s n_m
    x0 = [init_dr(i, s) for i=1:n_m]
    ddr=CachedDecisionRule(dprocess, grid, x0)
    ddr_filt = CachedDecisionRule(dprocess, grid, x0)
@@ -58,6 +53,7 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
 
 
    x=x0
+
    ## memory allocation
    jres = zeros(n_m,n_mt,N_s,n_x,n_x)
    S_ij = zeros(n_m,n_mt,N_s,n_s)
@@ -93,6 +89,7 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
       # dres: derivatives w.r.t. x
       # jres: derivatives w.r.t. ~x
       # fut_S: future states
+
       set_values!(ddr,x)
 
       ff = SerialDifferentiableFunction(u-> euler_residuals(model, s, u,ddr,dprocess,parms;
@@ -100,14 +97,12 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
 
       res, dres = ff(x)
 
-      # dres = permutedims(dres, [axisdim(dres, Axis{:n_v}),axisdim(dres, Axis{:N}),axisdim(dres, Axis{:n_x})])
       dres = reshape(dres, n_m, N_s, n_x, n_x)
       junk, jres, fut_S = euler_residuals(model, s, x,ddr,dprocess,parms, with_jres=true,set_dr=false, jres=jres, S_ij=S_ij)
 
       if complementarities == true
         for i_ms in 1:n_m
            dx =  x[i_ms] - x_lb[i_ms]
-          #  res.data[i_ms,:,:], dres[i_ms,:,:,:], jres[i_ms,:,:,:,:] = smooth_right(res.data[i_ms,:,:], dres[i_ms,:,:,:], jres[i_ms,:,:,:,:], dx)
            res[i_ms,:,:], dres[i_ms,:,:,:], jres[i_ms,:,:,:,:] = smooth_right(res[i_ms,:,:], dres[i_ms,:,:,:], jres[i_ms,:,:,:,:], dx)
         end
 
@@ -115,8 +110,6 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
         dres *= -1
         jres *= -1
 
-        # i_ms=1
-        # smooth_right(res.data[i_ms,:,:], dres[i_ms,:,:,:], jres[i_ms,:,:,:,:], dx; pos = -1.0)
         for i_ms in 1:n_m
            dx =  x_ub[i_ms] -x[i_ms]
            res[i_ms,:,:], dres[i_ms,:,:,:], jres[i_ms,:,:,:,:] = smooth_right(res[i_ms,:,:], dres[i_ms,:,:,:], jres[i_ms,:,:,:,:], dx; pos = -1.0)
@@ -125,22 +118,7 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
 
       err_0 = abs(maximum(res))
 
-      jres *= -1.0
-      M=jres
-
-      # X=zeros(n_m,N_s,n_x,n_x)
-      for i_m in 1:n_m
-        X = copy(dres[i_m,:,:,:])
-        for j_m in 1:n_mt
-            for n in 1:N_s
-                M[i_m,j_m,n,:,:] = X[n,:,:]\M[i_m,j_m,n,:,:]
-            end
-        end
-      end
-
-    #   if it==1
-    #       save("myfile.jld", "res", res, "dres", dres, "jres", jres, "fut_S", fut_S)
-    #   end
+      jres[:,:,:,:,:] *= -1.0
 
       ####################
       # Invert Jacobians
@@ -207,6 +185,12 @@ end
 function improved_time_iteration(model, dprocess::AbstractDiscretizedProcess; grid=Dict(), kwargs...)
 
     init_dr = ConstantDecisionRule(model.calibration[:controls])
+    return improved_time_iteration(model, dprocess, init_dr; grid=grid, kwargs...)
+end
+
+
+function  improved_time_iteration(model, init_dr; grid=Dict(), kwargs...)
+    dprocess = discretize( model.exogenous )
     return improved_time_iteration(model, dprocess, init_dr; grid=grid, kwargs...)
 end
 
