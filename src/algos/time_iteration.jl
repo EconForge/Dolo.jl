@@ -1,12 +1,17 @@
 
-nodes_generator(dprocess::Dolo.AbstractDiscretizedProcess, i::Int) = Task() do
+get_integration_nodes(dprocess::Dolo.AbstractDiscretizedProcess, i::Int)=filter( x -> (x[1]!=0), ((iweight(dprocess,i,j), inode(dprocess,i,j), j) for j in n_inodes(dprocess,i)) )
+
+
+nodes_generator(dprocess::AbstractDiscretizedProcess, i::Int) = Task() do
     M= zeros(length(dprocess.values[:,2]))
     w = zeros(1)
     j=1
-    while j <= Dolo.n_inodes(dprocess, i)
-      M = Dolo.inode(dprocess, i, j)
-      w = Dolo.iweight(dprocess, i, j)
-      produce(M,w)
+    while j <= n_inodes(dprocess, i)
+      M = inode(dprocess, i, j)
+      w = iweight(dprocess, i, j)
+      if w!= 0
+           produce(w,M,j)
+      end
       j=j+1
     end
 end
@@ -47,13 +52,13 @@ function euler_residuals(model, dprocess::AbstractDiscretizedProcess, s, x::Arra
         #     X = dr(i, j, S)
         #     res[i][:,:] += w*Dolo.arbitrage(model, m, s, x[i], M, S, X, p)
         # end
-        j=1
-        for (M, w) in nodes_generator(dprocess,i)
+
+        for (w, M, j) in nodes_generator(dprocess,i)
+        # for (w, M, j) in get_integration_nodes(dprocess,i)
             # Update the states
             S[:,:] = Dolo.transition(model, m, s, x[i], M, p)
             X = dr(i, j, S)
             res[i][:,:] += w*Dolo.arbitrage(model, m, s, x[i], M, S, X, p)
-            j=j+1
         end
     end
     return res

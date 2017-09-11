@@ -5,137 +5,12 @@ import Dolo
 
 path = Dolo.pkg_path
 using AxisArrays
-
-filename = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
+path2 = "https://raw.githubusercontent.com/azheng25/OLG-Examples/master"
+filename = joinpath(path2,"Huggett1996_processes.yaml")
+# filename = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
 # model = Dolo.Model(joinpath(Dolo.pkg_path, "examples", "models", "rbc_dtcc_mc.yaml"), print_code=true)
 model = Dolo.yaml_import(filename)
 @time dr = Dolo.time_iteration(model, verbose=true, maxit=10000)
-
-params = model.calibration[:parameters]
-
-driving_process = Dolo.simulate(model.exogenous, 1, 5, 1)
-N = size(driving_process, 2)
-T = size(driving_process, 1)
-epsilons = zeros(Int, N, 1, T)
-for _n in 1:N
-    epsilons[_n, 1, :] = driving_process[:, _n]
-end
-
-# calculate initial controls using decision rule
-x0 = dr.dr(epsilons[1, :, 1], model.calibration[:states])
-
-
-epsilons = permutedims(driving_process, [2, 1, 3]) # (N, ne, T)
-
-# calculate initial controls using decision rule
-x0 = dr(epsilons[1, :, 1], s0)
-
-nodes_generator(dprocess::Dolo.AbstractDiscretizedProcess, i::Int) = Task() do
-  # for x in dprocess
-    M= zeros(length(dprocess.values[:,2]))
-    w = zeros(1)
-    j=1
-    while j <= Dolo.n_inodes(dprocess, i)
-      M = Dolo.inode(dprocess, i, j)
-      w = Dolo.iweight(dprocess, i, j)
-      produce(M,w)
-      # produce(w)
-      j=j+1
-    end
-  # end
-  #
-  # for x in 1:14
-  #   produce(0)
-  # end
-end
-
-###############################################################################
-### Simulate a model with a Markov Chain
-dprocess= Dolo.discretize( model.exogenous )
-#
-# i = 1
-#
-#
-# function integration_nodes(dprocess::Dolo.AbstractDiscretizedProcess, i::Int)
-#     M= zeros(length(dprocess.values[:,2]))
-#     w = zeros(1)
-#     # produce(M)
-#     # produce(w)
-#     j=1
-#     while true
-#     # for j = 1:Dolo.n_inodes(dprocess, i)
-#         M = Dolo.inode(dprocess, i, j)
-#         w = Dolo.iweight(dprocess, i, j)
-#         produce(M,w)
-#         # produce(w)
-#     end
-#     j=j+1
-#     # end
-#     # Task(_it)
-# end
-#
-# generator =@task integration_nodes(dprocess,1)
-# Aa, Bb = consume(generator)
-# Aa
-
-i=1
-nodes_generator(dprocess::Dolo.AbstractDiscretizedProcess, i::Int) = Task() do
-  # for x in dprocess
-    M= zeros(length(dprocess.values[:,2]))
-    w = zeros(1)
-    j=1
-    while j <= Dolo.n_inodes(dprocess, i)
-      M = Dolo.inode(dprocess, i, j)
-      w = Dolo.iweight(dprocess, i, j)
-      produce(M,w)
-      # produce(w)
-      j=j+1
-    end
-  # end
-  #
-  # for x in 1:14
-  #   produce(0)
-  # end
-end
-# Mx = bit_generator(dprocess, i)
-
-j=1
-for (Mx, w) in nodes_generator(dprocess, i)
-  println(j)
-  println(Mx, w)
-  j=j+1
-  #  println(1)
-end
-sdsd
-# function integration_nodes(dprocess::Dolo.AbstractDiscretizedProcess, i::Int)
-#     M= zeros(length(dprocess.values[:,2]))
-#     w = zeros(1)
-#     produce(M)
-#     produce(w)
-#     # function _it()
-#         # for i = 1:n
-#           for j = 1:Dolo.n_inodes(dprocess, i)
-#             M = Dolo.inode(dprocess, i, j)
-#             w = Dolo.iweight(dprocess, i, j)
-#             produce(M)
-#             produce(w)
-#           end
-#     # end
-#     # Task(_it)
-# end
-# w = Dolo.iweight(dprocess, 1, 1)
-#
-# M= zeros(length(dprocess.values[:,2]))
-# w = zeros(1)
-# function _it()
-#     # for i = 1:n
-#       for j = 1:Dolo.n_inodes(dprocess, i)
-#         M = inode(dprocess, i, j)
-#         w = iweight(dprocess, i, j)
-#     end
-# end
-#
-# Task(_it)
 
 
 
@@ -169,37 +44,35 @@ for i in 1:size(res, 1)
     end
 end
 
+
 res
+
+
+
+
+
+
+
+
+get_integration_nodes(dprocess::Dolo.AbstractDiscretizedProcess, i::Int)=filter(w->(w[1]!=0),((Dolo.iweight(dprocess,i,j), Dolo.inode(dprocess,i,j), j) for j in Dolo.n_inodes(dprocess,i)) )
+
 
 for i in 1:size(res, 1)
     m = Dolo.node(dprocess, i)
-    j=1
-    for (M, w) in nodes_generator(dprocess,i)
+    for (w,M, j) in get_integration_nodes(dprocess,i)
         # Update the states
         S[:,:] = Dolo.transition(model, m, s, x[i], M, p)
         X = dr(i, j, S)
         res[i][:,:] += w*Dolo.arbitrage(model, m, s, x[i], M, S, X, p)
-        j=j+1
+        println(M)
     end
 end
-
-
 
 
 res
 
 
-s= "text"
-for x in s
-    a = Int8(x[1])
-    i = 0
-end
-
-x
-a = Int8(x[1])
-a = a >> 1
-
-
+res
 
 
 
