@@ -93,13 +93,10 @@ function evaluate_policy(model, dprocess::AbstractDiscretizedProcess, grid, dr;
         # Compute value function for each smooth decision rule
         for i = 1:nsd
             m = node(dprocess, i)
-            for j = 1:n_inodes(dprocess, i)
-                M = inode(dprocess, i, j)
-                w = iweight(dprocess, i, j)
+            for (w, M, j) in get_integration_nodes(dprocess,i)
                  for n=1:N
                      # Update the states
                      S = Dolo.transition(model, m, s[n, :], x[i][n, :], M, p)
-
                      # Update value function
                       E_V[i][n, :] += w*drv(i, j, S)
                  end
@@ -149,9 +146,8 @@ function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64},
                       x0::Vector{Float64}, p::Vector{Float64})
     m = node(dprocess, i)
     E_V = 0.0
-    for j=1:n_inodes(dprocess, i)
-        M = inode(dprocess, i, j)
-        w = iweight(dprocess, i, j)
+    for (w, M, j) in get_integration_nodes(dprocess,i)
+        # Update the states
         S = Dolo.transition(model, m, s, x0, M, p)
         E_V += w*drv(i, j, S)[1]
     end
