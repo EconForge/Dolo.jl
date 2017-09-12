@@ -392,6 +392,10 @@ function AgingProcess(mu::Float64, K::Int)
 end
 
 
+get_integration_nodes(dprocess::Dolo.AbstractDiscretizedProcess, i::Int)=filter( x -> (x[1]!=0), ((iweight(dprocess,i,j), inode(dprocess,i,j), j) for j in 1:n_inodes(dprocess,i)) )
+
+
+
 # compatibility names
 const AR1 = VAR1
 const MarkovChain = DiscreteMarkovProcess

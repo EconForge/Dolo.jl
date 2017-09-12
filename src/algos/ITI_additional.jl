@@ -39,11 +39,12 @@ function euler_residuals(model, s::AbstractArray, x::Array{Array{Float64,2},1}, 
        m=(hcat([e' for e in m_prep]...))'
 
        for I_ms in 1:n_mst
-          M_prep = [inode(dprocess, i_ms, I_ms)' for i in 1:N_s]
+         for (w, M_prep, j) in get_integration_nodes(dprocess,i)
+          # M_prep = [inode(dprocess, i_ms, I_ms)' for i in 1:N_s]
+          # w = iweight(dprocess, i_ms, I_ms)
           M=(hcat([e' for e in M_prep]...))'
-          w = iweight(dprocess, i_ms, I_ms)
+          # Update the states
           S = transition(model, m, s, x[i_ms], M, parms)
-
           X = dr(i_ms, I_ms, S)
 
           if with_jres==true

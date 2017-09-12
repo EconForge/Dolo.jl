@@ -5,84 +5,12 @@ import Dolo
 
 path = Dolo.pkg_path
 using AxisArrays
-path2 = "https://raw.githubusercontent.com/azheng25/OLG-Examples/master"
-filename = joinpath(path2,"Huggett1996_processes.yaml")
-# filename = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
-# model = Dolo.Model(joinpath(Dolo.pkg_path, "examples", "models", "rbc_dtcc_mc.yaml"), print_code=true)
+# path2 = "https://raw.githubusercontent.com/azheng25/OLG-Examples/master"
+# filename = joinpath(path2,"Huggett1996_processes.yaml")
+filename = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
 model = Dolo.yaml_import(filename)
 @time dr = Dolo.time_iteration(model, verbose=true, maxit=10000)
-
-
-
-grid = Dolo.get_grid(model)
-N = Dolo.n_nodes(grid)
-s = Dolo.nodes(grid)
-n_s_endo = size(s, 2)
-n_s_exo = Dolo.n_nodes(dprocess)
-
-# initial guess
-# number of smooth decision rules
-nsd = max(n_s_exo, 1)
-# x = model.calibration[:controls]
-init_dr = Dolo.ConstantDecisionRule(model.calibration[:controls])
-x = [init_dr(i, s) for i=1:nsd]
-dr = Dolo.CachedDecisionRule(dprocess, grid, x)
-N = size(s, 1)
-res = [zeros(size(x[1])) for i=1:length(x)]
-S = zeros(size(s))
-# X = zeros(size(x[1]))
-p = model.calibration[:parameters]
-for i in 1:size(res, 1)
-    m = Dolo.node(dprocess, i)
-    for j in 1:Dolo.n_inodes(dprocess, i)
-        M = Dolo.inode(dprocess, i, j)
-        w = Dolo.iweight(dprocess, i, j)
-        # Update the states
-        S[:,:] = Dolo.transition(model, m, s, x[i], M, p)
-        X = dr(i, j, S)
-        res[i][:,:] += w*Dolo.arbitrage(model, m, s, x[i], M, S, X, p)
-    end
-end
-
-
-res
-
-
-
-
-
-
-
-
-get_integration_nodes(dprocess::Dolo.AbstractDiscretizedProcess, i::Int)=filter(w->(w[1]!=0),((Dolo.iweight(dprocess,i,j), Dolo.inode(dprocess,i,j), j) for j in Dolo.n_inodes(dprocess,i)) )
-
-
-for i in 1:size(res, 1)
-    m = Dolo.node(dprocess, i)
-    for (w,M, j) in get_integration_nodes(dprocess,i)
-        # Update the states
-        S[:,:] = Dolo.transition(model, m, s, x[i], M, p)
-        X = dr(i, j, S)
-        res[i][:,:] += w*Dolo.arbitrage(model, m, s, x[i], M, S, X, p)
-        println(M)
-    end
-end
-
-
-res
-
-
-res
-
-
-
-
-
-
-
-
-
-###################################################
+@time dr = Dolo.improved_time_iteration(model, verbose=true, maxit=10000)
 
 N=10
 T= 50

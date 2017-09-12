@@ -1,20 +1,4 @@
 
-get_integration_nodes(dprocess::Dolo.AbstractDiscretizedProcess, i::Int)=filter( x -> (x[1]!=0), ((iweight(dprocess,i,j), inode(dprocess,i,j), j) for j in n_inodes(dprocess,i)) )
-
-
-nodes_generator(dprocess::AbstractDiscretizedProcess, i::Int) = Task() do
-    M= zeros(length(dprocess.values[:,2]))
-    w = zeros(1)
-    j=1
-    while j <= n_inodes(dprocess, i)
-      M = inode(dprocess, i, j)
-      w = iweight(dprocess, i, j)
-      if w!= 0
-           produce(w,M,j)
-      end
-      j=j+1
-    end
-end
 
 """
 Computes the residuals of the arbitrage equations. The general form of the arbitrage equation is
@@ -44,17 +28,7 @@ function euler_residuals(model, dprocess::AbstractDiscretizedProcess, s, x::Arra
     # X = zeros(size(x[1]))
     for i in 1:size(res, 1)
         m = node(dprocess, i)
-        # for j in 1:n_inodes(dprocess, i)
-        #     M = inode(dprocess, i, j)
-        #     w = iweight(dprocess, i, j)
-        #     # Update the states
-        #     S[:,:] = Dolo.transition(model, m, s, x[i], M, p)
-        #     X = dr(i, j, S)
-        #     res[i][:,:] += w*Dolo.arbitrage(model, m, s, x[i], M, S, X, p)
-        # end
-
-        for (w, M, j) in nodes_generator(dprocess,i)
-        # for (w, M, j) in get_integration_nodes(dprocess,i)
+        for (w, M, j) in get_integration_nodes(dprocess,i)
             # Update the states
             S[:,:] = Dolo.transition(model, m, s, x[i], M, p)
             X = dr(i, j, S)
