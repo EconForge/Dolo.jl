@@ -39,23 +39,24 @@ function euler_residuals(model, s::AbstractArray, x::Array{Array{Float64,2},1}, 
        m=(hcat([e' for e in m_prep]...))'
 
        for I_ms in 1:n_mst
-         for (w, M_prep, j) in get_integration_nodes(dprocess,i)
-          # M_prep = [inode(dprocess, i_ms, I_ms)' for i in 1:N_s]
-          # w = iweight(dprocess, i_ms, I_ms)
-          M=(hcat([e' for e in M_prep]...))'
-          # Update the states
-          S = transition(model, m, s, x[i_ms], M, parms)
-          X = dr(i_ms, I_ms, S)
+           for (w, M_prep, j) in get_integration_nodes(dprocess,i)
+               # M_prep = [inode(dprocess, i_ms, I_ms)' for i in 1:N_s]
+               # w = iweight(dprocess, i_ms, I_ms)
+               M=(hcat([e' for e in M_prep]...))'
+               # Update the states
+               S = transition(model, m, s, x[i_ms], M, parms)
+               X = dr(i_ms, I_ms, S)
 
-          if with_jres==true
-              ff = SerialDifferentiableFunction(u->arbitrage(model, m,s,x[i_ms],M,S,u,parms))
-              rr, rr_XM = ff(X)
-              jres[i_ms,I_ms,:,:,:] = w*rr_XM
-              S_ij[i_ms,I_ms,:,:] = S
-          else
-              rr = arbitrage(model, m,s,x[i_ms],M,S,X,parms)
-          end
-          res[i_ms,:,:] += w*rr
+               if with_jres==true
+                   ff = SerialDifferentiableFunction(u->arbitrage(model, m,s,x[i_ms],M,S,u,parms))
+                   rr, rr_XM = ff(X)
+                   jres[i_ms,I_ms,:,:,:] = w*rr_XM
+                   S_ij[i_ms,I_ms,:,:] = S
+               else
+                   rr = arbitrage(model, m,s,x[i_ms],M,S,X,parms)
+               end
+               res[i_ms,:,:] += w*rr
+            end
         end
 
     end
