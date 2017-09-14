@@ -9,6 +9,7 @@ end
 const yaml_types = let
     pairs = [("!Cartesian", :Cartesian),
             ("!Smolyak", :Smolyak),
+            ("!Random", :Random),
              ("!Normal", :Normal),
              ("!MarkovChain", :MarkovChain),
              ("!Product", :Product),
@@ -160,15 +161,18 @@ function get_grid(model::ASModel; options=Dict())
     end
     if grid_dict[:tag] == :Cartesian
         orders = get(grid_dict, :orders, [20 for i=1:d])
-        grid = CartesianGrid(domain.min, domain.max, orders)
+        grid = CartesianGrid{d}(domain.min, domain.max, orders)
         if !(typeof(model.exogenous)<:Union{Dolo.DiscreteMarkovProcess,Dolo.ProductProcess} ) && length(model.calibration[:exogenous])>1 && length(orders)!=length(model.calibration[:exogenous])
             msg = string("Check the dimension of the matrix given in the yaml file, section: options-grid-orders. ",
                          "Expected to be of dimension $([1, length(model.calibration[:exogenous])])")
             error(msg)
         end
     elseif grid_dict[:tag] == :Smolyak
-        mu = grid_dict[:mu]
-        grid = SmolyakGrid(domain.min, domain.max, mu)
+        mu = get(grid_dict, :mu, 3)
+        grid = SmolyakGrid{d}(domain.min, domain.max, mu)
+    elseif grid_dict[:tag] == :Random
+        n = get(grid_dict, :N, 200)
+        grid = RandomGrid{d}(domain.min, domain.max, n)
     else
         error("Unknown grid type.")
     end
@@ -241,7 +245,7 @@ end
 _numeric_mod_type{ID}(::Model{ID}) = Model{ID}
 
 function Base.show(io::IO, model::Model)
-    println("Model")
+    print(io, "Model")
 end
 
 #### import functions

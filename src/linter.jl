@@ -156,6 +156,7 @@ function check_calibration(d::YAML.MappingNode, filename="<string>")
           push!(model_symbols, sym.value)
       end
   end
+  model_symbols = cat(1, model_symbols, keys(d[:definitions]))
 
 
   for (i, key) in enumerate(keys(d["calibration"]))
@@ -193,7 +194,7 @@ function check_equations(d::YAML.MappingNode, filename="<string>")
 
   # check symbol names:
   required_equation_types = ["transition"]
-  optional_equation_types = ["arbitrage", "value", "felicity", "expectation"]
+  optional_equation_types = ["arbitrage", "value", "felicity", "expectation", "direct_response"]
   known_equation_types = cat(1, required_equation_types, optional_equation_types)
 
   model_equation_types = keys(d[:equations])

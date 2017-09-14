@@ -1,4 +1,5 @@
 
+
 """
 Computes the residuals of the arbitrage equations. The general form of the arbitrage equation is
 
@@ -27,18 +28,11 @@ function euler_residuals(model, dprocess::AbstractDiscretizedProcess, s, x::Arra
     # X = zeros(size(x[1]))
     for i in 1:size(res, 1)
         m = node(dprocess, i)
-        for j in 1:n_inodes(dprocess, i)
-            M = inode(dprocess, i, j)
-            w = iweight(dprocess, i, j)
+        for (w, M, j) in get_integration_nodes(dprocess,i)
             # Update the states
-            for n in 1:N
-                S[n, :] = Dolo.transition(model, m, s[n, :], x[i][n, :], M, p)
-            end
-
+            S[:,:] = Dolo.transition(model, m, s, x[i], M, p)
             X = dr(i, j, S)
-            for n in 1:N
-                res[i][n, :] += w*Dolo.arbitrage(model, m, s[n, :], x[i][n, :], M, S[n, :], X[n, :], p)
-            end
+            res[i][:,:] += w*Dolo.arbitrage(model, m, s, x[i], M, S, X, p)
         end
     end
     return res

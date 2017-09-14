@@ -25,6 +25,17 @@ n_inodes(dp::DiscretizedProcess, i::Int) = size(dp.integration_nodes[i], 1)
 inode(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_nodes[i][j, :]
 iweight(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_weights[i][j]
 
+
+function Product(gdp1::DiscretizedProcess, gdp2::DiscretizedProcess)
+  In = [ gridmake(gdp1.integration_nodes[i], gdp2.integration_nodes[j] ) for i = 1:n_nodes(gdp1)  for j = 1:n_nodes(gdp2) ]
+  Iw =[kron(gdp1.integration_weights[i], gdp2.integration_weights[j] ) for i = 1:n_nodes(gdp1)  for j = 1:n_nodes(gdp2) ]
+  N=length(gdp1.grid.min)+length(gdp2.grid.min)
+  i_grid  = Product(gdp1.grid, gdp2.grid)
+
+  return DiscretizedProcess(i_grid, In, Iw)
+end
+
+
 # date-t grid is unstructured
 type DiscreteMarkovProcess <: AbstractDiscretizedProcess
     grid::UnstructuredGrid
@@ -37,7 +48,7 @@ discretize(::Type{DiscreteMarkovProcess}, mp::DiscreteMarkovProcess) = mp
 discretize(mp::DiscreteMarkovProcess) = mp
 
 DiscreteMarkovProcess(transitions::Matrix{Float64}, values::Matrix{Float64}) =
-    DiscreteMarkovProcess(UnstructuredGrid(values), transitions, values)
+    DiscreteMarkovProcess(UnstructuredGrid{size(values,2)}(values), transitions, values)
 
 DiscreteMarkovProcess(grid::UnstructuredGrid, transitions::Matrix{Float64}, values::Matrix{Float64}) =
     DiscreteMarkovProcess(grid, transitions, values, 1)
@@ -56,6 +67,7 @@ function MarkovProduct(mc1::DiscreteMarkovProcess, mc2::DiscreteMarkovProcess)
     P = fkron(mc1.transitions, mc2.transitions)
     return DiscreteMarkovProcess(P, Q)
 end
+
 
 function MarkovProduct(mcs::DiscreteMarkovProcess...)
     reduce(MarkovProduct, mcs)
@@ -154,7 +166,6 @@ function simulate_values(process::DiscreteMarkovProcess, N::Int, T::Int, i0::Int
     AxisArray(out_values, Axis{:n}(1:n_values), Axis{:T}(1:T), Axis{:N}(1:N))
 end
 
-
 # VAR 1
 
 type VAR1 <: ContinuousProcess
@@ -195,7 +206,7 @@ function discretize(var::VAR1, n_states::Array{Int,1}, n_integration::Array{Int,
     sig = diag(S)
     min = var.mu - n_std*sqrt.(sig)
     max = var.mu + n_std*sqrt.(sig)
-    grid = CartesianGrid(min,max,n_states)
+    grid = CartesianGrid{length(min)}(min,max,n_states)
     # discretize innovations
     x,w = QE.qnwnorm(n_integration, zeros(size(var.Sigma,1)), var.Sigma)
     integration_nodes = [ cat(1,[(M + R*(node(grid, i)-M) + x[j,:])' for j=1:size(x,1)]...) for i in 1:n_nodes(grid)]
@@ -204,6 +215,7 @@ function discretize(var::VAR1, n_states::Array{Int,1}, n_integration::Array{Int,
 end
 
 discretize(::Type{DiscretizedProcess}, var::VAR1; args...) = discretize(var; args...)
+
 
 function discretize(::Type{DiscreteMarkovProcess}, var::VAR1; N::Int=3)
 
@@ -231,6 +243,8 @@ function discretize(::Type{DiscreteMarkovProcess}, var::VAR1; N::Int=3)
     mc_prod.values = mc_prod.values*L'
     return mc_prod
 end
+
+
 
 """
 ```julia
@@ -266,7 +280,7 @@ function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64};
     end
 
     if irf
-        E[:, 1, :] = repmat(e0,1,N)
+        E[:, 1, :] = repmat(e0,1,T)
     end
 
     # Initial conditions
@@ -354,6 +368,14 @@ function discretize(::Type{DiscreteMarkovProcess}, pp::ProductProcess; opt1=Dict
     return MarkovProduct(p1,p2)
 end
 
+
+function discretize(::Type{DiscretizedProcess}, pp::ProductProcess; opt1=Dict(), opt2=Dict())
+  p1 = discretize(DiscretizedProcess, pp.process_1; opt1...)
+  p2 = discretize(DiscretizedProcess, pp.process_2; opt2...)
+  return Product(p1,p2)
+end
+
+
 function discretize(pp::ProductProcess; kwargs...)
     return discretize(DiscreteMarkovProcess, pp; kwargs...)
 end
@@ -393,8 +415,12 @@ function AgingProcess(mu::Float64, K::Int)
 end
 
 
+get_integration_nodes(dprocess::Dolo.AbstractDiscretizedProcess, i::Int)=filter( x -> (x[1]!=0), ((iweight(dprocess,i,j), inode(dprocess,i,j), j) for j in 1:n_inodes(dprocess,i)) )
+
+
+
 # compatibility names
-@compat const AR1 = VAR1
-@compat const MarkovChain = DiscreteMarkovProcess
-@compat const Normal = MvNormal
-@compat const GDP = DiscretizedProcess
+const AR1 = VAR1
+const MarkovChain = DiscreteMarkovProcess
+const Normal = MvNormal
+const GDP = DiscretizedProcess

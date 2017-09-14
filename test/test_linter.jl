@@ -1,3 +1,6 @@
+
+@testset "linter" begin
+
 import Dolo
 
 # an example model shouldn't raise any error
@@ -26,4 +29,6 @@ for fname in (readdir(errors_dir))
         end
         @assert ok
     end
+end
+
 end

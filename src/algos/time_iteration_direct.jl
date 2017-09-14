@@ -73,24 +73,17 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
 
         for i in 1:size(E_f, 1)
             m = node(dprocess, i)
-            for j in 1:n_inodes(dprocess, i)
-                M = inode(dprocess, i, j)
-                w = iweight(dprocess, i, j)
+            for (w, M, j) in get_integration_nodes(dprocess,i)
                 # Update the states
-                for n in 1:N
-                    S[n, :] = Dolo.transition(model, m, s[n, :], x0[i][n, :], M, p)
-                end
+                S[:,:] = Dolo.transition(model, m, s, x0[i], M, p)
                 # interpolate controles conditional states of tomorrow
                 X = dr(i, j, S)
-                # Compute expectations as a weited average of the exo states w_j
-                for n in 1:N
-                    E_f[i][n, :] += w*Dolo.expectation(model, M, S[n, :], X[n, :], p)
-                end
+                # Compute expectations as a weighted average of the exo states w_j
+                E_f[i][:,:] += w*Dolo.expectation(model, M, S, X, p)
+
             end
             # compute controles of tomorrow
-            for n in 1:N
-                x1[i][n, :] = Dolo.direct_response(model, m, s[n, :], E_f[i][n, :], p)
-            end
+            x1[i][:] = Dolo.direct_response(model, m, s, E_f[i], p)
         end
 
         err = 0.0
