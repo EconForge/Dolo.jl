@@ -500,8 +500,8 @@ function lint(filename::AbstractString; format=:human)
 
   for fun in funnames
     errors2, warnings2 = fun(filename)
-    append!(errors, errors2)
-    append!(warnings, warnings2)
+    errors = cat(1, errors, errors2)
+    warnings = cat(1 ,warnings, warnings2)
   end
 
   if format == :human
