@@ -1,0 +1,103 @@
+name: lamp
+
+model_type: dtcc
+
+symbols:
+
+    exogenous: [beta, z]
+    states: [beta, z, Delta__L]
+    controls: [C_s, N_s, F1, F2, R, real_r, C]
+    parameters: [epsilon, phi, mu, nu, C_star, pi_st, R_st, lbda, NC, beta, phi_pi, phi_y, theta, sig_z, rho_z, sig_b, rho_b]
+
+definitions:
+
+    N_h: nu^(-1/(1+phi))
+    N: (1-lbda)*N_s + lbda*N_h
+    C_h: (C-(1-lbda)*C_s)/lbda
+    W: C_h/N_h
+    mc: W*exp(z)
+    pi: ((1-(F1/F2)^(1-epsilon)*(1-theta))/theta)^(1/(epsilon-1))
+    Delta: theta*(pi)^epsilon*Delta__L+(1-theta)*((F1)/(F2))^(-epsilon)
+
+
+equations:
+
+    arbitrage:
+        - pi(1)/R - beta(1)*(C_s/C_s(+1))
+        - nu*N_s^phi - W/C_s                     |  0.0 <= N_s <= inf
+        # Calvo nonlinear Phillips Curve
+        - (epsilon/(epsilon-1))*mc*C/C_s + theta*beta(1)*pi(1)^epsilon*F1(1)-F1
+        - 1*C/C_s+theta*beta(1)*pi(1)^(epsilon-1)*F2(1)-F2
+        - C - (N-mu*C_star)/Delta
+        - R - R_st*(pi)^(phi_pi)*(C/C_star)^phi_y
+        - real_r = R/pi(+1)
+    transition:
+        # - z = rho_z*z(-1) + e_z
+        # - beta = rho_beta*beta(-1) + e_beta
+        - Delta__L=Delta(-1)
+
+
+calibration:
+
+      phi: 3
+      mu: 0.2
+      nu: 4
+      lbda: 0.1
+      beta: 0.995
+      phi_pi: 2
+      phi_y: 0.2
+      theta: 0.75
+      epsilon: 6
+      rho_z: 0.8
+      zbar: 1
+      sig_z: 0.01
+      rho_b: 0.5
+      sig_b: 0.015
+
+      # variable steady states / initial conditions
+      pi: 1
+      R: 1/beta
+      real_r: R/pi
+      R_st: R
+      N: nu^(-1/(1+phi))
+      z: 0
+      Delta__L: 1
+      C: N/(Delta__L+mu)
+      C_s: C
+      C_h: C
+      N_h: N
+      N_s: N
+      W: C/N
+      e_z: 0
+      e_beta: 0
+      NC: N/C
+    #  mc: (1-1/theta)*exp(z)
+      mc: W*exp(z)
+      pi_st: 1
+      C_star: C
+      F1: epsilon/(epsilon-1)*mc/(1-theta*beta)
+      F2: 1/(1-theta*beta)
+      Delta: Delta__L
+
+
+domain:
+    beta: [-2*sig_b/(1-rho_b^2)^0.5,  2*sig_b/(1-rho_b^2)^0.5]
+    z: [-2*sig_z/(1-rho_z^2)^0.5,  2*sig_z/(1-rho_z^2)^0.5]
+    Delta__L: [ Delta__L*0.95, Delta__L*1.05]
+
+
+exogenous: !Product
+   p1: !VAR1
+       rho: rho_z
+       Sigma: sig_z^2
+       N: 15
+
+   p2: !VAR1
+       rho: rho_b
+       Sigma: sig_b^2
+       N: 15
+
+
+options:
+    grid: !Cartesian
+        orders: [10, 50,10]
