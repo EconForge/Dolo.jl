@@ -5,8 +5,7 @@ import Dolo
 
 path = Dolo.pkg_path
 using AxisArrays
-# path2 = "https://raw.githubusercontent.com/azheng25/OLG-Examples/master"
-# filename = joinpath(path2,"Huggett1996_processes.yaml")
+
 filename = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
 model = Dolo.yaml_import(filename)
 @time dr = Dolo.time_iteration(model, verbose=true, maxit=10000)
