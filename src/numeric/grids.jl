@@ -62,12 +62,6 @@ function Product(a::UnstructuredGrid, b::UnstructuredGrid)
 end
 
 
-function Product(a::CartesianGrid, b::CartesianGrid)
-    N=length(a.min)+length(b.min)
-    return Dolo.CartesianGrid{N}(cat(1,a.min, b.min), cat(1, a.max, b.max), cat(1, a.n, b.n))
-end
-
-
 immutable CartesianGrid{N} <: Grid{N}
     min::Vector{Float64}
     max::Vector{Float64}
@@ -82,6 +76,13 @@ end
 nodes(grid::Grid) = grid.nodes
 n_nodes(grid::Grid) = size(grid.nodes, 1)
 node(grid::Grid, i::Int) = grid.nodes[i, :]
+
+
+function Product(a::CartesianGrid, b::CartesianGrid)
+  N=length(a.min)+length(b.min)
+  return Dolo.CartesianGrid{N}(cat(1,a.min, b.min), cat(1, a.max, b.max), cat(1, a.n, b.n))
+end
+
 
 immutable SmolyakGrid{N} <: Grid{N}
     smol_params::BM.SmolyakParams{Float64,Vector{Int}}
