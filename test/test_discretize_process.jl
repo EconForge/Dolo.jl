@@ -4,13 +4,17 @@ path = Dolo.pkg_path
 
 @testset "testing discretizing functions" begin
 
-    fn = joinpath(path, "LAMP_2s.yaml")
-    model = Dolo.yaml_import(fn)
+    rho_z = 0.9
+    rho_b = 0.9
+    sig_z = 0.001
+    sig_b = 0.001
 
-    Dolo.discretize(model.exogenous)
-    exo = Dolo.discretize(Dolo.DiscretizedProcess, model.exogenous)
-    # @time sol = Dolo.time_iteration(model, exo; maxit=20, verbose=false, maxit=10000)
+    proc = Dolo.ProductProcess(
+        Dolo.VAR1(rho_z, eye(1)*sig_z^2),
+        Dolo.VAR1(rho_b, eye(1)*sig_b^2))
 
+    Dolo.discretize(proc)
+    exo = Dolo.discretize(Dolo.DiscretizedProcess, proc)
 
     @test true
 
