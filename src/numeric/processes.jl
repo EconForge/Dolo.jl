@@ -25,6 +25,36 @@ n_inodes(dp::DiscretizedProcess, i::Int) = size(dp.integration_nodes[i], 1)
 inode(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_nodes[i][j, :]
 iweight(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_weights[i][j]
 
+
+function Product(gdp1::DiscretizedProcess, gdp2::DiscretizedProcess)
+
+  if (typeof(gdp1.grid) != CartesianGrid{N}) && (typeof(gdp1.grid) != UnstructuredGrid{N})
+    error("No method for GridProduct for $(typeof(gdp1.grid))")
+  end
+  if (typeof(gdp2.grid) != CartesianGrid{N}) && (typeof(gdp2.grid) != UnstructuredGrid{N})
+    error("No method for GridProduct for $(typeof(gdp1.grid))")
+  end
+
+  In = [ gridmake(gdp1.integration_nodes[i], gdp2.integration_nodes[j] ) for i = 1:n_nodes(gdp1)  for j = 1:n_nodes(gdp2) ]
+  Iw =[kron(gdp1.integration_weights[i], gdp2.integration_weights[j] ) for i = 1:n_nodes(gdp1)  for j = 1:n_nodes(gdp2) ]
+  N=length(gdp1.grid.min)+length(gdp2.grid.min)
+  i_grid  = Dolo.GridProduct(gdp1.grid, gdp2.grid)
+  # i_grid  = CartesianGrid{N}(cat(1,gdp1.grid.min, gdp2.grid.min), cat(1, gdp1.grid.max, gdp2.grid.max), cat(1, gdp1.grid.n, gdp2.grid.n))
+
+  return DiscretizedProcess(i_grid, In, Iw)
+end
+
+# discretize(::Type{DiscretizedProcess}, pp::ProductProcess) = Product(DiscretizedProcess, discretize(pp.p1), discretize(pp.p2))
+
+function discretize(::Type{DiscretizedProcess}, pp::ProductProcess; opt1=Dict(), opt2=Dict())
+    p1 = discretize(DiscretizedProcess, pp.process_1; opt1...)
+    p2 = discretize(DiscretizedProcess, pp.process_2; opt2...)
+    return Product(p1,p2)
+end
+
+
+
+
 # date-t grid is unstructured
 type DiscreteMarkovProcess <: AbstractDiscretizedProcess
     grid::UnstructuredGrid
@@ -56,6 +86,7 @@ function MarkovProduct(mc1::DiscreteMarkovProcess, mc2::DiscreteMarkovProcess)
     P = fkron(mc1.transitions, mc2.transitions)
     return DiscreteMarkovProcess(P, Q)
 end
+
 
 function MarkovProduct(mcs::DiscreteMarkovProcess...)
     reduce(MarkovProduct, mcs)
@@ -203,6 +234,7 @@ function discretize(var::VAR1, n_states::Array{Int,1}, n_integration::Array{Int,
 end
 
 discretize(::Type{DiscretizedProcess}, var::VAR1; args...) = discretize(var; args...)
+
 
 function discretize(::Type{DiscreteMarkovProcess}, var::VAR1; N::Int=3)
 
