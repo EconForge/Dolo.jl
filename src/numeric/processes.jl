@@ -27,31 +27,13 @@ iweight(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_weights[i][j]
 
 
 function Product(gdp1::DiscretizedProcess, gdp2::DiscretizedProcess)
-
-  if (typeof(gdp1.grid) != CartesianGrid{N}) && (typeof(gdp1.grid) != UnstructuredGrid{N})
-    error("No method for GridProduct for $(typeof(gdp1.grid))")
-  end
-  if (typeof(gdp2.grid) != CartesianGrid{N}) && (typeof(gdp2.grid) != UnstructuredGrid{N})
-    error("No method for GridProduct for $(typeof(gdp1.grid))")
-  end
-
   In = [ gridmake(gdp1.integration_nodes[i], gdp2.integration_nodes[j] ) for i = 1:n_nodes(gdp1)  for j = 1:n_nodes(gdp2) ]
   Iw =[kron(gdp1.integration_weights[i], gdp2.integration_weights[j] ) for i = 1:n_nodes(gdp1)  for j = 1:n_nodes(gdp2) ]
   N=length(gdp1.grid.min)+length(gdp2.grid.min)
-  i_grid  = Dolo.GridProduct(gdp1.grid, gdp2.grid)
-  # i_grid  = CartesianGrid{N}(cat(1,gdp1.grid.min, gdp2.grid.min), cat(1, gdp1.grid.max, gdp2.grid.max), cat(1, gdp1.grid.n, gdp2.grid.n))
+  i_grid  = Product(gdp1.grid, gdp2.grid)
 
   return DiscretizedProcess(i_grid, In, Iw)
 end
-
-
-function discretize(::Type{DiscretizedProcess}, pp::ProductProcess; opt1=Dict(), opt2=Dict())
-    p1 = discretize(DiscretizedProcess, pp.process_1; opt1...)
-    p2 = discretize(DiscretizedProcess, pp.process_2; opt2...)
-    return Product(p1,p2)
-end
-
-
 
 
 # date-t grid is unstructured
@@ -262,6 +244,8 @@ function discretize(::Type{DiscreteMarkovProcess}, var::VAR1; N::Int=3)
     return mc_prod
 end
 
+
+
 """
 ```julia
 simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64}
@@ -383,6 +367,14 @@ function discretize(::Type{DiscreteMarkovProcess}, pp::ProductProcess; opt1=Dict
     p2 = discretize(DiscreteMarkovProcess, pp.process_2; opt2...)
     return MarkovProduct(p1,p2)
 end
+
+
+function discretize(::Type{DiscretizedProcess}, pp::ProductProcess; opt1=Dict(), opt2=Dict())
+  p1 = discretize(DiscretizedProcess, pp.process_1; opt1...)
+  p2 = discretize(DiscretizedProcess, pp.process_2; opt2...)
+  return Product(p1,p2)
+end
+
 
 function discretize(pp::ProductProcess; kwargs...)
     return discretize(DiscreteMarkovProcess, pp; kwargs...)

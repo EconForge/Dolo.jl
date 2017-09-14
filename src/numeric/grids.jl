@@ -54,7 +54,7 @@ n_nodes(grid::UnstructuredGrid) = size(grid.nodes, 1)
 node(grid::UnstructuredGrid, i::Int) = grid.nodes[i, :] # fail if i!=1 ?
 
 
-function GridProduct(a::UnstructuredGrid, b::UnstructuredGrid)
+function Product(a::UnstructuredGrid, b::UnstructuredGrid)
     nodes = [ gridmake( node(a,i) , node(b,j)) for i = 1:n_nodes(a)  for j = 1:n_nodes(b) ]
     N = size(hcat(nodes...)', 2)
 
