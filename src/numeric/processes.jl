@@ -44,7 +44,6 @@ function Product(gdp1::DiscretizedProcess, gdp2::DiscretizedProcess)
   return DiscretizedProcess(i_grid, In, Iw)
 end
 
-# discretize(::Type{DiscretizedProcess}, pp::ProductProcess) = Product(DiscretizedProcess, discretize(pp.p1), discretize(pp.p2))
 
 function discretize(::Type{DiscretizedProcess}, pp::ProductProcess; opt1=Dict(), opt2=Dict())
     p1 = discretize(DiscretizedProcess, pp.process_1; opt1...)
