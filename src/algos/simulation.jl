@@ -252,7 +252,7 @@ function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
     l1 = [mm, svec, xvec]
     tb = hcat([e' for e in l1']...)
 
-    if isa(dr, DecisionRule{UnstructuredGrid,CartesianGrid})
+    if isa(dr, AbstractDecisionRule{UnstructuredGrid,CartesianGrid})
         model_sym = :mc_process
     else
         model_sym = model.symbols[:exogenous]
@@ -276,7 +276,7 @@ end
 function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
                   s0::AbstractVector; n_steps=100)
 
-    if isa(dr, DecisionRule{UnstructuredGrid,CartesianGrid})
+    if isa(dr, AbstractDecisionRule{UnstructuredGrid,CartesianGrid})
         m0 = 1
     else
         m0 = model.calibration[:exogenous]
