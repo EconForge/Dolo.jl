@@ -7,8 +7,11 @@ model = Dolo.yaml_import(joinpath(Dolo.pkg_path, "examples","models","rbc_dtcc_a
 
 
 @time sol_iti = Dolo.improved_time_iteration(model; verbose=true);
+@time sol_iti = Dolo.improved_time_iteration(model; verbose=true);
+
 
 @time sol_ti = Dolo.time_iteration(model, verbose=true; tol_η=1e-10, maxit=2000)
+exit()
 # @profile Dolo.improved_time_iteration(model);
 #
 # #

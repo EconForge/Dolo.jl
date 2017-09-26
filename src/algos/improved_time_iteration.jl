@@ -16,17 +16,16 @@ If the stochastic process for the model is not explicitly provided, the process 
 * `smaxit` Maximum number of iterations to compute the Neumann series.
 * `complementarities`
 * `compute_radius`
-* `details` If false returns only a decision rule dr
+* `trace` Record Iteration informations
 # Returns
-* `dr`: Solved decision rule.
-* `details` about the iterations is specified.
+* `sol`: Improved Time Iteration results
 """
 
 function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscretizedProcess,
                                  init_dr::AbstractDecisionRule, grid;
                                  maxbsteps::Int=10, verbose::Bool=true, verbose_jac::Bool=false,
                                  tol::Float64=1e-8, smaxit::Int=500, maxit::Int=1000,
-                                 complementarities::Bool=false, compute_radius::Bool=false, details::Bool=true)
+                                 complementarities::Bool=false, compute_radius::Bool=false, trace::Bool=false)
 
 
    parms = model.calibration[:parameters]
@@ -51,6 +50,7 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
      x_ub = Array{Float64,2}[cat(1, [controls_ub(model, node(dprocess, i), s[n, :], parms)' for n=1:N_s]...) for i=1:n_m]
    end
 
+   trace_data = []
 
    x=x0
 
@@ -116,6 +116,8 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
         end
       end
 
+      push!(trace_data, [copy(res)])
+
       err_0 = abs(maximum(res))
 
       jres[:,:,:,:,:] *= -1.0
@@ -160,19 +162,14 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
    set_values!(ddr,x)
 
    if compute_radius == true
-     lam, lam_max, lambdas = radius_jac(res,dres,jres,S_ij,ddr_filt)
+       lam, lam_max, lambdas = radius_jac(res,dres,jres,S_ij,ddr_filt)
+   else
+       lam = NaN
    end
 
-   if !details
-     return ddr.dr
-   else
-     converged = err_0<tol
-     if !compute_radius
-       return ImprovedTimeIterationResult(ddr.dr, it, err_0, err_2, converged, complementarities, tol, lam0, it_invert, 5.0)
-     else
-       return ImprovedTimeIterationResult(ddr.dr, it, err_0, err_2, converged, tol, lam0, it_invert, 5.0), (lam, lam_max, lambdas)
-     end
-   end
+   converged = err_0<tol
+
+   return ImprovedTimeIterationResult(ddr.dr, it, err_0, err_2, converged, complementarities, tol, lam0, it_invert, 5.0, lam, trace_data)
 
 end
 

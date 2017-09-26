@@ -41,8 +41,7 @@ function euler_residuals(model, s::AbstractArray, x::Array{Array{Float64,2},1}, 
           X = dr(i_ms, I_ms, S)
 
           if with_jres==true
-              ff = SerialDifferentiableFunction(u->arbitrage(model, m,s,x[i_ms],M,S,u,parms))
-              rr, rr_XM = ff(X)
+              rr, rr_XM = arbitrage(model,(Val(0),Val(6)),m,s,x[i_ms],M,S,X,parms)
               jres[i_ms,I_ms,:,:,:] = w*rr_XM
               S_ij[i_ms,I_ms,:,:] = S
           else
@@ -340,6 +339,8 @@ type ImprovedTimeIterationResult
   Lambda::Float64
   N_invert::Float64
   N_search::Float64
+  radius::Float64
+  trace_data
 end
 
 

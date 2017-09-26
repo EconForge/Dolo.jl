@@ -194,7 +194,6 @@ function set_calibration!(model::ASModel, key::Symbol, value::Union{Real,Expr, S
     model.data[:calibration][key] = value
 end
 
-
 type Model{ID} <: AModel{ID}
 
     data::Dict{Symbol,Any}
@@ -230,7 +229,9 @@ type Model{ID} <: AModel{ID}
         for eqtype in keys(model.equations)
             factory = Dolang.FunctionFactory(model,eqtype)
             model.factories[eqtype] = factory
-            code = make_function(factory)
+            # code = make_function(factory)
+            fff = Dolang.FlatFunctionFactory(factory)
+            code = Dolang.gen_generated_gufun(fff; dispatch=typeof(model))
             print_code && println(code)
             eval(Dolo, code)
         end

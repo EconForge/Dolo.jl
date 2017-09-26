@@ -36,7 +36,7 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
         if t < T
           M = view(epsilons, :, :, t+1)
           ss = view(s_simul, :, :, t+1)
-          transition!(model, ss, m, s, x, M, params)
+          s_simul[:,:,t+1] = transition(model, m, s, x, M, params)
         end
     end
     sim = cat(2, epsilons, s_simul, x_simul)::Array{Float64,3}
@@ -99,8 +99,7 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
             M = view(epsilons, :, :, t+1)
             M_cat = cat(1, M)[:, 1]
             M_val = dp_process.values[M_cat, :]
-            ss = view(s_simul, :, :, t+1)
-            transition!(model, ss, m_val, s, x, M_val, params)
+            s_simul[:,:,t+1] = transition(model, m_val, s, x, M_val, params)
         end
     end
 
