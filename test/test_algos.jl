@@ -13,7 +13,9 @@ path = Dolo.pkg_path
 
         drc = Dolo.ConstantDecisionRule(model_mc.calibration[:controls])
         @time tid_res = Dolo.time_iteration_direct(model_mc, drc; maxit=20, verbose=true)
-        @time ti_res = Dolo.time_iteration(model_mc, tid_res.dr; maxit=20, verbose=false, maxit=10000)
+        @time ti_res = Dolo.time_iteration(model_mc, tid_res.dr; maxit=20, verbose=false, maxit=10)
+        @time iti_res = Dolo.improved_time_iteration(model_mc; verbose=false, maxit=10000)
+        @test Dolo.converged(iti_res)
         @time drv = Dolo.evaluate_policy(model_mc, tid_res.dr; maxit=20, verbose=false)
 
         sim = Dolo.simulate(model_mc, ti_res.dr, model_mc.exogenous) #; N=100, T=20)
@@ -62,6 +64,9 @@ path = Dolo.pkg_path
 
         @time tid_res = Dolo.time_iteration_direct(model, drc; maxit=20, verbose=true)
         @time ti_res = Dolo.time_iteration(model, tid_res.dr; maxit=20, verbose=false)
+        @time iti_res = Dolo.improved_time_iteration(model; maxit=20, verbose=false)
+        @test Dolo.converged(iti_res)
+
         @time sol_v = Dolo.value_iteration(model, tid_res.dr; maxit=20, verbose=true)
 
         Dolo.simulate(model, tid_res.dr)
@@ -108,6 +113,8 @@ path = Dolo.pkg_path
         @time dr = Dolo.perturbate(model)
         @time tid_res = Dolo.time_iteration_direct(model; maxit=20, verbose=true)
         @time ti_res = Dolo.time_iteration(model, tid_res.dr; maxit=20, verbose=false)
+        @time iti_res = Dolo.improved_time_iteration(model; maxit=20, verbose=false)
+        @test Dolo.converged(iti_res)
         @time sol_v = Dolo.value_iteration(model, ti_res.dr; maxit=3, verbose=true)
 
         model.symbols[:exogenous]

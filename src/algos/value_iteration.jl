@@ -232,11 +232,11 @@ function value_iteration(
     dr = CachedDecisionRule(dprocess, grid, x0)
 
     # this could be integrated in the main loop.
-    verbose && println("Evaluating initial policy")
+    verbose && print("Evaluating initial policy")
 
-    drv = evaluate_policy(model, dr; verbose=verbose, eval_options...)
+    drv = evaluate_policy(model, dr; verbose=false, eval_options...)
 
-    verbose && println("Evaluating initial policy (done)")
+    verbose && print(" (done)\n")
 
     v0 = [drv(i, endo_nodes) for i=1:nsd]
     v = deepcopy(v0)
