@@ -5,6 +5,7 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
                   driving_process::AbstractArray{Float64,3}; s0::AbstractVector=model.calibration[:states])
 
     # driving_process: (ne, N, T)
+    driving_process = convert(Array{Float64,3}, driving_process) # in case arg is an axisarray
 
     # extract data from model
     calib = model.calibration
@@ -29,13 +30,13 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
     end
 
     for t in 1:T
-        s = view(s_simul, :, :, t)
-        m = view(epsilons, :, :, t)
+        s = s_simul[:, :, t]
+        m = epsilons[:, :, t]
         x = dr(m, s)
         x_simul[:, :, t] = x
         if t < T
-          M = view(epsilons, :, :, t+1)
-          ss = view(s_simul, :, :, t+1)
+          M = epsilons[:, :, t+1]
+          ss = s_simul[:, :, t+1]
           s_simul[:,:,t+1] = transition(model, m, s, x, M, params)
         end
     end
@@ -88,15 +89,15 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
     end
 
     for t in 1:T
-        s = view(s_simul, :, :, t)
-        m = view(epsilons, :, :, t)
+        s = s_simul[:, :, t]
+        m = epsilons[:, :, t]
 
         m_ind=cat(1, m)[:, 1]
         m_val= dp_process.values[m_ind, :]
         x = dr(m_ind, s)
         x_simul[:, :, t] = x
         if t < T
-            M = view(epsilons, :, :, t+1)
+            M = epsilons[:, :, t+1]
             M_cat = cat(1, M)[:, 1]
             M_val = dp_process.values[M_cat, :]
             s_simul[:,:,t+1] = transition(model, m_val, s, x, M_val, params)
