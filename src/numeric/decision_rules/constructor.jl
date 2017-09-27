@@ -82,14 +82,14 @@ set_values!(cdr::CachedDecisionRule, v) = set_values!(cdr.dr, v)
 (cdr::CachedDecisionRule)(m::Union{<:Point,<:ListOfPoints}, s::Union{<:Point,<:ListOfPoints}) = evaluate(cdr.dr, m, s)
 
 # keep until node returns a Point by default.
-(cdr::CachedDecisionRule)(i::Int, s::Union{<:Point,<:ListOfPoints}) = evaluate(cdr.dr,node(Point, cdr.process, i), s)
-(cdr::CachedDecisionRule)(i::Int, j::Int, s::Union{<:Point,<:ListOfPoints}) = evaluate(cdr.dr,inode(Point, cdr.process, i, j), s)
+(cdr::CachedDecisionRule{<:AbstractDecisionRule{T,<:Grid}, <:DiscreteMarkovProcess})(i::Int, s::Union{<:Point,<:ListOfPoints}) where T<:Union{CartesianGrid, RandomGrid}= evaluate(cdr.dr,node(Point, cdr.process, i), s)
+(cdr::CachedDecisionRule{<:AbstractDecisionRule{T,<:Grid}, <:DiscreteMarkovProcess})(i::Int, j::Int, s::Union{<:Point,<:ListOfPoints}) where T<:Union{CartesianGrid, RandomGrid} = evaluate(cdr.dr,inode(Point, cdr.process, i, j), s)
+
+(cdr::CachedDecisionRule{<:AbstractDecisionRule{<:UnstructuredGrid,<:Grid}, <:DiscreteMarkovProcess})(i::Int, s::Union{AbstractVector,AbstractMatrix}) = evaluate(cdr.dr, i, s)
+(cdr::CachedDecisionRule{<:AbstractDecisionRule{<:UnstructuredGrid,<:Grid}, <:DiscreteMarkovProcess})(i::Int, j::Int, s::Union{AbstractVector,AbstractMatrix}) = evaluate(cdr.dr, j, s)
 
 
 (cdr::CachedDecisionRule)(v::Union{AbstractVector,AbstractMatrix}) = evaluate(cdr.dr,v)
 (cdr::CachedDecisionRule)(m::Union{AbstractVector,AbstractMatrix}, s::Union{AbstractVector,AbstractMatrix}) = evaluate(cdr.dr, m, s)
 (cdr::CachedDecisionRule)(i::Int, s::Union{AbstractVector,AbstractMatrix}) = evaluate(cdr.dr,node(cdr.process, i), s)
 (cdr::CachedDecisionRule)(i::Int, j::Int, s::Union{AbstractVector,AbstractMatrix}) = evaluate(cdr.dr,inode(cdr.process, i, j), s)
-
-(cdr::CachedDecisionRule{<:AbstractDecisionRule{<:UnstructuredGrid,<:CartesianGrid}, <:DiscreteMarkovProcess})(i::Int, s::Union{AbstractVector,AbstractMatrix}) = evaluate(cdr.dr, i, s)
-(cdr::CachedDecisionRule{<:AbstractDecisionRule{<:UnstructuredGrid,<:CartesianGrid}, <:DiscreteMarkovProcess})(i::Int, j::Int, s::Union{AbstractVector,AbstractMatrix}) = evaluate(cdr.dr, j, s)
