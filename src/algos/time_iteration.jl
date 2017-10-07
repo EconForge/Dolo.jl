@@ -160,6 +160,7 @@ If the stochastic process for the model is not explicitly provided, the process 
 """
 function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
                         grid, init_dr;
+                        itp_type=Cubic,
                         verbose::Bool=true,
                         maxit::Int=500, tol_η::Float64=1e-7, trace::Bool=false,
                         solver=Dict())
@@ -171,11 +172,9 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
         )
     end
 
-
-
-    endo_nodes = nodes(grid)
+    grid_nodes = nodes(grid)
     N = n_nodes(grid)
-    n_s_endo = size(endo_nodes, 2)
+    n_s_endo = size(grid_nodes, 2)
     n_s_exo = n_nodes(dprocess)
 
     # initial guess
@@ -183,7 +182,7 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
     nsd = max(n_s_exo, 1)
     p = model.calibration[:parameters]
 
-    x0 = [init_dr(i, endo_nodes) for i=1:nsd]
+    x0 = [init_dr(i, grid_nodes) for i=1:nsd]
 
     ti_trace = trace ? IterationTrace([x0]) : nothing
 
@@ -195,14 +194,15 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
         node_i = node(dprocess, i)
         for n in 1:N
             ix += 1
-            endo_n = endo_nodes[n, :]
+            endo_n = grid_nodes[n, :]
             lb[ix, :] = Dolo.controls_lb(model, node_i, endo_n, p)
             ub[ix, :] = Dolo.controls_ub(model, node_i, endo_n, p)
         end
     end
 
     # create decision rule (which interpolates x0)
-    dr = CachedDecisionRule(dprocess, grid, x0)
+    dr = CachedDecisionRule(dprocess, grid, x0, itp_type)
+    itp_nodes = nodes(dr)
 
     # loop option
     # init_res = euler_residuals(model, dprocess, endo_nodes, x0, p, dr)
@@ -224,7 +224,7 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
         set_values!(dr, x0)
 
         xx0 = stack0(x0)
-        fobj(u) = euler_residuals(model, dprocess, endo_nodes, u, p, dr)
+        fobj(u) = euler_residuals(model, dprocess, itp_nodes, u, p, dr)
         xx1, nit = serial_solver(fobj, xx0, lb, ub; solver...)
         x1 = destack0(xx1, nsd)
 

@@ -1,10 +1,14 @@
 # cubic is default
 
-struct Linear end
-struct Cubic end
+abstract type DRSelector end
+struct Linear <: DRSelector end
+struct Cubic <: DRSelector end
 
-struct CompletePolnomial{order} end
-struct Smolyak end
+struct CompletePolnomial{order} <: DRSelector end
+struct Smolyak <: DRSelector end
+struct Chebyshev <: DRSelector end
+struct BSpline{order} <: DRSelector end
+struct PWLinear <: DRSelector end
 
 # incomplete type inference:
 DecisionRule(exo_grid, endo_grid, i::Int64) = DecisionRule(exo_grid, endo_grid, Val{i})
@@ -29,6 +33,27 @@ function DecisionRule(
         exo_grid::S, endo_grid::SmolyakGrid, ::Type{Val{nx}}, ::Type{Smolyak}
     ) where S <: Union{EmptyGrid,<:UnstructuredGrid} where nx
     SmolyakDR(exo_grid, endo_grid, Val{nx})
+end
+
+# Chebyshev interpolation
+function DecisionRule(
+        exo_grid::S, endo_grid::CartesianGrid, ::Type{Val{nx}}, ::Type{Chebyshev}
+    ) where S <: Union{EmptyGrid,<:UnstructuredGrid} where nx
+    BasisMatricesDR(exo_grid, endo_grid, Val{nx}, BM.ChebParams)
+end
+
+# BSpline interpolation
+function DecisionRule(
+        exo_grid::S, endo_grid::CartesianGrid, ::Type{Val{nx}}, ::Type{BSpline{order}}
+    ) where S <: Union{EmptyGrid,<:UnstructuredGrid} where nx where order
+    BasisMatricesDR(exo_grid, endo_grid, Val{nx}, BM.SplineParams, (order,))
+end
+
+# Piecewise Linear interpolation
+function DecisionRule(
+        exo_grid::S, endo_grid::CartesianGrid, ::Type{Val{nx}}, ::Type{PWLinear}
+    ) where S <: Union{EmptyGrid,<:UnstructuredGrid} where nx
+    BasisMatricesDR(exo_grid, endo_grid, Val{nx}, BM.LinParams)
 end
 
 # Complete polynomials
@@ -68,13 +93,20 @@ type CachedDecisionRule{T,S}
     process::S
 end
 
-CachedDecisionRule(process::AbstractDiscretizedProcess, grid::Grid, n_x::Int) =
-    CachedDecisionRule(DecisionRule(process.grid, grid, n_x), process)
+function CachedDecisionRule(
+        process::AbstractDiscretizedProcess, grid::Grid, n_x::Int, ::Type{T}=Cubic
+    ) where T <: DRSelector
+    CachedDecisionRule(DecisionRule(process.grid, grid, n_x, T), process)
+end
 
-CachedDecisionRule(process::AbstractDiscretizedProcess, grid::Grid, values) =
-    CachedDecisionRule(DecisionRule(process.grid, grid, values), process)
+function CachedDecisionRule(
+        process::AbstractDiscretizedProcess, grid::Grid, values, ::Type{T}=Cubic
+    ) where T <: DRSelector
+    CachedDecisionRule(DecisionRule(process.grid, grid, values, T), process)
+end
 
 set_values!(cdr::CachedDecisionRule, v) = set_values!(cdr.dr, v)
+nodes(cdr::CachedDecisionRule) = nodes(cdr.dr)
 
 # defaults
 

@@ -6,6 +6,8 @@ end
 
 outdim(dr::AbstractDecisionRule{<:Grid,<:Grid,nx}) where nx = nx
 
+nodes(dr::AbstractDecisionRule) = nodes(dr.grid_endo)
+
 
 # ---------------------- #
 # Constant decision rule #

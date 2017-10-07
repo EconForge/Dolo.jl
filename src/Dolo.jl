@@ -101,9 +101,10 @@ include("numeric/grids.jl")
 include("numeric/processes.jl")
 include("numeric/decision_rules/core.jl")
 include("numeric/decision_rules/csplines.jl")
+include("numeric/decision_rules/smolyak.jl")
+include("numeric/decision_rules/basis_matrices.jl")
 include("numeric/decision_rules/constructor.jl")
 include("numeric/decision_rules/compat.jl")
-include("numeric/decision_rules/smolyak.jl")
 include("numeric/decision_rules/complete.jl")
 
 
@@ -122,6 +123,14 @@ include("algos/value_iteration.jl")
 include("algos/perturbation.jl")
 include("algos/simulation.jl")
 include("algos/perfect_foresight.jl")
+
+using Base.Test
+
+grid_smol = Dolo.SmolyakGrid{2}([0.0, 0.0], [1.0, 1.0,], [3,3])
+grid_exo = Dolo.EmptyGrid()
+grid_exo2 = Dolo.UnstructuredGrid{2}(rand(1, 2))
+grid_rand = Dolo.RandomGrid{2}([0.0, 0.0], [1.0, 1.0,], 50)
+grid_cart = Dolo.CartesianGrid{2}([0.0, 0.0], [1.0, 1.0], [10, 15])
 
 
 end # module

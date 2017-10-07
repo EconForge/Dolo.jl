@@ -17,18 +17,20 @@ function CompletePolyDR(
     CompletePolyDR{EmptyGrid,typeof(grid_endo),nx}(grid_exo, grid_endo, coeffs, order)
 end
 
-function set_values!(
-        dr::CompletePolyDR{<:G}, values::Vector{Matrix{Float64}}
-    ) where G <: Union{<:EmptyGrid,<:UnstructuredGrid}
-    B_grid = BM.complete_polynomial(nodes(dr.grid_endo), dr.order)
-    for i in 1:length(values)
-        A_ldiv_B!(dr.coefs[i], B_grid, values[i])
+for ExG in (EmptyGrid, UnstructuredGrid)
+    @eval function set_values!(
+            dr::CompletePolyDR{<:$(ExG)}, values::Vector{Matrix{Float64}}
+        )
+        B_grid = BM.complete_polynomial(nodes(dr.grid_endo), dr.order)
+        for i in 1:length(values)
+            A_ldiv_B!(dr.coefs[i], B_grid, values[i])
+        end
     end
 end
 
 function set_values!(
         dr::CompletePolyDR{<:G,<:Grid,nx},
-        values::Vector{<:Array{Value{nx}}}
+        values::Vector{<:AbstractArray{Value{nx}}}
     ) where G <: Union{EmptyGrid,UnstructuredGrid} where nx
     B_grid = BM.complete_polynomial(nodes(dr.grid_endo), dr.order)
 
@@ -45,12 +47,12 @@ function set_values!(
     end
 end
 
-function evaluate(dr::CompletePolyDR{<:EmptyGrid}, z::AbstractMatrix)
+function evaluate(dr::CompletePolyDR{EmptyGrid}, z::Matrix)
     B = BM.complete_polynomial(z, dr.order)
     B*dr.coefs[1]
 end
 
-function evaluate(dr::CompletePolyDR{<:EmptyGrid,<:Grid{d}}, points::Vector{Point{d}}) where d
+function evaluate(dr::CompletePolyDR{EmptyGrid,<:Grid{d}}, points::Vector{Point{d}}) where d
     N = length(points)
     mat = reinterpret(Float64, points, (d, N))'
     evaluate(dr, mat)
