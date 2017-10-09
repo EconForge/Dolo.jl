@@ -264,8 +264,23 @@ type Model{ID} <: AModel{ID}
             print_code && println(code)
             eval(Dolo, code)
         end
+
         model.factories = factories
-        
+
+
+        # TEMP: until we have a better method in Dolang
+        # Create definitions
+        vars = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+        args = OrderedDict(
+            :past => [(v,-1) for v in vars],
+            :present => [(v,0) for v in vars],
+            :future => [(v,1) for v in vars],
+            :params => model.symbols[:parameters]
+        )
+        fff = Dolang.FlatFunctionFactory(model.definitions, args, typeof(model.definitions)())
+        code = Dolang.gen_generated_gufun(fff;dispatch=typeof(model), funname=:evaluate_definitions)
+        eval(Dolo,code)
+
         return model
     end
 

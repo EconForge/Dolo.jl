@@ -1,3 +1,38 @@
+function evaluate_definitions(model, simul::AxisArray, params=model.calibration[:parameters])
+
+    p_ = SVector(params...)
+
+    @assert axisnames(simul) == (:N,:V,:T)
+    T = length( simul[Axis{:T}].val )
+    @assert simul[Axis{:T}].val == 1:T
+
+    vars = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+
+    sim = simul[Axis{:V}(vars)]
+
+    T = length(sim[Axis{:T}].val)
+
+    past = permutedims(sim[Axis{:T}([1;1:T-1])], [2,1,3])
+    present = permutedims(sim[Axis{:T}(1:T)], [2,1,3])
+    future = permutedims(sim[Axis{:T}([2:T;T])], [2,1,3])
+
+    n_v,N,T = size(past)
+
+    x_past = reinterpret(Point{n_v}, past.data, (T*N,))
+    x_present = reinterpret(Point{n_v}, present.data, (T*N,))
+    x_future = reinterpret(Point{n_v}, future.data, (T*N,))
+
+    y_ = evaluate_definitions(model, x_past, x_present, x_future, p_)
+
+    auxiliaries = [Dolang.arg_name(e) for e in keys(model.definitions)]
+    n_y = length(auxiliaries)
+
+    data = permutedims( reinterpret(Float64, y_, (n_y,N,T)), [2,1,3])
+
+    array = AxisArray(data, Axis{:N}(1:N), Axis{:V}(auxiliaries), Axis{:T}(1:T))
+
+end
+
 ########################################################################
 # For Float
 
@@ -252,13 +287,14 @@ function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
     l1 = [mm, svec, xvec]
     tb = hcat([e' for e in l1']...)
 
-    if isa(dr, DecisionRule{UnstructuredGrid,CartesianGrid})
-        model_sym = :mc_process
+    if isa(dr.grid_exo, UnstructuredGrid)
+        model_sym = [:mc_process]
     else
         model_sym = model.symbols[:exogenous]
     end
 
     l2 = cat(1, model_sym , model.symbols[:states], model.symbols[:controls])
+
     tab_AA = AxisArray(tb, Axis{state}(tb[:, index+1]), Axis{:V}(l2))
     tab_AA'
 end
