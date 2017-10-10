@@ -2,7 +2,7 @@ function evaluate_definitions(model, simul::AxisArray, params=model.calibration[
 
     p_ = SVector(params...)
 
-    @assert axisnames(simul) == (:N,:V,:T)
+    # @assert axisnames(simul) == (:N,:V,:T)
     T = length( simul[Axis{:T}].val )
     @assert simul[Axis{:T}].val == 1:T
 
@@ -281,22 +281,33 @@ function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
     Svalues = linspace(bounds[1], bounds[2], n_steps)
     svec = vcat([e' for e in fill(s0, n_steps)]...)
     svec[:, index] = Svalues
-    m = m0  # why creating m?
-    xvec = dr(m0, svec)
-    mm = vcat([e' for e in fill(m, n_steps)]...)
-    l1 = [mm, svec, xvec]
-    tb = hcat([e' for e in l1']...)
 
     if isa(dr.grid_exo, UnstructuredGrid)
-        model_sym = [:mc_process]
+        i0 = m0
+        xvec = dr(i0, svec)
+        ii = vcat([e' for e in fill(i0, n_steps)]...) # exo indices
+        mm = from_LOP(to_LOP(dr.grid_exo.nodes)[ii]) # exo values
+        l1 = [ii, mm, svec, xvec]
+        tb = hcat([e' for e in l1']...)
+        model_sym = cat(1,[:mc_process], model.symbols[:exogenous])
     else
+        xvec = dr(m0, svec)
+        mm = vcat([e' for e in fill(m0, n_steps)]...)
+        l1 = [mm, svec, xvec]
+        tb = hcat([e' for e in l1']...)
         model_sym = model.symbols[:exogenous]
     end
 
     l2 = cat(1, model_sym , model.symbols[:states], model.symbols[:controls])
+    tab_AA = AxisArray(reshape(tb,1,size(tb)...), Axis{:T}(1:1), Axis{:N}(1:n_steps), Axis{:V}(l2))
 
-    tab_AA = AxisArray(tb, Axis{state}(tb[:, index+1]), Axis{:V}(l2))
-    tab_AA'
+    ## add definitions
+    tab_AAA = permutedims(tab_AA, [2,3,1])
+    tab_defs = evaluate_definitions(model, tab_AAA)
+    tab_ = merge(tab_AAA, tab_defs)[Axis{:T}(1)]
+    #change axis names
+    res = AxisArray(tab_.data, Axis{state}(tb[:, index+1]), tab_[Axis{:V}])
+    res' # so that we can index it directly
 end
 
 
