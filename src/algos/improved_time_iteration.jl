@@ -25,7 +25,7 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
                                  init_dr::AbstractDecisionRule, grid;
                                  maxbsteps::Int=10, verbose::Bool=true, verbose_jac::Bool=false,
                                  tol::Float64=1e-8, smaxit::Int=500, maxit::Int=1000,
-                                 complementarities::Bool=false, compute_radius::Bool=false, trace::Bool=false)
+                                 complementarities::Bool=true, compute_radius::Bool=false, trace::Bool=false)
 
 
    parms = model.calibration[:parameters]
