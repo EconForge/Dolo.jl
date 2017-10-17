@@ -1,5 +1,12 @@
 @compat abstract type Grid{d} end
 
+# type is not predictible yet
+nodes(::typeof(ListOfPoints), grid::Grid{d}) where  d = to_LOP(nodes(grid))
+node(::typeof(Point), grid::Grid{d}, i::Int) where d= SVector{d,Float64}(node(grid, i)...)
+inode(::typeof(Point), grid::Grid{d}, i::Int) where d = SVector{d,Float64}(inode(grid, i)...)
+
+
+
 import Base
 
 Base.ndims(grid::Grid{d}) where d = d

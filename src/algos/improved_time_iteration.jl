@@ -1,5 +1,4 @@
 include("ITI_additional.jl")
-using JLD
 
 """
 Computes a global solution for a model via backward Improved Time Iteration. The algorithm is applied to the residuals of the arbitrage equations. The idea is to solve the system G(x) = 0 as a big nonlinear system in x, where the inverted Jacobian matrix is approximated by an infinite sum (Neumann series).
@@ -54,14 +53,29 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
 
    x=x0
 
-   ## memory allocation
-   jres = zeros(n_m,n_mt,N_s,n_x,n_x)
-   S_ij = zeros(n_m,n_mt,N_s,n_s)
+  #  ## memory allocation
+  #  jres = zeros(n_m,n_mt,N_s,n_x,n_x)
+  #  S_ij = zeros(n_m,n_mt,N_s,n_s)
 
    ######### Loop     for it in range(maxit):
    it=0
    it_invert=0
-   res_init = euler_residuals(model,s,x,ddr,dprocess,parms ,set_dr=false, jres=jres, S_ij=S_ij)
+   
+   s_ = to_LOP(s)
+   x_ = [to_LOP(el) for el in x]
+   p_ = SVector(parms...)
+
+   res, dres = euler_residuals_2(model,s_,x_,ddr,dprocess,p_)
+
+   return res, dres
+
+   res_init = euler_residuals(model,s_,x_,ddr,dprocess,p_,with_jres=false)
+   res_init,J_ij,S_ij = euler_residuals(model,s_,x_,ddr,dprocess,p_,with_jres=true) #,set_dr=false) #,jres=jres,S_ij=S_ij)
+
+   err_0 = absmax(res_init)
+   println(err_0)
+   return res_init
+
    err_0 = abs(maximum(res_init))
    err_2= err_0
    lam0=0.0
@@ -98,7 +112,7 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
       res, dres = ff(x)
 
       dres = reshape(dres, n_m, N_s, n_x, n_x)
-      junk, jres, fut_S = euler_residuals(model, s, x,ddr,dprocess,parms, with_jres=true,set_dr=false, jres=jres, S_ij=S_ij)
+      junk, jres, fut_S = euler_residuals(model, s, x,ddr,dprocess,parms, with_jres=true,set_dr=false) #, jres=jres, S_ij=S_ij)
 
       if complementarities == true
         for i_ms in 1:n_m

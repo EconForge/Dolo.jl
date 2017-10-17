@@ -1,66 +1,96 @@
+function absmax(s::ListOfPoints)
+    t = 0.0
+    for p in s
+        t = max(t, maximum(p))
+    end
+    t
+end
+absmax(x::Vector{<:ListOfPoints}) = maximum(absmax.(x))
 
-
-
-function euler_residuals(model, s::AbstractArray, x::Array{Array{Float64,2},1}, dr,
-                         dprocess, parms::AbstractArray; with_jres=false, set_dr=true,
-                         jres=nothing, S_ij=nothing)
+function euler_residuals(model, s::ListOfPoints, x::Vector{<:ListOfPoints}, dr, dprocess, parms::SVector; with_jres=false, set_dr=true) #, jres=nothing, S_ij=nothing)
 
     if set_dr ==true
       set_values!(dr,x)
     end
 
-    N_s = size(s,1) # Number of gris points for endo_var
-    n_s = size(s,2) # Number of states
-    n_x = size(x[1],2) # Number of controls
+    N_s = length(s) # Number of gris points for endo_var
+    n_s = length(s[1]) # Number of states
+    n_x = length(x[1][1]) # Number of controls
 
-    n_ms = size(x,1)  # number of exo states today
+    n_ms = length(x)  # number of exo states today
     n_mst = n_inodes(dprocess,1)  # number of exo states tomorrow
+    d = length(s[1])
 
-    res = zeros(n_ms, N_s, n_x)
+    # res = zeros(n_ms, N_s, n_x)
+    res = deepcopy(x)
 
     if with_jres == true
-      if jres== nothing
         jres = zeros((n_ms,n_mst,N_s,n_x,n_x))
-      end
-      if S_ij== nothing
-        S_ij = zeros((n_ms,n_mst,N_s,n_s))
-      end
+        fut_S = zeros((n_ms,n_mst,N_s,n_s))
+        J_ij = Vector{SMatrix{n_x,n_x,Float64,n_x*n_x}}[to_LOJ(jres[i,j,:,:,:]) for i=1:size(jres,1), j=1:size(jres,2)]
+        S_ij = Vector{Point{d}}[to_LOP(fut_S[i,j,:,:]) for i=1:size(fut_S,1), j=1:size(fut_S,2)]
     end
-
 
     for i_ms in 1:n_ms
-
-       m = node(dprocess,i_ms)
-
-       for I_ms in 1:n_mst
-
-          M = inode(dprocess, i_ms, I_ms)
-          w = iweight(dprocess, i_ms, I_ms)
-          S = transition(model, m, s, x[i_ms], M, parms)
-
-          X = dr(i_ms, I_ms, S)
-
-          if with_jres==true
-              rr, rr_XM = arbitrage(model,(Val(0),Val(6)),m,s,x[i_ms],M,S,X,parms)
-              jres[i_ms,I_ms,:,:,:] = w*rr_XM
-              S_ij[i_ms,I_ms,:,:] = S
-          else
-              rr = arbitrage(model, m,s,x[i_ms],M,S,X,parms)
-          end
-          res[i_ms,:,:] += w*rr
+        m = SVector(node(dprocess,i_ms)...)
+        for I_ms in 1:n_mst
+            M = SVector(inode(dprocess, i_ms, I_ms)...)
+            w = iweight(dprocess, i_ms, I_ms)
+            S = transition(model, m, s, x[i_ms], M, parms)
+            X = dr(i_ms, I_ms, S)
+            if with_jres==true
+                rr, rr_XM = arbitrage(model,(Val(0),Val(6)),m,s,x[i_ms],M,S,X,parms)
+                J_ij[i_ms,I_ms][:] = w*rr_XM
+                S_ij[i_ms,I_ms][:] = S
+            else
+                rr = arbitrage(model, m,s,x[i_ms],M,S,X,parms)
+            end
+            res[i_ms][:] += w*rr
         end
-
     end
-
-
-    # res_AA = AxisArray(res, Axis{:n_m}(1:n_ms), Axis{:N_s}(1:N_s), Axis{:n_x}(1:n_x))
-    if with_jres==true
-        return res, jres, S_ij
+    if with_jres
+        return res,J_ij,S_ij
     else
         return res
     end
-
 end
+
+#
+#
+# function euler_residuals_2(model, s::ListOfPoints, x::Vector{<:ListOfPoints}, dr, dprocess, parms::SVector) #; with_jres=false, set_dr=true) #, jres=nothing, S_ij=nothing)
+#     #
+#     # if set_dr ==true
+#     #   set_values!(dr,x)
+#     # end
+#
+#     N_s = length(s) # Number of gris points for endo_var
+#     n_s = length(s[1]) # Number of states
+#     n_x = length(x[1][1]) # Number of controls
+#
+#     n_ms = length(x)  # number of exo states today
+#     n_mst = n_inodes(dprocess,1)  # number of exo states tomorrow
+#     d = length(s[1])
+#
+#     # res = zeros(n_ms, N_s, n_x)
+#     R_i = deepcopy(x)
+#     D_i = [Vector{SMatrix{n_x,n_x,Float64,n_x*n_x}}(N_s) for i=1:n_ms]
+#
+#     for i_ms in 1:n_ms
+#         m = SVector(node(dprocess,i_ms)...)
+#         for I_ms in 1:n_mst
+#             M = SVector(inode(dprocess, i_ms, I_ms)...)
+#             w = iweight(dprocess, i_ms, I_ms)
+#             S, S_x = transition(model, (Val(0), Val(3)), m, s, x[i_ms], M, parms)
+#             X = dr(i_ms, I_ms, S)
+#             rr = arbitrage(model, m,s,x[i_ms],M,S,X,parms)
+#             R_i[i_ms][:] += w*rr
+#         end
+#     end
+#
+#     return R_i, D_i
+#
+# end
+
 #############################################################################
 # I am still not sure we need it
 function euler_residuals(model, x::Array{Float64,2}, dr,
