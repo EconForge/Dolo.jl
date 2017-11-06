@@ -84,5 +84,6 @@ exogenous: !MarkovChain
 options:
 
 
-    grid: !Cartesian
-        orders: [50]
+    grid: !Smolyak
+        mu: 3
+        # orders: [50]

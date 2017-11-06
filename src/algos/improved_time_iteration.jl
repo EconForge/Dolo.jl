@@ -1,5 +1,38 @@
 include("ITI_additional.jl")
 
+
+
+function add_epsilon!(x::ListOfPoints{d}, i, epsilon) where d
+  ei = SVector{d,Float64}([(j==i?epsilon:0.0) for j=1:d])
+  for i=1:length(x)
+    x[i] += ei
+  end
+end
+
+
+function DiffFun(fun, x0::Vector{ListOfPoints{n_x}}, epsilon=1e-6) where n_x
+    xi = deepcopy(x0)
+    N = length(x0[1])
+    n_m = length(x0)
+    r0 = fun(x0)
+    JMat = [zeros(n_x, n_x, N) for i=1:n_m]
+    for i_x=1:n_x
+      xi = deepcopy(x0)
+      for i_m=1:n_m
+        add_epsilon!(xi[i_m], i_x, epsilon)
+      end
+      di = (fun(xi)-r0)/epsilon
+      for i_m=1:n_m
+        JMat[i_m][:,i_x,:] = reinterpret(Float64, di[i_m], (n_x, N))
+        # add_epsilon!(xi[i_m], i, -epsilon)
+      end
+    end
+    J = [reinterpret(SMatrix{n_x,n_x,Float64,n_x^2},JMat[i],(N,)) for i=1:n_m]
+    return r0,J
+end
+
+
+
 """
 Computes a global solution for a model via backward Improved Time Iteration. The algorithm is applied to the residuals of the arbitrage equations. The idea is to solve the system G(x) = 0 as a big nonlinear system in x, where the inverted Jacobian matrix is approximated by an infinite sum (Neumann series).
 
@@ -19,7 +52,6 @@ If the stochastic process for the model is not explicitly provided, the process 
 # Returns
 * `sol`: Improved Time Iteration results
 """
-
 function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscretizedProcess,
                                  init_dr::AbstractDecisionRule, grid;
                                  maxbsteps::Int=10, verbose::Bool=true, verbose_jac::Bool=false,
@@ -38,7 +70,7 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
    n_x = size(model.calibration[:controls],1)
 
    x0 = [init_dr(i, s) for i=1:n_m]
-   ddr=CachedDecisionRule(dprocess, grid, x0)
+   ddr = CachedDecisionRule(dprocess, grid, x0)
    ddr_filt = CachedDecisionRule(dprocess, grid, x0)
    set_values!(ddr,x0)
 
@@ -60,21 +92,40 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
    ######### Loop     for it in range(maxit):
    it=0
    it_invert=0
-   
+
    s_ = to_LOP(s)
    x_ = [to_LOP(el) for el in x]
    p_ = SVector(parms...)
+   #
+   # res, dres = euler_residuals_2(model,s_,x_,ddr,dprocess,p_)
+   N = length(x_[1])
+    #
+    # res_init,J_ij,S_ij =   euler_residuals(model,s_,x_,ddr,dprocess,p_,with_jres=true)
+    err_0 = 1.0
 
-   res, dres = euler_residuals_2(model,s_,x_,ddr,dprocess,p_)
+    for i=1:100
+      fun(u) = euler_residuals(model,s_,u,ddr,dprocess,p_,with_jres=false,set_dr=false)
+      R_i, D_i = DiffFun(fun, x_, 1e-6)
+      dx = deepcopy(x_)
+      for i_m=1:n_m
+        for n=1:N
+          dx[i_m][n] = -(D_i[i_m][n]\R_i[i_m][n])
+        end
+        x_[i_m] += dx[i_m]
+      end
+      err = (maxabs(dx))
+      err_ = (maxabs(R_i))
+      println((i,err_,err, err/err_0))
+      err_0 = err
+      # x_ += dx*0.1
+      # println(x_)
+      set_values!(ddr, x_)
+    end
 
-   return res, dres
-
-   res_init = euler_residuals(model,s_,x_,ddr,dprocess,p_,with_jres=false)
-   res_init,J_ij,S_ij = euler_residuals(model,s_,x_,ddr,dprocess,p_,with_jres=true) #,set_dr=false) #,jres=jres,S_ij=S_ij)
-
+    return  R_i, D_i, J_ij, S_ij, ddr_filt
    err_0 = absmax(res_init)
    println(err_0)
-   return res_init
+   return R_i, D_i
 
    err_0 = abs(maximum(res_init))
    err_2= err_0
