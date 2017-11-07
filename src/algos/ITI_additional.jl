@@ -107,120 +107,77 @@ end
 
 
 
-######################
-function SerialDifferentiableFunction(f, epsilon=1e-6)
+import Base.A_mul_B!
 
-    function df(x::AbstractVector)
-
-      v0 = f(x)
-
-      n_m = size(v0,1)
-      N_s = size(v0,2)
-      n_v = size(v0,3)
-      assert(size(x[1],1) == N_s)
-      n_x = size(x[1],2)
-
-      dv = zeros(n_m*N_s,  n_v, n_x)
-      for i in 1:n_x
-        xi = deepcopy(cat(1,x...))
-        xi[:,i] += epsilon
-        # You could also use f(xi)
-        vi = f(destack0(xi,n_m))
-        dd=(vi+(-1*v0))./epsilon
-        # dd=permutedims(dd, [2,1,3])
-        dv[:,:, i] = reshape(dd,N_s*n_m,n_x) # (1dim) corresponds to equations, in raws you first stuck derivatives wrt 1rst exo state, 2nd, etc
-      end
-      # dv_AA = AxisArray(dv, Axis{:N}(1:n_m*N_s), Axis{:n_v}(1:n_v), Axis{:n_x}(1:n_x))
-      return [v0, dv]
-    end
+import Base.size
+import Base.eltype
+import Base.*
+using StaticArrays
 
 
-    function df(x::Array{Float64,2})
+mutable struct LinearThing
+   M_ij
+   S_ij
+   I
+   counter::Int
+end
 
-      v0 = f(x)
+LinearThing(M,S,I) = LinearThing(M,S,I,0)
 
-      # n_m = size(v0,1)
-      N_s = size(v0,1)
-      n_v = size(v0,2)
-      assert(size(x,1) == N_s)
-      n_x = size(x,2)
+eltype(L::LinearThing) = Float64
+function shape(L::LinearThing)
+   n_m = size(L.M_ij,1)
+   N = size(L.M_ij[1,1],1)
+   n_x = size(L.M_ij[1,1][1],1)
+   return (n_x, N, n_m)
+end
+size(L::LinearThing,d) = prod(shape(L))
 
-      dv = zeros(N_s,  n_v, n_x)
-      for i in 1:n_x
-         xi = deepcopy(x)
-         xi[:,i] += epsilon
-         vi = f(xi)
-         dd=(vi+(-1*v0))./epsilon
-         dv[:,:, i] = dd
-      end
-      # dv_AA = AxisArray(dv, Axis{:N}(1:N_s), Axis{:n_v}(1:n_v), Axis{:n_x}(1:n_x))
-      return [v0, dv]
 
-    end
+function *(L::LinearThing,x::Vector{ListOfPoints{n_x}}) where n_x
+   xx = deepcopy(x)
+   Dolo.d_filt_dx!(xx, x, L.M_ij, L.S_ij, L.I)
+   L.counter += 1
+   return xx
+end
 
-    function df(x::Array{Float64,1})
+function *(L::LinearThing,m::Array{Float64, 3})
+   n_x,N,n_m = size(m)
+   x = [reinterpret(SVector{n_x,Float64},m[:,:,i],(N,)) for i=1:n_m]
+   y = deepcopy(x)
+   xx = L*y
+   rr = [reinterpret(Float64, xx[i], (n_x,N)) for i=1:length(xx)]
+   rrr = cat(3,rr...)
+   return reshape(rrr, n_x,N,n_m)
+end
 
-      v0 = f(x)
+function *(L::LinearThing,v::AbstractVector{Float64})
+   m = copy(v)
+   sh = shape(L)
+   mm = reshape(m, sh...)
+   mmm = mm-L*mm
+   return mmm[:]
+end
 
-      n_v = size(v0,1)
-      # assert(size(x,1) == N_s)
-      n_x = size(x,1)
-
-      dv = zeros(n_v,n_x)
-      for i in 1:n_x
-        xi = deepcopy(x)
-        xi[i,:]+= epsilon
-        vi = f(xi)
-        dd=(vi+(-1*v0))./epsilon
-        dv[:,i] = dd
-      end
-      # dv_AA = AxisArray(dv, Axis{:N}(1:N_s), Axis{:n_v}(1:n_v), Axis{:n_x}(1:n_x))
-      return [v0, dv]
-
-    end
-    df
+function mul(L::LinearThing,v::AbstractVector{Float64})
+   m = copy(v)
+   sh = shape(L)
+   mm = reshape(m, sh...)
+   mmm = L*mm
+   return mmm[:]
 end
 
 
-function ssmul(A::Array{Float64,3},B::Array{Float64,2})
-  # simple serial_mult (matrix times vector)
-  N,a,b = size(A)
-  NN,b = size(B)
-  O = zeros(N,a)
-  for n in 1:N
-    for k in 1:a
-      for l in 1:b
-        O[n,k] += A[n,k,l]*B[n,l]
-      end
-    end
-  end
-  return O
-
+function A_mul_B!(w::AbstractVector{Float64},L::LinearThing,v::AbstractVector{Float64})
+   w[:] = L*v
+   return w
 end
 
-function destack0(x::Array{Float64,3},n_m::Int)
-  xx=collect(x)
-  return [xx[i, :, :] for i=1:n_m]
-end
+
+
 
 ####
 
-
-function reorder_data(dprocess, res, dres, jres, fut_S)
-
-    R_i = [to_LOP(res[i,:,:]) for i=1:size(res,1)]
-    D_i =  [to_LOJ(dres[i,:,:,:]) for i=1:size(res,1)]
-    J_ij = typeof(D_i[1])[to_LOJ(jres[i,j,:,:,:]) for i=1:size(jres,1), j=1:size(jres,2)]
-
-    d = size(fut_S,4)
-    S_ij = Vector{Point{d}}[to_LOP(fut_S[i,j,:,:]) for i=1:size(fut_S,1), j=1:size(fut_S,2)]
-
-    Π_i = deepcopy(R_i)
-    π_i = deepcopy(R_i)
-
-    return R_i, D_i, J_ij, S_ij
-
-end
 
 function invert!(A)
     # A[i] <- (A[i])^(-1)

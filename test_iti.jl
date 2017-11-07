@@ -4,26 +4,27 @@ import Dolo: n_nodes, n_inodes, nodes, CachedDecisionRule
 import Dolo: invert_jac
 
 model = Dolo.yaml_import("examples/models/rbc_dtcc_mc.yaml")
+# model = Dolo.yaml_import("examples/models/sudden_stop.yaml")
 # dri = Dolo.time_iteration(model)
 # Dolo.nodes( model.grid )
+
+@time dr = Dolo.improved_time_iteration(model, verbose=false)
+
+@time dr = Dolo.improved_time_iteration(model, verbose=false, method=:gmres)
+
+@time dr = Dolo.improved_time_iteration(model, verbose=false, method=:iti)
 
 R_i, D_i, J_ij_0, S_ij, dumdr = Dolo.improved_time_iteration(model)
 J_ij = J_ij_0*(-1)
 
-
+maxabs(R_i)
 rsol, it, lam, errors = invert_jac(R_i, D_i, J_ij, S_ij, dumdr)
-
 
 π_i, M_ij, S_ij = Dolo.preinvert(R_i, D_i, J_ij, S_ij)
 
 x0 = deepcopy(π_i)
 
 
-struct LinearThing
-   M_ij
-   S_ij
-   I
-end
 
 Π_i = deepcopy(π_i)
 Dolo.d_filt_dx!(Π_i, π_i, M_ij, S_ij, dumdr)
@@ -48,53 +49,6 @@ maxabs(xx)
 
 
 
-import Base.size
-import Base.eltype
-import Base.*
-using StaticArrays
-
-eltype(L::LinearThing) = Float64
-function shape(L::LinearThing)
-   n_m = size(L.M_ij,1)
-   N = size(L.M_ij[1,1],1)
-   n_x = size(L.M_ij[1,1][1],1)
-   return (n_x, N, n_m)
-end
-size(L::LinearThing,d) = prod(shape(L))
-
-
-
-function *(L::LinearThing,x::Vector{ListOfPoints{n_x}}) where n_x
-   xx = deepcopy(x)
-   Dolo.d_filt_dx!(xx, x, L.M_ij, L.S_ij, L.I)
-   return xx
-end
-
-function *(L::LinearThing,m::Array{Float64, 3})
-   n_x,N,n_m = size(m)
-   x = [reinterpret(SVector{n_x,Float64},m[:,:,i],(N,)) for i=1:n_m]
-   y = deepcopy(x)
-   xx = L*y
-   rr = [reinterpret(Float64, xx[i], (n_x,N)) for i=1:length(xx)]
-   rrr = cat(3,rr...)
-   return reshape(rrr, n_x,N,n_m)
-end
-
-function *(L::LinearThing,v::AbstractVector{Float64})
-   m = copy(v)
-   sh = shape(L)
-   mm = reshape(m, sh...)
-   mmm = mm-L*mm
-   return mmm[:]
-end
-
-function mul(L::LinearThing,v::AbstractVector{Float64})
-   m = copy(v)
-   sh = shape(L)
-   mm = reshape(m, sh...)
-   mmm = L*mm
-   return mmm[:]
-end
 
 
 function solveit(L::LinearThing,v::AbstractVector{Float64},tol=1e-8)
@@ -123,13 +77,6 @@ maximum(abs,L*w-v)
 
 
 
-import Base.A_mul_B!
-
-function A_mul_B!(w::AbstractVector{Float64},L::LinearThing,v::AbstractVector{Float64})
-   w[:] = L*v
-   return w
-end
-
 n_m = length(x0)
 N = length(x0[1])
 n_x = length(x0[1][1])
@@ -144,12 +91,20 @@ rr = L*dd
 
 @time res = L*v
 
-using IterativeSolvers
-
 @time sol = gmres(L, v, verbose=true, tol=1e-10, maxiter=1000, restart=100)
+
+sol0 = solveit(L, v)
+@time rsol, it, lam, errors = invert_jac(R_i, D_i, J_ij, S_ij, dumdr)
+
 
 
 @time sol = gmres(L, v)
+
+sol - sol0
+
+
+
+
 
 @time sol2 = solveit(L, v)
 

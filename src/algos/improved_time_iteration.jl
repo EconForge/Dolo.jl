@@ -2,6 +2,8 @@ include("ITI_additional.jl")
 
 
 
+using IterativeSolvers
+
 function add_epsilon!(x::ListOfPoints{d}, i, epsilon) where d
   ei = SVector{d,Float64}([(j==i?epsilon:0.0) for j=1:d])
   for i=1:length(x)
@@ -56,84 +58,61 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
                                  init_dr::AbstractDecisionRule, grid;
                                  maxbsteps::Int=10, verbose::Bool=true, verbose_jac::Bool=false,
                                  tol::Float64=1e-8, smaxit::Int=500, maxit::Int=1000,
-                                 complementarities::Bool=true, compute_radius::Bool=false, trace::Bool=false)
+                                 complementarities::Bool=true, compute_radius::Bool=false, trace::Bool=false,
+                                 method=:gmres)
 
 
-   parms = model.calibration[:parameters]
+    parms = model.calibration[:parameters]
 
-   n_m = max(n_nodes(dprocess), 1) # number of exo states today
-   n_mt = n_inodes(dprocess,1)  # number of exo states tomorrow
-   n_s = length(model.symbols[:states]) # number of endo states
+    n_m = max(n_nodes(dprocess), 1) # number of exo states today
+    n_mt = n_inodes(dprocess,1)  # number of exo states tomorrow
+    n_s = length(model.symbols[:states]) # number of endo states
 
-   s = nodes(grid)
-   N_s = size(s,1)
-   n_x = size(model.calibration[:controls],1)
+    s = nodes(grid)
+    N_s = size(s,1)
+    n_x = size(model.calibration[:controls],1)
 
-   x0 = [init_dr(i, s) for i=1:n_m]
-   ddr = CachedDecisionRule(dprocess, grid, x0)
-   ddr_filt = CachedDecisionRule(dprocess, grid, x0)
-   set_values!(ddr,x0)
+    x0 = [init_dr(i, s) for i=1:n_m]
+    ddr = CachedDecisionRule(dprocess, grid, x0)
+    ddr_filt = CachedDecisionRule(dprocess, grid, x0)
+    set_values!(ddr,x0)
 
-   steps = 0.5.^collect(0:maxbsteps)
+    steps = 0.5.^collect(0:maxbsteps)
 
-   if complementarities == true
-     x_lb = Array{Float64,2}[cat(1, [controls_lb(model, node(dprocess, i), s[n, :], parms)' for n=1:N_s]...) for i=1:n_m]
-     x_ub = Array{Float64,2}[cat(1, [controls_ub(model, node(dprocess, i), s[n, :], parms)' for n=1:N_s]...) for i=1:n_m]
-   end
+    if complementarities == true
+        x_lb = Array{Float64,2}[cat(1, [controls_lb(model, node(dprocess, i), s[n, :], parms)' for n=1:N_s]...) for i=1:n_m]
+        x_ub = Array{Float64,2}[cat(1, [controls_ub(model, node(dprocess, i), s[n, :], parms)' for n=1:N_s]...) for i=1:n_m]
+    end
 
-   trace_data = []
+    trace_data = []
 
-   x=x0
+    x=x0
 
   #  ## memory allocation
   #  jres = zeros(n_m,n_mt,N_s,n_x,n_x)
   #  S_ij = zeros(n_m,n_mt,N_s,n_s)
 
-   ######### Loop     for it in range(maxit):
-   it=0
-   it_invert=0
+    ######### Loop     for it in range(maxit):
+    it=0
+    it_invert=0
 
-   s_ = to_LOP(s)
-   x_ = [to_LOP(el) for el in x]
-   p_ = SVector(parms...)
-   #
-   N = length(x_[1])
+    s = to_LOP(s)
+    x = [to_LOP(el) for el in x]
+    p = SVector(parms...)
+    #
+    N = length(x[1])
 
     #
-    fun(u) = euler_residuals(model,s_,u,ddr,dprocess,p_,with_jres=false,set_dr=false)
-    R_i, D_i = DiffFun(fun, x_)
-    res_init,J_ij,S_ij =   euler_residuals(model,s_,x_,ddr,dprocess,p_,with_jres=true)
 
-    # err_0 = 1.0
-    #
-    # for i=1:100
-    #   fun(u) = euler_residuals(model,s_,u,ddr,dprocess,p_,with_jres=false,set_dr=false)
-    #   R_i, D_i = DiffFun(fun, x_, 1e-6)
-    #   dx = deepcopy(x_)
-    #   for i_m=1:n_m
-    #     for n=1:N
-    #       dx[i_m][n] = -(D_i[i_m][n]\R_i[i_m][n])
-    #     end
-    #     x_[i_m] += dx[i_m]
-    #   end
-    #   err = (maxabs(dx))
-    #   err_ = (maxabs(R_i))
-    #   println((i,err_,err, err/err_0))
-    #   err_0 = err
-    #   # x_ += dx*0.1
-    #   # println(x_)
-    #   set_values!(ddr, x_)
-    # end
-   #
-  #   return x_
-    return  R_i, D_i, J_ij, S_ij, ddr_filt
+
   #  err_0 = absmax(res_init)
   #  println(err_0)
   #  return R_i, D_i
 
-   err_0 = abs(maximum(res_init))
-   err_2= err_0
-   lam0=0.0
+   err_0 = 1.0 #abs(maximum(res_init))
+   err_2 = err_0
+
+   lam0 = 0.0
 
    verbose && println(repeat("-", 120))
    verbose && println("N\tf_x\t\td_x\tTime_residuals\tTime_inversion\tTime_search\tLambda_0\tN_invert\tN_search\t")
@@ -146,10 +125,8 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
    end
 
    while it <= maxit && err_0>tol
-      it += 1
 
-      jres = zeros(n_m,n_mt,N_s,n_x,n_x)
-      S_ij = zeros(n_m,n_mt,N_s,n_s)
+      it += 1
 
       t1 = time();
 
@@ -159,67 +136,80 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
       # jres: derivatives w.r.t. ~x
       # fut_S: future states
 
-      set_values!(ddr,x)
+      # set_values!(ddr,x)
 
-      ff = SerialDifferentiableFunction(u-> euler_residuals(model, s, u,ddr,dprocess,parms;
-                                        with_jres=false,set_dr=false))
+      _,J_ij,S_ij =   euler_residuals(model,s,x,ddr,dprocess,p,with_jres=true,set_dr=true)
 
-      res, dres = ff(x)
+      fun(u) = euler_residuals(model,s,u,ddr,dprocess,p,with_jres=false,set_dr=false)
+      R_i, D_i = DiffFun(fun, x)
 
-      dres = reshape(dres, n_m, N_s, n_x, n_x)
-      junk, jres, fut_S = euler_residuals(model, s, x,ddr,dprocess,parms, with_jres=true,set_dr=false) #, jres=jres, S_ij=S_ij)
+      # if complementarities == true
+      #   for i_ms in 1:n_m
+      #      dx =  x[i_ms] - x_lb[i_ms]
+      #      res[i_ms,:,:], dres[i_ms,:,:,:], jres[i_ms,:,:,:,:] = smooth_right(res[i_ms,:,:], dres[i_ms,:,:,:], jres[i_ms,:,:,:,:], dx)
+      #   end
+      #
+      #   res *= -1
+      #   dres *= -1
+      #   jres *= -1
+      #
+      #   for i_ms in 1:n_m
+      #      dx =  x_ub[i_ms] -x[i_ms]
+      #      res[i_ms,:,:], dres[i_ms,:,:,:], jres[i_ms,:,:,:,:] = smooth_right(res[i_ms,:,:], dres[i_ms,:,:,:], jres[i_ms,:,:,:,:], dx; pos = -1.0)
+      #   end
+      # end
 
-      if complementarities == true
-        for i_ms in 1:n_m
-           dx =  x[i_ms] - x_lb[i_ms]
-           res[i_ms,:,:], dres[i_ms,:,:,:], jres[i_ms,:,:,:,:] = smooth_right(res[i_ms,:,:], dres[i_ms,:,:,:], jres[i_ms,:,:,:,:], dx)
-        end
+      push!(trace_data, [deepcopy(R_i)])
 
-        res *= -1
-        dres *= -1
-        jres *= -1
+      err_0 = maxabs((R_i))
 
-        for i_ms in 1:n_m
-           dx =  x_ub[i_ms] -x[i_ms]
-           res[i_ms,:,:], dres[i_ms,:,:,:], jres[i_ms,:,:,:,:] = smooth_right(res[i_ms,:,:], dres[i_ms,:,:,:], jres[i_ms,:,:,:,:], dx; pos = -1.0)
-        end
-      end
-
-      push!(trace_data, [copy(res)])
-
-      err_0 = abs(maximum(res))
-
-      jres[:,:,:,:,:] *= -1.0
 
       ####################
       # Invert Jacobians
       t2 = time();
-      tot, it_invert, lam0, errors = invert_jac(res,dres,jres,fut_S, ddr_filt; verbose=verbose_jac, maxit = smaxit)
+
+      J_ij *= -1.0
+
+      if method==:gmres
+        π_i, M_ij, S_ij = Dolo.preinvert(R_i, D_i, J_ij, S_ij)
+        L = LinearThing(M_ij, S_ij, ddr_filt)
+        v = cat(1, [reinterpret(Float64, e, (n_x*N,)) for e in π_i]...)
+        n1 = L.counter
+        w = gmres(L, v, verbose=false)
+        it_invert = L.counter-n1
+        ww = reshape(w,n_x,N,n_m)
+        tt = [ww[:,:,i]  for i=1:n_m]
+        tot = [reinterpret(SVector{n_x,Float64}, t, (N,)) for t in tt]
+      else
+        tot, it_invert, lam0, errors = invert_jac(R_i, D_i, J_ij, S_ij, ddr_filt)
+      end
 
       t3 = time();
 
       i_bckstps=0
       new_err=err_0
       new_x = x
+
       while new_err>=err_0 && i_bckstps<length(steps)
         i_bckstps +=1
-        new_x = x-destack0(tot, n_m)*steps[i_bckstps]
-        new_res = euler_residuals(model, s, new_x,ddr,dprocess,parms,set_dr=true)
 
-        if complementarities == true
-          for i_ms in 1:n_m
-             dx =  new_x[i_ms]-x_lb[i_ms]
-             new_res[i_ms,:,:] = smooth_right(new_res[i_ms,:,:], dx)
-          end
-          for i_ms in 1:n_m
-             dx =  x_ub[i_ms] - new_x[i_ms]
-             new_res[i_ms,:,:] = smooth_right(-new_res[i_ms,:,:], dx)
-          end
-        end
+        new_x = x-tot*steps[i_bckstps]
+        new_res = euler_residuals(model,s,new_x,ddr,dprocess,p,with_jres=false,set_dr=true)
 
-        new_err = maximum(abs, new_res)
+        # if complementarities == true
+        #   for i_ms in 1:n_m
+        #      dx =  new_x[i_ms]-x_lb[i_ms]
+        #      new_res[i_ms,:,:] = smooth_right(new_res[i_ms,:,:], dx)
+        #   end
+        #   for i_ms in 1:n_m
+        #      dx =  x_ub[i_ms] - new_x[i_ms]
+        #      new_res[i_ms,:,:] = smooth_right(-new_res[i_ms,:,:], dx)
+        #   end
+        # end
+
+        new_err = maxabs(new_res)
       end
-      err_2 = maximum(abs,tot)
+      err_2 = maxabs(tot)
 
       t4 = time();
 
