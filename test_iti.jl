@@ -3,23 +3,15 @@ import Dolo
 import Dolo: n_nodes, n_inodes, nodes, CachedDecisionRule
 import Dolo: invert_jac
 
-model = Dolo.yaml_import("examples/models/rbc_dtcc_iid.yaml")
-dri = Dolo.time_iteration(model)
-Dolo.nodes( model.grid )
-R_i, D_i, J_ij, S_ij, dumdr = Dolo.improved_time_iteration(model)
+model = Dolo.yaml_import("examples/models/rbc_dtcc_mc.yaml")
+# dri = Dolo.time_iteration(model)
+# Dolo.nodes( model.grid )
 
-R_i
+R_i, D_i, J_ij_0, S_ij, dumdr = Dolo.improved_time_iteration(model)
+J_ij = J_ij_0*(-1)
 
-
-inv( D_i[1][90] )*D_i[1][90]
 
 rsol, it, lam, errors = invert_jac(R_i, D_i, J_ij, S_ij, dumdr)
-
-errors
-
-D_i[1][50]\R_i[1][50]
-D_i
-
 
 
 π_i, M_ij, S_ij = Dolo.preinvert(R_i, D_i, J_ij, S_ij)
@@ -51,12 +43,10 @@ end
 @time xx = app(L,x0)
 
 
-@time xx = app(L,xx)
 maxabs(xx)
+@time xx = app(L,xx)
 
-L*x0
 
-@time
 
 import Base.size
 import Base.eltype
@@ -94,7 +84,7 @@ function *(L::LinearThing,v::AbstractVector{Float64})
    m = copy(v)
    sh = shape(L)
    mm = reshape(m, sh...)
-   mmm = L*mm + mm
+   mmm = mm-L*mm
    return mmm[:]
 end
 
@@ -120,32 +110,15 @@ function solveit(L::LinearThing,v::AbstractVector{Float64},tol=1e-8)
    return tot
 end
 
-mul(L,v)
+size(L,1)
+v = rand(size(L,1))
 
-function powww(L::LinearThing, v)
-   x = copy(v)
-   lams = []
-   err0 = 1.0
-   for i=1:100
-      x = mul(L,x)
-      err = maximum(abs(x))
-      lam = err/err0
-      push!(lams, lam)
-   end
-   return lams
-end
+w = solveit(L,v)
 
-ll = powww(L,v)
-
-ll
+maximum(abs,L*w-v)
 
 
-powm(L)
-
-@time tot = solveit(L,v)
-
-mul(L,tot)-v
-
+@time rsol, it, lam, errors = invert_jac(R_i, D_i, J_ij, S_ij, dumdr)
 
 
 
@@ -171,13 +144,16 @@ rr = L*dd
 
 @time res = L*v
 
-import IterativeSolvers
+using IterativeSolvers
 
 @time sol = gmres(L, v, verbose=true, tol=1e-10, maxiter=1000, restart=100)
 
 
+@time sol = gmres(L, v)
 
+@time sol2 = solveit(L, v)
 
+sol - sol2
 
 
 
@@ -213,7 +189,109 @@ n_x = size(model.calibration[:controls],1)
 #  x0 = [repmat(model.calibration[:controls]',N_s) for i in 1:N_m] #n_x N_s n_m
 x0 = [init_dr(i, s) for i=1:n_m]
 ddr=CachedDecisionRule(dprocess, grid, x0)
+ddr_filt =
+L*sol - v
+
+
+
+
+
+L*v
+
+
+res = L*dd
+
+@time size(res)
+
+dprocess = Dolo.discretize(model.exogenous)
+grid = model.grid
+init_dr = Dolo.ConstantDecisionRule(model.calibration[:controls])
+
+parms = model.calibration[:parameters]
+
+#  n_m = Dolo.n_nodes(dprocess) # number of exo states today
+n_m = max(n_nodes(dprocess), 1) # number of exo states today
+n_mt = n_inodes(dprocess,1)  # number of exo states tomorrow
+n_s = length(model.symbols[:states]) # number of endo states
+
+s = nodes(grid)
+N_s = size(s,1)
+n_x = size(model.calibration[:controls],1)
+#  N_m
+L*sol - v
+
+
+
+
+
+L*v
+
+
+res = L*dd
+
+@time size(res)
+
+L*sol - v
+
+
+
+
+
+L*v
+
+
+res = L*dd
+
+@time size(res)
+
+dprocess = Dolo.discretize(model.exogenous)
+grid = model.grid
+init_dr = Dolo.ConstantDecisionRule(model.calibration[:controls])
+
+parms = model.calibration[:parameters]
+
+#  n_m = Dolo.n_nodes(dprocess) # number of exo states today
+n_m = max(n_nodes(dprocess), 1) # number of exo states today
+n_mt = n_inodes(dprocess,1)  # number of exo states tomorrow
+n_s = length(model.symbols[:states]) # number of endo states
+
+s = nodes(grid)
+N_s = size(s,1)
+n_x = size(model.calibration[:controls],1)
+#  N_m = Dolo.n_nodes(dprocess) # number of grid points for exo_vars
+
+#  x0 = [repmat(model.calibration[:controls]',N_s) for i in 1:N_m] #n_x N_s n_m
+x0 = [init_dr(i, s) for i=1:n_m]
+ddr=CachedDecisionRule(dprocess, grid, x0)
 ddr_filt = CachedDecisionRule(dprocess, grid, x0)
+Dolo.set_va
+dprocess = Dolo.discretize(model.exogenous)
+grid = model.grid
+init_dr = Dolo.ConstantDecisionRule(model.calibration[:controls])
+
+parms = model.calibration[:parameters]
+
+#  n_m = Dolo.n_nodes(dprocess) # number of exo states today
+n_m = max(n_nodes(dprocess), 1) # number of exo states today
+n_mt = n_inodes(dprocess,1)  # number of exo states tomorrow
+n_s = length(model.symbols[:states]) # number of endo states
+
+s = nodes(grid)
+N_s = size(s,1)
+n_x = size(model.calibration[:controls],1)
+#  N_m = Dolo.n_nodes(dprocess) # number of grid points for exo_vars
+
+#  x0 = [repmat(model.calibration[:controls]',N_s) for i in 1:N_m] #n_x N_s n_m
+x0 = [init_dr(i, s) for i=1:n_m]
+ddr=CachedDecisionRule(dprocess, grid, x0)
+ddr_filt = CachedDecisionRule(dprocess, grid, x0)
+Dolo.set_va= Dolo.n_nodes(dprocess) # number of grid points for exo_vars
+
+#  x0 = [repmat(model.calibration[:controls]',N_s) for i in 1:N_m] #n_x N_s n_m
+x0 = [init_dr(i, s) for i=1:n_m]
+ddr=CachedDecisionRule(dprocess, grid, x0)
+ddr_filt = CachedDecisionRule(dprocess, grid, x0)
+Dolo.set_vaCachedDecisionRule(dprocess, grid, x0)
 Dolo.set_values!(ddr,x0)
 
 import Dolo: to_LOP

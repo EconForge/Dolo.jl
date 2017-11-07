@@ -9,9 +9,9 @@ absmax(x::Vector{<:ListOfPoints}) = maximum(absmax.(x))
 
 function euler_residuals(model, s::ListOfPoints, x::Vector{<:ListOfPoints}, dr, dprocess, parms::SVector; with_jres=false, set_dr=true) #, jres=nothing, S_ij=nothing)
     #
-    # if set_dr ==true
-    #   set_values!(dr,x)
-    # end
+    if set_dr ==true
+      set_values!(dr,x)
+    end
 
     N_s = length(s) # Number of gris points for endo_var
     n_s = length(s[1]) # Number of states
@@ -23,6 +23,9 @@ function euler_residuals(model, s::ListOfPoints, x::Vector{<:ListOfPoints}, dr, 
 
     # res = zeros(n_ms, N_s, n_x)
     res = deepcopy(x)
+    for i_m=1:length(res)
+        res[i_m][:] *= 0.0
+    end
 
     if with_jres == true
         jres = zeros((n_ms,n_mst,N_s,n_x,n_x))
@@ -35,11 +38,9 @@ function euler_residuals(model, s::ListOfPoints, x::Vector{<:ListOfPoints}, dr, 
         m = SVector(node(dprocess,i_ms)...)
         for I_ms in 1:n_mst
             M = SVector(inode(dprocess, i_ms, I_ms)...)
-            # M = M*0
             w = iweight(dprocess, i_ms, I_ms)
             S = transition(model, m, s, x[i_ms], M, parms)
             X = dr(i_ms, I_ms, S)
-            # X = dr.dr(I_ms, S)
             if with_jres==true
                 rr, rr_XM = arbitrage(model,(Val(0),Val(6)),m,s,x[i_ms],M,S,X,parms)
                 J_ij[i_ms,I_ms][:] = w*rr_XM

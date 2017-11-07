@@ -97,35 +97,39 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
    x_ = [to_LOP(el) for el in x]
    p_ = SVector(parms...)
    #
-   # res, dres = euler_residuals_2(model,s_,x_,ddr,dprocess,p_)
    N = length(x_[1])
+
     #
-    # res_init,J_ij,S_ij =   euler_residuals(model,s_,x_,ddr,dprocess,p_,with_jres=true)
-    err_0 = 1.0
+    fun(u) = euler_residuals(model,s_,u,ddr,dprocess,p_,with_jres=false,set_dr=false)
+    R_i, D_i = DiffFun(fun, x_)
+    res_init,J_ij,S_ij =   euler_residuals(model,s_,x_,ddr,dprocess,p_,with_jres=true)
 
-    for i=1:100
-      fun(u) = euler_residuals(model,s_,u,ddr,dprocess,p_,with_jres=false,set_dr=false)
-      R_i, D_i = DiffFun(fun, x_, 1e-6)
-      dx = deepcopy(x_)
-      for i_m=1:n_m
-        for n=1:N
-          dx[i_m][n] = -(D_i[i_m][n]\R_i[i_m][n])
-        end
-        x_[i_m] += dx[i_m]
-      end
-      err = (maxabs(dx))
-      err_ = (maxabs(R_i))
-      println((i,err_,err, err/err_0))
-      err_0 = err
-      # x_ += dx*0.1
-      # println(x_)
-      set_values!(ddr, x_)
-    end
-
+    # err_0 = 1.0
+    #
+    # for i=1:100
+    #   fun(u) = euler_residuals(model,s_,u,ddr,dprocess,p_,with_jres=false,set_dr=false)
+    #   R_i, D_i = DiffFun(fun, x_, 1e-6)
+    #   dx = deepcopy(x_)
+    #   for i_m=1:n_m
+    #     for n=1:N
+    #       dx[i_m][n] = -(D_i[i_m][n]\R_i[i_m][n])
+    #     end
+    #     x_[i_m] += dx[i_m]
+    #   end
+    #   err = (maxabs(dx))
+    #   err_ = (maxabs(R_i))
+    #   println((i,err_,err, err/err_0))
+    #   err_0 = err
+    #   # x_ += dx*0.1
+    #   # println(x_)
+    #   set_values!(ddr, x_)
+    # end
+   #
+  #   return x_
     return  R_i, D_i, J_ij, S_ij, ddr_filt
-   err_0 = absmax(res_init)
-   println(err_0)
-   return R_i, D_i
+  #  err_0 = absmax(res_init)
+  #  println(err_0)
+  #  return R_i, D_i
 
    err_0 = abs(maximum(res_init))
    err_2= err_0

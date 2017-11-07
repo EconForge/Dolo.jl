@@ -17,12 +17,14 @@ definitions:
     c: y - i
     rk: alpha*y/k
     w: (1-alpha)*y/n
-
+    # rk(1): alpha*y(1)/k(1)
+    # c(1)
 equations:
 
     arbitrage:
         - chi*n^eta*c^sigma - w                      | 0 <= n <= inf
-        - 1 - beta*(c/c(1))^(sigma)*(1-delta+rk(1))  | 0 <= i <= inf
+        # - 1 - beta*(c/c(1))^(sigma)*(1-delta+rk(1))  | 0 <= i <= inf
+        - 1 - beta*(c/(exp(z(1))*k(1)^alpha*n(1)^(1-alpha) - i(1)))^(sigma)*(1-delta+alpha*y(1)/k(1))  | 0 <= i <= inf
         # - V0 = c^(1-sigma)/(1-sigma) - chi*n^(1+eta)/(1+eta) + beta*V0(1) |  -100000<=V0<=100000
 
     transition:
@@ -84,6 +86,6 @@ exogenous: !MarkovChain
 options:
 
 
-    grid: !Smolyak
-        mu: 3
-        # orders: [50]
+    grid: !Cartesian
+        # mu: 3
+        orders: [1000]
