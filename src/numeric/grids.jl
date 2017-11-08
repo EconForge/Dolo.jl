@@ -61,6 +61,14 @@ n_nodes(grid::UnstructuredGrid) = size(grid.nodes, 1)
 node(grid::UnstructuredGrid, i::Int) = grid.nodes[i, :] # fail if i!=1 ?
 
 
+function Product(a::UnstructuredGrid, b::UnstructuredGrid)
+    nodes = [ gridmake( node(a,i) , node(b,j)) for i = 1:n_nodes(a)  for j = 1:n_nodes(b) ]
+    N = size(hcat(nodes...)', 2)
+
+    return UnstructuredGrid{N}(hcat(nodes...)')
+end
+
+
 immutable CartesianGrid{N} <: Grid{N}
     min::Vector{Float64}
     max::Vector{Float64}
@@ -75,6 +83,13 @@ end
 nodes(grid::Grid) = grid.nodes
 n_nodes(grid::Grid) = size(grid.nodes, 1)
 node(grid::Grid, i::Int) = grid.nodes[i, :]
+
+
+function Product(a::CartesianGrid, b::CartesianGrid)
+  N=length(a.min)+length(b.min)
+  return Dolo.CartesianGrid{N}(cat(1,a.min, b.min), cat(1, a.max, b.max), cat(1, a.n, b.n))
+end
+
 
 immutable SmolyakGrid{N} <: Grid{N}
     smol_params::BM.SmolyakParams{Float64,Vector{Int}}

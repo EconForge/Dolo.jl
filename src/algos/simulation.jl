@@ -282,14 +282,8 @@ function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
     svec = vcat([e' for e in fill(s0, n_steps)]...)
     svec[:, index] = Svalues
 
-    if isa(dr.grid_exo, UnstructuredGrid)
-        i0 = m0
-        xvec = dr(i0, svec)
-        ii = vcat([e' for e in fill(i0, n_steps)]...) # exo indices
-        mm = from_LOP(to_LOP(dr.grid_exo.nodes)[ii]) # exo values
-        l1 = [ii, mm, svec, xvec]
-        tb = hcat([e' for e in l1']...)
-        model_sym = cat(1,[:mc_process], model.symbols[:exogenous])
+    if isa(dr, AbstractDecisionRule{UnstructuredGrid,CartesianGrid})
+        model_sym = :mc_process
     else
         xvec = dr(m0, svec)
         mm = vcat([e' for e in fill(m0, n_steps)]...)
@@ -323,7 +317,7 @@ end
 function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
                   s0::AbstractVector; n_steps=100)
 
-    if isa(dr, DecisionRule{UnstructuredGrid,CartesianGrid})
+    if isa(dr, AbstractDecisionRule{UnstructuredGrid,CartesianGrid})
         m0 = 1
     else
         m0 = model.calibration[:exogenous]

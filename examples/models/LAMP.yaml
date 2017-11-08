@@ -3,7 +3,6 @@ name: lamp
 model_type: dtcc
 
 symbols:
-
     exogenous: [e_z]
     states: [z,Delta__L]
     controls: [C_s, N_s, F1, F2, R, real_r, C]
@@ -14,8 +13,6 @@ definitions:
     N_h: nu^(-1/(1+phi))
     N: (1-lbda)*N_s + lbda*N_h
     C_h: (C-(1-lbda)*C_s)/lbda
-    #      R: (1/beta)*(pi)^phi
-    #      R: R_st*(pi)^(phi_pi)*(C/C_star)^phi_y
     W: C_h/N_h
     mc: W*exp(z)
     pi: ((1-(F1/F2)^(1-epsilon)*(1-theta))/theta)^(1/(epsilon-1))
@@ -52,7 +49,6 @@ calibration:
       theta: 0.75
       epsilon: 6
       rho_z: 0.8
-      zbar: 1
       sig_z: 0.01
 
       # variable steady states / initial conditions
@@ -69,7 +65,6 @@ calibration:
       N_h: N
       N_s: N
       W: C/N
-      e_z: 0
       NC: N/C
     #  mc: (1-1/theta)*exp(z)
       mc: W*exp(z)
@@ -78,6 +73,8 @@ calibration:
       F1: epsilon/(epsilon-1)*mc/(1-theta*beta)
       F2: 1/(1-theta*beta)
       Delta: Delta__L
+
+      e_z: 0.0
 
 exogenous: !Normal
     Sigma: [[sig_z^2]]

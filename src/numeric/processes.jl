@@ -34,6 +34,17 @@ n_inodes(dp::DiscretizedProcess, i::Int) = size(dp.integration_nodes[i], 1)
 inode(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_nodes[i][j, :]
 iweight(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_weights[i][j]
 
+
+function Product(gdp1::DiscretizedProcess, gdp2::DiscretizedProcess)
+  In = [ gridmake(gdp1.integration_nodes[i], gdp2.integration_nodes[j] ) for i = 1:n_nodes(gdp1)  for j = 1:n_nodes(gdp2) ]
+  Iw =[kron(gdp1.integration_weights[i], gdp2.integration_weights[j] ) for i = 1:n_nodes(gdp1)  for j = 1:n_nodes(gdp2) ]
+  N=length(gdp1.grid.min)+length(gdp2.grid.min)
+  i_grid  = Product(gdp1.grid, gdp2.grid)
+
+  return DiscretizedProcess(i_grid, In, Iw)
+end
+
+
 # date-t grid is unstructured
 type DiscreteMarkovProcess <: AbstractDiscretizedProcess
     grid::UnstructuredGrid
@@ -65,6 +76,7 @@ function MarkovProduct(mc1::DiscreteMarkovProcess, mc2::DiscreteMarkovProcess)
     P = fkron(mc1.transitions, mc2.transitions)
     return DiscreteMarkovProcess(P, Q)
 end
+
 
 function MarkovProduct(mcs::DiscreteMarkovProcess...)
     reduce(MarkovProduct, mcs)
@@ -213,6 +225,7 @@ end
 
 discretize(::Type{DiscretizedProcess}, var::VAR1; args...) = discretize(var; args...)
 
+
 function discretize(::Type{DiscreteMarkovProcess}, var::VAR1; N::Int=3)
 
     # it would be good to have a special type of VAR1 process
@@ -239,6 +252,8 @@ function discretize(::Type{DiscreteMarkovProcess}, var::VAR1; N::Int=3)
     mc_prod.values = mc_prod.values*L'
     return mc_prod
 end
+
+
 
 """
 ```julia
@@ -362,6 +377,14 @@ function discretize(::Type{DiscreteMarkovProcess}, pp::ProductProcess; opt1=Dict
     return MarkovProduct(p1,p2)
 end
 
+
+function discretize(::Type{DiscretizedProcess}, pp::ProductProcess; opt1=Dict(), opt2=Dict())
+  p1 = discretize(DiscretizedProcess, pp.process_1; opt1...)
+  p2 = discretize(DiscretizedProcess, pp.process_2; opt2...)
+  return Product(p1,p2)
+end
+
+
 function discretize(pp::ProductProcess; kwargs...)
     return discretize(DiscreteMarkovProcess, pp; kwargs...)
 end
@@ -399,6 +422,10 @@ function AgingProcess(mu::Float64, K::Int)
     dp.i0 = 2
     dp
 end
+
+
+get_integration_nodes(dprocess::Dolo.AbstractDiscretizedProcess, i::Int)=filter( x -> (x[1]!=0), ((iweight(dprocess,i,j), inode(dprocess,i,j), j) for j in 1:n_inodes(dprocess,i)) )
+
 
 
 # compatibility names

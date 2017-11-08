@@ -47,7 +47,7 @@ export arbitrage, transition, auxiliary, value, expectation,
        evaluate_definitions
 
        # dolo functions
-export yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename, id, features, set_calibration!
+export lint, yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename, id, features, set_calibration!
 
 export time_iteration, improved_time_iteration, value_iteration, residuals,
         response, simulate, perfect_foresight, time_iteration_direct, find_deterministic_equilibrium, perturbate
@@ -106,11 +106,14 @@ include("numeric/decision_rules/compat.jl")
 include("numeric/decision_rules/smolyak.jl")
 include("numeric/decision_rules/complete.jl")
 
+include("linter.jl")
 include("calibration.jl")
 include("minilang.jl")
 include("model.jl")
 include("symbolic.jl")
 include("printing.jl")
+
+
 
 include("algos/steady_state.jl")
 include("algos/time_iteration.jl")

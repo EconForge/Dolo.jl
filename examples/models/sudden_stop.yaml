@@ -47,7 +47,6 @@ calibration:
     lam: 0.0
     V: c^(1.0-sigma)/(1.0-sigma)/(1.0-beta)
     Vc: c^(1.0-sigma)/(1.0-sigma)
-    b: 0
 
 exogenous: !MarkovChain
     values: [[ 0.9 - delta_y  ],  # bad state
