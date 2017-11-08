@@ -78,7 +78,6 @@ function PhiPhi!(F::Vector{Vector{Point{d}}},X::Vector{Vector{Point{d}}},A::Vect
             x = X[i][n]
             a = A[i][n]
             b = B[i][n]
-            d = D[i][n]
             z, z_f, z_x = PhiPhi(f,x,a,b)
             F[i][n] = z
             D[i][n] = z_f*D[i][n] + z_x

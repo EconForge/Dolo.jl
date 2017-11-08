@@ -88,12 +88,6 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
     if complementarities == true
         x_lb = [controls_lb(model, SVector(node(dprocess,i)...),s,p) for i=1:n_m]
         x_ub = [controls_ub(model, SVector(node(dprocess,i)...),s,p) for i=1:n_m]
-        BIG=100000
-        for i=1:n_m
-          clamp!(x_lb[i],-BIG,Inf)
-          clamp!(x_ub[i],-Inf,BIG)
-        end
-
     end
 
     trace_data = []
@@ -139,7 +133,6 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
 
       if complementarities == true
           PhiPhi!(R_i,x,x_lb,x_ub,D_i,J_ij)
-        # PhiPhi!(R_i,x,x_lb,x_ub,D_i)
       end
 
       push!(trace_data, [deepcopy(R_i)])
@@ -164,10 +157,8 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
         tt = [ww[:,:,i]  for i=1:n_m]
         tot = [reinterpret(SVector{n_x,Float64}, t, (N,)) for t in tt]
       else
-        tot, it_invert, lam0, errors = invert_jac(R_i, D_i, J_ij, S_ij, ddr_filt)
+        tot, it_invert, lam0, errors = invert_jac(R_i, D_i, J_ij, S_ij, ddr_filt; maxit=smaxit)
       end
-
-      # tot = [[D_i[i][n]\R_i[i][n] for n=1:N] for i=1:n_m]
 
       t3 = time();
 
