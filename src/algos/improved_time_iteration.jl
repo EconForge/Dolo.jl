@@ -68,46 +68,43 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
     n_mt = n_inodes(dprocess,1)  # number of exo states tomorrow
     n_s = length(model.symbols[:states]) # number of endo states
 
-    s = nodes(grid)
-    N_s = size(s,1)
+    s_ = nodes(grid)
+    N_s = size(s_,1)
     n_x = size(model.calibration[:controls],1)
 
-    x0 = [init_dr(i, s) for i=1:n_m]
-    ddr = CachedDecisionRule(dprocess, grid, x0)
-    ddr_filt = CachedDecisionRule(dprocess, grid, x0)
-    set_values!(ddr,x0)
+    x0_ = [init_dr(i, s_) for i=1:n_m]
+    ddr = CachedDecisionRule(dprocess, grid, x0_)
+    ddr_filt = CachedDecisionRule(dprocess, grid, x0_)
+    set_values!(ddr,x0_)
 
     steps = 0.5.^collect(0:maxbsteps)
 
+    s = to_LOP(s_)
+    x0 = [to_LOP(el) for el in x0_]
+    p = SVector(parms...)
+
+    x = x0
+
     if complementarities == true
-        x_lb = Array{Float64,2}[cat(1, [controls_lb(model, node(dprocess, i), s[n, :], parms)' for n=1:N_s]...) for i=1:n_m]
-        x_ub = Array{Float64,2}[cat(1, [controls_ub(model, node(dprocess, i), s[n, :], parms)' for n=1:N_s]...) for i=1:n_m]
+        x_lb = [controls_lb(model, SVector(node(dprocess,i)...),s,p) for i=1:n_m]
+        x_ub = [controls_ub(model, SVector(node(dprocess,i)...),s,p) for i=1:n_m]
+        BIG=100000
+        for i=1:n_m
+          clamp!(x_lb[i],-BIG,Inf)
+          clamp!(x_ub[i],-Inf,BIG)
+        end
+
     end
 
     trace_data = []
-
-    x=x0
-
-  #  ## memory allocation
-  #  jres = zeros(n_m,n_mt,N_s,n_x,n_x)
-  #  S_ij = zeros(n_m,n_mt,N_s,n_s)
 
     ######### Loop     for it in range(maxit):
     it=0
     it_invert=0
 
-    s = to_LOP(s)
-    x = [to_LOP(el) for el in x]
-    p = SVector(parms...)
+
     #
     N = length(x[1])
-
-    #
-
-
-  #  err_0 = absmax(res_init)
-  #  println(err_0)
-  #  return R_i, D_i
 
    err_0 = 1.0 #abs(maximum(res_init))
    err_2 = err_0
@@ -119,10 +116,6 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
    verbose && println(repeat("-", 120))
 
 
-   if compute_radius == true
-     res=zeros(res_init)
-     dres = zeros(N_s*n_m, n_x, n_x)
-   end
 
    while it <= maxit && err_0>tol
 
@@ -136,28 +129,17 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
       # jres: derivatives w.r.t. ~x
       # fut_S: future states
 
-      # set_values!(ddr,x)
+      # set_values!(ddr,x)   # implicit in the next call
 
       _,J_ij,S_ij =   euler_residuals(model,s,x,ddr,dprocess,p,with_jres=true,set_dr=true)
 
       fun(u) = euler_residuals(model,s,u,ddr,dprocess,p,with_jres=false,set_dr=false)
       R_i, D_i = DiffFun(fun, x)
 
-      # if complementarities == true
-      #   for i_ms in 1:n_m
-      #      dx =  x[i_ms] - x_lb[i_ms]
-      #      res[i_ms,:,:], dres[i_ms,:,:,:], jres[i_ms,:,:,:,:] = smooth_right(res[i_ms,:,:], dres[i_ms,:,:,:], jres[i_ms,:,:,:,:], dx)
-      #   end
-      #
-      #   res *= -1
-      #   dres *= -1
-      #   jres *= -1
-      #
-      #   for i_ms in 1:n_m
-      #      dx =  x_ub[i_ms] -x[i_ms]
-      #      res[i_ms,:,:], dres[i_ms,:,:,:], jres[i_ms,:,:,:,:] = smooth_right(res[i_ms,:,:], dres[i_ms,:,:,:], jres[i_ms,:,:,:,:], dx; pos = -1.0)
-      #   end
-      # end
+
+      if complementarities == true
+        PhiPhi!(R_i,x,x_lb,x_ub,D_i,J_ij)
+      end
 
       push!(trace_data, [deepcopy(R_i)])
 
@@ -196,19 +178,13 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
         new_x = x-tot*steps[i_bckstps]
         new_res = euler_residuals(model,s,new_x,ddr,dprocess,p,with_jres=false,set_dr=true)
 
-        # if complementarities == true
-        #   for i_ms in 1:n_m
-        #      dx =  new_x[i_ms]-x_lb[i_ms]
-        #      new_res[i_ms,:,:] = smooth_right(new_res[i_ms,:,:], dx)
-        #   end
-        #   for i_ms in 1:n_m
-        #      dx =  x_ub[i_ms] - new_x[i_ms]
-        #      new_res[i_ms,:,:] = smooth_right(-new_res[i_ms,:,:], dx)
-        #   end
-        # end
+        if complementarities == true
+            PhiPhi!(R_i,x,x_lb,x_ub,D_i)
+        end
 
         new_err = maxabs(new_res)
       end
+
       err_2 = maxabs(tot)
 
       t4 = time();
