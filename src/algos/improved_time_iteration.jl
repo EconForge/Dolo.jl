@@ -84,10 +84,19 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
     p = SVector(parms...)
 
     x = x0
+    N = length(x[1])
+
 
     if complementarities == true
         x_lb = [controls_lb(model, SVector(node(dprocess,i)...),s,p) for i=1:n_m]
         x_ub = [controls_ub(model, SVector(node(dprocess,i)...),s,p) for i=1:n_m]
+        BIG = 100000
+        for i=1:n_m
+          for n=1:N
+            x_lb[i][n] = max.(x_lb[i][n],-BIG)
+            x_ub[i][n] = min.(x_ub[i][n], BIG)
+          end
+        end
     end
 
     trace_data = []
@@ -98,7 +107,6 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
 
 
     #
-    N = length(x[1])
 
    err_0 = 1.0 #abs(maximum(res_init))
    err_2 = err_0

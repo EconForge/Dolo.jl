@@ -11,21 +11,21 @@ function Phi(u::Float64, v::Float64)
     end
 end
 
-function Phi(u::Point{d},v::Point{d}) where d
-    rr = [Phi(u[i], v[i]) for i=1:d]
-    p = [r[1] for r in rr]
-    J_u = [r[2] for r in rr]
-    J_v = [r[3] for r in rr]
-    return SVector(p...), SDiagonal(J_u...), SDiagonal(J_v...)
-end
-
 # function Phi(u::Point{d},v::Point{d}) where d
-#     sq = sqrt.(u.^2+v.^2)
-#     p = u+v-sq
-#     J_u = 1 - u./sq
-#     J_v = 1 - v./sq
-#     return p, SDiagonal(J_u), SDiagonal(J_v)
+#     rr = [Phi(u[i], v[i]) for i=1:d]
+#     p = [r[1] for r in rr]
+#     J_u = [r[2] for r in rr]
+#     J_v = [r[3] for r in rr]
+#     return SVector(p...), SDiagonal(J_u...), SDiagonal(J_v...)
 # end
+
+function Phi(u::Point{d},v::Point{d}) where d
+    sq = sqrt.(u.^2+v.^2)
+    p = u+v-sq
+    J_u = 1 - u./sq
+    J_v = 1 - v./sq
+    return p, SDiagonal(J_u), SDiagonal(J_v)
+end
 
 function PhiPhi(f::Point{d}, x::Point{d}, a::Point{d}, b::Point{d}) where d
     y, y_f, y_x = Phi(f,x-a)
