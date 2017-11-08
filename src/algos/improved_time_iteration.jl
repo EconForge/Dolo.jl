@@ -138,7 +138,8 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
 
 
       if complementarities == true
-        PhiPhi!(R_i,x,x_lb,x_ub,D_i,J_ij)
+          PhiPhi!(R_i,x,x_lb,x_ub,D_i,J_ij)
+        # PhiPhi!(R_i,x,x_lb,x_ub,D_i)
       end
 
       push!(trace_data, [deepcopy(R_i)])
@@ -166,6 +167,8 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
         tot, it_invert, lam0, errors = invert_jac(R_i, D_i, J_ij, S_ij, ddr_filt)
       end
 
+      # tot = [[D_i[i][n]\R_i[i][n] for n=1:N] for i=1:n_m]
+
       t3 = time();
 
       i_bckstps=0
@@ -179,7 +182,7 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
         new_res = euler_residuals(model,s,new_x,ddr,dprocess,p,with_jres=false,set_dr=true)
 
         if complementarities == true
-            PhiPhi!(R_i,x,x_lb,x_ub,D_i)
+            new_res = [PhiPhi0.(new_res[i],new_x[i],x_lb[i],x_ub[i]) for i=1:n_m]
         end
 
         new_err = maxabs(new_res)

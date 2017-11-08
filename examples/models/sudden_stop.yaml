@@ -60,4 +60,4 @@ domain:
 
 options:
     grid: !Cartesian
-        orders: [1000]
+        orders: [200]

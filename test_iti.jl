@@ -3,12 +3,13 @@ import Dolo
 import Dolo: n_nodes, n_inodes, nodes, CachedDecisionRule
 import Dolo: invert_jac
 
-model = Dolo.yaml_import("examples/models/rbc_dtcc_mc.yaml")
+# model = Dolo.yaml_import("examples/models/rbc_dtcc_iid.yaml")
 # model = Dolo.yaml_import("examples/models/sudden_stop.yaml")
+model = Dolo.yaml_import("/home/pablo/Mobilhome/papers/bruteforce/models/integration_B.yaml")
 # dri = Dolo.time_iteration(model)
 # Dolo.nodes( model.grid )
 
-@time dr = Dolo.improved_time_iteration(model, verbose=false)
+@time dr = Dolo.improved_time_iteration(model, verbose=true, method=:iti, complementarities=true)
 
 @time dr = Dolo.improved_time_iteration(model, verbose=false, method=:gmres)
 
