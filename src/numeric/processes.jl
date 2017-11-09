@@ -426,6 +426,7 @@ end
 
 get_integration_nodes(dprocess::Dolo.AbstractDiscretizedProcess, i::Int)=filter( x -> (x[1]!=0), ((iweight(dprocess,i,j), inode(dprocess,i,j), j) for j in 1:n_inodes(dprocess,i)) )
 
+get_integration_nodes(::typeof(Point), dprocess::Dolo.AbstractDiscretizedProcess, i::Int)=filter( x -> (x[1]!=0), ((iweight(dprocess,i,j), inode(Point,dprocess,i,j), j) for j in 1:n_inodes(dprocess,i)) )
 
 
 # compatibility names

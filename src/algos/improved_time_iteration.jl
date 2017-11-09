@@ -79,7 +79,6 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
 
     steps = 0.5.^collect(0:maxbsteps)
 
-    println(typeof(x0_))
     x0 = x0_ # [to_LOP(el) for el in x0_]
     p = SVector(parms...)
 

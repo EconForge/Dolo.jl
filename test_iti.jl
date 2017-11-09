@@ -6,7 +6,15 @@ using StaticArrays
 
 
 
+model = Dolo.yaml_import("examples/models/rbc_dtcc_mc.yaml")
+dp = Dolo.discretize(model.exogenous)
 
+m_ss = model.calibration[:exogenous]
+x_ss = model.calibration[:controls]
+s_ss = model.calibration[:states]
+
+@time Dolo.time_iteration(model,verbose=true,complementarities=false, verbose=false)
+@time Dolo.improved_time_iteration(model,verbose=true,complementarities=false, verbose=false)
 
 module InitDR
     import Dolo: AbstractDiscretizedProcess, Point, node, AbstractDecisionRule, Grid, EmptyGrid
@@ -60,13 +68,6 @@ cfdr(1, SVector(s_ss...))
 
 
 
-
-model = Dolo.yaml_import("examples/models/rbc_dtcc_mc.yaml")
-dp = Dolo.discretize(model.exogenous)
-
-m_ss = model.calibration[:exogenous]
-x_ss = model.calibration[:controls]
-s_ss = model.calibration[:states]
 
 
 # model = Dolo.yaml_import("examples/models/sudden_stop.yaml")

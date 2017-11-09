@@ -21,18 +21,21 @@ If the list of current controls `x` is provided as a two-dimensional array (`Lis
 # Returns
 * `res`: Residuals of the arbitrage equation associated with each exogenous shock.
 """
-function euler_residuals(model, dprocess::AbstractDiscretizedProcess, s, x::Array{Array{Float64,2},1}, p, dr)
-    N = size(s, 1)
-    res = [zeros(size(x[1])) for i=1:length(x)]
-    S = zeros(size(s))
-    # X = zeros(size(x[1]))
+function euler_residuals(model, dprocess::AbstractDiscretizedProcess,s::ListOfPoints, x::Vector{<:ListOfPoints}, p::SVector, dr)
+    N = length(s)
+    # TODO: allocate properly...
+    res = deepcopy(x)
+    for i_m=1:length(res)
+        res[i_m][:] *= 0.0
+    end
     for i in 1:size(res, 1)
-        m = node(dprocess, i)
-        for (w, M, j) in get_integration_nodes(dprocess,i)
+        m = node(Point, dprocess, i)
+        for (w, MM, j) in get_integration_nodes(dprocess,i)
             # Update the states
-            S[:,:] = Dolo.transition(model, m, s, x[i], M, p)
+            M = SVector(MM...)
+            S = Dolo.transition(model, m, s, x[i], M, p)
             X = dr(i, j, S)
-            res[i][:,:] += w*Dolo.arbitrage(model, m, s, x[i], M, S, X, p)
+            res[i] += w*Dolo.arbitrage(model, m, s, x[i], M, S, X, p)
         end
     end
     return res
@@ -44,17 +47,6 @@ function euler_residuals(model, dprocess, s, x::Array{Float64,2}, p, dr)
     res = euler_residuals(model, dprocess, s, xx, p, dr)
     return stack0(res)
 end
-
-function destack0(x::Array{Float64,2}, n_m::Int)
-    N = div(size(x, 1), n_m)
-    xx = reshape(x, N, n_m, size(x, 2))
-    return Array{Float64,2}[xx[:, i, :] for i=1:n_m]
-end
-
-function stack0(x::Array{Array{Float64,2},1})::Array{Float64,2}
-     return cat(1, x...)
-end
-
 ###
 
 immutable TimeIterationLog
@@ -160,8 +152,8 @@ If the stochastic process for the model is not explicitly provided, the process 
 function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
                         grid, init_dr;
                         verbose::Bool=true,
-                        maxit::Int=500, tol_η::Float64=1e-7, trace::Bool=false,
-                        solver=Dict())
+                        maxit::Int=500, tol_η::Float64=1e-7, trace::Bool=false, maxbsteps=5,
+                        solver=Dict(), complementarities=true)
 
     if get(solver, :type, :__missing__) == :direct
         return time_iteration_direct(
@@ -172,36 +164,31 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
 
 
 
-    endo_nodes = nodes(grid)
+    endo_nodes = nodes(ListOfPoints, grid)
     N = n_nodes(grid)
     n_s_endo = size(endo_nodes, 2)
     n_s_exo = n_nodes(dprocess)
 
     # initial guess
     # number of smooth decision rules
-    nsd = max(n_s_exo, 1)
-    p = model.calibration[:parameters]
+    n_m = max(n_s_exo, 1)
+    p = SVector(model.calibration[:parameters]...)
 
-    x0 = [init_dr(i, endo_nodes) for i=1:nsd]
+    x0 = [init_dr(i, endo_nodes) for i=1:n_m]
 
     ti_trace = trace ? IterationTrace([x0]) : nothing
 
     n_x = length(model.calibration[:controls])
-    lb = Array{Float64}(N*nsd, n_x)
-    ub = Array{Float64}(N*nsd, n_x)
-    ix = 0
-    for i in 1:nsd
-        node_i = node(dprocess, i)
-        for n in 1:N
-            ix += 1
-            endo_n = endo_nodes[n, :]
-            lb[ix, :] = Dolo.controls_lb(model, node_i, endo_n, p)
-            ub[ix, :] = Dolo.controls_ub(model, node_i, endo_n, p)
-        end
+    if complementarities == true
+        x_lb = [controls_lb(model, node(Point,dprocess,i),endo_nodes,p) for i=1:n_m]
+        x_ub = [controls_ub(model, node(Point,dprocess,i),endo_nodes,p) for i=1:n_m]
     end
 
     # create decision rule (which interpolates x0)
     dr = CachedDecisionRule(dprocess, grid, x0)
+
+    steps = 0.5.^collect(0:maxbsteps)
+
 
     # loop option
     # init_res = euler_residuals(model, dprocess, endo_nodes, x0, p, dr)
@@ -222,16 +209,34 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
 
         set_values!(dr, x0)
 
-        xx0 = stack0(x0)
         fobj(u) = euler_residuals(model, dprocess, endo_nodes, u, p, dr)
-        xx1, nit = serial_solver(fobj, xx0, lb, ub; solver...)
-        x1 = destack0(xx1, nsd)
+        R_i, D_i = DiffFun(fobj, x0)
 
-        err = maximum(abs, xx1 - xx0)
+        if complementarities == true
+            PhiPhi!(R_i,x0,x_lb,x_ub,D_i)
+        end
+
+        tot = [[D_i[i][n]\R_i[i][n] for n=1:N] for i=1:n_m]
+        i_bckstps=0
+        new_err=err_0
+        x1 = x0-tot
+        err = maxabs(x1-x0)
+
+        while new_err>=err_0 && i_bckstps<length(steps)
+          i_bckstps +=1
+          x1 = x0-tot*steps[i_bckstps]
+          new_res = euler_residuals(model, dprocess, endo_nodes, x1, p, dr)
+          if complementarities == true
+              new_res = [PhiPhi0.(new_res[i],x1[i],x_lb[i],x_ub[i]) for i=1:n_m]
+          end
+          new_err = maxabs(new_res)
+        end
+        nit=1
+
 
         trace && push!(ti_trace.trace, x1)
 
-        copy!(x0, x1)
+        x0=x1
         gain = err / err_0
         err_0 = err
 

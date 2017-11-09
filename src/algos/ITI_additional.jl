@@ -120,7 +120,7 @@ function euler_residuals(model, s::ListOfPoints, x::Vector{<:ListOfPoints}, dr, 
     n_mst = n_inodes(dprocess,1)  # number of exo states tomorrow
     d = length(s[1])
 
-    # res = zeros(n_ms, N_s, n_x)
+    # TODO: allocate properly...
     res = deepcopy(x)
     for i_m=1:length(res)
         res[i_m][:] *= 0.0
