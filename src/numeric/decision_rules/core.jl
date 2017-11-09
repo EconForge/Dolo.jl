@@ -20,10 +20,6 @@ function ConstantDecisionRule(constants::Vector{Float64})
     ConstantDecisionRule{nx}(SVector{nx,Float64}(constants...))
 end
 
-function ConstantDecisionRule{nx}(constants::Value{nx})
-    ConstantDecisionRule{nx}(collect(constants))
-end
-
 (dr::ConstantDecisionRule)(x::Point) = dr.constants
 (dr::ConstantDecisionRule)(x::Vector{Point{d}}) where d = [dr.constants for n=1:length(x)]
 (dr::ConstantDecisionRule)(i::Int, x::Union{Point{d},Vector{Point{d}}}) where d = dr(x)
@@ -52,3 +48,13 @@ end
 (dr::BiTaylorExpansion)(m::AbstractMatrix, s::AbstractVector) = vcat([(dr(m[i, :], s))' for i=1:size(m, 1) ]...)
 (dr::BiTaylorExpansion)(m::AbstractVector, s::AbstractMatrix) = vcat([(dr(m, s[i, :]))' for i=1:size(s, 1) ]...)
 (dr::BiTaylorExpansion)(m::AbstractMatrix, s::AbstractMatrix) = vcat([(dr(m[i, :], s[i, :]))' for i=1:size(m, 1) ]...)
+
+
+# User defined functions
+struct CFunDR{S,T,nx} <: AbstractDecisionRule{S,T,nx}
+    fun::Function
+    dprocess::AbstractDiscretizedProcess
+end
+CFunDR(fun::Function, dprocess::AbstractDiscretizedProcess, n_x::Int) = CFunDR{typeof(dprocess.grid), EmptyGrid, n_x}(fun, dprocess)
+(cfdr::CFunDR)(i::Int, x::Point{d}) where d = cfdr.fun(node(Point, cfdr.dprocess,i),x)
+(cfdr::CFunDR)(i::Int, x::Vector{Point{d}}) where d = [cfdr(i,e) for e in x]

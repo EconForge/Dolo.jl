@@ -177,6 +177,7 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
         i_bckstps +=1
 
         new_x = x-tot*steps[i_bckstps]
+
         new_res = euler_residuals(model,s,new_x,ddr,dprocess,p,with_jres=false,set_dr=true)
 
         if complementarities == true
@@ -184,6 +185,7 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
         end
 
         new_err = maxabs(new_res)
+
       end
 
       err_2 = maxabs(tot)

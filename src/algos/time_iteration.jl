@@ -56,7 +56,7 @@ immutable TimeIterationLog
 end
 
 function TimeIterationLog()
-    header = [ "It", "ηₙ=|xₙ-xₙ₋₁|", "λₙ=ηₙ/ηₙ₋₁", "Time", "Newton steps"]
+    header = [ "It", "ϵₙ", "ηₙ=|xₙ-xₙ₋₁|", "λₙ=ηₙ/ηₙ₋₁", "Time", "Newton steps"]
     keywords = [:it, :err, :gain, :time, :nit]
     TimeIterationLog(header, keywords, [])
 end
@@ -85,18 +85,19 @@ end
 
 function show_start(log::TimeIterationLog)
     println(repeat("-", 66))
-    @printf "%-6s%-16s%-16s%-16s%-5s\n" "It" "ηₙ=|xₙ-xₙ₋₁|" "λₙ=ηₙ/ηₙ₋₁" "Time" "Newton steps"
+    @printf "%-6s%-16s%-16s%-16s%-16s%-5s\n" "It" "ϵₙ" "ηₙ=|xₙ-xₙ₋₁|" "λₙ=ηₙ/ηₙ₋₁" "Time" "Newton steps"
     println(repeat("-", 66))
 end
 
 
 function show_entry(log::TimeIterationLog, entry)
     it = entry[:it]
+    epsilon = entry[:epsilon]
     err = entry[:err]
     gain = entry[:gain]
     time = entry[:time]
     nit = entry[:nit]
-    @printf "%-6i%-16.2e%-16.2e%-16.2e%-5i\n" it err gain time nit
+    @printf "%-6i%-16.2e%-16.2e%-16.2e%-16.2e%-5i\n" it epsilon err gain time nit
 end
 
 function show_end(log::TimeIterationLog)
@@ -152,7 +153,7 @@ If the stochastic process for the model is not explicitly provided, the process 
 function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
                         grid, init_dr;
                         verbose::Bool=true,
-                        maxit::Int=500, tol_η::Float64=1e-7, trace::Bool=false, maxbsteps=5,
+                        maxit::Int=500, tol_η::Float64=1e-7, trace::Bool=false, maxbsteps=5, dampen=1.0,
                         solver=Dict(), complementarities=true)
 
     if get(solver, :type, :__missing__) == :direct
@@ -182,6 +183,13 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
     if complementarities == true
         x_lb = [controls_lb(model, node(Point,dprocess,i),endo_nodes,p) for i=1:n_m]
         x_ub = [controls_ub(model, node(Point,dprocess,i),endo_nodes,p) for i=1:n_m]
+        BIG = 100000
+        for i=1:n_m
+          for n=1:N
+            x_lb[i][n] = max.(x_lb[i][n],-BIG)
+            x_ub[i][n] = min.(x_ub[i][n], BIG)
+          end
+        end
     end
 
     # create decision rule (which interpolates x0)
@@ -198,7 +206,7 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
 
     log = TimeIterationLog()
     initialize(log, verbose=verbose)
-    append!(log; verbose=verbose, it=0, err=NaN, gain=NaN, time=0.0, nit=0)
+    # append!(log; verbose=verbose, it=0, epsilon=epsil, err=NaN, gain=NaN, time=0.0, nit=0)
 
     it = 0
     while it<maxit && err>tol_η
@@ -215,8 +223,9 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
         if complementarities == true
             PhiPhi!(R_i,x0,x_lb,x_ub,D_i)
         end
-
+        epsil = maxabs(R_i)
         tot = [[D_i[i][n]\R_i[i][n] for n=1:N] for i=1:n_m]
+        tot *= dampen
         i_bckstps=0
         new_err=err_0
         x1 = x0-tot
@@ -242,7 +251,7 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
 
         elapsed = toq()
 
-        append!(log; verbose=verbose, it=it, err=err, gain=gain, time=elapsed, nit=nit)
+        append!(log; verbose=verbose, it=it, epsilon=epsil, err=err, gain=gain, time=elapsed, nit=nit)
     end
 
     finalize(log, verbose=verbose)

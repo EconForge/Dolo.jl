@@ -2,8 +2,6 @@ import Dolo
 
 import Dolo: n_nodes, n_inodes, nodes, CachedDecisionRule
 import Dolo: invert_jac
-using StaticArrays
-
 
 
 model = Dolo.yaml_import("examples/models/rbc_dtcc_mc.yaml")
@@ -13,20 +11,16 @@ m_ss = model.calibration[:exogenous]
 x_ss = model.calibration[:controls]
 s_ss = model.calibration[:states]
 
-@time Dolo.time_iteration(model,verbose=true,complementarities=false, verbose=false)
+@time sol = Dolo.time_iteration(model,verbose=true,complementarities=true, verbose=true, dampen=0.1)
+
+Dolo.improved_time_iteration(model, sol.dr,verbose=true)
 @time Dolo.improved_time_iteration(model,verbose=true,complementarities=false, verbose=false)
 
 module InitDR
     import Dolo: AbstractDiscretizedProcess, Point, node, AbstractDecisionRule, Grid, EmptyGrid
     using StaticArrays
 
-    struct CFunDR{S,T,nx} <: AbstractDecisionRule{S,T,nx}
-        fun::Function
-        dprocess::AbstractDiscretizedProcess
-    end
-    CFunDR(fun::Function, dprocess::AbstractDiscretizedProcess) = CFunDR{typeof(dprocess.grid), EmptyGrid, 1}(fun, dprocess)
-    (cfdr::CFunDR)(i::Int, x::Point{d}) where d = cfdr.fun(node(Point, cfdr.dprocess,i),x)
-    (cfdr::CFunDR)(i::Int, x::Vector{Point{d}}) where d = [cfdr(i,e) for e in x]
+
 end
 
 import InitDR
