@@ -12,26 +12,29 @@ outdim(dr::AbstractDecisionRule{<:Grid,<:Grid,nx}) where nx = nx
 # ---------------------- #
 
 @compat type ConstantDecisionRule{nx} <: AbstractDecisionRule{EmptyGrid,EmptyGrid,nx}
-    constants::Vector{Float64}
+    constants::SVector{nx,Float64}
 end
 
 function ConstantDecisionRule(constants::Vector{Float64})
     nx = length(constants)
-    ConstantDecisionRule{nx}(constants)
+    ConstantDecisionRule{nx}(SVector{nx,Float64}(constants...))
 end
 
 function ConstantDecisionRule{nx}(constants::Value{nx})
     ConstantDecisionRule{nx}(collect(constants))
 end
 
-(dr::ConstantDecisionRule)(x::AbstractVector) = dr.constants
-(dr::ConstantDecisionRule)(x::AbstractMatrix) = repmat(dr.constants', size(x, 1), 1)
-(dr::ConstantDecisionRule)(x::AbstractVector, y::AbstractVector) = dr.constants
-(dr::ConstantDecisionRule)(x::AbstractVector, y::AbstractMatrix) = repmat(dr.constants', size(y, 1), 1)
-(dr::ConstantDecisionRule)(x::AbstractMatrix, y::AbstractVector) = repmat(dr.constants', size(x, 1), 1)
-(dr::ConstantDecisionRule)(x::AbstractMatrix, y::AbstractMatrix) = repmat(dr.constants', size(x, 1), 1)
-(dr::ConstantDecisionRule)(i::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
-(dr::ConstantDecisionRule)(i::Int, j::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
+(dr::ConstantDecisionRule)(x::Point) = dr.constants
+(dr::ConstantDecisionRule)(x::Vector{Point{d}}) where d = [dr.constants for n=1:length(x)]
+(dr::ConstantDecisionRule)(i::Int, x::Union{Point{d},Vector{Point{d}}}) where d = dr(x)
+(dr::ConstantDecisionRule)(i::Int, j::Int, x::Union{Point{d},Vector{Point{d}}}) where d = dr(x)
+
+# (dr::ConstantDecisionRule)(x::AbstractVector, y::AbstractVector) = dr.constants
+# (dr::ConstantDecisionRule)(x::AbstractVector, y::AbstractMatrix) = repmat(dr.constants', size(y, 1), 1)
+# (dr::ConstantDecisionRule)(x::AbstractMatrix, y::AbstractVector) = repmat(dr.constants', size(x, 1), 1)
+# (dr::ConstantDecisionRule)(x::AbstractMatrix, y::AbstractMatrix) = repmat(dr.constants', size(x, 1), 1)
+# (dr::ConstantDecisionRule)(i::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
+# (dr::ConstantDecisionRule)(i::Int, j::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
 
 # ------------------------------ #
 # 2-dimensional Taylor Expansion #

@@ -68,19 +68,19 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
     n_mt = n_inodes(dprocess,1)  # number of exo states tomorrow
     n_s = length(model.symbols[:states]) # number of endo states
 
-    s_ = nodes(grid)
-    N_s = size(s_,1)
+    s = nodes(ListOfPoints, grid)
+    N_s = length(s)
     n_x = size(model.calibration[:controls],1)
 
-    x0_ = [init_dr(i, s_) for i=1:n_m]
+    x0_ = [init_dr(i, s) for i=1:n_m]
     ddr = CachedDecisionRule(dprocess, grid, x0_)
     ddr_filt = CachedDecisionRule(dprocess, grid, x0_)
     set_values!(ddr,x0_)
 
     steps = 0.5.^collect(0:maxbsteps)
 
-    s = to_LOP(s_)
-    x0 = [to_LOP(el) for el in x0_]
+    println(typeof(x0_))
+    x0 = x0_ # [to_LOP(el) for el in x0_]
     p = SVector(parms...)
 
     x = x0
