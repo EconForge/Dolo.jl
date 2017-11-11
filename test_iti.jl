@@ -11,19 +11,23 @@ m_ss = model.calibration[:exogenous]
 x_ss = model.calibration[:controls]
 s_ss = model.calibration[:states]
 
+@time sol = Dolo.improved_time_iteration(model, verbose=false, complementarities=true, method=:gmres)
+
+
+sim = Dolo.simulate(model, sol.dr)
+dp = Dolo.discretize(model.exogenous)
+grid = model.grid
+
+@time Dolo.evaluate_policy(model, dp, grid, sol.dr, verbose=false)
+
+SVector(model.calibration[:parameters]...)
+
+
 @time sol = Dolo.time_iteration(model,verbose=true,complementarities=true, verbose=true, dampen=0.1)
 
 Dolo.improved_time_iteration(model, sol.dr,verbose=true)
 @time Dolo.improved_time_iteration(model,verbose=true,complementarities=false, verbose=false)
 
-module InitDR
-    import Dolo: AbstractDiscretizedProcess, Point, node, AbstractDecisionRule, Grid, EmptyGrid
-    using StaticArrays
-
-
-end
-
-import InitDR
 
 function iidr(m,s)
     k = s[1]

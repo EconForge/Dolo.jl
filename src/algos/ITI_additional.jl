@@ -253,6 +253,11 @@ end
 function *(L::LinearThing,v::AbstractVector{Float64})
    m = copy(v)
    sh = shape(L)
+   n_x = sh[1]
+   vv = reinterpret(Point{n_x},m,(sh[2],sh[3]))
+   # x = [view(vv,:,i) for i=1:sh[3]]
+   x = [vv[:,i] for i=1:sh[3]]
+   y = x-L*x
    mm = reshape(m, sh...)
    mmm = mm-L*mm
    return mmm[:]

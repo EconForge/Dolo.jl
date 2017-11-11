@@ -1,7 +1,4 @@
 include("ITI_additional.jl")
-
-
-
 using IterativeSolvers
 
 function add_epsilon!(x::ListOfPoints{d}, i, epsilon) where d
@@ -10,7 +7,6 @@ function add_epsilon!(x::ListOfPoints{d}, i, epsilon) where d
     x[i] += ei
   end
 end
-
 
 function DiffFun(fun, x0::Vector{ListOfPoints{n_x}}, epsilon=1e-6) where n_x
     xi = deepcopy(x0)
@@ -32,8 +28,6 @@ function DiffFun(fun, x0::Vector{ListOfPoints{n_x}}, epsilon=1e-6) where n_x
     J = [reinterpret(SMatrix{n_x,n_x,Float64,n_x^2},JMat[i],(N,)) for i=1:n_m]
     return r0,J
 end
-
-
 
 """
 Computes a global solution for a model via backward Improved Time Iteration. The algorithm is applied to the residuals of the arbitrage equations. The idea is to solve the system G(x) = 0 as a big nonlinear system in x, where the inverted Jacobian matrix is approximated by an infinite sum (Neumann series).

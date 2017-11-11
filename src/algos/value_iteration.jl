@@ -42,19 +42,21 @@ function evaluate_policy(model, dprocess::AbstractDiscretizedProcess, grid, dr;
 
 
     # extract parameters
-    p = model.calibration[:parameters]
+    p = SVector(model.calibration[:parameters]...)
     β = model.calibration.flat[:beta]
 
     # states today are the grid
-    s = nodes(grid)
+    s = nodes(Point, grid)
 
     # Number of endogenous nodes
-    N = size(s, 1)
+    N = length(s)
 
     # number of smooth decision rules
     nsd = max(n_nodes(dprocess), 1)
+
     n_u = length(model.calibration[:rewards])
-    res = [zeros(N, n_u) for i=1:nsd]
+
+    res = [to_LOP(zeros(N, n_u)) for i=1:nsd]
 
     # Value function : v_t = u + β*E[V_{t+1}]
     u = deepcopy(res)
@@ -69,10 +71,8 @@ function evaluate_policy(model, dprocess::AbstractDiscretizedProcess, grid, dr;
     # function
     x = [dr(i, s) for i=1:nsd]
     for i = 1:size(res, 1)
-        m = node(dprocess, i)
-        for n = 1:N
-            u[i][n, :] = Dolo.felicity(model, m, s[n, :], x[i][n, :], p)
-        end
+        m = node(Point, dprocess, i)
+        u[i][:] = Dolo.felicity(model, m, s, x[i], p)
     end
 
     # Initial guess for the value function
@@ -92,24 +92,23 @@ function evaluate_policy(model, dprocess::AbstractDiscretizedProcess, grid, dr;
         # Interpolate v0 on the grid
         # Compute value function for each smooth decision rule
         for i = 1:nsd
-            m = node(dprocess, i)
-            for (w, M, j) in get_integration_nodes(dprocess,i)
-                 for n=1:N
+            m = node(Point, dprocess, i)
+            for (w, MM, j) in get_integration_nodes(dprocess,i)
+                    M = SVector(MM...)
                      # Update the states
-                     S = Dolo.transition(model, m, s[n, :], x[i][n, :], M, p)
+                     S = Dolo.transition(model, m, s, x[i], M, p)
                      # Update value function
-                      E_V[i][n, :] += w*drv(i, j, S)
-                 end
+                      E_V[i] += w*drv(i, j, S)
             end
         end
 
 
         err = 0.0
         for i in 1:length(v)
-            broadcast!((_u, _E_v) -> _u + β * _E_v, v[i], u[i], E_V[i])
-            err = max(err, maximum(abs, v[i] - v0[i]))
+            v[i][:] = u[i] + β*E_V[i]
+            err = max(err, maxabs(v[i] - v0[i]))
             copy!(v0[i], v[i])
-            fill!(E_V[i], 0.0)
+            E_V[i] *= 0.0
         end
 
         verbose && @printf "%-6i%-12.2e\n" it err
