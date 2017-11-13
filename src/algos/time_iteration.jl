@@ -218,28 +218,9 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
         set_values!(dr, x0)
 
         fobj(u) = euler_residuals(model, dprocess, endo_nodes, u, p, dr)
-        R_i, D_i = DiffFun(fobj, x0)
 
-        if complementarities == true
-            PhiPhi!(R_i,x0,x_lb,x_ub,D_i)
-        end
-        epsil = maxabs(R_i)
-        tot = [[D_i[i][n]\R_i[i][n] for n=1:N] for i=1:n_m]
-        tot *= dampen
-        i_bckstps=0
-        new_err=err_0
-        x1 = x0-tot
-        err = maxabs(x1-x0)
+        x1 = newton(fobj, x0, x_lb, x_ub)
 
-        while new_err>=err_0 && i_bckstps<length(steps)
-          i_bckstps +=1
-          x1 = x0-tot*steps[i_bckstps]
-          new_res = euler_residuals(model, dprocess, endo_nodes, x1, p, dr)
-          if complementarities == true
-              new_res = [PhiPhi0.(new_res[i],x1[i],x_lb[i],x_ub[i]) for i=1:n_m]
-          end
-          new_err = maxabs(new_res)
-        end
         nit=1
 
 

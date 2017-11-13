@@ -1,3 +1,73 @@
+function add_epsilon!(x::ListOfPoints{d}, i, epsilon) where d
+  ei = SVector{d,Float64}([(j==i?epsilon:0.0) for j=1:d])
+  for i=1:length(x)
+    x[i] += ei
+  end
+end
+
+function DiffFun(fun, x0::Vector{ListOfPoints{n_x}}, epsilon=1e-6) where n_x
+    xi = deepcopy(x0)
+    N = length(x0[1])
+    n_m = length(x0)
+    r0 = fun(x0)
+    JMat = [zeros(n_x, n_x, N) for i=1:n_m]
+    for i_x=1:n_x
+      xi = deepcopy(x0)
+      for i_m=1:n_m
+        add_epsilon!(xi[i_m], i_x, epsilon)
+      end
+      di = (fun(xi)-r0)/epsilon
+      for i_m=1:n_m
+        JMat[i_m][:,i_x,:] = reinterpret(Float64, di[i_m], (n_x, N))
+        # add_epsilon!(xi[i_m], i, -epsilon)
+      end
+    end
+    J = [reinterpret(SMatrix{n_x,n_x,Float64,n_x^2},JMat[i],(N,)) for i=1:n_m]
+    return r0,J
+end
+
+
+function newton(fun::Function, x0::Vector{ListOfPoints{n_x}}, a::Vector{ListOfPoints{n_x}}, b::Vector{ListOfPoints{n_x}}; maxit=10, verbose=false, n_bsteps=5, lam_bsteps=0.5) where n_x
+
+    steps = (lam_bsteps).^collect(0:n_bsteps)
+
+    n_m = length(x0)
+    N = length(x0[1])
+    x = x0
+    err_0 = -1.0
+
+    for i=1:maxit
+        R_i, D_i = DiffFun(fun, x)
+        PhiPhi!(R_i,x,a,b,D_i)
+        new_err = maxabs(R_i)
+        dx = [[D_i[i][n]\R_i[i][n] for n=1:N] for i=1:n_m]
+        err_x = maxabs(dx)
+        i_bckstps = 0
+        while new_err>=err_0 && i_bckstps<length(steps)
+            i_bckstps += 1
+            new_x = x-dx*steps[i_bckstps]
+            new_res = fun(new_x) # no diff
+            new_res = [PhiPhi0.(new_res[i],new_x[i],a[i],b[i]) for i=1:n_m]
+            new_err = maxabs(new_res)
+        end
+        err_0 = new_err
+        x = x - dx
+        println(i_bckstps, " : ", err_x, " : ", new_err, )
+    end
+
+    nit = maxit
+    return x, nit
+
+
+
+
+
+    # return x
+
+end
+
+
+
 function smooth(x::AbstractMatrix{Float64}, a::AbstractMatrix{Float64},
                 b::AbstractMatrix{Float64}, fx::AbstractMatrix{Float64})
 

@@ -11,6 +11,10 @@ m_ss = model.calibration[:exogenous]
 x_ss = model.calibration[:controls]
 s_ss = model.calibration[:states]
 
+@time sol = Dolo.time_iteration(model, verbose=false, complementarities=true)
+
+
+
 @time sol = Dolo.improved_time_iteration(model, verbose=false, complementarities=true, method=:gmres)
 
 
