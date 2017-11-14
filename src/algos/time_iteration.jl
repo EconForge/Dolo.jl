@@ -21,7 +21,8 @@ If the list of current controls `x` is provided as a two-dimensional array (`Lis
 # Returns
 * `res`: Residuals of the arbitrage equation associated with each exogenous shock.
 """
-function euler_residuals(model, dprocess::AbstractDiscretizedProcess,s::ListOfPoints{d}, x::Vector{ListOfPoints{n_x}}, p::SVector, dr::AbstractDecisionRule{n_x}) where n_x where d
+function euler_residuals_ti(model, dprocess::AbstractDiscretizedProcess,s::ListOfPoints{d}, x::Vector{ListOfPoints{n_x}}, p::SVector, dr) where n_x where d
+
     N = length(s)
     # TODO: allocate properly...
     res = deepcopy(x)
@@ -32,9 +33,9 @@ function euler_residuals(model, dprocess::AbstractDiscretizedProcess,s::ListOfPo
         m = node(Point, dprocess, i)
         for (w, M, j) in get_integration_nodes(Point, dprocess,i)
             # Update the states
-            S = Dolo.transition(model, m, s, x[i], M, p)::Vector{ListOfPoints{d}}
-            X = dr(i, j, S)::Vector{ListOfPoints{n_x}}
-            res[i] += w*Dolo.arbitrage(model, m, s, x[i], M, S, X, p)::Vector{ListOfPoints{n_x}}
+            S = Dolo.transition(model, m, s, x[i], M, p)::ListOfPoints{d}
+            X = dr(i, j, S)::ListOfPoints{n_x}
+            res[i] += w*Dolo.arbitrage(model, m, s, x[i], M, S, X, p)::ListOfPoints{n_x}
         end
     end
     return res::Vector{ListOfPoints{n_x}}
@@ -207,17 +208,19 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
         it += 1
         tic()
         set_values!(dr, x0)
-        fobj(u) = euler_residuals(model, dprocess, endo_nodes, u, p, dr)
+        fobj(u) = euler_residuals_ti(model, dprocess, endo_nodes, u, p, dr)
 
-        tt = euler_residuals(model, dprocess, endo_nodes, x0, p, dr)
+        tt = euler_residuals_ti(model, dprocess, endo_nodes, x0, p, dr)
 
         if complementarities
-            x1, nit = newton(fobj, x0, x_lb, x_ub)
+            res = newton(fobj, x0, x_lb, x_ub)
         else
-            x1, nit = newton(fobj, x0)
+            res = newton(fobj, x0)
         end
 
-        epsil = 0.0
+        x1 = res.solution
+        nit = res.iterations
+        epsil = res.errors[1]
 
 
         trace && push!(ti_trace.trace, x1)

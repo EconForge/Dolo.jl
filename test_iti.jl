@@ -7,7 +7,12 @@ import Dolo: invert_jac
 model = Dolo.yaml_import("examples/models/rbc_dtcc_mc.yaml")
 dp = Dolo.discretize(model.exogenous)
 
+@time sol = Dolo.time_iteration(model, verbose=false, complementarities=false)
 @time sol = Dolo.time_iteration(model, verbose=false, complementarities=true)
+
+@time sol = Dolo.improved_time_iteration(model, verbose=true, complementarities=false, method=:gmres)
+@time sol = Dolo.improved_time_iteration(model, verbose=true, complementarities=true, method=:gmres)
+
 
 using ProfileView
 
@@ -20,7 +25,13 @@ Profile.clear()
 @profile sol = Dolo.improved_time_iteration(model, verbose=false, complementarities=true, method=:gmres)
 ProfileView.view()
 
+Profile.clear()
+@profile sol = Dolo.time_iteration_direct(model, verbose=false)
+ProfileView.view()
 
+
+
+@time sol = Dolo.improved_time_iteration(model, verbose=true, complementarities=true, method=:gmres)
 
 
 sim = Dolo.simulate(model, sol.dr)

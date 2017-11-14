@@ -18,30 +18,39 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
                                tol_η::Float64=1e-7)
 
     # Grid
-    endo_nodes = nodes(grid)
-    N = size(endo_nodes, 1)
+    endo_nodes = nodes(ListOfPoints,grid)
+    N = length(endo_nodes)
 
     # Discretized exogenous process
     number_of_smooth_drs(dprocess) = max(n_nodes(dprocess), 1)
-    nsd = number_of_smooth_drs(dprocess)
+    n_m = nsd = number_of_smooth_drs(dprocess)
 
-    p = model.calibration[:parameters]
+    p = SVector(model.calibration[:parameters]...)
 
     # initial guess for controls
     x0 = [init_dr(i, endo_nodes) for i=1:nsd]
 
     ti_trace = trace ? IterationTrace([x0]) : nothing
 
-
-    # set the bound for the controls to check during the iterations not to violate them
-    x_lb = Array{Float64,2}[cat(1, [Dolo.controls_lb(model, node(dprocess, i), endo_nodes[n, :], p)' for n=1:N]...) for i=1:nsd]
-    x_ub = Array{Float64,2}[cat(1, [Dolo.controls_ub(model, node(dprocess, i), endo_nodes[n, :], p)' for n=1:N]...) for i=1:nsd]
+    n_x = length(model.calibration[:controls])
+    complementarities = true
+    if complementarities == true
+        x_lb = [controls_lb(model, node(Point,dprocess,i),endo_nodes,p) for i=1:n_m]
+        x_ub = [controls_ub(model, node(Point,dprocess,i),endo_nodes,p) for i=1:n_m]
+        BIG = 100000
+        for i=1:n_m
+          for n=1:N
+            x_lb[i][n] = max.(x_lb[i][n],-BIG)
+            x_ub[i][n] = min.(x_ub[i][n], BIG)
+          end
+        end
+    end
 
     # create decision rule (which interpolates x0)
     dr = CachedDecisionRule(dprocess, grid, x0)
 
     # Define controls of tomorrow
-    x1 = [zeros(N, 2) for i=1:number_of_smooth_drs(dprocess)]
+    x1 = deepcopy(x0)
 
     # define states of today
     s = deepcopy(endo_nodes);
@@ -53,11 +62,12 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
 
     log = TimeIterationLog()
     initialize(log, verbose=verbose)
-    append!(log; verbose=verbose, it=0, err=NaN, gain=NaN, time=0.0, nit=NaN)
+    append!(log; verbose=verbose, it=0, err=NaN, gain=NaN, epsilon=NaN, time=0.0, nit=NaN)
 
-    maxabsdiff(_a, _b) = maximum(abs, _a - _b)
 
     ###############################   Iteration loop
+    n_h = length(model.symbols[:expectations])
+
 
     while it<maxit && err>tol_η
 
@@ -65,21 +75,23 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
 
         tic()
 
+        E_f = [zeros(Point{n_h},N) for i=1:number_of_smooth_drs(dprocess)]
 
         set_values!(dr, x0)
         # Compute expectations function E_f and states of tomorrow
-        E_f = [zeros(N, 1) for i=1:number_of_smooth_drs(dprocess)]
-        S = zeros(size(s))
+
+        # S = zeros(size(s))
 
         for i in 1:size(E_f, 1)
-            m = node(dprocess, i)
-            for (w, M, j) in get_integration_nodes(dprocess,i)
+            m = node(Point,dprocess, i)
+            for (w, M, j) in get_integration_nodes(Point,dprocess,i)
                 # Update the states
-                S[:,:] = Dolo.transition(model, m, s, x0[i], M, p)
+                # S[:,:] = Dolo.transition(model, m, s, x0[i], M, p)
+                S = Dolo.transition(model, m, s, x0[i], M, p)
                 # interpolate controles conditional states of tomorrow
                 X = dr(i, j, S)
                 # Compute expectations as a weighted average of the exo states w_j
-                E_f[i][:,:] += w*Dolo.expectation(model, M, S, X, p)
+                E_f[i] += w*Dolo.expectation(model, M, S, X, p)
 
             end
             # compute controles of tomorrow
@@ -88,10 +100,10 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
 
         err = 0.0
         for i in 1:size(x1, 1)
-            # apply bounds
-            broadcast!(clamp, x1[i], x1[i], x_lb[i], x_ub[i])
+            # apply bounds # TODO: improve
+            x1[i] = clamp.(x1[i], x_lb[i], x_ub[i])
             # update error
-            err = max(err, maximum(abs, x1[i] - x0[i]))
+            err = max(err, maxabs(x1[i] - x0[i]))
             # copy controls back into x0
             copy!(x0[i], x1[i])
         end
@@ -101,7 +113,8 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
 
         elapsed = toq()
 
-        append!(log; verbose=verbose, it=it, err=err, gain=gain, time=elapsed, nit=NaN)
+        append!(log; verbose=verbose, it=it, err=err, gain=gain, time=elapsed, epsilon=NaN, nit=NaN)
+
     end
 
     finalize(log, verbose=verbose)
