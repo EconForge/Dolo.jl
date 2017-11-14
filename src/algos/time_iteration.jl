@@ -21,7 +21,7 @@ If the list of current controls `x` is provided as a two-dimensional array (`Lis
 # Returns
 * `res`: Residuals of the arbitrage equation associated with each exogenous shock.
 """
-function euler_residuals(model, dprocess::AbstractDiscretizedProcess,s::ListOfPoints, x::Vector{<:ListOfPoints}, p::SVector, dr)
+function euler_residuals(model, dprocess::AbstractDiscretizedProcess,s::ListOfPoints{d}, x::Vector{ListOfPoints{n_x}}, p::SVector, dr::AbstractDecisionRule{n_x}) where n_x where d
     N = length(s)
     # TODO: allocate properly...
     res = deepcopy(x)
@@ -30,24 +30,17 @@ function euler_residuals(model, dprocess::AbstractDiscretizedProcess,s::ListOfPo
     end
     for i in 1:size(res, 1)
         m = node(Point, dprocess, i)
-        for (w, MM, j) in get_integration_nodes(dprocess,i)
+        for (w, M, j) in get_integration_nodes(Point, dprocess,i)
             # Update the states
-            M = SVector(MM...)
-            S = Dolo.transition(model, m, s, x[i], M, p)
-            X = dr(i, j, S)
-            res[i] += w*Dolo.arbitrage(model, m, s, x[i], M, S, X, p)
+            S = Dolo.transition(model, m, s, x[i], M, p)::Vector{ListOfPoints{d}}
+            X = dr(i, j, S)::Vector{ListOfPoints{n_x}}
+            res[i] += w*Dolo.arbitrage(model, m, s, x[i], M, S, X, p)::Vector{ListOfPoints{n_x}}
         end
     end
-    return res
+    return res::Vector{ListOfPoints{n_x}}
 end
 
-function euler_residuals(model, dprocess, s, x::Array{Float64,2}, p, dr)
-    n_m = max(1, n_nodes(dprocess))
-    xx = destack0(x, n_m)
-    res = euler_residuals(model, dprocess, s, xx, p, dr)
-    return stack0(res)
-end
-###
+
 
 immutable TimeIterationLog
     header::Array{String, 1}
@@ -212,21 +205,26 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
     while it<maxit && err>tol_η
 
         it += 1
-
         tic()
-
         set_values!(dr, x0)
-
         fobj(u) = euler_residuals(model, dprocess, endo_nodes, u, p, dr)
 
-        x1 = newton(fobj, x0, x_lb, x_ub)
+        tt = euler_residuals(model, dprocess, endo_nodes, x0, p, dr)
 
-        nit=1
+        if complementarities
+            x1, nit = newton(fobj, x0, x_lb, x_ub)
+        else
+            x1, nit = newton(fobj, x0)
+        end
+
+        epsil = 0.0
 
 
         trace && push!(ti_trace.trace, x1)
 
+        err = maxabs(x1-x0)
         x0=x1
+
         gain = err / err_0
         err_0 = err
 

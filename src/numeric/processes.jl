@@ -424,9 +424,16 @@ function AgingProcess(mu::Float64, K::Int)
 end
 
 
-get_integration_nodes(dprocess::Dolo.AbstractDiscretizedProcess, i::Int)=Iterators.filter( x -> (x[1]!=0), ((iweight(dprocess,i,j), inode(dprocess,i,j), j) for j in 1:n_inodes(dprocess,i)) )
+get_integration_nodes(dprocess::Dolo.AbstractDiscretizedProcess, i::Int)= [(iweight(dprocess,i,j), inode(dprocess,i,j), j) for j in 1:n_inodes(dprocess,i) if iweight(dprocess,i,j)!=0]
 
-get_integration_nodes(::typeof(Point), dprocess::Dolo.AbstractDiscretizedProcess, i::Int)=Iterators.filter( x -> (x[1]!=0), ((iweight(dprocess,i,j), inode(Point,dprocess,i,j), j) for j in 1:n_inodes(dprocess,i)) )
+get_integration_nodes(::typeof(Point), dprocess::Dolo.AbstractDiscretizedProcess, i::Int)=[(iweight(dprocess,i,j), inode(Point,dprocess,i,j), j) for j in 1:n_inodes(dprocess,i) if iweight(dprocess,i,j)!=0]
+
+
+# type unstable
+#
+# get_integration_nodes(dprocess::Dolo.AbstractDiscretizedProcess, i::Int)=Iterators.filter( x -> (x[1]!=0), ((iweight(dprocess,i,j), inode(dprocess,i,j), j) for j in 1:n_inodes(dprocess,i)) )
+#
+# get_integration_nodes(::typeof(Point), dprocess::Dolo.AbstractDiscretizedProcess, i::Int)=Iterators.filter( x -> (x[1]!=0), ((iweight(dprocess,i,j), inode(Point,dprocess,i,j), j) for j in 1:n_inodes(dprocess,i)) )
 
 
 # compatibility names

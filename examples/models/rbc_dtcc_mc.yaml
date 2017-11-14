@@ -84,4 +84,4 @@ options:
 
     grid: !Cartesian
         # mu: 3
-        orders: [200]
+        orders: [20]
