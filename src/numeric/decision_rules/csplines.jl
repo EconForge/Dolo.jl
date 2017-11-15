@@ -94,6 +94,10 @@ function evaluate(dr::CubicDR{CartesianGrid{d1},CartesianGrid{d2}}, i::Int64, y:
     evaluate(dr, x, y)
 end
 
+function evaluate(dr::CubicDR{CartesianGrid{d1},CartesianGrid{d2}}, x::Point{d1}, y::Point{d2}) where d1 where d2
+    dr([x],[y])[1]
+end
+
 ####
 #### UnstructuredGrid × CartesianGrid 2 continous arguments d.r.
 ####

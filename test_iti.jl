@@ -4,14 +4,25 @@ import Dolo: n_nodes, n_inodes, nodes, CachedDecisionRule
 import Dolo: invert_jac
 
 
-model = Dolo.yaml_import("examples/models/rbc_dtcc_mc.yaml")
+model = Dolo.yaml_import("examples/models/rbc_dtcc_ar1.yaml")
 dp = Dolo.discretize(model.exogenous)
 
 @time sol = Dolo.time_iteration(model, verbose=false, complementarities=false)
+@time sol = Dolo.time_iteration(model, sol.dr, verbose=false, complementarities=false)
+
 @time sol = Dolo.time_iteration(model, verbose=false, complementarities=true)
 
 @time sol = Dolo.improved_time_iteration(model, verbose=true, complementarities=false, method=:gmres)
 @time sol = Dolo.improved_time_iteration(model, verbose=true, complementarities=true, method=:gmres)
+
+
+@time sol = Dolo.improved_time_iteration(model, verbose=true, complementarities=false, method=:gmres)
+
+
+@time solv = Dolo.evaluate_policy(model, sol.dr, verbose=false)
+
+
+@time solv = Dolo.value_iteration(model, verbose=true)
 
 
 using ProfileView

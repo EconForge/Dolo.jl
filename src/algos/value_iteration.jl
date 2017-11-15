@@ -141,24 +141,29 @@ Evaluate the right hand side of the value function at given values of states, co
 # Returns
 * `E_V::`: Right hand side of the value function.
 """
-function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64},
-                      x0::Vector{Float64}, p::Vector{Float64})
-    m = node(dprocess, i)
-    E_V = 0.0
-    for (w, M, j) in get_integration_nodes(dprocess,i)
+function update_value(model, β::Float64, dprocess, drv, i, s::Point{d},
+                      x0::Point{n_x}, p::Point{n_p}) where d where n_x where n_p
+    m = node(Point,dprocess, i)
+    N = length(s)
+    E_V = Point{1}(0.0)
+    for (w, M, j) in get_integration_nodes(Point,dprocess,i)
         # Update the states
         S = Dolo.transition(model, m, s, x0, M, p)
         E_V += w*drv(i, j, S)[1]
     end
     u = Dolo.felicity(model, m, s, x0, p)[1]
-    E_V = u + β.*E_V
+    # E_V = u + β*E_V
+    E_V *= (1.0+β)
+    E_V += u
+    # E_V = u + β*E_V
     return E_V
 end
-function update_value(model, β::Float64, dprocess, drv, i, s::Vector{Float64},
-                      x0::Float64, p::Vector{Float64})
-    update_value(model, β, dprocess, drv, i, s, [x0], p)
-end
 
+# function update_value(model, β::Float64, dprocess, drv, i, s::Point{d},
+#                       x0::Float64, p::Point{n_p}) where d where n_p
+#     update_value(model, β, dprocess, drv, i, s, SVector{1,Float64}(x0), p)
+# end
+#
 
 @static if Pkg.installed("Optim") < v"0.9-"
     function call_optim(fobj, initial_x, lower, upper, optim_opts)
@@ -194,7 +199,7 @@ Solve for the value function and associated decision rule using value function i
 * `drv`: Solved value function object.
 """
 function value_iteration(
-        model, dprocess::AbstractDiscretizedProcess, grid, pdr;
+        model, dprocess::AbstractDiscretizedProcess, grid, init_dr;
         discount_symbol=:beta,
         maxit::Int=1000, tol_x::Float64=1e-8, tol_v::Float64=1e-8,
         optim_options=Dict(), eval_options=Dict(),
@@ -204,28 +209,29 @@ function value_iteration(
 
     β = model.calibration.flat[discount_symbol]
 
-    dr = CachedDecisionRule(pdr, dprocess)
     # compute the value function
-    p = model.calibration[:parameters]
 
-    endo_nodes = nodes(grid)
+    p = SVector(model.calibration[:parameters]...)
+
+    endo_nodes = nodes(ListOfPoints,grid)
 
     # Number of endogenous nodes
-    N = size(endo_nodes, 1)
+    N = length(endo_nodes)
 
     # number of smooth decision rules
-    nsd = max(n_nodes(dprocess), 1)
-    res = [zeros(N, 1) for i=1:nsd]
+    n_m = nsd = max(n_nodes(dprocess), 1)
 
-    # bounds on controls
-    x_lb = Array{Float64,2}[cat(1, [Dolo.controls_lb(model, node(dprocess, i), endo_nodes[n, :], p)' for n=1:N]...) for i=1:nsd]
-    x_ub = Array{Float64,2}[cat(1, [Dolo.controls_ub(model, node(dprocess, i), endo_nodes[n, :], p)' for n=1:N]...) for i=1:nsd]
+    res = [zeros(Point{1},N) for i=1:nsd]
+    #
+    # # bounds on controls
+    # x_lb = Array{Float64,2}[cat(1, [Dolo.controls_lb(model, node(dprocess, i), endo_nodes[n, :], p)' for n=1:N]...) for i=1:nsd]
+    # x_ub = Array{Float64,2}[cat(1, [Dolo.controls_ub(model, node(dprocess, i), endo_nodes[n, :], p)' for n=1:N]...) for i=1:nsd]
 
     # States at time t+1
     S = copy(endo_nodes)
 
     # Controls at time t
-    x = [dr(i, endo_nodes) for i=1:nsd]
+    x = [init_dr(i, endo_nodes) for i=1:nsd]
     x0 = deepcopy(x)
 
     dr = CachedDecisionRule(dprocess, grid, x0)
@@ -242,6 +248,17 @@ function value_iteration(
 
     ti_trace = trace ? IterationTrace([x0, v0]) : nothing
 
+    # fourth time I repeat that one...
+    n_x = length(model.calibration[:controls])
+    x_lb = [controls_lb(model, node(Point,dprocess,i),endo_nodes,p) for i=1:n_m]
+    x_ub = [controls_ub(model, node(Point,dprocess,i),endo_nodes,p) for i=1:n_m]
+    BIG = 100000
+    for i=1:n_m
+      for n=1:N
+        x_lb[i][n] = max.(x_lb[i][n],-BIG)
+        x_ub[i][n] = min.(x_ub[i][n], BIG)
+      end
+    end
 
     #Preparation for a loop
     err_v = 10.0
@@ -271,16 +288,16 @@ function value_iteration(
                 for i = 1:size(res, 1)
                     m = node(dprocess, i)
                     for n = 1:N
-                        s = endo_nodes[n, :]
+                        s = endo_nodes[n]
                         # update vals
-                        nv = update_value(model, β, dprocess, drv, i, s, x0[i][n, :], p)
-                        v[i][n, 1] = nv
+                        nv = update_value(model, β, dprocess, drv, i, s, x0[i][n], p)
+                        v[i][n] = SVector(nv)
                     end
                 end
                 # compute diff in values
                 err_eval = 0.0
                 for i in 1:nsd
-                    err_eval = max(err_eval, maximum(abs, v[i] - v0[i]))
+                    err_eval = max(err_eval, maxabs(v[i] - v0[i]))
                     copy!(v0[i], v[i])
                 end
                 converged_eval = (it_eval>=maxit_eval) || (err_eval<tol_eval)
@@ -298,14 +315,15 @@ function value_iteration(
             for i = 1:size(res, 1)
                 m = node(dprocess, i)
                 for n = 1:N
-                    s = endo_nodes[n, :]
+                    s = endo_nodes[n]
                     # optimize vals
-                    fobj(u) = -update_value(model, β, dprocess, drv, i, s, u, p)*1000
-                    lower = x_lb[i][n, :]
-                    upper = x_ub[i][n, :]
-                    upper = clamp!(upper, -Inf, 1000000)
-                    lower = clamp!(lower, -1000000, Inf)
-                    initial_x = x0[i][n, :]
+                    fobj(u) = -update_value(model, β, dprocess, drv, i, s, SVector(u...), p)[1]*1000
+                    lower = Float64[x_lb[i][n]...]
+                    upper = Float64[x_ub[i][n]...]
+                    upper = clamp(upper, -Inf, 1000000)
+                    lower = clamp(lower, -1000000, Inf)
+                    initial_x = Float64[x0[i][n]...] #, :]
+                    test = fobj(initial_x)
                     results = call_optim(fobj, initial_x, lower, upper, optim_opts)
                     xn = Optim.minimizer(results)
                     nv = -Optim.minimum(results)/1000.0
@@ -317,21 +335,21 @@ function value_iteration(
                     # println([m,s, lower, upper, initial_x, ii, xn, jj])
 
 
-                    x[i][n, :] = xn
-                    v[i][n, 1] = nv
+                    x[i][n] = SVector(xn...)
+                    v[i][n] = SVector(nv)
                 end
             end
 
             # compute diff in values
             err_v = 0.0
             for i in 1:nsd
-                err_v = max(err_v, maximum(abs, v[i] - v0[i]))
+                err_v = max(err_v, maxabs(v[i] - v0[i]))
                 copy!(v0[i], v[i])
             end
             # compute diff in policy
             err_x = 0.0
             for i in 1:nsd
-                err_x = max(err_x, maximum(abs, x[i] - x0[i]))
+                err_x = max(err_x, maxabs(x[i] - x0[i]))
                 copy!(x0[i], x[i])
             end
             # update values and policies
