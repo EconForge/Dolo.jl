@@ -21,8 +21,11 @@ dp = Dolo.discretize(model.exogenous)
 
 @time solv = Dolo.evaluate_policy(model, sol.dr, verbose=false)
 
+@time solv = Dolo.value_iteration(model, sol.dr, verbose=true)
 
-@time solv = Dolo.value_iteration(model, verbose=true)
+Profile.clear()
+@profile solv = Dolo.value_iteration(model, verbose=true)
+ProfileView.view()
 
 
 using ProfileView

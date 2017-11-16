@@ -152,12 +152,11 @@ function update_value(model, β::Float64, dprocess, drv, i, s::Point{d},
         E_V += w*drv(i, j, S)[1]
     end
     u = Dolo.felicity(model, m, s, x0, p)[1]
-    # E_V = u + β*E_V
-    E_V *= (1.0+β)
-    E_V += u
-    # E_V = u + β*E_V
-    return E_V
+    V = u + β*E_V
+    return V
 end
+
+
 
 # function update_value(model, β::Float64, dprocess, drv, i, s::Point{d},
 #                       x0::Float64, p::Point{n_p}) where d where n_p
@@ -280,37 +279,11 @@ function value_iteration(
 
         # it += 1
         if (mode == :eval)
-
             it_eval = 0
-            converged_eval = false
-            while !converged_eval
-                it_eval += 1
-                for i = 1:size(res, 1)
-                    m = node(dprocess, i)
-                    for n = 1:N
-                        s = endo_nodes[n]
-                        # update vals
-                        nv = update_value(model, β, dprocess, drv, i, s, x0[i][n], p)
-                        v[i][n] = SVector(nv)
-                    end
-                end
-                # compute diff in values
-                err_eval = 0.0
-                for i in 1:nsd
-                    err_eval = max(err_eval, maxabs(v[i] - v0[i]))
-                    copy!(v0[i], v[i])
-                end
-                converged_eval = (it_eval>=maxit_eval) || (err_eval<tol_eval)
-                set_values!(drv, v0)
-                # if verbose
-                #     println("    It: ", it_eval, " ; SA: ", err_eval)
-                # end
-            end
-
+            drv = evaluate_policy(model, dprocess, grid, dr; verbose=false, eval_options...)
             mode = :improve
 
         else
-
             it += 1
             for i = 1:size(res, 1)
                 m = node(dprocess, i)
@@ -357,7 +330,7 @@ function value_iteration(
             set_values!(dr, x0)
 
             if verbose
-                println("It: ", it, " ; SA: ", err_v, " ; SA_x: ", err_x, " ; (nit) ", it_eval)
+                println("It: ", it, " ; SA: ", err_v, " ; SA_x: ", err_x)
             end
 
             # terminate only if policy didn't move
