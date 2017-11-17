@@ -4,7 +4,7 @@ import Dolo: n_nodes, n_inodes, nodes, CachedDecisionRule
 import Dolo: invert_jac
 
 
-model = Dolo.yaml_import("examples/models/rbc_dtcc_ar1.yaml")
+model = Dolo.yaml_import("examples/models/rbc_dtcc_iid.yaml")
 dp = Dolo.discretize(model.exogenous)
 
 @time sol = Dolo.time_iteration(model, verbose=false, complementarities=false)

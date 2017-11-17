@@ -273,9 +273,9 @@ function value_iteration(
     optim_opts = Optim.Options(optim_options...)
 
     mode = :improve
-    converged = false
+    done = false
 
-    while !converged
+    while !done
 
         # it += 1
         if (mode == :eval)
@@ -334,7 +334,7 @@ function value_iteration(
             end
 
             # terminate only if policy didn't move
-            converged = ((err_x<tol_x) && (err_v<tol_v)) || (it>=maxit)
+            done = (err_x<tol_x) || (err_v<tol_v) || (it>=maxit)
 
             mode = :eval
 

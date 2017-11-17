@@ -34,6 +34,11 @@ function evaluate(dr::CubicDR{EmptyGrid,CartesianGrid{d}}, points::Vector{Point{
     return eval_UC_spline(a, b, n, C, points)
 end
 
+#
+function evaluate(dr::CubicDR{EmptyGrid,CartesianGrid{d}}, y::Point{d}) where d
+    return evaluate(dr, [y])[1]
+end
+
 ####
 #### 2 CartesianGrid continous arguments d.r.
 ####
@@ -93,7 +98,7 @@ function evaluate(dr::CubicDR{CartesianGrid{d1},CartesianGrid{d2}}, i::Int64, y:
     evaluate(dr, x, y)
 end
 
-# TODO replace by generic call
+# TODO replace by generic call?
 function evaluate(dr::CubicDR{CartesianGrid{d1},CartesianGrid{d2}}, x::Point{d1}, y::Point{d2}) where d1 where d2
     dr([x],[y])[1]
 end
@@ -124,7 +129,7 @@ function evaluate(dr::CubicDR{<:UnstructuredGrid,<:CartesianGrid}, i::Int, z::Ve
     splines.eval_UC_spline(a, b, n, cc, z)
 end
 
-# TODO replace by generic call
+# TODO replace by generic call?
 function evaluate(dr::CubicDR{<:UnstructuredGrid,<:CartesianGrid}, i::Int, z::Point{d}) where d
     evaluate(dr, i, [z])[1]
 end

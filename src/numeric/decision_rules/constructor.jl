@@ -89,6 +89,8 @@ set_values!(cdr::CachedDecisionRule, v) = set_values!(cdr.dr, v)
 
 (cdr::CachedDecisionRule{<:AbstractDecisionRule{<:EmptyGrid,<:Grid}, <:AbstractDiscretizedProcess})(i::Int, j::Int, s::Union{<:Point,<:ListOfPoints}) = evaluate(cdr.dr, s)
 
+(cdr::CachedDecisionRule{<:AbstractDecisionRule{<:EmptyGrid,<:Grid}, <:AbstractDiscretizedProcess})(i::Int, s::Union{<:Point,<:ListOfPoints}) = evaluate(cdr.dr, s)
+
 # maybe keep only the i,j,s calls.
 
 (cdr::CachedDecisionRule{<:AbstractDecisionRule{T,<:Grid}, <:DiscreteMarkovProcess})(i::Int, s::Union{<:Point,<:ListOfPoints}) where T<:Union{CartesianGrid, RandomGrid} = evaluate(cdr.dr,node(Point, cdr.process, i), s)
