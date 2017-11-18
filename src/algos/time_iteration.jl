@@ -192,15 +192,11 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
     steps = 0.5.^collect(0:maxbsteps)
 
 
-    # loop option
-    # init_res = euler_residuals(model, dprocess, endo_nodes, x0, p, dr)
-    # err = maximum(abs, stack0(init_res))
     err_0 = NaN
     err = 1.0
 
     log = TimeIterationLog()
     initialize(log, verbose=verbose)
-    # append!(log; verbose=verbose, it=0, epsilon=epsil, err=NaN, gain=NaN, time=0.0, nit=0)
 
     it = 0
     while it<maxit && err>tol_η
