@@ -1,6 +1,4 @@
 include("ITI_additional.jl")
-using IterativeSolvers
-
 
 """
 Computes a global solution for a model via backward Improved Time Iteration. The algorithm is applied to the residuals of the arbitrage equations. The idea is to solve the system G(x) = 0 as a big nonlinear system in x, where the inverted Jacobian matrix is approximated by an infinite sum (Neumann series).
@@ -71,9 +69,6 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
     it=0
     it_invert=0
 
-
-    #
-
    err_0 = 1.0 #abs(maximum(res_init))
    err_2 = err_0
 
@@ -84,7 +79,6 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
    verbose && println(repeat("-", 120))
 
 
-
    while it <= maxit && err_0>tol
 
       it += 1
@@ -92,33 +86,31 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
       t1 = time();
 
       # compute derivatives and residuals:
-      # res: residuals
-      # dres: derivatives w.r.t. x
-      # jres: derivatives w.r.t. ~x
-      # fut_S: future states
+      # R_i: residuals
+      # D_i: derivatives w.r.t. x
+      # J_ij: derivatives w.r.t. ~x
+      # S_ij: future states
 
       # set_values!(ddr,x)   # implicit in the next call
 
-      _,J_ij,S_ij =   euler_residuals(model,s,x,ddr,dprocess,p,with_jres=true,set_dr=true)
+      _,J_ij,S_ij =   euler_residuals(model,s,x,ddr,dprocess,p,keep_J_S=true,set_dr=true)
 
-      fun(u) = euler_residuals(model,s,u,ddr,dprocess,p,with_jres=false,set_dr=false)
+      fun(u) = euler_residuals(model,s,u,ddr,dprocess,p,keep_J_S=false,set_dr=false)
       R_i, D_i = DiffFun(fun, x)
-
 
       if complementarities == true
           PhiPhi!(R_i,x,x_lb,x_ub,D_i,J_ij)
       end
 
+      J_ij *= -1.0
+
       push!(trace_data, [deepcopy(R_i)])
 
       err_0 = maxabs((R_i))
 
-
       ####################
       # Invert Jacobians
       t2 = time();
-
-      J_ij *= -1.0
 
       if method==:gmres
         π_i, M_ij, S_ij = Dolo.preinvert(R_i, D_i, J_ij, S_ij)
@@ -145,7 +137,7 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
 
         new_x = x-tot*steps[i_bckstps]
 
-        new_res = euler_residuals(model,s,new_x,ddr,dprocess,p,with_jres=false,set_dr=true)
+        new_res = euler_residuals(model,s,new_x,ddr,dprocess,p,keep_J_S=false,set_dr=true)
 
         if complementarities == true
             new_res = [PhiPhi0.(new_res[i],new_x[i],x_lb[i],x_ub[i]) for i=1:n_m]
@@ -163,6 +155,7 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
       verbose && @printf "%-6i% -10e% -17e% -15.4f% -15.4f% -15.5f% -17.3f%-17i%-5i\n" it  err_0  err_2  t2-t1 t3-t2 t4-t3 lam0 it_invert i_bckstps
 
    end
+
    verbose && println(repeat("-", 120))
    set_values!(ddr,x)
 
@@ -195,15 +188,6 @@ function  improved_time_iteration(model, init_dr; grid=Dict(), kwargs...)
     dprocess = discretize( model.exogenous )
     return improved_time_iteration(model, dprocess, init_dr; grid=grid, kwargs...)
 end
-
-# function improved_time_iteration(model, maxbsteps::Int=10, verbose::Bool=false,
-#                                  tol::Float64=1e-8, smaxit::Int=500, maxit::Int=1000,
-#                                  complementarities::Bool=true, compute_radius::Bool=false)
-#     dprocess = Dolo.discretize( model.exogenous )
-#     init_dr = Dolo.ConstantDecisionRule(model.calibration[:controls])
-#     return improved_time_iteration(model, dprocess, init_dr, maxbsteps, verbose,tol,
-#                                    smaxit, maxit,complementarities, compute_radius)
-# end
 
 function improved_time_iteration(model; grid=Dict(), kwargs...)
     dprocess = discretize( model.exogenous )

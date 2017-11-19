@@ -28,17 +28,76 @@ function rmerge(def_s::Associative, add_s::Associative)
     return resp
 end
 
+############################
+# norms for list of points #
+############################
+
+function absmax(s::ListOfPoints)
+    t = 0.0
+    for p in s
+        t = max(t, maximum(p))
+    end
+    t
+end
+absmax(x::Vector{<:ListOfPoints}) = maximum(absmax.(x))
+
+import Base
+function Base.maxabs(v::ListOfPoints{d}) where d
+    m = 0.0
+    for n = 1:length(v)
+        mm = maximum(abs, v[n])
+        if mm>m
+            m = mm
+        end
+    end
+    m
+end
+
+function Base.maxabs(v::Vector{ListOfPoints{d}}) where d
+    maximum(maxabs.(v))
+end
+
+
+############################
+# norms for list of points #
+############################
+
+function invert!(A::Vector)
+    # A[i] <- (A[i])^(-1)
+    N = length(A)
+    for n=1:N
+        A[n] = inv(A[n])
+    end
+end
+
+function premult!(A,B)
+    # B[i] <- A[i]*B[i]
+    N = length(A)
+    for n=1:N
+        B[n] = A[n]*B[n]
+    end
+end
+
+function addmul!(O,A,B)
+    # O[i] <- A[i]*B[i]
+    N = length(A)
+    for n=1:N
+        O[n] += A[n]*B[n]
+    end
+end
+
+##############################
+# Conversion from old format #
+##############################
 
 vector_to_matrix(v) = Matrix(vec(v)')
 # vector_to_matrix(v::Vector) = Matrix(v')
 # vector_to_matrix(v::RowVector) = Matrix(v)
 
-
 #(compat)
 to_LOP(::Type{Point{d}}, mat::Matrix) where d = reinterpret(Point{d}, mat', (size(mat,1),))
 to_LOP(::Type{Point{d}}, mat::AbstractMatrix) where d = to_LOP(Point{d}, Array(mat))
 to_LOP(mat::AbstractArray) = to_LOP(Point{size(mat,2)} ,mat)
-
 
 function from_LOP(lop)
     d = length(lop[1])

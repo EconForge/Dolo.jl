@@ -36,6 +36,15 @@ using StringDistances
 # Compat across julia versions
 using Compat; import Compat: String, view, @__dot__
 
+using StaticArrays
+using IterativeSolvers
+
+# Functions from base we extend
+import Base.A_mul_B!
+import Base.size
+import Base.eltype
+import Base.*
+
 
 # exports
        # model functions
@@ -97,6 +106,7 @@ import .splines: eval_UC_spline, eval_UC_spline!, prefilter!
 
 include("util.jl")
 
+include("numeric/complementarities.jl")
 include("numeric/newton.jl")
 include("numeric/grids.jl")
 include("numeric/processes.jl")
