@@ -68,44 +68,28 @@ end
 
 
 
-function preinvert(R_i, D_i, J_ij, S_ij)
+function preinvert!(π_i, D_i, J_ij, S_ij)
 
-    Dinv = deepcopy(D_i)
-    for i=1:length(Dinv)
-        invert!(Dinv[i])
+    for i=1:length(D_i)
+        invert!(D_i[i])
     end
-
-    M_ij = deepcopy(J_ij)
-    for i=1:size(M_ij,1)
-        for j=1:size(M_ij,2)
-            premult!(Dinv[i],M_ij[i,j])
+    for i=1:size(J_ij,1)
+        for j=1:size(J_ij,2)
+            premult!(D_i[i],J_ij[i,j])
         end
     end
-    π_i = deepcopy(R_i)
-    for i=1:length(Dinv)
-        premult!(Dinv[i], π_i[i])
+    for i=1:length(D_i)
+        premult!(D_i[i], π_i[i])
     end
 
-    return π_i, M_ij, S_ij
+    return π_i, J_ij, S_ij
 
 end
 
-function invert_jac(R_i, D_i, J_ij, S_ij, dumdr; tol::Float64=1e-10,
+function invert_jac(R_i, M_ij, S_ij, dumdr; tol::Float64=1e-10,
             maxit::Int=1000, verbose::Bool=false)
 
     dprocess = dumdr.process
-
-    Dinv = deepcopy(D_i)
-    for i=1:length(Dinv)
-        invert!(Dinv[i])
-    end
-
-    M_ij = deepcopy(J_ij)
-    for i=1:size(M_ij,1)
-        for j=1:size(M_ij,2)
-            premult!(Dinv[i],M_ij[i,j])
-        end
-    end
 
     lam = -1.0
     lam_max = -1.0
@@ -120,9 +104,6 @@ function invert_jac(R_i, D_i, J_ij, S_ij, dumdr; tol::Float64=1e-10,
     precomputed=false
 
     π_i = deepcopy(R_i)
-    for i=1:length(Dinv)
-        premult!(Dinv[i], π_i[i])
-    end
     Π_i = deepcopy(π_i)
     tot = deepcopy(π_i) # should premult by D_i
 

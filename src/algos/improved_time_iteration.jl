@@ -37,14 +37,13 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
     N_s = length(s)
     n_x = size(model.calibration[:controls],1)
 
-    x0_ = [init_dr(i, s) for i=1:n_m]
-    ddr = CachedDecisionRule(dprocess, grid, x0_)
-    ddr_filt = CachedDecisionRule(dprocess, grid, x0_)
-    set_values!(ddr,x0_)
+    x0 = [init_dr(i, s) for i=1:n_m]
+    ddr = CachedDecisionRule(dprocess, grid, x0)
+    ddr_filt = CachedDecisionRule(dprocess, grid, x0)
+    set_values!(ddr,x0)
 
     steps = 0.5.^collect(0:maxbsteps)
 
-    x0 = x0_ # [to_LOP(el) for el in x0_]
     p = SVector(parms...)
 
     x = x0
@@ -112,8 +111,9 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
       # Invert Jacobians
       t2 = time();
 
+      π_i, M_ij, S_ij = Dolo.preinvert!(R_i, D_i, J_ij, S_ij)
+
       if method==:gmres
-        π_i, M_ij, S_ij = Dolo.preinvert(R_i, D_i, J_ij, S_ij)
         L = LinearThing(M_ij, S_ij, ddr_filt)
         v = cat(1, [reinterpret(Float64, e, (n_x*N,)) for e in π_i]...)
         n1 = L.counter
@@ -123,7 +123,7 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
         tt = [ww[:,:,i]  for i=1:n_m]
         tot = [reinterpret(SVector{n_x,Float64}, t, (N,)) for t in tt]
       else
-        tot, it_invert, lam0, errors = invert_jac(R_i, D_i, J_ij, S_ij, ddr_filt; maxit=smaxit)
+        tot, it_invert, lam0, errors = invert_jac(π_i, M_ij, S_ij, ddr_filt; maxit=smaxit)
       end
 
       t3 = time();
