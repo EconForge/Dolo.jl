@@ -12,6 +12,7 @@ type ValueIterationResult
     v_converged::Bool
     v_tol::Float64
     v_err::Float64
+    log::ValueIterationLog
     trace::Union{Void,IterationTrace}
 end
 
@@ -27,6 +28,61 @@ function Base.show(io::IO, r::ValueIterationResult)
     @printf io "   * |v - v'| < %.1e: %s\n" r.v_tol r.v_converged
 
 end
+
+immutable ValueIterationLog
+    header::Array{String, 1}
+    keywords::Array{Symbol, 1}
+    entries::Array{Any, 1}
+end
+
+function ValueIterationLog()
+    header = [ "It", "ηₙ=|xₙ-xₙ₋₁|", "νₙ=|vₙ-vₙ₋₁|", "Time", "Eval steps"]
+    keywords = [:it, :sa_x, :sa_v, :time, :nit]
+    ValueIterationLog(header, keywords, [])
+end
+
+function append!(log::ValueIterationLog; verbose=true, entry...)
+    d = Dict(entry)
+    push!(log.entries, d)
+    verbose && show_entry(log, d)
+end
+
+function initialize(log::ValueIterationLog; verbose=true)
+    verbose && show_start(log)
+end
+
+function finalize(log::ValueIterationLog; verbose=true)
+    verbose && show_end(log)
+end
+
+function show(log::ValueIterationLog)
+    show_start(log)
+    for entry in log.entries
+        show_entry(log,entry)
+    end
+    show_end(log)
+end
+
+function show_start(log::ValueIterationLog)
+    println(repeat("-", 66))
+    @printf "%-6s%-16s%-16s%-16s%-5s\n" "It" "|xₙ-xₙ₋₁|" "|vₙ-vₙ₋₁|" "Time" "Eval steps"
+    println(repeat("-", 66))
+end
+
+
+function show_entry(log::ValueIterationLog, entry)
+    it = entry[:it]
+    sa_x = entry[:sa_x]
+    sa_v = entry[:sa_v]
+    time = entry[:time]
+    nit = entry[:nit]
+    @printf "%-6i%-16.2e%-16.2e%-16.2e%-5i\n" it sa_x sa_v time nit
+end
+
+function show_end(log::ValueIterationLog)
+    println(repeat("-", 66))
+end
+
 
 """
 Evaluate the value function under the given decision rule.
@@ -56,7 +112,7 @@ function evaluate_policy(model, dprocess::AbstractDiscretizedProcess, grid, dr;
 
     n_u = length(model.calibration[:rewards])
 
-    res = [to_LOP(zeros(N, n_u)) for i=1:nsd]
+    res = [zeros(Point{n_u},N) for i=1:nsd]
 
     # Value function : v_t = u + β*E[V_{t+1}]
     u = deepcopy(res)
@@ -116,13 +172,13 @@ function evaluate_policy(model, dprocess::AbstractDiscretizedProcess, grid, dr;
         set_values!(drv, v0)
     end
 
-    return drv
+    return (drv, it)
 end
 
 function evaluate_policy(model, dr; grid=Dict(), kwargs...)
     grid = get_grid(model, options=grid)
     dprocess = discretize(model.exogenous)
-    return evaluate_policy(model, dprocess, grid, dr; kwargs...)
+    return evaluate_policy(model, dprocess, grid, dr; kwargs...)[1]
 
 end
 
@@ -221,10 +277,6 @@ function value_iteration(
     n_m = nsd = max(n_nodes(dprocess), 1)
 
     res = [zeros(Point{1},N) for i=1:nsd]
-    #
-    # # bounds on controls
-    # x_lb = Array{Float64,2}[cat(1, [Dolo.controls_lb(model, node(dprocess, i), endo_nodes[n, :], p)' for n=1:N]...) for i=1:nsd]
-    # x_ub = Array{Float64,2}[cat(1, [Dolo.controls_ub(model, node(dprocess, i), endo_nodes[n, :], p)' for n=1:N]...) for i=1:nsd]
 
     # States at time t+1
     S = copy(endo_nodes)
@@ -272,77 +324,73 @@ function value_iteration(
 
     optim_opts = Optim.Options(optim_options...)
 
+    log = ValueIterationLog()
+    initialize(log, verbose=verbose)
+
     mode = :improve
     done = false
 
     while !done
 
+        tic()
+        it += 1
         # it += 1
-        if (mode == :eval)
-            it_eval = 0
-            drv = evaluate_policy(model, dprocess, grid, dr; verbose=false, eval_options...)
-            mode = :improve
+        # if (mode == :eval)
 
-        else
-            it += 1
-            for i = 1:size(res, 1)
-                m = node(dprocess, i)
-                for n = 1:N
-                    s = endo_nodes[n]
-                    # optimize vals
-                    fobj(u) = -update_value(model, β, dprocess, drv, i, s, SVector(u...), p)[1]*1000
-                    lower = Float64[x_lb[i][n]...]
-                    upper = Float64[x_ub[i][n]...]
-                    upper = clamp(upper, -Inf, 1000000)
-                    lower = clamp(lower, -1000000, Inf)
-                    initial_x = Float64[x0[i][n]...] #, :]
-                    test = fobj(initial_x)
-                    results = call_optim(fobj, initial_x, lower, upper, optim_opts)
-                    xn = Optim.minimizer(results)
-                    nv = -Optim.minimum(results)/1000.0
-                    # ii = (fobj(initial_x))
-                    # xn, nv = goldensearch(fobj, lower, upper; maxit=1000, tol=1e-10)
-                    # jj = (fobj(xn))
-                    #
-                    # xvec =
-                    # println([m,s, lower, upper, initial_x, ii, xn, jj])
+        it_eval = 0
+        drv, nit = evaluate_policy(model, dprocess, grid, dr; verbose=false, eval_options...)
+        mode = :improve
 
-
-                    x[i][n] = SVector(xn...)
-                    v[i][n] = SVector(nv)
-                end
+        # else
+        for i = 1:size(res, 1)
+            m = node(dprocess, i)
+            for n = 1:N
+                s = endo_nodes[n]
+                # optimize vals
+                fobj(u) = -update_value(model, β, dprocess, drv, i, s, SVector(u...), p)[1]*1000
+                lower = Float64[x_lb[i][n]...]
+                upper = Float64[x_ub[i][n]...]
+                upper = clamp.(upper, -Inf, 1000000)
+                lower = clamp.(lower, -1000000, Inf)
+                initial_x = Float64[x0[i][n]...] #, :]
+                test = fobj(initial_x)
+                results = call_optim(fobj, initial_x, lower, upper, optim_opts)
+                xn = Optim.minimizer(results)
+                nv = -Optim.minimum(results)/1000.0
+                x[i][n] = SVector(xn...)
+                v[i][n] = SVector(nv)
             end
-
-            # compute diff in values
-            err_v = 0.0
-            for i in 1:nsd
-                err_v = max(err_v, maxabs(v[i] - v0[i]))
-                copy!(v0[i], v[i])
-            end
-            # compute diff in policy
-            err_x = 0.0
-            for i in 1:nsd
-                err_x = max(err_x, maxabs(x[i] - x0[i]))
-                copy!(x0[i], x[i])
-            end
-            # update values and policies
-            set_values!(drv, v0)
-            set_values!(dr, x0)
-
-            if verbose
-                println("It: ", it, " ; SA: ", err_v, " ; SA_x: ", err_x)
-            end
-
-            # terminate only if policy didn't move
-            done = (err_x<tol_x) || (err_v<tol_v) || (it>=maxit)
-
-            mode = :eval
-
         end
+        # compute diff in values
+        err_v = 0.0
+        for i in 1:nsd
+            err_v = max(err_v, maxabs(v[i] - v0[i]))
+            copy!(v0[i], v[i])
+        end
+        # compute diff in policy
+        err_x = 0.0
+        for i in 1:nsd
+            err_x = max(err_x, maxabs(x[i] - x0[i]))
+            copy!(x0[i], x[i])
+        end
+        # update values and policies
+        set_values!(drv, v0)
+        set_values!(dr, x0)
+
+
+        # terminate only if policy didn't move
+        done = (err_x<tol_x) || (err_v<tol_v) || (it>=maxit)
 
         trace && push!(ti_trace.trace, [x0, v0]) # this is ridiculous since only one of them is updated !
 
+        elapsed = toq()
+
+        append!(log; verbose=verbose, it=it, sa_x=err_x, sa_v=err_v, time=elapsed, nit=nit)
+
     end
+
+    finalize(log, verbose=verbose)
+
 
     converged_x = err_x<tol_x
     converged_v = err_v<tol_v
