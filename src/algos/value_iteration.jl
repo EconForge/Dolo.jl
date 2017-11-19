@@ -1,5 +1,19 @@
 using Optim
 
+
+immutable ValueIterationLog
+    header::Array{String, 1}
+    keywords::Array{Symbol, 1}
+    entries::Array{Any, 1}
+end
+
+function ValueIterationLog()
+    header = [ "It", "ηₙ=|xₙ-xₙ₋₁|", "νₙ=|vₙ-vₙ₋₁|", "Time", "Eval steps"]
+    keywords = [:it, :sa_x, :sa_v, :time, :nit]
+    ValueIterationLog(header, keywords, [])
+end
+
+
 type ValueIterationResult
     dr::AbstractDecisionRule
     drv::AbstractDecisionRule
@@ -27,18 +41,6 @@ function Base.show(io::IO, r::ValueIterationResult)
     @printf io "   * |x - x'| < %.1e: %s\n" r.x_tol r.x_converged
     @printf io "   * |v - v'| < %.1e: %s\n" r.v_tol r.v_converged
 
-end
-
-immutable ValueIterationLog
-    header::Array{String, 1}
-    keywords::Array{Symbol, 1}
-    entries::Array{Any, 1}
-end
-
-function ValueIterationLog()
-    header = [ "It", "ηₙ=|xₙ-xₙ₋₁|", "νₙ=|vₙ-vₙ₋₁|", "Time", "Eval steps"]
-    keywords = [:it, :sa_x, :sa_v, :time, :nit]
-    ValueIterationLog(header, keywords, [])
 end
 
 function append!(log::ValueIterationLog; verbose=true, entry...)
@@ -121,7 +123,6 @@ function evaluate_policy(model, dprocess::AbstractDiscretizedProcess, grid, dr;
 
     # Expected utility
     E_V = deepcopy(res)
-
 
     # evaluate u at time t. This is constant because dr is constant within this
     # function
@@ -287,14 +288,8 @@ function value_iteration(
 
     dr = CachedDecisionRule(dprocess, grid, x0)
 
-    # this could be integrated in the main loop.
-    verbose && print("Evaluating initial policy")
-
-    drv = evaluate_policy(model, dr; verbose=false, eval_options...)
-
-    verbose && print(" (done)\n")
-
-    v0 = [drv(i, endo_nodes) for i=1:nsd]
+    drv = dr # never used. Just to escape loop scope
+    v0 = [zeros(Point{1},N) for i=1:nsd]
     v = deepcopy(v0)
 
     ti_trace = trace ? IterationTrace([x0, v0]) : nothing
@@ -334,11 +329,8 @@ function value_iteration(
 
         tic()
         it += 1
-        # it += 1
-        # if (mode == :eval)
 
-        it_eval = 0
-        drv, nit = evaluate_policy(model, dprocess, grid, dr; verbose=false, eval_options...)
+        drv, it_eval = evaluate_policy(model, dprocess, grid, dr; verbose=false, eval_options...)
         mode = :improve
 
         # else
@@ -362,21 +354,16 @@ function value_iteration(
             end
         end
         # compute diff in values
-        err_v = 0.0
+        err_v = maxabs(v-v0)
+        err_x = maxabs(x-x0)
         for i in 1:nsd
-            err_v = max(err_v, maxabs(v[i] - v0[i]))
             copy!(v0[i], v[i])
-        end
-        # compute diff in policy
-        err_x = 0.0
-        for i in 1:nsd
-            err_x = max(err_x, maxabs(x[i] - x0[i]))
             copy!(x0[i], x[i])
         end
+
         # update values and policies
         set_values!(drv, v0)
         set_values!(dr, x0)
-
 
         # terminate only if policy didn't move
         done = (err_x<tol_x) || (err_v<tol_v) || (it>=maxit)
@@ -385,16 +372,16 @@ function value_iteration(
 
         elapsed = toq()
 
-        append!(log; verbose=verbose, it=it, sa_x=err_x, sa_v=err_v, time=elapsed, nit=nit)
+        append!(log; verbose=verbose, it=it, sa_x=err_x, sa_v=err_v, time=elapsed, nit=it_eval)
 
     end
 
     finalize(log, verbose=verbose)
 
-
     converged_x = err_x<tol_x
     converged_v = err_v<tol_v
-    ValueIterationResult(dr.dr, drv.dr, it, true, dprocess, converged_x, tol_x, err_x, converged_v, tol_v, err_v, ti_trace)
+
+    ValueIterationResult(dr.dr, drv.dr, it, true, dprocess, converged_x, tol_x, err_x, converged_v, tol_v, err_v, log, ti_trace)
 
 end
 
