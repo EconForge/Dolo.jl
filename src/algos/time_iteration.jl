@@ -209,9 +209,9 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
         tt = euler_residuals_ti(model, dprocess, endo_nodes, x0, p, dr)
 
         if complementarities
-            res = newton(fobj, x0, x_lb, x_ub)
+            res = newton(fobj, x0, x_lb, x_ub; solver...)
         else
-            res = newton(fobj, x0)
+            res = newton(fobj, x0; solver...)
         end
 
         x1 = res.solution
@@ -222,7 +222,7 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
         trace && push!(ti_trace.trace, x1)
 
         err = maxabs(x1-x0)
-        x0=x1
+        x0 = (1-dampen)*x0 + dampen*x1
 
         gain = err / err_0
         err_0 = err

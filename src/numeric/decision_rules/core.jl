@@ -20,6 +20,10 @@ function ConstantDecisionRule(constants::Vector{Float64})
     ConstantDecisionRule{nx}(SVector{nx,Float64}(constants...))
 end
 
+function ConstantDecisionRule(model::Model)
+    ConstantDecisionRule(model.calibration[:controls])
+end
+
 (dr::ConstantDecisionRule)(x::Point) = dr.constants
 (dr::ConstantDecisionRule)(x::Vector{Point{d}}) where d = [dr.constants for n=1:length(x)]
 (dr::ConstantDecisionRule)(i::Int, x::Union{Point{d},Vector{Point{d}}}) where d = dr(x)
