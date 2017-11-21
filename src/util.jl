@@ -31,35 +31,20 @@ end
 ############################
 # norms for list of points #
 ############################
+import Base.maxabs
 
-function absmax(s::ListOfPoints)
+function Base.maxabs(s::ListOfPoints)
     t = 0.0
     for p in s
         t = max(t, maximum(p))
     end
     t
 end
-absmax(x::Vector{<:ListOfPoints}) = maximum(absmax.(x))
 
-import Base
-function Base.maxabs(v::ListOfPoints{d}) where d
-    m = 0.0
-    for n = 1:length(v)
-        mm = maximum(abs, v[n])
-        if mm>m
-            m = mm
-        end
-    end
-    m
-end
-
-function Base.maxabs(v::Vector{ListOfPoints{d}}) where d
-    maximum(maxabs.(v))
-end
-
+Base.maxabs(x::Vector{<:ListOfPoints}) = maximum(maxabs.(x))
 
 ############################
-# norms for list of points #
+# serial multiplications #
 ############################
 
 function invert!(A::Vector)
