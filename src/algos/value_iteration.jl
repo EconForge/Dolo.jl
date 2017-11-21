@@ -104,7 +104,7 @@ function evaluate_policy(model, dprocess::AbstractDiscretizedProcess, grid, dr;
     β = model.calibration.flat[:beta]
 
     # states today are the grid
-    s = nodes(Point, grid)
+    s = nodes(ListOfPoints, grid)
 
     # Number of endogenous nodes
     N = length(s)

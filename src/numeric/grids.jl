@@ -56,7 +56,7 @@ end
 # Old-convention
 function (::Type{UnstructuredGrid{d}})(nodes::Matrix{Float64}) where d
     N = size(nodes,1)
-    @assert d == size(nodes,d)
+    @assert d == size(nodes,2)
     UnstructuredGrid{d}(reinterpret(Point{d}, nodes, (N,)))
 end
 
