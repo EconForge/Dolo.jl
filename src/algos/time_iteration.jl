@@ -33,12 +33,12 @@ function euler_residuals_ti(model, dprocess::AbstractDiscretizedProcess,s::ListO
         m = node(Point, dprocess, i)
         for (w, M, j) in get_integration_nodes(Point, dprocess,i)
             # Update the states
-            S = Dolo.transition(model, m, s, x[i], M, p)::ListOfPoints{d}
-            X = dr(i, j, S)::ListOfPoints{n_x}
-            res[i] += w*Dolo.arbitrage(model, m, s, x[i], M, S, X, p)::ListOfPoints{n_x}
+            S = Dolo.transition(model, m, s, x[i], M, p)
+            X = dr(i, j, S)
+            res[i] += w*Dolo.arbitrage(model, m, s, x[i], M, S, X, p)
         end
     end
-    return res::Vector{ListOfPoints{n_x}}
+    return res
 end
 
 
@@ -148,7 +148,7 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
                         grid, init_dr;
                         verbose::Bool=true,
                         maxit::Int=500, tol_η::Float64=1e-7, trace::Bool=false, maxbsteps=5, dampen=1.0,
-                        solver=Dict(), complementarities=true)
+                        solver=Dict(), complementarities::Bool=true)
 
     if get(solver, :type, :__missing__) == :direct
         return time_iteration_direct(
