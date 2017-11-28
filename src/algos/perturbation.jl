@@ -1,7 +1,7 @@
 function get_ss_derivatives(model)
     m, s, x, p = model.calibration[:exogenous, :states, :controls, :parameters]
-    g_diff = transition(model, (Val{1},Val{2},Val{3},Val{4}), m, s, x, m, p)
-    f_diff = arbitrage(model, (Val{1},Val{2},Val{3},Val{4},Val{5},Val{6}), m, s, x, m, s, x, p)
+    g_diff = transition(model, (Val(1),Val(2),Val(3),Val(4)), m, s, x, m, p)
+    f_diff = arbitrage(model, (Val(1),Val(2),Val(3),Val(4),Val(5),Val(6)), m, s, x, m, s, x, p)
     g_diff, f_diff
 end
 

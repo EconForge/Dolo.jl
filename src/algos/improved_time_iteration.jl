@@ -51,8 +51,8 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
 
 
     if complementarities == true
-        x_lb = [controls_lb(model, SVector(node(dprocess,i)...),s,p) for i=1:n_m]
-        x_ub = [controls_ub(model, SVector(node(dprocess,i)...),s,p) for i=1:n_m]
+        x_lb = [controls_lb(model, node(Point,dprocess,i),s,p) for i=1:n_m]
+        x_ub = [controls_ub(model, node(Point,dprocess,i),s,p) for i=1:n_m]
         BIG = 100000
         for i=1:n_m
           for n=1:N

@@ -26,14 +26,14 @@ function euler_residuals(model, s::ListOfPoints, x::Vector{<:ListOfPoints}, dr, 
     end
 
     for i_ms in 1:n_ms
-        m = SVector(node(dprocess,i_ms)...)
+        m = node(Point, dprocess,i_ms)
         for I_ms in 1:n_mst
-            M = SVector(inode(dprocess, i_ms, I_ms)...)
+            M = inode(Point, dprocess, i_ms, I_ms)
             w = iweight(dprocess, i_ms, I_ms)
             S = transition(model, m, s, x[i_ms], M, parms)
             X = dr(i_ms, I_ms, S)
             if keep_J_S==true
-                rr, rr_XM = arbitrage(model,(Val{0},Val{6}),m,s,x[i_ms],M,S,X,parms)
+                rr, rr_XM = arbitrage(model,(Val(0),Val(6)),m,s,x[i_ms],M,S,X,parms)
                 J_ij[i_ms,I_ms][:] = w*rr_XM
                 S_ij[i_ms,I_ms][:] = S
             else
