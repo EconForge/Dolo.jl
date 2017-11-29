@@ -33,7 +33,7 @@ function euler_residuals(model, s::ListOfPoints, x::Vector{<:ListOfPoints}, dr, 
             S = transition(model, m, s, x[i_ms], M, parms)
             X = dr(i_ms, I_ms, S)
             if keep_J_S==true
-                rr, rr_XM = arbitrage(model,(Val(0),Val(6)),m,s,x[i_ms],M,S,X,parms)
+                rr, rr_XM = arbitrage(model,Val{(0,6)},m,s,x[i_ms],M,S,X,parms)
                 J_ij[i_ms,I_ms][:] = w*rr_XM
                 S_ij[i_ms,I_ms][:] = S
             else
