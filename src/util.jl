@@ -27,3 +27,71 @@ function rmerge(def_s::Associative, add_s::Associative)
     end
     return resp
 end
+
+############################
+# norms for list of points #
+############################
+import Base.maxabs
+
+function Base.maxabs(s::ListOfPoints)
+    t = 0.0
+    for p in s
+        t = max(t, maximum(p))
+    end
+    t
+end
+
+Base.maxabs(x::Vector{<:ListOfPoints}) = maximum(maxabs.(x))
+
+############################
+# serial multiplications #
+############################
+
+function invert!(A::Vector)
+    # A[i] <- (A[i])^(-1)
+    N = length(A)
+    for n=1:N
+        A[n] = inv(A[n])
+    end
+end
+
+function premult!(A,B)
+    # B[i] <- A[i]*B[i]
+    N = length(A)
+    for n=1:N
+        B[n] = A[n]*B[n]
+    end
+end
+
+function addmul!(O,A,B)
+    # O[i] <- A[i]*B[i]
+    N = length(A)
+    for n=1:N
+        O[n] += A[n]*B[n]
+    end
+end
+
+##############################
+# Conversion from old format #
+##############################
+
+vector_to_matrix(v) = Matrix(vec(v)')
+# vector_to_matrix(v::Vector) = Matrix(v')
+# vector_to_matrix(v::RowVector) = Matrix(v)
+
+#(compat)
+to_LOP(::Type{Point{d}}, mat::Matrix) where d = reinterpret(Point{d}, mat', (size(mat,1),))
+to_LOP(::Type{Point{d}}, mat::AbstractMatrix) where d = to_LOP(Point{d}, Array(mat))
+to_LOP(mat::AbstractArray) = to_LOP(Point{size(mat,2)} ,mat)
+
+function from_LOP(lop)
+    d = length(lop[1])
+    N = length(lop)
+    return reinterpret(Float64, lop, (d,N))'
+end
+
+function to_LOJ(mat::Array{Float64,3})
+    # list of jacobians
+    N,d = size(mat)
+    reinterpret(SMatrix{d,d,Float64,d*d}, permutedims(mat,[2,3,1]), (N,))
+end

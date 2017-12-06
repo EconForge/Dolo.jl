@@ -21,41 +21,27 @@ If the list of current controls `x` is provided as a two-dimensional array (`Lis
 # Returns
 * `res`: Residuals of the arbitrage equation associated with each exogenous shock.
 """
-function euler_residuals(model, dprocess::AbstractDiscretizedProcess, s, x::Array{Array{Float64,2},1}, p, dr)
-    N = size(s, 1)
-    res = [zeros(size(x[1])) for i=1:length(x)]
-    S = zeros(size(s))
-    # X = zeros(size(x[1]))
+function euler_residuals_ti(model, dprocess::AbstractDiscretizedProcess,s::ListOfPoints{d}, x::Vector{ListOfPoints{n_x}}, p::SVector, dr) where n_x where d
+
+    N = length(s)
+    # TODO: allocate properly...
+    res = deepcopy(x)
+    for i_m=1:length(res)
+        res[i_m][:] *= 0.0
+    end
     for i in 1:size(res, 1)
-        m = node(dprocess, i)
-        for (w, M, j) in get_integration_nodes(dprocess,i)
+        m = node(Point, dprocess, i)
+        for (w, M, j) in get_integration_nodes(Point, dprocess,i)
             # Update the states
-            S[:,:] = Dolo.transition(model, m, s, x[i], M, p)
+            S = Dolo.transition(model, m, s, x[i], M, p)
             X = dr(i, j, S)
-            res[i][:,:] += w*Dolo.arbitrage(model, m, s, x[i], M, S, X, p)
+            res[i] += w*Dolo.arbitrage(model, m, s, x[i], M, S, X, p)
         end
     end
     return res
 end
 
-function euler_residuals(model, dprocess, s, x::Array{Float64,2}, p, dr)
-    n_m = max(1, n_nodes(dprocess))
-    xx = destack0(x, n_m)
-    res = euler_residuals(model, dprocess, s, xx, p, dr)
-    return stack0(res)
-end
 
-function destack0(x::Array{Float64,2}, n_m::Int)
-    N = div(size(x, 1), n_m)
-    xx = reshape(x, N, n_m, size(x, 2))
-    return Array{Float64,2}[xx[:, i, :] for i=1:n_m]
-end
-
-function stack0(x::Array{Array{Float64,2},1})::Array{Float64,2}
-     return cat(1, x...)
-end
-
-###
 
 immutable TimeIterationLog
     header::Array{String, 1}
@@ -64,7 +50,7 @@ immutable TimeIterationLog
 end
 
 function TimeIterationLog()
-    header = [ "It", "ηₙ=|xₙ-xₙ₋₁|", "λₙ=ηₙ/ηₙ₋₁", "Time", "Newton steps"]
+    header = [ "It", "ϵₙ", "ηₙ=|xₙ-xₙ₋₁|", "λₙ=ηₙ/ηₙ₋₁", "Time", "Newton steps"]
     keywords = [:it, :err, :gain, :time, :nit]
     TimeIterationLog(header, keywords, [])
 end
@@ -93,18 +79,19 @@ end
 
 function show_start(log::TimeIterationLog)
     println(repeat("-", 66))
-    @printf "%-6s%-16s%-16s%-16s%-5s\n" "It" "ηₙ=|xₙ-xₙ₋₁|" "λₙ=ηₙ/ηₙ₋₁" "Time" "Newton steps"
+    @printf "%-6s%-16s%-16s%-16s%-16s%-5s\n" "It" "ϵₙ" "ηₙ=|xₙ-xₙ₋₁|" "λₙ=ηₙ/ηₙ₋₁" "Time" "Newton steps"
     println(repeat("-", 66))
 end
 
 
 function show_entry(log::TimeIterationLog, entry)
     it = entry[:it]
+    epsilon = entry[:epsilon]
     err = entry[:err]
     gain = entry[:gain]
     time = entry[:time]
     nit = entry[:nit]
-    @printf "%-6i%-16.2e%-16.2e%-16.2e%-5i\n" it err gain time nit
+    @printf "%-6i%-16.2e%-16.2e%-16.2e%-16.2e%-5i\n" it epsilon err gain time nit
 end
 
 function show_end(log::TimeIterationLog)
@@ -160,8 +147,8 @@ If the stochastic process for the model is not explicitly provided, the process 
 function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
                         grid, init_dr;
                         verbose::Bool=true,
-                        maxit::Int=500, tol_η::Float64=1e-7, trace::Bool=false,
-                        solver=Dict())
+                        maxit::Int=500, tol_η::Float64=1e-7, trace::Bool=false, maxbsteps=5, dampen=1.0,
+                        solver=Dict(), complementarities::Bool=true)
 
     if get(solver, :type, :__missing__) == :direct
         return time_iteration_direct(
@@ -172,72 +159,77 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
 
 
 
-    endo_nodes = nodes(grid)
+    endo_nodes = nodes(ListOfPoints, grid)
     N = n_nodes(grid)
     n_s_endo = size(endo_nodes, 2)
     n_s_exo = n_nodes(dprocess)
 
     # initial guess
     # number of smooth decision rules
-    nsd = max(n_s_exo, 1)
-    p = model.calibration[:parameters]
+    n_m = max(n_s_exo, 1)
+    p = SVector(model.calibration[:parameters]...)
 
-    x0 = [init_dr(i, endo_nodes) for i=1:nsd]
+    x0 = [init_dr(i, endo_nodes) for i=1:n_m]
 
     ti_trace = trace ? IterationTrace([x0]) : nothing
 
     n_x = length(model.calibration[:controls])
-    lb = Array{Float64}(N*nsd, n_x)
-    ub = Array{Float64}(N*nsd, n_x)
-    ix = 0
-    for i in 1:nsd
-        node_i = node(dprocess, i)
-        for n in 1:N
-            ix += 1
-            endo_n = endo_nodes[n, :]
-            lb[ix, :] = Dolo.controls_lb(model, node_i, endo_n, p)
-            ub[ix, :] = Dolo.controls_ub(model, node_i, endo_n, p)
+    if complementarities == true
+        x_lb = [controls_lb(model, node(Point,dprocess,i),endo_nodes,p) for i=1:n_m]
+        x_ub = [controls_ub(model, node(Point,dprocess,i),endo_nodes,p) for i=1:n_m]
+        BIG = 100000
+        for i=1:n_m
+          for n=1:N
+            x_lb[i][n] = max.(x_lb[i][n],-BIG)
+            x_ub[i][n] = min.(x_ub[i][n], BIG)
+          end
         end
     end
 
     # create decision rule (which interpolates x0)
     dr = CachedDecisionRule(dprocess, grid, x0)
 
-    # loop option
-    # init_res = euler_residuals(model, dprocess, endo_nodes, x0, p, dr)
-    # err = maximum(abs, stack0(init_res))
+    steps = 0.5.^collect(0:maxbsteps)
+
+
     err_0 = NaN
     err = 1.0
 
     log = TimeIterationLog()
     initialize(log, verbose=verbose)
-    append!(log; verbose=verbose, it=0, err=NaN, gain=NaN, time=0.0, nit=0)
 
     it = 0
     while it<maxit && err>tol_η
 
         it += 1
-
         tic()
-
         set_values!(dr, x0)
+        fobj(u) = euler_residuals_ti(model, dprocess, endo_nodes, u, p, dr)
 
-        xx0 = stack0(x0)
-        fobj(u) = euler_residuals(model, dprocess, endo_nodes, u, p, dr)
-        xx1, nit = serial_solver(fobj, xx0, lb, ub; solver...)
-        x1 = destack0(xx1, nsd)
+        tt = euler_residuals_ti(model, dprocess, endo_nodes, x0, p, dr)
 
-        err = maximum(abs, xx1 - xx0)
+        if complementarities
+            res = newton(fobj, x0, x_lb, x_ub; solver...)
+        else
+            res = newton(fobj, x0; solver...)
+        end
+
+        x1 = res.solution
+        nit = res.iterations
+        epsil = res.errors[1]
+
 
         trace && push!(ti_trace.trace, x1)
 
-        copy!(x0, x1)
+        err = maxabs(x1-x0)
+        x0 = (1-dampen)*x0 + dampen*x1
+
         gain = err / err_0
         err_0 = err
 
         elapsed = toq()
 
-        append!(log; verbose=verbose, it=it, err=err, gain=gain, time=elapsed, nit=nit)
+        append!(log; verbose=verbose, it=it, epsilon=epsil, err=err, gain=gain, time=elapsed, nit=nit)
     end
 
     finalize(log, verbose=verbose)

@@ -71,11 +71,11 @@ calibration:
 
 domain:
     z: [-2*sig_z/(1-rho^2)^0.5,  2*sig_z/(1-rho^2)^0.5]
-    k: [k*0.5, k*1.5]
+    k: [k*0.9, k*1.1]
 
 exogenous: !Normal
     Sigma: sig_z^2
 
 options:
     grid: !Cartesian
-        orders: [5, 50]
+        orders: [20, 20]

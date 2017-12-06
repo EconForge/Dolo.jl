@@ -12,26 +12,29 @@ outdim(dr::AbstractDecisionRule{<:Grid,<:Grid,nx}) where nx = nx
 # ---------------------- #
 
 @compat type ConstantDecisionRule{nx} <: AbstractDecisionRule{EmptyGrid,EmptyGrid,nx}
-    constants::Vector{Float64}
+    constants::SVector{nx,Float64}
 end
 
 function ConstantDecisionRule(constants::Vector{Float64})
     nx = length(constants)
-    ConstantDecisionRule{nx}(constants)
+    ConstantDecisionRule{nx}(SVector{nx,Float64}(constants...))
 end
 
-function ConstantDecisionRule{nx}(constants::Value{nx})
-    ConstantDecisionRule{nx}(collect(constants))
+function ConstantDecisionRule(model::Model)
+    ConstantDecisionRule(model.calibration[:controls])
 end
 
-(dr::ConstantDecisionRule)(x::AbstractVector) = dr.constants
-(dr::ConstantDecisionRule)(x::AbstractMatrix) = repmat(dr.constants', size(x, 1), 1)
-(dr::ConstantDecisionRule)(x::AbstractVector, y::AbstractVector) = dr.constants
-(dr::ConstantDecisionRule)(x::AbstractVector, y::AbstractMatrix) = repmat(dr.constants', size(y, 1), 1)
-(dr::ConstantDecisionRule)(x::AbstractMatrix, y::AbstractVector) = repmat(dr.constants', size(x, 1), 1)
-(dr::ConstantDecisionRule)(x::AbstractMatrix, y::AbstractMatrix) = repmat(dr.constants', size(x, 1), 1)
-(dr::ConstantDecisionRule)(i::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
-(dr::ConstantDecisionRule)(i::Int, j::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
+(dr::ConstantDecisionRule)(x::Point) = dr.constants
+(dr::ConstantDecisionRule)(x::Vector{Point{d}}) where d = [dr.constants for n=1:length(x)]
+(dr::ConstantDecisionRule)(i::Int, x::Union{Point{d},Vector{Point{d}}}) where d = dr(x)
+(dr::ConstantDecisionRule)(i::Int, j::Int, x::Union{Point{d},Vector{Point{d}}}) where d = dr(x)
+
+# (dr::ConstantDecisionRule)(x::AbstractVector, y::AbstractVector) = dr.constants
+# (dr::ConstantDecisionRule)(x::AbstractVector, y::AbstractMatrix) = repmat(dr.constants', size(y, 1), 1)
+# (dr::ConstantDecisionRule)(x::AbstractMatrix, y::AbstractVector) = repmat(dr.constants', size(x, 1), 1)
+# (dr::ConstantDecisionRule)(x::AbstractMatrix, y::AbstractMatrix) = repmat(dr.constants', size(x, 1), 1)
+# (dr::ConstantDecisionRule)(i::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
+# (dr::ConstantDecisionRule)(i::Int, j::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
 
 # ------------------------------ #
 # 2-dimensional Taylor Expansion #
@@ -49,3 +52,13 @@ end
 (dr::BiTaylorExpansion)(m::AbstractMatrix, s::AbstractVector) = vcat([(dr(m[i, :], s))' for i=1:size(m, 1) ]...)
 (dr::BiTaylorExpansion)(m::AbstractVector, s::AbstractMatrix) = vcat([(dr(m, s[i, :]))' for i=1:size(s, 1) ]...)
 (dr::BiTaylorExpansion)(m::AbstractMatrix, s::AbstractMatrix) = vcat([(dr(m[i, :], s[i, :]))' for i=1:size(m, 1) ]...)
+
+
+# User defined functions
+struct CFunDR{S,T,nx} <: AbstractDecisionRule{S,T,nx}
+    fun::Function
+    dprocess::AbstractDiscretizedProcess
+end
+CFunDR(fun::Function, dprocess::AbstractDiscretizedProcess, n_x::Int) = CFunDR{typeof(dprocess.grid), EmptyGrid, n_x}(fun, dprocess)
+(cfdr::CFunDR)(i::Int, x::Point{d}) where d = cfdr.fun(node(Point, cfdr.dprocess,i),x)
+(cfdr::CFunDR)(i::Int, x::Vector{Point{d}}) where d = [cfdr(i,e) for e in x]

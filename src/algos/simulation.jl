@@ -1,3 +1,38 @@
+function evaluate_definitions(model, simul::AxisArray, params=model.calibration[:parameters])
+
+    p_ = SVector(params...)
+
+    # @assert axisnames(simul) == (:N,:V,:T)
+    T = length( simul[Axis{:T}].val )
+    @assert simul[Axis{:T}].val == 1:T
+
+    vars = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+
+    sim = simul[Axis{:V}(vars)]
+
+    T = length(sim[Axis{:T}].val)
+
+    past = permutedims(sim[Axis{:T}([1;1:T-1])], [2,1,3])
+    present = permutedims(sim[Axis{:T}(1:T)], [2,1,3])
+    future = permutedims(sim[Axis{:T}([2:T;T])], [2,1,3])
+
+    n_v,N,T = size(past)
+
+    x_past = reinterpret(Point{n_v}, past.data, (T*N,))
+    x_present = reinterpret(Point{n_v}, present.data, (T*N,))
+    x_future = reinterpret(Point{n_v}, future.data, (T*N,))
+
+    y_ = evaluate_definitions(model, x_past, x_present, x_future, p_)
+
+    auxiliaries = [Dolang.arg_name(e) for e in keys(model.definitions)]
+    n_y = length(auxiliaries)
+
+    data = permutedims( reinterpret(Float64, y_, (n_y,N,T)), [2,1,3])
+
+    array = AxisArray(data, Axis{:N}(1:N), Axis{:V}(auxiliaries), Axis{:T}(1:T))
+
+end
+
 ########################################################################
 # For Float
 
@@ -5,6 +40,7 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
                   driving_process::AbstractArray{Float64,3}; s0::AbstractVector=model.calibration[:states])
 
     # driving_process: (ne, N, T)
+    driving_process = convert(Array{Float64,3}, driving_process) # in case arg is an axisarray
 
     # extract data from model
     calib = model.calibration
@@ -29,14 +65,14 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
     end
 
     for t in 1:T
-        s = view(s_simul, :, :, t)
-        m = view(epsilons, :, :, t)
+        s = s_simul[:, :, t]
+        m = epsilons[:, :, t]
         x = dr(m, s)
         x_simul[:, :, t] = x
         if t < T
-          M = view(epsilons, :, :, t+1)
-          ss = view(s_simul, :, :, t+1)
-          transition!(model, ss, m, s, x, M, params)
+          M = epsilons[:, :, t+1]
+          ss = s_simul[:, :, t+1]
+          s_simul[:,:,t+1] = transition(model, m, s, x, M, params)
         end
     end
     sim = cat(2, epsilons, s_simul, x_simul)::Array{Float64,3}
@@ -88,19 +124,18 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
     end
 
     for t in 1:T
-        s = view(s_simul, :, :, t)
-        m = view(epsilons, :, :, t)
+        s = s_simul[:, :, t]
+        m = epsilons[:, :, t]
 
         m_ind=cat(1, m)[:, 1]
         m_val= dp_process.values[m_ind, :]
         x = dr(m_ind, s)
         x_simul[:, :, t] = x
         if t < T
-            M = view(epsilons, :, :, t+1)
+            M = epsilons[:, :, t+1]
             M_cat = cat(1, M)[:, 1]
             M_val = dp_process.values[M_cat, :]
-            ss = view(s_simul, :, :, t+1)
-            transition!(model, ss, m_val, s, x, M_val, params)
+            s_simul[:,:,t+1] = transition(model, m_val, s, x, M_val, params)
         end
     end
 
@@ -246,21 +281,27 @@ function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
     Svalues = linspace(bounds[1], bounds[2], n_steps)
     svec = vcat([e' for e in fill(s0, n_steps)]...)
     svec[:, index] = Svalues
-    m = m0  # why creating m?
-    xvec = dr(m0, svec)
-    mm = vcat([e' for e in fill(m, n_steps)]...)
-    l1 = [mm, svec, xvec]
-    tb = hcat([e' for e in l1']...)
 
     if isa(dr, AbstractDecisionRule{UnstructuredGrid,CartesianGrid})
         model_sym = :mc_process
     else
+        xvec = dr(m0, svec)
+        mm = vcat([e' for e in fill(m0, n_steps)]...)
+        l1 = [mm, svec, xvec]
+        tb = hcat([e' for e in l1']...)
         model_sym = model.symbols[:exogenous]
     end
 
     l2 = cat(1, model_sym , model.symbols[:states], model.symbols[:controls])
-    tab_AA = AxisArray(tb, Axis{state}(tb[:, index+1]), Axis{:V}(l2))
-    tab_AA'
+    tab_AA = AxisArray(reshape(tb,1,size(tb)...), Axis{:T}(1:1), Axis{:N}(1:n_steps), Axis{:V}(l2))
+
+    ## add definitions
+    tab_AAA = permutedims(tab_AA, [2,3,1])
+    tab_defs = evaluate_definitions(model, tab_AAA)
+    tab_ = merge(tab_AAA, tab_defs)[Axis{:T}(1)]
+    #change axis names
+    res = AxisArray(tab_.data, Axis{state}(tb[:, index+1]), tab_[Axis{:V}])
+    res' # so that we can index it directly
 end
 
 

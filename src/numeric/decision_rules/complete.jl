@@ -20,7 +20,7 @@ end
 function set_values!(
         dr::CompletePolyDR{<:G}, values::Vector{Matrix{Float64}}
     ) where G <: Union{<:EmptyGrid,<:UnstructuredGrid}
-    B_grid = BM.complete_polynomial(nodes(dr.grid_endo), dr.order)
+    B_grid = BM.complete_polynomial(nodes(Matrix,dr.grid_endo), dr.order)
     for i in 1:length(values)
         A_ldiv_B!(dr.coefs[i], B_grid, values[i])
     end
@@ -30,7 +30,7 @@ function set_values!(
         dr::CompletePolyDR{<:G,<:Grid,nx},
         values::Vector{<:Array{Value{nx}}}
     ) where G <: Union{EmptyGrid,UnstructuredGrid} where nx
-    B_grid = BM.complete_polynomial(nodes(dr.grid_endo), dr.order)
+    B_grid = BM.complete_polynomial(nodes(Matrix,dr.grid_endo), dr.order)
 
     if length(values) != length(dr.coefs)
         msg = "The length of values ($(length(values))) is not the same "

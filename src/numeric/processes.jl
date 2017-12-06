@@ -7,10 +7,19 @@
 
 @compat abstract type AbstractDiscretizedProcess <: DiscreteProcess end
 
+# this is a bit crude but not performance critical, for now
+function node(::Type{Point}, dp::DiscreteProcess, i::Int)
+    v = node(dp, i)
+    SVector{length(v)}(v)
+end
+function inode(::Type{Point}, dp::DiscreteProcess, i::Int, j::Int)
+    v = inode(dp, i, j)
+    SVector{length(v)}(v)
+end
+
 ###
 ### Discretized process
 ###
-
 
 # date-t grid has a known structure
 type DiscretizedProcess{TG<:Grid} <: AbstractDiscretizedProcess
@@ -415,8 +424,16 @@ function AgingProcess(mu::Float64, K::Int)
 end
 
 
-get_integration_nodes(dprocess::Dolo.AbstractDiscretizedProcess, i::Int)=filter( x -> (x[1]!=0), ((iweight(dprocess,i,j), inode(dprocess,i,j), j) for j in 1:n_inodes(dprocess,i)) )
+get_integration_nodes(dprocess::Dolo.AbstractDiscretizedProcess, i::Int)= [(iweight(dprocess,i,j), inode(dprocess,i,j), j) for j in 1:n_inodes(dprocess,i) if iweight(dprocess,i,j)!=0]
 
+get_integration_nodes(::typeof(Point), dprocess::Dolo.AbstractDiscretizedProcess, i::Int)=[(iweight(dprocess,i,j), inode(Point,dprocess,i,j), j) for j in 1:n_inodes(dprocess,i) if iweight(dprocess,i,j)!=0]
+
+
+# type unstable
+#
+# get_integration_nodes(dprocess::Dolo.AbstractDiscretizedProcess, i::Int)=Iterators.filter( x -> (x[1]!=0), ((iweight(dprocess,i,j), inode(dprocess,i,j), j) for j in 1:n_inodes(dprocess,i)) )
+#
+# get_integration_nodes(::typeof(Point), dprocess::Dolo.AbstractDiscretizedProcess, i::Int)=Iterators.filter( x -> (x[1]!=0), ((iweight(dprocess,i,j), inode(Point,dprocess,i,j), j) for j in 1:n_inodes(dprocess,i)) )
 
 
 # compatibility names

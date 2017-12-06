@@ -20,7 +20,7 @@
 
     @testset for (grid_endo, dr_name, drT) in test_sets
 
-       g = Dolo.nodes(grid_endo)
+       g = Dolo.nodes(Matrix, grid_endo)
        sg_vals = [sin.(g[:, 1]) cos.(g[:, 2])]
        sg_vals_vec = reinterpret(Dolo.Point{2}, sg_vals', (size(g,1),))
 

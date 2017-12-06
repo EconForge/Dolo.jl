@@ -56,6 +56,18 @@ function get_name(model::ASModel)
     get(model.data, :name, "modeldoesnotwork")
 end
 
+### TODO: look for duplicates
+eq_to_expr(eq::Symbol) = eq
+function eq_to_expr(eq::Expr)
+   if !(eq.head==:call && eq.args[1]==:(==))
+      eq
+   else
+      rhs = eq.args[3]
+      lhs = eq.args[2]
+      :($rhs-$lhs)
+   end
+end
+
 function get_equations(model::ASModel)
 
     eqs = model.data[:equations]
@@ -98,7 +110,7 @@ function get_equations(model::ASModel)
     end
 
     defs = get_definitions(model)
-    dynvars = cat(1, get_variables(model), keys(defs)...)
+    dynvars = cat(1, get_variables(model), [k[1] for k in keys(defs)]...)
 
     for eqtype in keys(_eqs)
         _eqs[eqtype] = [sanitize(eq,dynvars) for eq in _eqs[eqtype]]
@@ -117,12 +129,12 @@ function get_options(model::ASModel; options=Dict())
     return rmerge(opts, options)
 end
 
-function get_definitions(model::ASModel)
+function get_definitions(model::ASModel)::OrderedDict{Tuple{Symbol,Int},SymExpr}
     # parse defs so values are Expr
     defs = get(model.data,:definitions, Dict())
     dynvars = cat(1, get_variables(model), keys(defs)...)
-    _defs = OrderedDict{Symbol,Expr}(
-        [(Symbol(k), sanitize(_to_expr(v), dynvars)) for (k, v) in defs]
+    _defs = OrderedDict{Tuple{Symbol,Int},SymExpr}(
+        [ (k,0) => sanitize(_to_expr(v), dynvars) for (k, v) in defs]
     )
     return _defs
 end
@@ -194,7 +206,6 @@ function set_calibration!(model::ASModel, key::Symbol, value::Union{Real,Expr, S
     model.data[:calibration][key] = value
 end
 
-
 type Model{ID} <: AModel{ID}
 
     data::Dict{Symbol,Any}
@@ -226,16 +237,49 @@ type Model{ID} <: AModel{ID}
         model.options = get_options(model)
         model.grid = get_grid(model)
 
-        # now let's compile the functions:
-        for eqtype in keys(model.equations)
-            factory = Dolang.FunctionFactory(model,eqtype)
-            model.factories[eqtype] = factory
-            code = make_function(factory)
+        factories = Dict{Symbol,Dolang.FlatFunctionFactory}()
+        for (eqtype,equations) in model.equations
+            spec = Dolo.RECIPES[:dtcc][:specs][eqtype]
+            spec_eqs = spec[:eqs]
+            symbols = model.symbols
+            arguments = OrderedDict{Symbol,Union{Vector{Symbol},Vector{Tuple{Symbol,Int}}}}([
+                Symbol(s)=>[(e,t) for e in symbols[Symbol(sg)]]
+                for (sg,t,s) in spec_eqs
+            ])
+            arguments[:p] = [e[1] for e in arguments[:p]]
+            tdefs = Dolo.get_definitions(model)
+            if :target in keys(spec)
+                sg,t,s = spec[:target]
+                targets = [(e,t) for e in symbols[Symbol(sg)]]
+                lhs = [eq.args[2] for eq in equations]
+                rhs = [eq.args[3] for eq in equations]
+                expressions = OrderedDict(zip(targets,rhs))
+                @assert Dolang.normalize.(lhs) == Dolang.normalize.(targets)
+            else
+                expressions = OrderedDict( [Symbol("out_",i)=>eq_to_expr(eq) for (i,eq) in enumerate(equations)])
+            end
+            ff = Dolang.FlatFunctionFactory(expressions, arguments, tdefs; funname=eqtype )
+            factories[eqtype] = ff
+            code = Dolang.gen_generated_gufun(ff; dispatch=typeof(model))
             print_code && println(code)
             eval(Dolo, code)
         end
 
-        eval(Dolo, build_definition_function(model))
+        model.factories = factories
+
+
+        # TEMP: until we have a better method in Dolang
+        # Create definitions
+        vars = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+        args = OrderedDict(
+            :past => [(v,-1) for v in vars],
+            :present => [(v,0) for v in vars],
+            :future => [(v,1) for v in vars],
+            :params => model.symbols[:parameters]
+        )
+        fff = Dolang.FlatFunctionFactory(model.definitions, args, typeof(model.definitions)())
+        code = Dolang.gen_generated_gufun(fff;dispatch=typeof(model), funname=:evaluate_definitions)
+        eval(Dolo,code)
 
         return model
     end

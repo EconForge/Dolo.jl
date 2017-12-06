@@ -1,10 +1,13 @@
-# __precompile__(false)
+__precompile__(true)
 
 module Dolo
+
+import Dolang: SymExpr, list_syms
 
 # model import utils
 using DataStructures: OrderedDict
 import YAML; using YAML: load_file, load
+import Iterators
 using Requests: get
 using StaticArrays
 
@@ -18,7 +21,7 @@ const QE = QuantEcon
 
 # Dolang
 using Dolang
-using Dolang: _to_expr, inf_to_Inf, solution_order, solve_triangular_system
+using Dolang: _to_expr, inf_to_Inf, solution_order, solve_triangular_system, _get_oorders
 
 # Numerical Tools
 using MacroTools  # used for eval_with
@@ -32,6 +35,15 @@ using StringDistances
 
 # Compat across julia versions
 using Compat; import Compat: String, view, @__dot__
+
+using StaticArrays
+using IterativeSolvers
+
+# Functions from base we extend
+import Base.A_mul_B!
+import Base.size
+import Base.eltype
+import Base.*
 
 
 # exports
@@ -69,14 +81,6 @@ id{ID}(::AbstractModel{ID}) = ID
 @compat ListOfPoints{d} = Vector{Point{d}}
 @compat ListOfValues{n} = Vector{Value{n}}
 
-#(compat)
-to_LOP(::Type{Point{d}}, mat::Array) where d = reinterpret(Point{d}, mat', (size(mat,1),))
-to_LOP(::Type{Point{d}}, mat::AbstractArray) where d = to_LOP(Point{d}, Array(mat))
-to_LOP(mat::AbstractArray) = to_LOP(Point{size(mat,2)} ,mat)
-
-vector_to_matrix(v) = Matrix(vec(v)')
-# vector_to_matrix(v::Vector) = Matrix(v')
-# vector_to_matrix(v::RowVector) = Matrix(v)
 
 # recursively make all keys at any layer of nesting a symbol
 # included here instead of util.jl so we can call it on RECIPES below
@@ -102,15 +106,10 @@ import .splines: eval_UC_spline, eval_UC_spline!, prefilter!
 
 include("util.jl")
 
+include("numeric/complementarities.jl")
 include("numeric/newton.jl")
 include("numeric/grids.jl")
 include("numeric/processes.jl")
-include("numeric/decision_rules/core.jl")
-include("numeric/decision_rules/csplines.jl")
-include("numeric/decision_rules/constructor.jl")
-include("numeric/decision_rules/compat.jl")
-include("numeric/decision_rules/smolyak.jl")
-include("numeric/decision_rules/complete.jl")
 
 include("linter.jl")
 include("calibration.jl")
@@ -119,7 +118,12 @@ include("model.jl")
 include("symbolic.jl")
 include("printing.jl")
 
-
+include("numeric/decision_rules/core.jl")
+include("numeric/decision_rules/csplines.jl")
+include("numeric/decision_rules/constructor.jl")
+include("numeric/decision_rules/compat.jl")
+include("numeric/decision_rules/smolyak.jl")
+include("numeric/decision_rules/complete.jl")
 
 include("algos/steady_state.jl")
 include("algos/time_iteration.jl")

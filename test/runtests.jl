@@ -12,7 +12,8 @@ tests = length(ARGS) > 0 ? ARGS : [
                                    "test_linter",
                                    "test_minilang",
                                    "test_decision_rules",
-                                   "test_discretize_process"]
+                                   "test_discretize_process"
+                                   ]
 
 for t in tests
     include("$(t).jl")
