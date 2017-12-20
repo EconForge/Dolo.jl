@@ -1,5 +1,4 @@
 __precompile__(true)
-
 module Dolo
 
 import Dolang: SymExpr, list_syms
@@ -105,6 +104,7 @@ import .splines
 import .splines: eval_UC_spline, eval_UC_spline!, prefilter!
 
 include("util.jl")
+include("drstore.jl")
 
 include("numeric/complementarities.jl")
 include("numeric/newton.jl")

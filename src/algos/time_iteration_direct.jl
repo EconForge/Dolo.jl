@@ -21,36 +21,42 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
     endo_nodes = nodes(ListOfPoints,grid)
     N = length(endo_nodes)
 
+    d = length(endo_nodes[1])
     # Discretized exogenous process
     number_of_smooth_drs(dprocess) = max(n_nodes(dprocess), 1)
     n_m = nsd = number_of_smooth_drs(dprocess)
 
     p = SVector(model.calibration[:parameters]...)
+    n_x = length(model.calibration[:controls])
 
-    # initial guess for controls
-    x0 = [init_dr(i, endo_nodes) for i=1:nsd]
 
     ti_trace = trace ? IterationTrace([x0]) : nothing
 
-    n_x = length(model.calibration[:controls])
-    complementarities = true
-    if complementarities == true
-        x_lb = [controls_lb(model, node(Point,dprocess,i),endo_nodes,p) for i=1:n_m]
-        x_ub = [controls_ub(model, node(Point,dprocess,i),endo_nodes,p) for i=1:n_m]
-        BIG = 100000
-        for i=1:n_m
-          for n=1:N
-            x_lb[i][n] = max.(x_lb[i][n],-BIG)
-            x_ub[i][n] = min.(x_ub[i][n], BIG)
-          end
-        end
+    # initial guess for controls
+    ds0 = DRStore(Point{n_x}, [N for i=1:n_m])
+    for i=1:n_m
+        ds0.data[i][:] = init_dr(i, endo_nodes)
     end
 
+    complementarities = true
+    if complementarities == true
+        ds_lb = DRStore([controls_lb(model, node(Point,dprocess,i),endo_nodes,p) for i=1:n_m])
+        ds_ub = DRStore([controls_ub(model, node(Point,dprocess,i),endo_nodes,p) for i=1:n_m])
+        BIG = 100000
+        for n=1:length(ds_lb.flat)
+            ds_lb.flat[n] = max.(ds_lb.flat[n],-BIG)
+            ds_ub.flat[n] = min.(ds_ub.flat[n], BIG)
+        end
+        clamp!(ds0, ds_lb, ds_ub)
+    end
+    ds1 = copy(ds0)
+
+
     # create decision rule (which interpolates x0)
-    dr = CachedDecisionRule(dprocess, grid, x0)
+    dr = CachedDecisionRule(dprocess, grid, [ds0.data...])
 
     # Define controls of tomorrow
-    x1 = deepcopy(x0)
+
 
     # define states of today
     s = deepcopy(endo_nodes);
@@ -68,6 +74,12 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
     ###############################   Iteration loop
     n_h = length(model.symbols[:expectations])
 
+    # temporary vars
+    E_f = DRStore(Point{n_h}, [length(e) for e in ds0.data])
+    d_E_f = deepcopy(E_f.data[1])
+    S = deepcopy(s)
+    X = deepcopy(ds0.data[1])
+
 
     while it<maxit && err>tol_η
 
@@ -75,38 +87,36 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
 
         tic()
 
-        E_f = [zeros(Point{n_h},N) for i=1:number_of_smooth_drs(dprocess)]
+        set_values!(dr, [ds0.data...])
 
-        set_values!(dr, x0)
         # Compute expectations function E_f and states of tomorrow
-
-        # S = zeros(size(s))
+        E_f.flat[:] *= 0.0
 
         for i in 1:size(E_f, 1)
-            m = node(Point,dprocess, i)
+
+            x0 = ds0.data[i]
+            x1 = ds1.data[i]
+            m = node(Point, dprocess, i)
             for (w, M, j) in get_integration_nodes(Point,dprocess,i)
                 # Update the states
-                # S[:,:] = Dolo.transition(model, m, s, x0[i], M, p)
-                S = Dolo.transition(model, m, s, x0[i], M, p)
+                Dolo.transition(model, Val{(0,)}, m, s, x0, M, p, (S,))
                 # interpolate controles conditional states of tomorrow
-                X = dr(i, j, S)
+                X[:] = dr(i, j, S)
                 # Compute expectations as a weighted average of the exo states w_j
-                E_f[i] += w*Dolo.expectation(model, M, S, X, p)
-
+                Dolo.expectation(model, Val{(0,)}, M, S, X, p, (d_E_f,))
+                d_E_f[:] *= w
+                E_f[i][:] +=  d_E_f
             end
-            # compute controles of tomorrow
-            x1[i][:] = Dolo.direct_response(model, m, s, E_f[i], p)
+            # compute tomorrow's control
+            Dolo.direct_response(model, Val{(0,)}, m, s, E_f[i], p, (x1,) )
         end
 
-        err = 0.0
-        for i in 1:size(x1, 1)
-            # apply bounds # TODO: improve
-            x1[i] = clamp.(x1[i], x_lb[i], x_ub[i])
-            # update error
-            err = max(err, maxabs(x1[i] - x0[i]))
-            # copy controls back into x0
-            copy!(x0[i], x1[i])
+        if complementarities
+            clamp!(ds1, ds_lb, ds_ub)
         end
+        err = distance(ds0,ds1)
+
+        copy!(ds0, ds1)
 
         gain = err/err_0
         err_0 = err
