@@ -1,4 +1,4 @@
-function evaluate_definitions(model, simul::AxisArray, params=model.calibration[:parameters])
+function evaluate_definitions(model, simul::AxisArray{T,3}, params=model.calibration[:parameters]) where T
 
     p_ = SVector(params...)
 
@@ -30,6 +30,54 @@ function evaluate_definitions(model, simul::AxisArray, params=model.calibration[
     data = permutedims( reinterpret(Float64, y_, (n_y,N,T)), [2,1,3])
 
     array = AxisArray(data, Axis{:N}(1:N), Axis{:V}(auxiliaries), Axis{:T}(1:T))
+
+end
+
+function evaluate_definitions(model, _simul::AxisArray{__T,2}, params=model.calibration[:parameters]) where __T
+    p_ = SVector(params...)
+
+    all_t = _simul[Axis{:T}].val
+    T = length(all_t)
+    if all(all_t .== 0:T-1)
+        all_t += 1
+    end
+    if all(all_t .!= 1:T)
+        msg = "Can only evaluate definitions if the T Axis goes from 1:T or 0:(T-1)"
+        error(msg)
+    end
+
+    # if necessary, transpose _simul so we can reinterpret colums of `sim`
+    # below
+    if size(_simul, 2) == T
+        simul = _simul
+    else
+        simul = _simul'
+    end
+
+    vars = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+
+    sim = simul[Axis{:V}(vars)]
+
+    T = length(sim[Axis{:T}].val)
+
+    past = sim[Axis{:T}([1; 1:T-1])]
+    present = sim[Axis{:T}(1:T)]
+    future = sim[Axis{:T}([2:T; T])]
+
+    n_v = size(past, 1)
+
+    x_past = reinterpret(Point{n_v}, past.data, (T,))
+    x_present = reinterpret(Point{n_v}, present.data, (T,))
+    x_future = reinterpret(Point{n_v}, future.data, (T,))
+
+    y_ = evaluate_definitions(model, x_past, x_present, x_future, p_)
+
+    auxiliaries = [Dolang.arg_name(e) for e in keys(model.definitions)]
+    n_y = length(auxiliaries)
+
+    data = reinterpret(Float64, y_, (n_y, T))
+
+    array = AxisArray(data, Axis{:V}(auxiliaries), simul[Axis{:T}])
 
 end
 

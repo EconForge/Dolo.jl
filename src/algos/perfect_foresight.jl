@@ -114,30 +114,35 @@ function perfect_foresight(model, exo::AbstractMatrix{Float64}; T=200, verbose=t
     headers = [model.symbols[:exogenous]; model.symbols[:states]; model.symbols[:controls]]
     resp = [driving_process reshape(sol.zero, sh...)]
 
-    return AxisArray(resp', Axis{:V}(headers) ,Axis{:T}(0:T-1))
+    out = AxisArray(resp', Axis{:V}(headers) ,Axis{:T}(0:T-1))
+    defs = evaluate_definitions(model, out)
+    merge(out, defs)
 
 end
 
 # Constructs the matrix exo given a dictionary exo and calls the original method
 function perfect_foresight(model, exo::Dict{}; kwargs... )
-  convert(Dict{Symbol,Array{Float64,1}}, exo)
-  n_e = length(model.symbols[:exogenous])
-  T_e = maximum(length(e) for e in values(exo))
-  exo_new = zeros(T_e,n_e)
+    convert(Dict{Symbol,Array{Float64,1}}, exo)
+    n_e = length(model.symbols[:exogenous])
+    T_e = maximum(length(e) for e in values(exo))
+    exo_new = zeros(T_e, n_e)
+    for (i, key) in enumerate(model.symbols[:exogenous])
+        exo_new[:, i] = model.calibration.flat[key]
+    end
 
     for key in keys(exo)
-      ind = find(model.symbols[:exogenous] .== key)
-      T_key = length(exo[key])
-      exo_new[1:T_key,ind] = exo[key]
+        ind = find(model.symbols[:exogenous] .== key)
+        T_key = length(exo[key])
+        exo_new[1:T_key,ind] = exo[key]
 
-      for t=(T_key+1):T_e
-        exo_new[t,ind] =  exo[key][end]
-      end
+        for t=(T_key+1):T_e
+            exo_new[t,ind] =  exo[key][end]
+        end
 
     end
 
-  exo = exo_new
+    exo = exo_new
 
-  return perfect_foresight(model, exo; kwargs... )
+    return perfect_foresight(model, exo; kwargs... )
 
 end
