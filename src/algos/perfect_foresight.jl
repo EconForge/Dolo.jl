@@ -35,7 +35,7 @@ function perfect_foresight(model, exo::AbstractMatrix{Float64}; T=200, verbose=t
 
     u0 = [s0; x0]
 
-    sol_init = NLsolve.nlsolve(not_in_place(u->res_ss(u,m0)), u0)
+    sol_init = NLsolve.nlsolve(u->res_ss(u,m0), u0, inplace=false)
     if ~NLsolve.converged(sol_init)
         error("Couldn't find initial guess.")
     end
@@ -96,7 +96,7 @@ function perfect_foresight(model, exo::AbstractMatrix{Float64}; T=200, verbose=t
     vv0 = initial_guess[:]
 
     if ~complementarities
-        sol = NLsolve.nlsolve(not_in_place(fun), vv0, show_trace=verbose)
+        sol = NLsolve.nlsolve(fun, vv0, show_trace=verbose, inplace=false)
     else
         ss0 = initial_guess[:, 1:n_s]
         mm0 = driving_process

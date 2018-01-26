@@ -1,4 +1,4 @@
-function evaluate_definitions(model, simul::AxisArray{T,3}, params=model.calibration[:parameters]) where T
+function evaluate_definitions(model, simul::AxisArray{Tf,3}, params=model.calibration[:parameters]) where Tf
 
     p_ = SVector(params...)
 

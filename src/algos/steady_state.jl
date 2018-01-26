@@ -17,7 +17,7 @@ function find_deterministic_equilibrium(model::AModel, calibration::ModelCalibra
     ns = length(s0)
     nx = length(x0)
 
-    function obj!(sx, out)
+    function obj!(out, sx)
         s = view(sx, 1:ns)
         x = view(sx, ns+1:ns+nx)
         s_out = view(out, 1:ns)
