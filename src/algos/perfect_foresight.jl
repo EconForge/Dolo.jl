@@ -35,7 +35,7 @@ function perfect_foresight(model, exo::AbstractMatrix{Float64}; T=200, verbose=t
 
     u0 = [s0; x0]
 
-    sol_init = NLsolve.nlsolve(u->res_ss(u,m0), u0, inplace=false)
+    sol_init = NLsolve.nlsolve(u->res_ss(u,m0), u0, inplace=false, autodiff=:central)
     if ~NLsolve.converged(sol_init)
         error("Couldn't find initial guess.")
     end
@@ -91,7 +91,14 @@ function perfect_foresight(model, exo::AbstractMatrix{Float64}; T=200, verbose=t
 
     sh = size(initial_guess)
 
-    fun = u->residuals(model,s0,driving_process,reshape(u, sh...))[:]
+    function fun(out, in)
+        copy!(out, residuals(model,s0,driving_process, reshape(in, sh...)))
+    end
+    function fun(in)
+        out = similar(in)
+        fun(out, in)
+        out
+    end
 
     vv0 = initial_guess[:]
 
@@ -104,7 +111,9 @@ function perfect_foresight(model, exo::AbstractMatrix{Float64}; T=200, verbose=t
         ub = [ss0*0+Inf Dolo.controls_ub(model, mm0, ss0, p0)]
 
         R0 = fun(vv0)
-        sol = NLsolve.mcpsolve(not_in_place(fun), lb[:], ub[:], vv0, show_trace=verbose)
+        sol = NLsolve.mcpsolve(
+            fun, lb[:], ub[:], vv0, show_trace=verbose,
+        )
     end
 
     if ~NLsolve.converged(sol)
