@@ -147,7 +147,7 @@ case in cannot be used to solve for the Bellman equation.
 >
 > Our RBC example defines the value as
 > $v_t = \frac{(c_t)^{1-\gamma}}{1-\gamma}-\chi \frac{(n_t)^{1+\eta}}/{1+\eta} + \beta E_t v_{t+1}$. This
-> information is coded using: 
+> information is coded using:
 > ``` {.sourceCode .yaml}
 > symbols:
 >     ...
