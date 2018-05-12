@@ -7,7 +7,7 @@ import Dolo
     examples_path = joinpath(path, "examples", "models")
     readdir(examples_path)
 
-    model = Dolo.yaml_import(joinpath(examples_path, "rbc_dtcc_iid.yaml"))
+    model = Dolo.yaml_import(joinpath(examples_path, "rbc_iid.yaml"))
     ff = Dolo.features(model)
     @test ff[:one_dimensional] == false
     @test ff[:one_state] == false
@@ -23,7 +23,7 @@ import Dolo
     @test ff[:nonstochastic_transitions] == true
     @test ff[:bounds_are_constant] == true
 
-    model = Dolo.yaml_import(joinpath(examples_path, "rbc_dtcc_mc.yaml"))
+    model = Dolo.yaml_import(joinpath(examples_path, "rbc_mc.yaml"))
     ff = Dolo.features(model)
     @test ff[:one_dimensional] == true
     @test ff[:one_state] == true

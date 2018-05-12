@@ -4,7 +4,7 @@ import temp
 include("steady_state.jl")
 dolo_dir = Dolo.pkg_path
 
-model = Dolo.yaml_import("rbc_dtcc_iid.yaml")
+model = Dolo.yaml_import("rbc_iid.yaml")
 
 
 process = nothing

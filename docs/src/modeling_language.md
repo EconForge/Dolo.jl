@@ -88,10 +88,10 @@ Here is an example model contained in the file
 This model can be loaded using the command:
 
 ``` {.sourceCode .python}
-model = yaml_import(`examples\global_models\example.yaml`)
+model = yaml_import("examples\models\rbc.yaml")
 ```
 
-The function yaml\_import (cross) will raise errors until the model
+The function `yaml\_import` will raise errors until the model
 satisfies basic compliance tests. \[more of it below\]. In the following
 subsections, we describe the various syntaxic rules prevailing while
 writing yaml files.
@@ -253,7 +253,7 @@ in the declaration order.
 
 The role of the calibration section consists in providing values for the
 parameters and the variables. The calibration of all parameters
-appearing in the equation is of course strictly necessary while the 
+appearing in the equation is of course strictly necessary while the
 calibration of other types of variables is useful to define the
 steady-state or an initial guess of the steady-state.
 
@@ -281,25 +281,25 @@ issuing any warning.
 >
 > No clear policy has been established yet about how to deal with
 > undeclared symbols in the calibration section. Avoid them.
-### Exogenous Shocks 
+### Exogenous Shocks
 
 Exogenous shock processes are specified in the section `exogenous` . Dolo accepts various exogenous processes such as normally distributed iid shocks, VAR1 processes, and Markov Chain processes. Dolo also allows for specific types of Markov Chains such as Poisson Processes, Aging Processes, and Death Processes.
 
 Here are examples of how to define different processes. Note the use of yaml tags.
-Normal Shock: It has mean zero and variance `Sigma`. 
+Normal Shock: It has mean zero and variance `Sigma`.
 ```{.sourceCode .yaml}
 exogenous:!Normal
    Sigma: [[0.016^2]]
 ```
 VAR1: `rho` is the persistence (only one allowed for now). `Sigma` is the covariance matrix. (Note: if a scalar `sigma` is given, it will be converted to `[[sigma]]` to indicate that it is the variance (not covariance) of the process).  
 ```{.sourceCode .yaml}
-exogenous:!VAR1 
+exogenous:!VAR1
     rho: 0.9
     sigma: [[0.01, 0.001],
              [0.001, 0.02]]
     N: 3
 ```
-Markov Chain: 
+Markov Chain:
 ```{.sourceCode .yaml}
 exogenous: !MarkovChain
   values: [[-0.01],[0.01]]
@@ -312,7 +312,7 @@ exogenous: !PoissonProcess
   K: 10
 ```
 
-Aging Process: `mu` is the probability of death and `K` is the maximum age. Note this also encompasses an indicator for death, so in the definition of exogenous variables you will need a variable for age and an indicator for death. 
+Aging Process: `mu` is the probability of death and `K` is the maximum age. Note this also encompasses an indicator for death, so in the definition of exogenous variables you will need a variable for age and an indicator for death.
 
 ```{.sourceCode .yaml}
 exogenous:!AgingProcess
@@ -328,12 +328,12 @@ exogenous:!DeathProcess
 We can also specify more than one process. For instance if we want to combine a VAR1 and an Aging Process we use the tag `Product` and write:
 ```{.sourceCode .yaml}
 exogenous: !Product
-    p1: !VAR1 
+    p1: !VAR1
          rho: 0.75
          Sigma: [[0.015^2]]
 
          N: 3
-         
+
     p2: !AgingProcess
         mu: 0.02
         K: 8
@@ -347,9 +347,9 @@ domain:
   z: [-2*sig_z/(1-rho^2)^0.5,  2*sig_z/(1-rho^2)^0.5]
   k: [ k*0.5, k*1.5]
 ```
-The part for `z` sets the bounds for the productivity process to be two times its asymptotic standard deviation. 
+The part for `z` sets the bounds for the productivity process to be two times its asymptotic standard deviation.
 
-The boundaries for capital are a 50% bracket around its steady-state level. 
+The boundaries for capital are a 50% bracket around its steady-state level.
 ### Options
 The options sections contains extra information needed to solve the model.The
 section follows the mini-language convention, with all calibrated values

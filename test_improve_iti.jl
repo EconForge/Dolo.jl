@@ -3,7 +3,7 @@ import Dolo: Point,ListOfPoints
 using StaticArrays
 
 
-model = Dolo.yaml_import(joinpath(Dolo.pkg_path, "examples","models","rbc_dtcc_ar1.yaml"));
+model = Dolo.yaml_import(joinpath(Dolo.pkg_path, "examples","models","rbc.yaml"));
 
 
 @time sol_iti = Dolo.improved_time_iteration(model; verbose=true);

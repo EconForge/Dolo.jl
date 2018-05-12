@@ -7,7 +7,7 @@ path = Dolo.pkg_path
 @testset "testing model algos" begin
 
     @testset "testing mc models" begin
-        fn = joinpath(path, "examples", "models", "rbc_dtcc_mc.yaml")
+        fn = joinpath(path, "examples", "models", "rbc_mc.yaml")
         # fn = joinpath(path, "examples", "models", "LAMP.yaml")
         model_mc = Dolo.yaml_import(fn)
 
@@ -55,7 +55,7 @@ path = Dolo.pkg_path
 
     @testset "testing iid models" begin
 
-        fn = joinpath(path, "examples", "models", "rbc_dtcc_iid.yaml")
+        fn = joinpath(path, "examples", "models", "rbc_iid.yaml")
         model = Dolo.yaml_import(fn)
 
         @time dr = Dolo.perturbate(model)
@@ -106,7 +106,7 @@ path = Dolo.pkg_path
 
         # AR1 model: this one should be exactly equivalent to rbc_dtcc_ar1
         import Dolo
-        fn = joinpath(Dolo.pkg_path, "examples", "models", "rbc_dtcc_ar1.yaml")
+        fn = joinpath(Dolo.pkg_path, "examples", "models", "rbc.yaml")
         model = Dolo.yaml_import(fn)
         dp = Dolo.discretize(model.exogenous)
 
