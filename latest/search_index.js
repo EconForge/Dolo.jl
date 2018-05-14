@@ -53,7 +53,7 @@ var documenterSearchIndex = {"docs": [
     "page": "The dolo language",
     "title": "YAML format",
     "category": "section",
-    "text": "YAML stands for Yet Another Markup Language. It is a serialization language that allows complex data structures in a human-readable way. Atomic elements are floats, integers and strings. An ordered list can be defined by separating elements with commas and enclosing them with square brackets:[1,2,3]Equivalently, it can be done on several lines, by prepending - to each line- 'element'\n- element         # quotes are optional there is no ambiguity\n- third element   # this is interpreted as ``'third element'``Associative arrays map keys(simple strings) to arbitrary values as in the following example:{age: 18, name: peter}Mappings can also be defined on several lines, and structures can be nested by using indentation (use spaces no tabs):age: 18\nname: peter\noccupations:\n  - school\n  - guitar\nfriends:\n  paula: {age: 18}The correspondance between the yaml definition and the resulting Julia object is very transparent. YAML mappings and lists are converted to Julia dictionaries and arrays respectively.Special objects from the Dolo language can be created by adding a tag to yaml nodes as in the following examples:- !AR1:\n    rho: 0.9\n    Sigma: [[0.1]]or- !Product:\n     !AR1:\n        rho: 0.9\n        Sigma: [[0.1]]\n     !AgingProcess:\n          mu: 0.01     # death probability\n          K: 10        # number of agesAny model file must be syntactically correct in the Yaml sense, before the content is analysed further. More information about the YAML syntax can be found on the YAML website, especially from the language specification."
+    "text": "YAML stands for Yet Another Markup Language. It is a serialization language that allows complex data structures in a human-readable way. Atomic elements are floats, integers and strings. An ordered list can be defined by separating elements with commas and enclosing them with square brackets:[1,2,3]Equivalently, it can be done on several lines, by prepending - to each line- \'element\'\n- element         # quotes are optional there is no ambiguity\n- third element   # this is interpreted as ``\'third element\'``Associative arrays map keys(simple strings) to arbitrary values as in the following example:{age: 18, name: peter}Mappings can also be defined on several lines, and structures can be nested by using indentation (use spaces no tabs):age: 18\nname: peter\noccupations:\n  - school\n  - guitar\nfriends:\n  paula: {age: 18}The correspondance between the yaml definition and the resulting Julia object is very transparent. YAML mappings and lists are converted to Julia dictionaries and arrays respectively.Special objects from the Dolo language can be created by adding a tag to yaml nodes as in the following examples:- !AR1:\n    rho: 0.9\n    Sigma: [[0.1]]or- !Product:\n     !AR1:\n        rho: 0.9\n        Sigma: [[0.1]]\n     !AgingProcess:\n          mu: 0.01     # death probability\n          K: 10        # number of agesAny model file must be syntactically correct in the Yaml sense, before the content is analysed further. More information about the YAML syntax can be found on the YAML website, especially from the language specification."
 },
 
 {
@@ -61,7 +61,7 @@ var documenterSearchIndex = {"docs": [
     "page": "The dolo language",
     "title": "Example",
     "category": "section",
-    "text": "Here is an example model contained in the file examples\\models\\rbc.yamlThis model can be loaded using the command:model = yaml_import(`examples\\global_models\\example.yaml`)The function yaml_import (cross) will raise errors until the model satisfies basic compliance tests. [more of it below]. In the following subsections, we describe the various syntaxic rules prevailing while writing yaml files."
+    "text": "Here is an example model contained in the file examples\\models\\rbc.yamlThis model can be loaded using the command:model = yaml_import(\"examples\\models\\rbc.yaml\")The function yaml_import will raise errors until the model satisfies basic compliance tests. [more of it below]. In the following subsections, we describe the various syntactic rules prevailing while writing yaml files."
 },
 
 {
@@ -69,7 +69,7 @@ var documenterSearchIndex = {"docs": [
     "page": "The dolo language",
     "title": "Sections",
     "category": "section",
-    "text": "A dolo model consists of the following 4 or 5 parts:a symbols section where all symbols used in the model must be   defined\nan equations section containing the list of equations\na calibration section providing numeric values for the symbols\nan options section containing additional information\na covariances or markov_chain section where exogenous shocks are   definedThese section have context dependent rules. We now review each of them in detail:"
+    "text": "A dolo model consists of the following:a symbols: section where all symbols used in the model must be   defined\nan equations: section containing the list of equations\na definitions: section contains variables that can be substituted directly into equations\na calibration: section providing numeric values for the symbols\na domain: section specifying the boundaries for the state variables\nan exogenous: section defining the kind of shocks which drive the model\nan options: section containing additional informationSections symbols:, equations:, calibration: should all be present. Other sections can be omitted for specific applications.These section have context dependent rules. We now review each of them in detail:"
 },
 
 {
@@ -77,7 +77,7 @@ var documenterSearchIndex = {"docs": [
     "page": "The dolo language",
     "title": "Declaration section",
     "category": "section",
-    "text": "This section is introduced by the symbols keyword. All symbols appearing in the model must be defined there.Symbols must be valid Julia identifiers (alphanumeric not beginning with a number) and are case sensitive. Greek letters (save for lambda which is a keyword) are recognized. Subscripts and superscripts can be denoted by _ and __ respectively. For instance beta_i_1__d will be printed nicely as beta_i1^d.Symbols are sorted by type as in the following example:symbols:\n  variables: [a, b]\n  shocks: [e]\n  parameters: [rho]Note that each type of symbol is associated with a symbol list (as [a,b]).noteA common mistake consists in forgetting the commas, and using spaces only. This doesn't work since two symbols are recognized as one.The expected types depend on the model that is being written:For Dynare models, all endogenous variables must be listed as   variables with the exogenous shocks being listed as shocks (as in   the example above).noteThe variables, shocks and parameters keywords correspond to the var, varexo and param keywords in Dynare respectively.Global models require the definition of the parameters, and to providea list of states and controls. Mixed states model also require markov_states that follow a discrete markov chain, while continuous states model need to identify the i.i.d shocks that hit the model. If the corresponding equations are given (see next subsection) optional symbols can also be defined. Among them: values, expectations."
+    "text": "This section is introduced by the symbols keyword. All symbols appearing in the model must be defined there.Symbols must be valid Julia identifiers (alphanumeric not beginning with a number) and are case sensitive. Greek letters (save for lambda which is a keyword) are recognized. Subscripts and superscripts can be denoted by _ and __ respectively. For instance beta_i_1__d will be printed nicely as beta_i1^d.Symbols are sorted by type as in the following example:symbols:\n  states: [a, b]\n  controls: [c, d]\n  exogenous: [e]\n  parameters: [rho]Note that each type of symbol is associated with a symbol list (as [a,b]).noteA common mistake consists in forgetting the commas, and using spaces only. This doesn\'t work since two symbols are recognized as one.For some applications, other types of symbols can be declared, for instance, one can provide a specific list of variable for expectations or values (see Variable types)."
 },
 
 {
@@ -85,7 +85,15 @@ var documenterSearchIndex = {"docs": [
     "page": "The dolo language",
     "title": "Declaration of equations",
     "category": "section",
-    "text": "The equations section contains blocks of equations sorted by type.Epxressions follow (roughly) the Dynare conventions. Common arithmetic operators (+,-,*,/,\\^) are allowed with conventional priorities as well as usual functions (sqrt, log, exp, sin, cos, tan, asin, acos, atan, sinh, cosh, tanh, asinh, acosh, atanh). The definitions of these functions match the definitions from the numpy package. All symbols appearing in an expression must either be declared in the symbols section or be one of the predefined functions. Any symbol s that is not a parameter is assumed to be considered at date t. Values at date t+1 and t-1 are denoted by s(1) and s(-1) respectively.All equations are implicitly enclosed by the expectation operator E_tleftcdots right. Consequently, the law of motion for the capitalk_t+1 = (1-delta) k_t +  i_t + epsilon_tis written as:k = (1-delta)*k(-1) + i(-1)while the Euler equationE_t left 1=beta left( fracc_t+1c_t + (1-delta)+r_t+1 right) rightis translated by:1 = beta*(c/c(1))^(sigma)*(1-delta+rk(1))An equation can consist of one expression, or two expressions separated by =. There are two types of equation blocks:condition blocks\nIn these blocks, each equation lhs = rhs define the scalar value (rhs)-(lhs). A list of of such equations, i.e a block, defines a multivariate function of the appearing symbols. Certain condition blocks, can be associated with complementarity conditions separated by |` as in rhs-lhs | 0 < x < 1. In this case it is advised to omit the equal sign in order to make it easier to interpret the complementarity. Also, when complementarity conditions are used, the ordering of variables appearing in the complementarities must match the declaration order (more in section Y).\ndefinition blocksDefinition blocks differ from condition blocks in that they define a group of variables (states or auxiliaries) as a function of the right hand side.The types of variables appearing on the right hand side depend on the block type. The variables enumerated on the left hand-side must appear in the declaration order.noteIn the RBC example, the auxiliary block defines variables (y,c,rk,w) that can be directly deduced from the states and the controls:auxiliary:\n    - y = z*k^alpha*n^(1-alpha)\n    - c = y - i\n    - rk = alpha*y/k\n    - w = (1-alpha)*y/wNote that the declaration order matches the order in which variables appear on the left hand side. Also, these variables are defined recursively: c, rk and w depend on the value for y. In contrast to the calibration block, the definition order matters. Assuming that variables were listed as (c,y,rk,w) the following block would provide incorrect result since y is not known when c is evaluated.auxiliary:\n    - c = y - i\n    - y = z*k^alpha*n^(1-alpha)\n    - rk = alpha*y/k\n    - w = (1-alpha)*y/w"
+    "text": "The equations section contains blocks of equations sorted by type.Epxressions follow (roughly) the Dynare conventions. Common arithmetic operators (+,-,*,/,\\^) are allowed with conventional priorities as well as usual functions (sqrt, log, exp, sin, cos, tan, asin, acos, atan, sinh, cosh, tanh, asinh, acosh, atanh). All symbols appearing in an expression must either be declared in the symbols section or be one of the predefined functions. Any symbol s that is not a parameter is assumed to be considered at date t. Values at date t+1 and t-1 are denoted by s(1) and s(-1) respectively.All equations are implicitly enclosed by the expectation operator E_tleftcdots right. Consequently, the law of motion for the capitalk_t+1 = (1-delta) k_t +  i_t + epsilon_tis written as:k = (1-delta)*k(-1) + i(-1)while the Euler equationE_t left 1=beta left( fracc_t+1c_t + (1-delta)+r_t+1 right) rightis translated by:1 = beta*(c/c(1))^(sigma)*(1-delta+rk(1))An equation can consist of one expression, or two expressions separated by =. There are two types of equation blocks:condition blocks\nIn these blocks, each equation lhs = rhs define the scalar value (rhs)-(lhs). A list of of such equations, i.e a block, defines a multivariate function of the appearing symbols. Certain condition blocks, can be associated with complementarity conditions separated by |` as in rhs-lhs | 0 <= x <= 1. In this case it is advised to omit the equal sign in order to make it easier to interpret the complementarity. Also, when complementarity conditions are used, the ordering of variables appearing in the complementarities must match the declaration order (more in section Y).\ndefinition blocks\nDefinition blocks differ from condition blocks in that they define a group of variables (for instance states or expectations) as a function of the right hand side.The types of variables appearing on the right hand side depend on the block type. The variables enumerated on the left hand-side must appear in the declaration order."
+},
+
+{
+    "location": "modeling_language.html#Definitions-1",
+    "page": "The dolo language",
+    "title": "Definitions",
+    "category": "section",
+    "text": "It is possible to define special variables that are substituted everywhere.note In the RBC model, output y_t, consumption c_t, return on investment rk_t and wages w_t are definedrecursively by:definitions:\n   y: exp(z)*k^alpha*n^(1-alpha)\n   c: y - i\n   rk: alpha*y/k\n   w: (1-alpha)*y/nThese variables, can then be used in equations, with any timing. For instance in the Euler equation c(1) which represents c_t+1 will implicitly be replaced by: exp(z(1))*k(1)^alpha*n(1)^(1-alpha) - i(1) (parameter alpha is not shifted)."
 },
 
 {
@@ -93,7 +101,7 @@ var documenterSearchIndex = {"docs": [
     "page": "The dolo language",
     "title": "Calibration section",
     "category": "section",
-    "text": "The role of the calibration section consists in providing values for the parameters and the variables. The calibration of all parameters appearing in the equation is of course strictly necessary while the  calibration of other types of variables is useful to define the steady-state or an initial guess of the steady-state.The calibrated values are also substituted in other sections, including the shocks and options section. This is particularly useful to make the covariance matrix depend on model parameters, or to adapt the state-space to the model's calibration.The calibration is given by an associative dictionary mapping symbols to define with values. The values can be either a scalar or an expression. All symbols are treated in the same way, and values can depend upon each other as long as there is a way to resolve them recursively.In particular, it is possible to define a parameter in order to target a special value of an endogenous variable at the steady-state. This is done in the RBC example where steady-state labour is targeted with n: 0.33 and the parameter phi calibrated so that the optimal labour supply equation holds at the steady-state (chi: w/c^sigma/n^eta).All symbols that are defined in the symbols section but do not appear in the calibration section are initialized with the value nan without issuing any warning.noteNo clear policy has been established yet about how to deal with undeclared symbols in the calibration section. Avoid them."
+    "text": "The role of the calibration section consists in providing values for the parameters and the variables. The calibration of all parameters appearing in the equation is of course strictly necessary while the calibration of other types of variables is useful to define the steady-state or an initial guess of the steady-state.The calibrated values are also substituted in other sections, including the domain:, exogenous: and options: sections. This is particularly useful to make the covariance matrix depend on model parameters, or to adapt the state-space to the model\'s calibration.The calibration is given by an associative dictionary mapping symbols to define with values. The values can be either a scalar or an expression. All symbols are treated in the same way, and values can depend upon each other as long as there is a way to resolve them recursively.In particular, it is possible to define a parameter in order to target a special value of an endogenous variable at the steady-state. This is done in the RBC example where steady-state labor is targeted with n: 0.33 and the parameter phi calibrated so that the optimal labor supply equation holds at the steady-state (chi: w/c^sigma/n^eta).All symbols that are defined in the symbols section but do not appear in the calibration section are initialized with the value nan without issuing any warning.noteNo clear policy has been established yet about how to deal with undeclared symbols in the calibration section. Avoid them."
 },
 
 {
@@ -101,7 +109,7 @@ var documenterSearchIndex = {"docs": [
     "page": "The dolo language",
     "title": "Exogenous Shocks",
     "category": "section",
-    "text": "Exogenous shock processes are specified in the section exogenous . Dolo accepts various exogenous processes such as normally distributed iid shocks, VAR1 processes, and Markov Chain processes. Dolo also allows for specific types of Markov Chains such as Poisson Processes, Aging Processes, and Death Processes.Here are examples of how to define different processes. Note the use of yaml tags. Normal Shock: It has mean zero and variance Sigma. exogenous:!Normal\n   Sigma: [[0.016^2]]VAR1: rho is the persistence (only one allowed for now). Sigma is the covariance matrix. (Note: if a scalar sigma is given, it will be converted to [[sigma]] to indicate that it is the variance (not covariance) of the process).  exogenous:!VAR1 \n    rho: 0.9\n    sigma: [[0.01, 0.001],\n             [0.001, 0.02]]\n    N: 3Markov Chain: exogenous: !MarkovChain\n  values: [[-0.01],[0.01]]\n  transitions: [[0.9, 0.1], [0.1, 0.9]]Poisson Process: K is the number of nodes and mu is the probability of a new arrival.exogenous: !PoissonProcess\n  mu: 0.05\n  K: 10Aging Process: mu is the probability of death and K is the maximum age. Note this also encompasses an indicator for death, so in the definition of exogenous variables you will need a variable for age and an indicator for death. exogenous:!AgingProcess\n  mu: 0.02\n  K: 8Death Process: mu is the probability of dying.exogenous:!DeathProcess\n  mu:0.02We can also specify more than one process. For instance if we want to combine a VAR1 and an Aging Process we use the tag Product and write:exogenous: !Product\n    p1: !VAR1 \n         rho: 0.75\n         Sigma: [[0.015^2]]\n\n         N: 3\n         \n    p2: !AgingProcess\n        mu: 0.02\n        K: 8\n"
+    "text": "Exogenous shock processes are specified in the section exogenous . Dolo accepts various exogenous processes such as normally distributed iid shocks, VAR1 processes, and Markov Chain processes. Dolo also allows for specific types of Markov Chains such as Poisson Processes, Aging Processes, and Death Processes.Here are examples of how to define different processes. Note the use of yaml tags. Normal Shock: It has mean zero and variance Sigma.exogenous:!Normal\n   Sigma: [[0.016^2]]VAR1: rho is the persistence (only one allowed for now). Sigma is the covariance matrix. (Note: if a scalar sigma is given, it will be converted to [[sigma]] to indicate that it is the variance (not covariance) of the process).  exogenous:!VAR1\n    rho: 0.9\n    sigma: [[0.01, 0.001],\n             [0.001, 0.02]]\n    N: 3Markov Chain:exogenous: !MarkovChain\n  values: [[-0.01],[0.01]]\n  transitions: [[0.9, 0.1], [0.1, 0.9]]Poisson Process: K is the number of nodes and mu is the probability of a new arrival.exogenous: !PoissonProcess\n  mu: 0.05\n  K: 10Aging Process: mu is the probability of death and K is the maximum age. Note this also encompasses an indicator for death, so in the definition of exogenous variables you will need a variable for age and an indicator for death.exogenous:!AgingProcess\n  mu: 0.02\n  K: 8Death Process: mu is the probability of dying.exogenous:!DeathProcess\n  mu:0.02We can also specify more than one process. For instance if we want to combine a VAR1 and an Aging Process we use the tag Product and write:exogenous: !Product\n    p1: !VAR1\n         rho: 0.75\n         Sigma: [[0.015^2]]\n\n         N: 3\n\n    p2: !AgingProcess\n        mu: 0.02\n        K: 8\n"
 },
 
 {
@@ -109,7 +117,7 @@ var documenterSearchIndex = {"docs": [
     "page": "The dolo language",
     "title": "Domain",
     "category": "section",
-    "text": "The domain section defines lower and upper bounds for the exogenous and endogenous states. For example, in the RBC model, we write:domain:\n  z: [-2*sig_z/(1-rho^2)^0.5,  2*sig_z/(1-rho^2)^0.5]\n  k: [ k*0.5, k*1.5]The part for z sets the bounds for the productivity process to be two times its asymptotic standard deviation. The boundaries for capital are a 50% bracket around its steady-state level. "
+    "text": "The domain section defines lower and upper bounds for the exogenous and endogenous states. For example, in the RBC model, we write:domain:\n  z: [-2*sig_z/(1-rho^2)^0.5,  2*sig_z/(1-rho^2)^0.5]\n  k: [ k*0.5, k*1.5]The part for z sets the bounds for the productivity process to be two times its asymptotic standard deviation.The boundaries for capital are a 50% bracket around its steady-state level."
 },
 
 {
@@ -173,7 +181,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Model Specification",
     "title": "Auxiliary variables / Definitions",
     "category": "section",
-    "text": "- name: `auxiliary`\n- short name: `a`In order to reduce the number of variables, it is useful to define auxiliary variables y_t using a function a such that:y_t = a(m_t s_t x_t)These variables are defined in a special definitions block, outside of equations. When auxiliary variables appear in an equation they are automatically substituted by the corresponding expression in m_t,s_t and x_t.noteIn the RBC model, three auxiliary variables are defined y_t c_t r_kt and w_t. They are a closed form function of a_t k_t i_t n_t. Defining these variables speeds up computation since they are don't need to be solved for or interpolated."
+    "text": "- name: `auxiliary`\n- short name: `a`In order to reduce the number of variables, it is useful to define auxiliary variables y_t using a function a such that:y_t = a(m_t s_t x_t)These variables are defined in a special definitions block, outside of equations. When auxiliary variables appear in an equation they are automatically substituted by the corresponding expression in m_t,s_t and x_t.noteIn the RBC model, three auxiliary variables are defined y_t c_t r_kt and w_t. They are a closed form function of a_t k_t i_t n_t. Defining these variables speeds up computation since they are don\'t need to be solved for or interpolated."
 },
 
 {
@@ -181,7 +189,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Model Specification",
     "title": "Utility function and Bellman equation",
     "category": "section",
-    "text": "- name: `utility`\n- short name: `u`The (separable) value equation defines the value v_t of a given policy as:v_t = u(m_ts_tx_t) + beta E_t left v_t+1 rightThis gives rise to the Bellman eqution:v_t = max_x_t left( u(m_t s_tx_t) + beta E_t left v_t+1 right right)These two equations are characterized by the reward function u and the discount rate beta. Function u defines the vector of symbols rewards. Since the definition of u alone is not sufficient, the parameter used for the discount factor must be given to routines that compute the value. Several values can be computed at once, if U is a vector function and beta a vector of discount factors, but in that case in cannot be used to solve for the Bellman equation.noteOur RBC example defines the value as v_t = frac(c_t)^1-gamma1-gamma-chi frac(n_t)^1+eta1+eta + beta E_t v_t+1. This information is coded using: symbols:\n    ...\n    rewards: [r]\n\nequations:\n    ...\n    utility:\n        - r = c^(1-gamma)/(1-gamma)- chi*n^(1+eta)/(1+eta)\n\ncalibration:\n    ...\n    beta: 0.96   # beta is the default name of the discount"
+    "text": "- name: `utility`\n- short name: `u`The (separable) value equation defines the value v_t of a given policy as:v_t = u(m_ts_tx_t) + beta E_t left v_t+1 rightThis gives rise to the Bellman eqution:v_t = max_x_t left( u(m_t s_tx_t) + beta E_t left v_t+1 right right)These two equations are characterized by the reward function u and the discount rate beta. Function u defines the vector of symbols rewards. Since the definition of u alone is not sufficient, the parameter used for the discount factor must be given to routines that compute the value. Several values can be computed at once, if U is a vector function and beta a vector of discount factors, but in that case in cannot be used to solve for the Bellman equation.noteOur RBC example defines the value as v_t = frac(c_t)^1-gamma1-gamma-chi frac(n_t)^1+eta1+eta + beta E_t v_t+1. This information is coded using:symbols:\n    ...\n    rewards: [r]\n\nequations:\n    ...\n    utility:\n        - r = c^(1-gamma)/(1-gamma)- chi*n^(1+eta)/(1+eta)\n\ncalibration:\n    ...\n    beta: 0.96   # beta is the default name of the discount"
 },
 
 {
@@ -229,7 +237,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Model Specification",
     "title": "Euler equation with expectations",
     "category": "section",
-    "text": "- name: `arbitrage_2` (`equilibrium_2`)\n- short name: `f_2`If expectations are defined using one of the two preceding definitions, the Euler equation can be rewritten as:0 = f(m_t s_t x_t z_t) perp underlineb(m_t s_t) leq x_t leq overlineb(m_t s_t)noteGiven the definition of the expectation variable m_t, today's consumption is given by: c_t = z_t^left(-frac1sigmaright) so the Euler equations are rewritten as:arbitrage_2:\n    - 1 - beta*(c)^(sigma)/m   | 0 <= i <= inf\n    - w - chi*n^eta*c^sigma    | 0 <= n <= infNote the type of the arbitrage equation (arbitrage_2 instead of arbitrage).However c_t is not a control itself,but the controls i_t n_t can be easily deduced:..math:n_t = ((1-\\alpha) z_t k_t^\\alpha m_t/chi)^(1/(eta+\\alpha))\ni_t = z_t k_t^\\alpha n_t^(1-\\alpha) - (m_t)^(-1/\\sigma)This translates into the following YAML code:equations:\n    - n = ((1-alpha)*a*k^alpha*m/chi)^(1/(eta+alpha))\n    - i = z*k^alpha*n^(1-alpha) - m^(-1/sigma)"
+    "text": "- name: `arbitrage_2` (`equilibrium_2`)\n- short name: `f_2`If expectations are defined using one of the two preceding definitions, the Euler equation can be rewritten as:0 = f(m_t s_t x_t z_t) perp underlineb(m_t s_t) leq x_t leq overlineb(m_t s_t)noteGiven the definition of the expectation variable m_t, today\'s consumption is given by: c_t = z_t^left(-frac1sigmaright) so the Euler equations are rewritten as:arbitrage_2:\n    - 1 - beta*(c)^(sigma)/m   | 0 <= i <= inf\n    - w - chi*n^eta*c^sigma    | 0 <= n <= infNote the type of the arbitrage equation (arbitrage_2 instead of arbitrage).However c_t is not a control itself,but the controls i_t n_t can be easily deduced:..math:n_t = ((1-\\alpha) z_t k_t^\\alpha m_t/chi)^(1/(eta+\\alpha))\ni_t = z_t k_t^\\alpha n_t^(1-\\alpha) - (m_t)^(-1/\\sigma)This translates into the following YAML code:equations:\n    - n = ((1-alpha)*a*k^alpha*m/chi)^(1/(eta+alpha))\n    - i = z*k^alpha*n^(1-alpha) - m^(-1/sigma)"
 },
 
 {
@@ -260,7 +268,7 @@ var documenterSearchIndex = {"docs": [
     "location": "algos.html#Dolo.value_iteration",
     "page": "Solution Algorithms",
     "title": "Dolo.value_iteration",
-    "category": "Function",
+    "category": "function",
     "text": "Solve for the value function and associated decision rule using value function iteration.\n\nArguments\n\nmodel::NumericModel: Model object that describes the current model environment.\npdr: Initial guess for the decision rule.\n\nReturns\n\ndr: Solved decision rule object.\ndrv: Solved value function object.\n\n\n\n"
 },
 
@@ -276,7 +284,7 @@ var documenterSearchIndex = {"docs": [
     "location": "algos.html#Dolo.time_iteration",
     "page": "Solution Algorithms",
     "title": "Dolo.time_iteration",
-    "category": "Function",
+    "category": "function",
     "text": "Computes a global solution for a model via backward time iteration. The time iteration is applied to the residuals of the arbitrage equations.\n\nIf the initial guess for the decision rule is not explicitly provided, the initial guess is provided by ConstantDecisionRule. If the stochastic process for the model is not explicitly provided, the process is taken from the default provided by the model object, model.exogenous\n\nArguments\n\nmodel::NumericModel: Model object that describes the current model environment.\nprocess: The stochastic process associated with the exogenous variables in the model.\ninit_dr: Initial guess for the decision rule.\n\nReturns\n\ndr: Solved decision rule.\n\n\n\n"
 },
 
@@ -284,7 +292,7 @@ var documenterSearchIndex = {"docs": [
     "location": "algos.html#Dolo.time_iteration_direct",
     "page": "Solution Algorithms",
     "title": "Dolo.time_iteration_direct",
-    "category": "Function",
+    "category": "function",
     "text": "Computes a global solution for a model via backward time iteration. The time iteration is  applied directly to the decision rule of the model.\n\nIf the initial guess for the decision rule is not explicitly provided, the initial guess is provided by ConstantDecisionRule. If the stochastic process for the model is not explicitly provided, the process is taken from the default provided by the model object, model.exogenous.\n\nArguments\n\nmodel::NumericModel: Model object that describes the current model environment.\nprocess: The stochastic process associated with the exogenous variables in the model.\ninit_dr: Initial guess for the decision rule.\n\nReturns\n\ndr: Solved decision rule.\n\n\n\n"
 },
 
@@ -293,14 +301,14 @@ var documenterSearchIndex = {"docs": [
     "page": "Solution Algorithms",
     "title": "Time iteration",
     "category": "section",
-    "text": "We consider a model with the form:s_t = gleft(m_t-1 s_t-1 x_t-1 m_t right)0 = E_t left fleft(m_t s_t x_t m_t+1 s_t+1 x_t+1 right) rightwhere g is the state transition function, and f is the arbitrage equation.The time iteration algorithm consists in approximating the optimal controls as a function of exogenous and endogenous controls x_t = varphi(m_ts_t). At step n, the current guess for the control, x(s_t) = varphi^n(m_t s_t), serves as the control being used next period.Here is an outline of the algorithm:Start with initial guess varphi^0\nGiven current guess, find the current period's  varphi^n+1(m_ts_t) controls for any (m_ts_t) by solving (numerically)  the arbitrage equation :0 = E_t left fleft(m_t s_t varphi^n+1(m_t s_t) g(s_t varphi^n+1(m_t s_t)) varphi^n(m_t+1g(s_t varphi^n+1(s_t))) right) rightCompute successive approximation errors eta_n=varphi^n+1-varphi^n.\nif eta_n smaller thatn criterion epsilon_eta, return\notherwise return to step 2time_iterationIn some cases, the solution of the Euler equation, can be obtained faster if a direct solution for optimal controls is known as a function expectation as in the following specification:s_t = gleft(m_t-1 s_t-1 x_t-1 m_t right)z_t = E_t left hleft(m_t+1 s_t+1 x_t+1 right) rightx_t = d(m_t s_t z_t)This information can be used by passing the solver=Dict(:type=>:direct) option to the time_iteration function, or by using the devoted function:time_iteration_direct"
+    "text": "We consider a model with the form:s_t = gleft(m_t-1 s_t-1 x_t-1 m_t right)0 = E_t left fleft(m_t s_t x_t m_t+1 s_t+1 x_t+1 right) rightwhere g is the state transition function, and f is the arbitrage equation.The time iteration algorithm consists in approximating the optimal controls as a function of exogenous and endogenous controls x_t = varphi(m_ts_t). At step n, the current guess for the control, x(s_t) = varphi^n(m_t s_t), serves as the control being used next period.Here is an outline of the algorithm:Start with initial guess varphi^0\nGiven current guess, find the current period\'s  varphi^n+1(m_ts_t) controls for any (m_ts_t) by solving (numerically)  the arbitrage equation :0 = E_t left fleft(m_t s_t varphi^n+1(m_t s_t) g(s_t varphi^n+1(m_t s_t)) varphi^n(m_t+1g(s_t varphi^n+1(s_t))) right) rightCompute successive approximation errors eta_n=varphi^n+1-varphi^n.\nif eta_n smaller thatn criterion epsilon_eta, return\notherwise return to step 2time_iterationIn some cases, the solution of the Euler equation, can be obtained faster if a direct solution for optimal controls is known as a function expectation as in the following specification:s_t = gleft(m_t-1 s_t-1 x_t-1 m_t right)z_t = E_t left hleft(m_t+1 s_t+1 x_t+1 right) rightx_t = d(m_t s_t z_t)This information can be used by passing the solver=Dict(:type=>:direct) option to the time_iteration function, or by using the devoted function:time_iteration_direct"
 },
 
 {
     "location": "algos.html#Dolo.improved_time_iteration",
     "page": "Solution Algorithms",
     "title": "Dolo.improved_time_iteration",
-    "category": "Function",
+    "category": "function",
     "text": "Computes a global solution for a model via backward Improved Time Iteration. The algorithm is applied to the residuals of the arbitrage equations. The idea is to solve the system G(x) = 0 as a big nonlinear system in x, where the inverted Jacobian matrix is approximated by an infinite sum (Neumann series).\n\nIf the initial guess for the decision rule is not explicitly provided, the initial guess is provided by ConstantDecisionRule. If the stochastic process for the model is not explicitly provided, the process is taken from the default provided by the model object, model.exogenous\n\nArguments\n\nmodel::NumericModel: Model object that describes the current model environment.\ndprocess: The stochastic process associated with the exogenous variables in the model.\ninit_dr: Initial guess for the decision rule.\nmaxbsteps Maximum number of backsteps.\nverbose Set \"true\" if you would like to see the details of the infinite sum convergence.\nsmaxit Maximum number of iterations to compute the Neumann series.\ncomplementarities\ncompute_radius\ntrace Record Iteration informations\n\nReturns\n\nsol: Improved Time Iteration results\n\n\n\n"
 },
 
@@ -316,7 +324,7 @@ var documenterSearchIndex = {"docs": [
     "location": "algos.html#Dolo.perfect_foresight",
     "page": "Solution Algorithms",
     "title": "Dolo.perfect_foresight",
-    "category": "Function",
+    "category": "function",
     "text": "Document pf.\n\n\n\n"
 },
 
@@ -332,7 +340,7 @@ var documenterSearchIndex = {"docs": [
     "location": "algos.html#Dolo.residuals",
     "page": "Solution Algorithms",
     "title": "Dolo.residuals",
-    "category": "Function",
+    "category": "function",
     "text": "residuals(model::AModel, [calib::ModelCalibration])::Dict\n\nCompute the steady state residuals for the aribtrage and transition equations of model, when these functions are evaluated at the data in calib. If no calib is provided, model.calibration will be used.\n\nSee the docstring for find_deterministic_equilibrium for more information\n\n\n\n"
 },
 
@@ -340,7 +348,7 @@ var documenterSearchIndex = {"docs": [
     "location": "algos.html#Dolo.find_deterministic_equilibrium",
     "page": "Solution Algorithms",
     "title": "Dolo.find_deterministic_equilibrium",
-    "category": "Function",
+    "category": "function",
     "text": "find_deterministic_equilibrium(model::AModel, [calib::ModelCalibration])\n\nSolve for the steady state equilibrium of model, data in cailb to fill in parameter values and provide an initial guess for the states and controls. When no calibration is passed model.calibration is used\n\nThe exogenous variables at time t-1 (m) and t (M) are set to calib[:exogenous].\n\nThe deterministic equilibrium is found by solving for vectors s and x, such that\n\ns = transition(m, s, x, m, p)\n0 = arbitrage(m, s, x, m, s, x, p)\n\n\n\n"
 },
 
@@ -348,7 +356,7 @@ var documenterSearchIndex = {"docs": [
     "location": "algos.html#Dolo.perturbate",
     "page": "Solution Algorithms",
     "title": "Dolo.perturbate",
-    "category": "Function",
+    "category": "function",
     "text": "TBD\n\n\n\n"
 },
 
@@ -388,8 +396,8 @@ var documenterSearchIndex = {"docs": [
     "location": "simulate.html#Dolo.response",
     "page": "Inspecting Solutions",
     "title": "Dolo.response",
-    "category": "Function",
-    "text": "Function \"response\" computes the impulse response functions with several major options:\n\nthe user can provide a vector with the first values of the model's exogenous processes, e1.\nthe user can provide a name of the shock of interest and the size of the shock_name.\nthe user can provide only a name of the shock of interest. The size of the shock is assumed to be a one standard deviation given in the yaml file.\n\nArguments\n\nmodel::NumericModel: Model object that describes the current model environment.\ndr: Solved decision rule.\ne1::ListOfPoints: List of initial model's exogenous processes values.\nIf e1 is not provided, then:\nshock_name: the name of the shock of interest.\noptional:\nImpulse: the size of the shock; default: one standard deviation.\ns0::ListOfPoints: List of initial state variable values; default: model.calibration[:states]\n\nReturns\n\nresponse: Impulse response function.\n\n\n\n"
+    "category": "function",
+    "text": "Function \"response\" computes the impulse response functions with several major options:\n\nthe user can provide a vector with the first values of the model\'s exogenous processes, e1.\nthe user can provide a name of the shock of interest and the size of the shock_name.\nthe user can provide only a name of the shock of interest. The size of the shock is assumed to be a one standard deviation given in the yaml file.\n\nArguments\n\nmodel::NumericModel: Model object that describes the current model environment.\ndr: Solved decision rule.\ne1::ListOfPoints: List of initial model\'s exogenous processes values.\nIf e1 is not provided, then:\nshock_name: the name of the shock of interest.\noptional:\nImpulse: the size of the shock; default: one standard deviation.\ns0::ListOfPoints: List of initial state variable values; default: model.calibration[:states]\n\nReturns\n\nresponse: Impulse response function.\n\n\n\n"
 },
 
 {
@@ -404,7 +412,7 @@ var documenterSearchIndex = {"docs": [
     "location": "simulate.html#QuantEcon.simulate",
     "page": "Inspecting Solutions",
     "title": "QuantEcon.simulate",
-    "category": "Function",
+    "category": "function",
     "text": "This is the one we document.\n\n\n\n"
 },
 
