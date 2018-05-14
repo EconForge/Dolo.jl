@@ -6,7 +6,7 @@ import Dolo
 path = Dolo.pkg_path
 using AxisArrays
 
-filename = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
+filename = joinpath(path,"examples","models","rbc_mc.yaml")
 model = Dolo.yaml_import(filename)
 @time dr = Dolo.time_iteration(model, verbose=true, maxit=10000)
 @time dr = Dolo.improved_time_iteration(model, verbose=true, maxit=10000)
@@ -90,7 +90,7 @@ Dolo.tabulate(model, dr, :k, bounds, model.calibration[:states], m0)
 
 ####################################################################################
 
-filename = joinpath(path,"examples","models","rbc_dtcc_ar1.yaml")
+filename = joinpath(path,"examples","models","rbc.yaml")
 model2 = Dolo.yaml_import(filename)
 @time dr2 = Dolo.time_iteration(model2, verbose=true, maxit=10000)
 
@@ -159,7 +159,7 @@ Tab[:n]
 ####################################################################################
 
 
-filename = joinpath(path,"examples","models","rbc_dtcc_ar1.yaml")
+filename = joinpath(path,"examples","models","rbc.yaml")
 model3 = Dolo.yaml_import(filename)
 
 n_states=5

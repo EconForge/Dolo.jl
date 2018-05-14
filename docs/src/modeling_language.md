@@ -88,27 +88,30 @@ Here is an example model contained in the file
 This model can be loaded using the command:
 
 ``` {.sourceCode .python}
-model = yaml_import(`examples\global_models\example.yaml`)
+model = yaml_import("examples\models\rbc.yaml")
 ```
 
-The function yaml\_import (cross) will raise errors until the model
+The function `yaml_import` will raise errors until the model
 satisfies basic compliance tests. \[more of it below\]. In the following
-subsections, we describe the various syntaxic rules prevailing while
+subsections, we describe the various syntactic rules prevailing while
 writing yaml files.
 
 
 Sections
 --------
 
-A dolo model consists of the following 4 or 5 parts:
+A dolo model consists of the following:
 
--   a symbols section where all symbols used in the model must be
+- a `symbols:` section where all symbols used in the model must be
     defined
--   an equations section containing the list of equations
--   a calibration section providing numeric values for the symbols
--   an options section containing additional information
--   a covariances or markov\_chain section where exogenous shocks are
-    defined
+- an `equations:` section containing the list of equations
+- a `definitions:` section contains variables that can be substituted directly into equations
+- a `calibration:` section providing numeric values for the symbols
+- a `domain:` section specifying the boundaries for the state variables
+- an `exogenous:` section defining the kind of shocks which drive the model
+- an `options:` section containing additional information
+
+Sections `symbols:`, `equations:`, `calibration:` should all be present. Other sections can be omitted for specific applications.
 
 These section have context dependent rules. We now review each of them
 in detail:
@@ -122,14 +125,15 @@ Symbols must be valid Julia identifiers (alphanumeric not beginning
 with a number) and are case sensitive. Greek letters (save for lambda
 which is a keyword) are recognized. Subscripts and superscripts can be
 denoted by \_ and \_\_ respectively. For instance beta\_i\_1\_\_d will
-be printed nicely as $beta_{i,1}^d$.
+be printed nicely as $\beta_{i,1}^d$.
 
 Symbols are sorted by type as in the following example:
 
 ``` {.sourceCode .yaml}
 symbols:
-  variables: [a, b]
-  shocks: [e]
+  states: [a, b]
+  controls: [c, d]
+  exogenous: [e]
   parameters: [rho]
 ```
 
@@ -141,23 +145,8 @@ Note that each type of symbol is associated with a symbol list (as
 > A common mistake consists in forgetting the commas, and using spaces
 > only. This doesn't work since two symbols are recognized as one.
 
-The expected types depend on the model that is being written:
-
--   For Dynare models, all endogenous variables must be listed as
-    variables with the exogenous shocks being listed as shocks (as in
-    the example above).
-
-> **note**
->
-> The variables, shocks and parameters keywords correspond to the var,
-> varexo and param keywords in Dynare respectively.
-
-- Global models require the definition of the parameters, and to provide
-a list of states and controls. Mixed states model also require
-markov\_states that follow a discrete markov chain, while continuous
-states model need to identify the i.i.d shocks that hit the model. If
-the corresponding equations are given (see next subsection) optional
-symbols can also be defined. Among them: values, expectations.
+For some applications, other types of symbols can be declared, for instance, one can provide
+a specific list of variable for expectations or values (see [Variable types](@ref)).
 
 ### Declaration of equations
 
@@ -167,8 +156,7 @@ Epxressions follow (roughly) the Dynare conventions. Common arithmetic
 operators (+,-,\*,/,\^) are allowed with conventional priorities as well
 as usual functions
 (sqrt, log, exp, sin, cos, tan, asin, acos, atan, sinh, cosh, tanh, asinh, acosh, atanh).
-The definitions of these functions match the definitions from the numpy
-package. All symbols appearing in an expression must either be declared
+All symbols appearing in an expression must either be declared
 in the symbols section or be one of the predefined functions. Any symbol
 s that is not a parameter is assumed to be considered at date t. Values
 at date t+1 and t-1 are denoted by s(1) and s(-1) respectively.
@@ -203,7 +191,7 @@ by =. There are two types of equation blocks:
     > In these blocks, each equation `lhs = rhs` define the scalar value
     > `(rhs)-(lhs)`. A list of of such equations, i.e a block, defines a multivariate function of the appearing symbols.
     > Certain condition blocks, can be associated with complementarity conditions separated by |\`
-    > as in `rhs-lhs | 0 < x < 1`. In this case it is advised to omit
+    > as in `rhs-lhs | 0 <= x <= 1`. In this case it is advised to omit
     > the equal sign in order to make it easier to interpret
     > the complementarity. Also, when complementarity conditions are
     > used, the ordering of variables appearing in the complementarities
@@ -211,54 +199,42 @@ by =. There are two types of equation blocks:
 
 - definition blocks
 
-> Definition blocks differ from condition blocks in that they define a
-> group of variables (`states` or `auxiliaries`) as a function of the
-> right hand side.
+  > Definition blocks differ from condition blocks in that they define a
+  > group of variables (for instance `states` or `expectations`) as a function of the
+  > right hand side.
 
 The types of variables appearing on the right hand side depend on the
 block type. The variables enumerated on the left hand-side must appear
 in the declaration order.
 
+### Definitions
+
+It is possible to define special variables that are substituted everywhere.
+
 > **note**
->
-> In the RBC example, the `auxiliary` block defines variables
-> (`y,c,rk,w`) that can be directly deduced from the states and the
-> controls:
->
+> In the RBC model, output $y_t$, consumption $c_t$, return on investment $rk_t$ and wages $w_t$ are defined
+recursively by:
 > ``` {.sourceCode .yaml}
-> auxiliary:
->     - y = z*k^alpha*n^(1-alpha)
->     - c = y - i
->     - rk = alpha*y/k
->     - w = (1-alpha)*y/w
+> definitions:
+>    y: exp(z)*k^alpha*n^(1-alpha)
+>    c: y - i
+>    rk: alpha*y/k
+>    w: (1-alpha)*y/n
 > ```
->
-> Note that the declaration order matches the order in which variables
-> appear on the left hand side. Also, these variables are defined
-> recursively: `c`, `rk` and `w` depend on the value for `y`. In
-> contrast to the calibration block, the definition order matters.
-> Assuming that variables were listed as (`c,y,rk,w`) the following
-> block would provide incorrect result since `y` is not known when `c`
-> is evaluated.
->
-> ``` {.sourceCode .yaml}
-> auxiliary:
->     - c = y - i
->     - y = z*k^alpha*n^(1-alpha)
->     - rk = alpha*y/k
->     - w = (1-alpha)*y/w
-> ```
+> These variables, can then be used in equations, with any timing. For instance in the
+> Euler equation `c(1)` which represents $c_{t+1}$ will implicitly be replaced by:
+> `exp(z(1))*k(1)^alpha*n(1)^(1-alpha) - i(1)` (parameter `alpha` is not shifted).
 
 ### Calibration section
 
 The role of the calibration section consists in providing values for the
 parameters and the variables. The calibration of all parameters
-appearing in the equation is of course strictly necessary while the 
+appearing in the equation is of course strictly necessary while the
 calibration of other types of variables is useful to define the
 steady-state or an initial guess of the steady-state.
 
 The calibrated values are also substituted in other sections, including
-the shocks and options section. This is particularly useful to make the
+the `domain:`, `exogenous:` and `options:` sections. This is particularly useful to make the
 covariance matrix depend on model parameters, or to adapt the
 state-space to the model's calibration.
 
@@ -269,8 +245,8 @@ other as long as there is a way to resolve them recursively.
 
 In particular, it is possible to define a parameter in order to target a
 special value of an endogenous variable at the steady-state. This is
-done in the RBC example where steady-state labour is targeted with
-`n: 0.33` and the parameter `phi` calibrated so that the optimal labour
+done in the RBC example where steady-state labor is targeted with
+`n: 0.33` and the parameter `phi` calibrated so that the optimal labor
 supply equation holds at the steady-state (`chi: w/c^sigma/n^eta`).
 
 All symbols that are defined in the symbols section but do not appear in
@@ -281,25 +257,26 @@ issuing any warning.
 >
 > No clear policy has been established yet about how to deal with
 > undeclared symbols in the calibration section. Avoid them.
-### Exogenous Shocks 
+
+### Exogenous Shocks
 
 Exogenous shock processes are specified in the section `exogenous` . Dolo accepts various exogenous processes such as normally distributed iid shocks, VAR1 processes, and Markov Chain processes. Dolo also allows for specific types of Markov Chains such as Poisson Processes, Aging Processes, and Death Processes.
 
 Here are examples of how to define different processes. Note the use of yaml tags.
-Normal Shock: It has mean zero and variance `Sigma`. 
+Normal Shock: It has mean zero and variance `Sigma`.
 ```{.sourceCode .yaml}
 exogenous:!Normal
    Sigma: [[0.016^2]]
 ```
 VAR1: `rho` is the persistence (only one allowed for now). `Sigma` is the covariance matrix. (Note: if a scalar `sigma` is given, it will be converted to `[[sigma]]` to indicate that it is the variance (not covariance) of the process).  
 ```{.sourceCode .yaml}
-exogenous:!VAR1 
+exogenous:!VAR1
     rho: 0.9
     sigma: [[0.01, 0.001],
              [0.001, 0.02]]
     N: 3
 ```
-Markov Chain: 
+Markov Chain:
 ```{.sourceCode .yaml}
 exogenous: !MarkovChain
   values: [[-0.01],[0.01]]
@@ -312,7 +289,7 @@ exogenous: !PoissonProcess
   K: 10
 ```
 
-Aging Process: `mu` is the probability of death and `K` is the maximum age. Note this also encompasses an indicator for death, so in the definition of exogenous variables you will need a variable for age and an indicator for death. 
+Aging Process: `mu` is the probability of death and `K` is the maximum age. Note this also encompasses an indicator for death, so in the definition of exogenous variables you will need a variable for age and an indicator for death.
 
 ```{.sourceCode .yaml}
 exogenous:!AgingProcess
@@ -328,12 +305,12 @@ exogenous:!DeathProcess
 We can also specify more than one process. For instance if we want to combine a VAR1 and an Aging Process we use the tag `Product` and write:
 ```{.sourceCode .yaml}
 exogenous: !Product
-    p1: !VAR1 
+    p1: !VAR1
          rho: 0.75
          Sigma: [[0.015^2]]
 
          N: 3
-         
+
     p2: !AgingProcess
         mu: 0.02
         K: 8
@@ -347,9 +324,10 @@ domain:
   z: [-2*sig_z/(1-rho^2)^0.5,  2*sig_z/(1-rho^2)^0.5]
   k: [ k*0.5, k*1.5]
 ```
-The part for `z` sets the bounds for the productivity process to be two times its asymptotic standard deviation. 
+The part for `z` sets the bounds for the productivity process to be two times its asymptotic standard deviation.
 
-The boundaries for capital are a 50% bracket around its steady-state level. 
+The boundaries for capital are a 50% bracket around its steady-state level.
+
 ### Options
 The options sections contains extra information needed to solve the model.The
 section follows the mini-language convention, with all calibrated values

@@ -3,7 +3,7 @@ import Dolo
 import Dolo: n_nodes, n_inodes, nodes, CachedDecisionRule
 import Dolo: invert_jac
 
-model = Dolo.yaml_import("examples/models/rbc_dtcc_mc.yaml")
+model = Dolo.yaml_import("examples/models/rbc_mc.yaml")
 dp = Dolo.discretize(model.exogenous)
 
 

@@ -9,8 +9,8 @@ using AxisArrays
 ###############################################################################
 ## Markov Chain
 ###############################################################################
-filename = joinpath(path,"examples","models","rbc_dtcc_mc.yaml")
-# model = Dolo.Model(joinpath(Dolo.pkg_path, "examples", "models", "rbc_dtcc_mc.yaml"), print_code=true)
+filename = joinpath(path,"examples","models","rbc_mc.yaml")
+# model = Dolo.Model(joinpath(Dolo.pkg_path, "examples", "models", "rbc_mc.yaml"), print_code=true)
 model = Dolo.yaml_import(filename)
 
 @time dr_ITI  = Dolo.improved_time_iteration(model; verbose=true, tol = 1e-06, smaxit=100)
@@ -89,7 +89,7 @@ plt.title("Decision Rule");
 # RBC with an AR process
 ################################################################################
 
-filename = joinpath(path,"examples","models","rbc_dtcc_ar1.yaml")
+filename = joinpath(path,"examples","models","rbc.yaml")
 model_ar1 = Dolo.yaml_import(filename)
 @time dr_ITI_ar1  = Dolo.improved_time_iteration(model_ar1; verbose=true, tol = 1e-06, smaxit=50)
 @time dr_TI_ar1  = Dolo.time_iteration(model_ar1; tol_η=1e-08, maxit=1000)
@@ -147,7 +147,7 @@ plt.title("Decision Rule");
 # RBC with an IID process
 ################################################################################
 
-filename = joinpath(path,"examples","models","rbc_dtcc_iid.yaml")
+filename = joinpath(path,"examples","models","rbc_iid.yaml")
 model_iid = Dolo.yaml_import(filename)
 @time dr_ITI_iid  = Bruteforce_module.improved_time_iteration(model_iid; verbose=true, tol = 1e-06, smaxit=50)
 @time dr_TI_iid  = Dolo.time_iteration(model_iid; tol_η=1e-08, maxit=1000)

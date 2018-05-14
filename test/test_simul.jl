@@ -71,7 +71,7 @@ Dolo.response(model2, dr2, s0, :e_d)
 
 #########################################################################
 
-# filename = joinpath(path,"examples","models","rbc_dtcc_ar1.yaml")
+# filename = joinpath(path,"examples","models","rbc.yaml")
 # model = Dolo.yaml_import(filename)
 # # model2 = Dolo.yaml_import(filename2)
 # N = 1
