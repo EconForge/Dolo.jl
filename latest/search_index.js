@@ -353,9 +353,9 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "algos.html#Dolo.perturbate",
+    "location": "algos.html#Dolo.perturb",
     "page": "Solution Algorithms",
-    "title": "Dolo.perturbate",
+    "title": "Dolo.perturb",
     "category": "function",
     "text": "TBD\n\n\n\n"
 },
@@ -365,7 +365,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Solution Algorithms",
     "title": "Local Analysis",
     "category": "section",
-    "text": "residualsfind_deterministic_equilibriumperturbate"
+    "text": "residualsfind_deterministic_equilibriumperturb"
 },
 
 {
