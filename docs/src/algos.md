@@ -144,5 +144,5 @@ find_deterministic_equilibrium
 ```
 
 ```@docs
-perturbate
+perturb
 ```

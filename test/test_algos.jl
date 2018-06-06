@@ -58,7 +58,7 @@ path = Dolo.pkg_path
         fn = joinpath(path, "examples", "models", "rbc_iid.yaml")
         model = Dolo.yaml_import(fn)
 
-        @time dr = Dolo.perturbate(model)
+        @time dr = Dolo.perturb(model)
 
         drc = Dolo.ConstantDecisionRule(model.calibration[:controls])
 
@@ -110,7 +110,7 @@ path = Dolo.pkg_path
         model = Dolo.yaml_import(fn)
         dp = Dolo.discretize(model.exogenous)
 
-        @time dr = Dolo.perturbate(model)
+        @time dr = Dolo.perturb(model)
         @time tid_res = Dolo.time_iteration_direct(model; maxit=20, verbose=true)
         @time ti_res = Dolo.time_iteration(model, tid_res.dr; maxit=20, verbose=false)
         @time iti_res = Dolo.improved_time_iteration(model; maxit=20, verbose=false)
