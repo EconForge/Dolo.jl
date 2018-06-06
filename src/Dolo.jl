@@ -60,7 +60,7 @@ export arbitrage, transition, auxiliary, value, expectation,
 export lint, yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename, id, features, set_calibration!
 
 export time_iteration, improved_time_iteration, value_iteration, residuals,
-        response, simulate, perfect_foresight, time_iteration_direct, find_deterministic_equilibrium, perturbate
+        response, simulate, perfect_foresight, time_iteration_direct, find_deterministic_equilibrium, perturb, tabulate
 
 export ModelCalibration, FlatCalibration, GroupedCalibration
 export AbstractModel, AbstractDecisionRule

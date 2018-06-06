@@ -5,11 +5,11 @@ function get_ss_derivatives(model)
     g_diff, f_diff
 end
 
-perturbate(p::IIDExogenous) = (zeros(0), zeros(0, 0))
-perturbate(p::VAR1) = (p.mu, p.R)
+perturb(p::IIDExogenous) = (zeros(0), zeros(0, 0))
+perturb(p::VAR1) = (p.mu, p.R)
 
 type PerturbationResult
-    solution::BiTaylorExpansion
+    dr::BiTaylorExpansion
     generalized_eigenvalues::Vector
     stable::Bool     # biggest e.v. lam of solution is < 1
     determined::Bool # next eigenvalue is > lam + epsilon (MOD solution well defined)
@@ -27,7 +27,7 @@ end
 
 blanchard_kahn(fos::PerturbationResult) = fos.stable && fos.unique
 
-function perturbate_first_order(g_s, g_x, f_s, f_x, f_S, f_X)
+function perturb_first_order(g_s, g_x, f_s, f_x, f_S, f_X)
 
     eigtol = 1.0+1e-6
 
@@ -78,7 +78,7 @@ function get_gf_derivatives(model::AbstractModel)
     _f_m, _f_s, _f_x, _f_M, _f_S, _f_X = f_diff
     _g_m, _g_s, _g_x, _g_M = g_diff
 
-    (M, R) = perturbate(model.exogenous)
+    (M, R) = perturb(model.exogenous)
 
     f_x = _f_x
     f_X = _f_X
@@ -103,12 +103,12 @@ end
 """
 TBD
 """
-function perturbate(model::Model)
+function perturb(model::Model)
 
     g_s, g_x, f_s, f_x, f_S, f_X = get_gf_derivatives(model)
     nx = size(g_x, 2)
 
-    (M, R) = perturbate(model.exogenous)
+    (M, R) = perturb(model.exogenous)
     _m, _s, x, p = model.calibration[:exogenous, :states, :controls, :parameters]
 
     if size(R, 1)>0
@@ -117,7 +117,7 @@ function perturbate(model::Model)
         s = _s
     end
 
-    C, genvals = perturbate_first_order(g_s, g_x, f_s, f_x, f_S, f_X)
+    C, genvals = perturb_first_order(g_s, g_x, f_s, f_x, f_S, f_X)
     sort!(genvals)
 
     if size(R, 1)>0
