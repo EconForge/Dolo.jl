@@ -8,7 +8,7 @@ end
 perturb(p::IIDExogenous) = (zeros(0), zeros(0, 0))
 perturb(p::VAR1) = (p.mu, p.R)
 
-type PerturbationResult
+mutable struct PerturbationResult
     dr::BiTaylorExpansion
     generalized_eigenvalues::Vector
     stable::Bool     # biggest e.v. lam of solution is < 1

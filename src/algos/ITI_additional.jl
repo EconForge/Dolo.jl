@@ -205,7 +205,7 @@ end
 
 ####
 
-type ImprovedTimeIterationResult
+mutable struct ImprovedTimeIterationResult
   dr::AbstractDecisionRule
   N::Int
   f_x::Float64

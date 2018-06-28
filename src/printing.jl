@@ -24,7 +24,7 @@ function sanitize(a,model::Dolo.ASModel)
     return sanitize(a, dynvars)
 end
 
-function Base.show{ID}(io::IO, m::SModel{ID})
+function Base.show(io::IO, m::SModel{ID}) where ID
     println(io,
     """NumericModel
       - name: $(m.name)

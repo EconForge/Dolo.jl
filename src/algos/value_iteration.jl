@@ -1,7 +1,7 @@
 using Optim
 
 
-immutable ValueIterationLog
+struct ValueIterationLog
     header::Array{String, 1}
     keywords::Array{Symbol, 1}
     entries::Array{Any, 1}
@@ -14,7 +14,7 @@ function ValueIterationLog()
 end
 
 
-type ValueIterationResult
+mutable struct ValueIterationResult
     dr::AbstractDecisionRule
     drv::AbstractDecisionRule
     iterations::Int

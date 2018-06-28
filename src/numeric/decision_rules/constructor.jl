@@ -63,7 +63,7 @@ end
 # ##### Cached Decision Rules (do we really need them ?)
 # #####
 
-type CachedDecisionRule{T,S}
+mutable struct CachedDecisionRule{T,S}
     dr::T
     process::S
 end
