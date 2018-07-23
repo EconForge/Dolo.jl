@@ -2,15 +2,15 @@
 # Grid types #
 # ---------- #
 
-@compat abstract type AbstractGrid end
+abstract type AbstractGrid end
 
-immutable Cartesian <: AbstractGrid
+struct Cartesian <: AbstractGrid
     a::Vector{Float64}
     b::Vector{Float64}
     orders::Vector{Int}
 end
 
-type Domain
+mutable struct Domain
     states::Vector{Symbol}
     min::Vector{Float64}
     max::Vector{Float64}
@@ -43,7 +43,7 @@ end
 # Distribution types #
 # ------------------ #
 
-@compat abstract type AbstractDistribution end
+abstract type AbstractDistribution end
 
 function _build_dist(data::Associative, calib::ModelCalibration)
     if data[:tag] == :Normal

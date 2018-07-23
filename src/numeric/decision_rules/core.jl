@@ -1,4 +1,4 @@
-@compat abstract type AbstractDecisionRule{S<:Grid,T<:Grid,nx} end
+abstract type AbstractDecisionRule{S<:Grid,T<:Grid,nx} end
 
 function Base.show(io::IO, dr::AbstractDecisionRule)
     println(io, typeof(dr))
@@ -11,7 +11,7 @@ outdim(dr::AbstractDecisionRule{<:Grid,<:Grid,nx}) where nx = nx
 # Constant decision rule #
 # ---------------------- #
 
-@compat type ConstantDecisionRule{nx} <: AbstractDecisionRule{EmptyGrid,EmptyGrid,nx}
+mutable struct ConstantDecisionRule{nx} <: AbstractDecisionRule{EmptyGrid,EmptyGrid,nx}
     constants::SVector{nx,Float64}
 end
 
@@ -40,7 +40,7 @@ end
 # 2-dimensional Taylor Expansion #
 # ------------------------------ #
 
-@compat type BiTaylorExpansion{nx} <: AbstractDecisionRule{EmptyGrid,EmptyGrid,nx}
+mutable struct BiTaylorExpansion{nx} <: AbstractDecisionRule{EmptyGrid,EmptyGrid,nx}
     m0::Vector{Float64}
     s0::Vector{Float64}
     x0::Vector{Float64}

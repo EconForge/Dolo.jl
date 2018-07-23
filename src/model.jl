@@ -21,7 +21,7 @@ const yaml_types = let
                            for (t, s) in pairs])
 end
 
-type SModel{ID} <: ASModel{ID}
+mutable struct SModel{ID} <: ASModel{ID}
     data::Dict{Symbol,Any}
 end
 
@@ -206,7 +206,7 @@ function set_calibration!(model::ASModel, key::Symbol, value::Union{Real,Expr, S
     model.data[:calibration][key] = value
 end
 
-type Model{ID} <: AModel{ID}
+mutable struct Model{ID} <: AModel{ID}
 
     data::Dict{Symbol,Any}
     name::String           # weakly immutable
@@ -222,7 +222,7 @@ type Model{ID} <: AModel{ID}
     grid
     options
 
-    function (::Type{Model{ID}}){ID}(data::Dict{Symbol,Any}; print_code::Bool=false, filename="<string>")
+    function Model{ID}(data::Dict{Symbol,Any}; print_code::Bool=false, filename="<string>") where ID
 
         model = new{ID}(data)
         model.name = get_name(model)
@@ -286,7 +286,7 @@ type Model{ID} <: AModel{ID}
 
 end
 
-_numeric_mod_type{ID}(::Model{ID}) = Model{ID}
+_numeric_mod_type(::Model{ID}) where {ID} = Model{ID}
 
 function Base.show(io::IO, model::Model)
     print(io, "Model")
@@ -318,7 +318,7 @@ function set_calibration!(model::Model, key::Symbol, value::Union{Real,Expr, Sym
     model.calibration
 end
 
-function set_calibration!{T}(model::Model, values::Associative{Symbol,T})
+function set_calibration!(model::Model, values::Associative{Symbol,T}) where T
     for (key,value) in values
         model.data[:calibration][key] = value
     end

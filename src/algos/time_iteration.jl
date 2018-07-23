@@ -43,7 +43,7 @@ end
 
 
 
-immutable TimeIterationLog
+struct TimeIterationLog
     header::Array{String, 1}
     keywords::Array{Symbol, 1}
     entries::Array{Any, 1}
@@ -101,12 +101,12 @@ end
 ###
 
 
-type IterationTrace
+mutable struct IterationTrace
     trace::Array{Any,1}
 end
 
 
-type TimeIterationResult
+mutable struct TimeIterationResult
     dr::AbstractDecisionRule
     iterations::Int
     complementarities::Bool

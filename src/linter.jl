@@ -44,12 +44,12 @@ Base.getindex(d::YAML.MappingNode, s::Symbol) = d[string(s)]
 # extended index: find
 
 
-type Location
+mutable struct Location
     start_mark::YAML.Mark
     end_mark::YAML.Mark
 end
 
-type MissingElement <: Exception
+mutable struct MissingElement <: Exception
     path::Vector{AbstractString}
     k::Integer # index of first missing element
     loc::Location
@@ -74,13 +74,13 @@ function Base.getindex(d::YAML.MappingNode, l::Symbol...)
 end
 
 
-type LinterException <: Exception
+mutable struct LinterException <: Exception
     msg::AbstractString
     loc::Location
     src::AbstractString
 end
 
-type LinterWarning <: Exception
+mutable struct LinterWarning <: Exception
     errvalue::AbstractString
     errtype::AbstractString
     msg::AbstractString

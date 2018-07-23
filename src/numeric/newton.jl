@@ -1,5 +1,5 @@
 function add_epsilon!(x::ListOfPoints{d}, i, epsilon) where d
-  ei = SVector{d,Float64}([(j==i?epsilon:0.0) for j=1:d])
+  ei = SVector{d,Float64}([(j==i ? epsilon : 0.0) for j=1:d])
   for i=1:length(x)
     x[i] += ei
   end

@@ -55,7 +55,7 @@ end
 #### UnstructuredGrid × CartesianGrid 2 continous arguments d.r.
 ####
 
-function SmolyakDR{nx}(grid_exo::UnstructuredGrid, grid_endo::SmolyakGrid, ::Union{Val{nx},Type{Val{nx}}})
+function SmolyakDR(grid_exo::UnstructuredGrid, grid_endo::SmolyakGrid, ::Union{Val{nx},Type{Val{nx}}}) where nx
     coefs = [Array{Float64}(n_nodes(grid_endo), nx) for i in 1:n_nodes(grid_exo)]
     SmolyakDR{typeof(grid_exo),typeof(grid_endo),nx}(grid_exo, grid_endo, coefs)
 end

@@ -2,7 +2,7 @@
 # Calibration #
 # ----------- #
 
-immutable FlatCalibration <: Associative{Symbol,Float64}
+struct FlatCalibration <: Associative{Symbol,Float64}
     d::OrderedDict{Symbol,Float64}
 end
 
@@ -11,7 +11,7 @@ FlatCalibration(pairs::Pair{Symbol,Float64}...) =
 
 FlatCalibration() = FlatCalibration(OrderedDict{Symbol,Float64}())
 
-immutable GroupedCalibration <: Associative{Symbol,Vector{Float64}}
+struct GroupedCalibration <: Associative{Symbol,Vector{Float64}}
     d::Dict{Symbol,Vector{Float64}}
 end
 
@@ -22,7 +22,7 @@ GroupedCalibration(pairs::Pair{Symbol,Vector{Float64}}...) =
 
 # use let block so `Calib` isn't a member of the Dolo module
 let
-    const Calib = Union{FlatCalibration,GroupedCalibration}
+    Calib = Union{FlatCalibration,GroupedCalibration}
 
     Base.getindex(c::Calib, n::Symbol) = c.d[n]
     Base.getindex(c::Calib, nms::Symbol...) = [c[n] for n in nms]
@@ -48,10 +48,10 @@ let
     # methods that didn't match signatures above
     Base.get!(f::Function, c::Calib, key) = get!(f, c.d, key)
     Base.get(f::Function, c::Calib, key) = get(f, c.d, key)
-    Base.merge!{T<:Calib}(c::T, others::T...) =
+    Base.merge!(c::T, others::T...) where {T<:Calib} =
         T(merge!(c.d, [o.d for o in others]...))
-    Base.copy{T<:Calib}(c::T) = T(copy(c.d))
-    Base.deepcopy{T<:Calib}(c::T) = T(deepcopy(c.d))
+    Base.copy(c::T) where {T<:Calib} = T(copy(c.d))
+    Base.deepcopy(c::T) where {T<:Calib} = T(deepcopy(c.d))
 end
 
 # setting a single value
@@ -95,7 +95,7 @@ function Base.setindex!(gc::GroupedCalibration, vs::Tuple, ks::Symbol...)
 end
 
 # Contains a FlatCalibration and GroupedCalibration, plus information on symbols
-immutable ModelCalibration
+struct ModelCalibration
     flat::FlatCalibration
     grouped::GroupedCalibration
     symbol_table::Dict{Symbol,Tuple{Symbol,Int}}

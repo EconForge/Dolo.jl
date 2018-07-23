@@ -66,20 +66,20 @@ export ModelCalibration, FlatCalibration, GroupedCalibration
 export AbstractModel, AbstractDecisionRule
 
 # set up core types
-@compat abstract type AbstractSymbolicModel{ID} end
-@compat abstract type AbstractModel{ID} <: AbstractSymbolicModel{ID} end
+abstract type AbstractSymbolicModel{ID} end
+abstract type AbstractModel{ID} <: AbstractSymbolicModel{ID} end
 
 const ASModel = AbstractSymbolicModel
 const AModel = AbstractModel
 
-id{ID}(::AbstractModel{ID}) = ID
+id(::AbstractModel{ID}) where {ID} = ID
 
 
 # conventions for list of points
-@compat Point{d} = SVector{d,Float64}
-@compat Value{n} = SVector{n,Float64}
-@compat ListOfPoints{d} = Vector{Point{d}}
-@compat ListOfValues{n} = Vector{Value{n}}
+Point{d} = SVector{d,Float64}
+Value{n} = SVector{n,Float64}
+ListOfPoints{d} = Vector{Point{d}}
+ListOfValues{n} = Vector{Value{n}}
 
 
 # recursively make all keys at any layer of nesting a symbol

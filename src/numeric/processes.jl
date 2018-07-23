@@ -1,11 +1,11 @@
-@compat abstract type AbstractExogenous end
+abstract type AbstractExogenous end
 
-@compat abstract type AbstractProcess <: AbstractExogenous end
-@compat abstract type DiscreteProcess <: AbstractProcess end
-@compat abstract type ContinuousProcess <: AbstractProcess end
-@compat abstract type IIDExogenous <: ContinuousProcess end
+abstract type AbstractProcess <: AbstractExogenous end
+abstract type DiscreteProcess <: AbstractProcess end
+abstract type ContinuousProcess <: AbstractProcess end
+abstract type IIDExogenous <: ContinuousProcess end
 
-@compat abstract type AbstractDiscretizedProcess <: DiscreteProcess end
+abstract type AbstractDiscretizedProcess <: DiscreteProcess end
 
 # this is a bit crude but not performance critical, for now
 function node(::Type{Point}, dp::DiscreteProcess, i::Int)
@@ -22,7 +22,7 @@ end
 ###
 
 # date-t grid has a known structure
-type DiscretizedProcess{TG<:Grid} <: AbstractDiscretizedProcess
+mutable struct DiscretizedProcess{TG<:Grid} <: AbstractDiscretizedProcess
     grid::TG
     integration_nodes::Array{Matrix{Float64},1}
     integration_weights::Array{Vector{Float64},1}
@@ -46,7 +46,7 @@ end
 
 
 # date-t grid is unstructured
-type DiscreteMarkovProcess <: AbstractDiscretizedProcess
+mutable struct DiscreteMarkovProcess <: AbstractDiscretizedProcess
     grid::UnstructuredGrid
     transitions::Matrix{Float64}
     values::Matrix{Float64}
@@ -84,7 +84,7 @@ end
 
 # date-t grid is empty
 
-type DiscretizedIIDProcess <: AbstractDiscretizedProcess
+mutable struct DiscretizedIIDProcess <: AbstractDiscretizedProcess
     # nodes::Matrix{Float64}
     grid::EmptyGrid
     integration_nodes::Matrix{Float64}
@@ -101,7 +101,7 @@ node(dip::DiscretizedIIDProcess, i) = zeros(n_inodes(dip, 1))
 
 # Normal law
 
-immutable MvNormal <: IIDExogenous
+struct MvNormal <: IIDExogenous
     mu::Vector{Float64}
     Sigma::Matrix{Float64}
 end
@@ -177,7 +177,7 @@ end
 
 # VAR 1
 
-type VAR1 <: ContinuousProcess
+mutable struct VAR1 <: ContinuousProcess
     mu::Array{Float64,1}
     R::Array{Float64,2}
     Sigma::Array{Float64,2}
@@ -366,7 +366,7 @@ end
 #### ProductProcess
 
 
-type ProductProcess <: AbstractProcess
+mutable struct ProductProcess <: AbstractProcess
     process_1::AbstractProcess
     process_2::AbstractProcess
 end
