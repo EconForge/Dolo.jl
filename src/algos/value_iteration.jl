@@ -221,27 +221,15 @@ end
 # end
 #
 
-@static if Pkg.installed("Optim") < v"0.9-"
-    function call_optim(fobj, initial_x, lower, upper, optim_opts)
-        if length(initial_x) == 1
-            return optimize(fobj, lower[1], upper[1])
-        end
-        results = optimize(
-            Optim.OnceDifferentiable(fobj), initial_x, lower, upper,
-            Fminbox(), optimizer=NelderMead,
-            x_tol=1e-10, f_tol=1e-10
-        )
+
+function call_optim(fobj, initial_x, lower, upper, optim_opts)
+    if length(initial_x) == 1
+        return optimize(fobj, lower[1], upper[1])
     end
-else
-    function call_optim(fobj, initial_x, lower, upper, optim_opts)
-        if length(initial_x) == 1
-            return optimize(fobj, lower[1], upper[1])
-        end
-        results = optimize(
-            Optim.OnceDifferentiable(fobj, initial_x), initial_x, lower, upper,
-            Fminbox{NelderMead}(), optimizer_o=optim_opts
-        )
-    end
+    results = optimize(
+        Optim.OnceDifferentiable(fobj, initial_x), initial_x, lower, upper,
+        Fminbox{NelderMead}(), optimizer_o=optim_opts
+    )
 end
 
 """
