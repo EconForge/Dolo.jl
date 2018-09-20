@@ -57,7 +57,7 @@ end
 function UnstructuredGrid{d}(nodes::Matrix{Float64}) where d
     N = size(nodes,1)
     @assert d == size(nodes,2)
-    UnstructuredGrid{d}(reinterpret(Point{d}, nodes', (N,)))
+    UnstructuredGrid{d}(reinterpret(Point{d}, copy(nodes'), (N,)))
 end
 
 nodes(grid::UnstructuredGrid) = grid.nodes
@@ -110,45 +110,45 @@ function Product(a::CartesianGrid{d1}, b::CartesianGrid{d2}) where d1 where d2
   return Dolo.CartesianGrid{d1+d2}( [a.min; b.min], [a.max; b.max], [a.n; b.n])
 end
 
-
-################
-# Smolyak Grid #
-################
-
-struct SmolyakGrid{d} <: Grid{d}
-    smol_params::BM.SmolyakParams{Float64,Vector{Int}}
-    nodes::Matrix{Float64}
-    B_nodes::Matrix{Float64}
-end
-
-function SmolyakGrid{d}(min::Point{d}, max::Point{d}, mu::SVector{d,Int64}) where d
-    sp = BM.SmolyakParams(d, Vector(mu), Vector(min), Vector(max))
-    nodes = BM.nodes(sp)
-    B_nodes = BM.evalbase(sp, nodes)
-    return SmolyakGrid{d}(sp, nodes, B_nodes)
-end
-
-SmolyakGrid(min::Point{d}, max::Point{d}, mu::SVector{d,Int64}) where d = SmolyakGrid{d}(min,max,mu)
-SmolyakGrid(min::Point{d}, max::Point{d}, mu::Int64) where d = SmolyakGrid{d}(min, max, SVector([mu for i=1:d]...))
-SmolyakGrid{d}(min::Point{d}, max::Point{d}, mu::Int64) where d = SmolyakGrid{d}(min, max, SVector([mu for i=1:d]...))
-
-function SmolyakGrid(min::Vector{Float64},max::Vector{Float64},mu::Union{Vector{Int64},Int64})
-    d = length(min)
-    mmu = mu isa Int ? ffill(mu,d) : mu
-    @assert d == length(max) == length(mmu)
-    SmolyakGrid{d}(SVector(min...), SVector(max...), SVector(mu...))
-end
 #
-function SmolyakGrid{d}(min::Vector{Float64},max::Vector{Float64},mu::Union{Vector{Int64},Int64}) where d
-    mmu = mu isa Int ? fill(mu,d) : mu
-    @assert d == length(min) == length(max) == length(mmu)
-    SmolyakGrid{d}(SVector(min...), SVector(max...), SVector(mu...))
-end
-
-
-nodes(grid::SmolyakGrid{d}) where d  = reinterpret(Point{d}, grid.nodes',( size(grid.nodes,1),))
-n_nodes(grid::SmolyakGrid) = size(grid.nodes,1)
-node(grid::SmolyakGrid{d}, i::Int) where d = Point{d}(grid.nodes[i,:]...)
+# ################
+# # Smolyak Grid #
+# ################
+#
+# struct SmolyakGrid{d} <: Grid{d}
+#     smol_params::BM.SmolyakParams{Float64,Vector{Int}}
+#     nodes::Matrix{Float64}
+#     B_nodes::Matrix{Float64}
+# end
+#
+# function SmolyakGrid{d}(min::Point{d}, max::Point{d}, mu::SVector{d,Int64}) where d
+#     sp = BM.SmolyakParams(d, Vector(mu), Vector(min), Vector(max))
+#     nodes = BM.nodes(sp)
+#     B_nodes = BM.evalbase(sp, nodes)
+#     return SmolyakGrid{d}(sp, nodes, B_nodes)
+# end
+#
+# SmolyakGrid(min::Point{d}, max::Point{d}, mu::SVector{d,Int64}) where d = SmolyakGrid{d}(min,max,mu)
+# SmolyakGrid(min::Point{d}, max::Point{d}, mu::Int64) where d = SmolyakGrid{d}(min, max, SVector([mu for i=1:d]...))
+# SmolyakGrid{d}(min::Point{d}, max::Point{d}, mu::Int64) where d = SmolyakGrid{d}(min, max, SVector([mu for i=1:d]...))
+#
+# function SmolyakGrid(min::Vector{Float64},max::Vector{Float64},mu::Union{Vector{Int64},Int64})
+#     d = length(min)
+#     mmu = mu isa Int ? ffill(mu,d) : mu
+#     @assert d == length(max) == length(mmu)
+#     SmolyakGrid{d}(SVector(min...), SVector(max...), SVector(mu...))
+# end
+# #
+# function SmolyakGrid{d}(min::Vector{Float64},max::Vector{Float64},mu::Union{Vector{Int64},Int64}) where d
+#     mmu = mu isa Int ? fill(mu,d) : mu
+#     @assert d == length(min) == length(max) == length(mmu)
+#     SmolyakGrid{d}(SVector(min...), SVector(max...), SVector(mu...))
+# end
+#
+#
+# nodes(grid::SmolyakGrid{d}) where d  = reinterpret(Point{d}, grid.nodes',( size(grid.nodes,1),))
+# n_nodes(grid::SmolyakGrid) = size(grid.nodes,1)
+# node(grid::SmolyakGrid{d}, i::Int) where d = Point{d}(grid.nodes[i,:]...)
 
 ###############
 # Random Grid #
