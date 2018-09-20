@@ -92,7 +92,7 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
 
     # extract data from model
     calib = model.calibration
-    params = calib[:parameters]
+    params = SVector(calib[:parameters]...)
 
     N = size(driving_process, 2)
     T = size(driving_process, 3)
@@ -100,6 +100,7 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
 
     # calculate initial controls using decision rule
     x0 = dr(epsilons[1, :, 1], s0)
+
     # get number of states and controls
     ns = length(s0)
     nx = length(x0)
@@ -113,14 +114,14 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
     end
 
     for t in 1:T
-        s = s_simul[:, :, t]
-        m = epsilons[:, :, t]
+        s = copy(to_LOP(s_simul[:, :, t]))
+        m = copy(to_LOP(epsilons[:, :, t]))
         x = dr(m, s)
-        x_simul[:, :, t] = x
+        x_simul[:, :, t] = from_LOP(x)
         if t < T
-          M = epsilons[:, :, t+1]
-          ss = s_simul[:, :, t+1]
-          s_simul[:,:,t+1] = transition(model, m, s, x, M, params)
+          M = copy(to_LOP(epsilons[:, :, t+1]))
+          ss = transition(model, m, s, x, M, params)
+          s_simul[:,:,t+1] = from_LOP(ss)
         end
     end
     sim = cat(2, epsilons, s_simul, x_simul)::Array{Float64,3}

@@ -22,7 +22,7 @@ path = Dolo.pkg_path
 
         sim = Dolo.simulate(model_mc, ti_res.dr, i0= 2)
         sim = Dolo.simulate(model_mc, ti_res.dr)
-
+        #
         k = sim[Axis{:V}(:k)]
         n = sim[Axis{:V}(:n)]
         z = sim[Axis{:V}(:z)]
@@ -66,8 +66,8 @@ path = Dolo.pkg_path
         @time ti_res = Dolo.time_iteration(model, tid_res.dr; maxit=20, verbose=false)
         @time iti_res = Dolo.improved_time_iteration(model; maxit=20, verbose=false)
         @test Dolo.converged(iti_res)
-
-        @time sol_v = Dolo.value_iteration(model, tid_res.dr; maxit=20, verbose=true)
+        #
+        # @time sol_v = Dolo.value_iteration(model, tid_res.dr; maxit=20, verbose=true)
 
         Dolo.simulate(model, tid_res.dr)
 
@@ -87,7 +87,6 @@ path = Dolo.pkg_path
         # @time Dolo.time_iteration(model, maxit=20, grid=Dict(:tag => :Random, :N => 200))
         # @time Dolo.time_iteration(model, maxit=20, grid=Dict(:tag => :Smolyak, :mu => 3))
 
-        irf[:k]
         @test true
     end
 
@@ -115,18 +114,16 @@ path = Dolo.pkg_path
         @time ti_res = Dolo.time_iteration(model, tid_res.dr; maxit=20, verbose=false)
         @time iti_res = Dolo.improved_time_iteration(model; maxit=20, verbose=false)
         @test Dolo.converged(iti_res)
-        @time sol_v = Dolo.value_iteration(model, ti_res.dr; maxit=3, verbose=true)
+        # @time sol_v = Dolo.value_iteration(model, ti_res.dr; maxit=3, verbose=true)
 
         model.symbols[:exogenous]
-
+        #
         Dolo.simulate(model, tid_res.dr; m0=[0.015], N=10)
         Dolo.response(model.exogenous, [0.01])
-
+        #
         sim = Dolo.response(model, tid_res.dr, :z)
-
+        #
         irf = Dolo.response(model, tid_res.dr, :z, -0.01)
-
-        sim[:z]
         @test true
     end
 

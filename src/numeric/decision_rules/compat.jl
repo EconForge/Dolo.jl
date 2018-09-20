@@ -21,11 +21,11 @@ function evaluate(dr::AbstractDecisionRule{EmptyGrid, CartesianGrid{d}, n_x}, z:
     N = size(z,1)
     assert(size(z,2)==d)
     points = to_LOP(Point{d}, z)
-    out = evaluate(dr,points)
+    out = evaluate(dr,copy(points))
     return reinterpret(Float64, out, (n_x,N))'
 end
 
-evaluate(dr::AbstractDecisionRule{EmptyGrid, <:CartesianGrid}, z::Vector) = vec(evaluate(dr,z'))
+evaluate(dr::AbstractDecisionRule{EmptyGrid, <:CartesianGrid}, z::Vector{Float64}) = vec(evaluate(dr,z'))
 evaluate(dr::AbstractDecisionRule{EmptyGrid, <:CartesianGrid}, i::Int, y::Union{Vector,AbstractMatrix}) = evaluate(dr,y) # kind of nonsensical
 evaluate(dr::AbstractDecisionRule{EmptyGrid, <:CartesianGrid}, x::Union{Vector,AbstractMatrix}, y::Union{Vector,AbstractMatrix}) = evaluate(dr,y)
 
@@ -43,7 +43,7 @@ function evaluate(dr::AbstractDecisionRule{CartesianGrid{d1}, CartesianGrid{d2},
     assert(size(y,1)==N)
     xx = to_LOP(Point{d1}, x)
     yy = to_LOP(Point{d2}, y)
-    res = evaluate(dr,xx,yy)
+    res = evaluate(dr,copy(xx),copy(yy))
     return reinterpret(Float64, res, (n_x, N))'
 end
 #
@@ -68,7 +68,8 @@ function evaluate(dr::AbstractDecisionRule{UnstructuredGrid{d1}, CartesianGrid{d
     N = size(z,1)
     assert(size(z,2)==d2)
     points = to_LOP(Point{d2}, z)
-    out = evaluate(dr,i,points)
+    # TODO: remove copy()
+    out = evaluate(dr,i,copy(points))
     reinterpret(Float64, out, (n_x, N))'
 end
 

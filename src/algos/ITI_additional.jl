@@ -145,27 +145,31 @@ mutable struct LinearThing
    counter::Int
 end
 
+import LinearAlgebra
+import LinearAlgebra: *, mul!
+using LinearAlgebra
+
 LinearThing(M,S,I) = LinearThing(M,S,I,0)
 
 
 eltype(L::LinearThing) = Float64
-function Base.shape(L::LinearThing)
+function shape(L::LinearThing)
    n_m = size(L.M_ij,1)
    N = size(L.M_ij[1,1],1)
    n_x = size(L.M_ij[1,1][1],1)
    return (n_x, N, n_m)
 end
-Base.size(L::LinearThing,d) = prod(shape(L))
+size(L::LinearThing,d) = prod(shape(L))
 
 
-function *(L::LinearThing,x::AbstractVector{ListOfPoints{n_x}}) where n_x
+function *(L::LinearThing,x::AbstractVector{<:AbstractVector{Point{n_x}}}) where n_x
    xx = deepcopy(x)
    Dolo.d_filt_dx!(xx, x, L.M_ij, L.S_ij, L.I)
    L.counter += 1
    return xx
 end
 
-function *(L::LinearThing,m::Array{Float64, 3})
+function *(L::LinearThing,m::AbstractArray{Float64, 3})
    n_x,N,n_m = size(m)
    # TODO remove copy there
    x = [copy(reinterpret(SVector{n_x,Float64},m[:,:,i],(N,))) for i=1:n_m]
@@ -176,7 +180,7 @@ function *(L::LinearThing,m::Array{Float64, 3})
    return reshape(rrr, n_x,N,n_m)
 end
 
-function *(L::LinearThing,v::Vector{Float64})
+function *(L::LinearThing,v::AbstractVector{Float64})
    m = copy(v)
    sh = shape(L)
    n_x = sh[1]
@@ -189,7 +193,7 @@ function *(L::LinearThing,v::Vector{Float64})
    return mmm[:]
 end
 
-function IterativeSolvers.mul(L::LinearThing,v::AbstractVector{Float64})
+function mul(L::LinearThing,v::AbstractVector{Float64})
    m = copy(v)
    sh = shape(L)
    mm = reshape(m, sh...)
@@ -198,12 +202,13 @@ function IterativeSolvers.mul(L::LinearThing,v::AbstractVector{Float64})
 end
 
 
-function Base.A_mul_B!(w::AbstractVector{Float64},L::LinearThing,v::AbstractVector{Float64})
+function A_mul_B!(w::AbstractVector{Float64},L::LinearThing,v::AbstractVector{Float64})
    w[:] = L*v
    return w
 end
 
-function IterativeSolvers.mul!(w,L::LinearThing,v)
+
+function mul!(w,L::LinearThing,v)
    w[:] = L*v
    return w
 end
