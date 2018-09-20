@@ -43,18 +43,18 @@ function perturb_first_order(g_s, g_x, f_s, f_x, f_S, f_X)
          f_s f_x]
 
     # do orderd QZ decomposition
-    gs = schurfact(A, B)
+    gs = schur(A, B)
 
-    genvals = (abs.(gs[:alpha]) ./ abs.(gs[:beta]))
+    genvals = (abs.(gs.α) ./ abs.(gs.β))
     sort!(genvals, rev=true)
     n_keep = ns # number of eigenvalues to keep
     diff = genvals[n_keep+1] - genvals[n_keep]
     eigtol = genvals[n_keep] + diff/2
 
-    select = (abs.(gs[:alpha]) .> eigtol*abs.(gs[:beta]))
+    select = (abs.(gs.α) .> eigtol*abs.(gs.β))
 
     ordschur!(gs, select)
-    S, T, Q, Z = gs[:S], gs[:T], gs[:Q], gs[:Z]
+    S, T, Q, Z = gs.S, gs.T, gs.Q, gs.Z
     diag_S = diag(S)
     diag_T = diag(T)
     eigval = abs.(diag_S./diag_T)
