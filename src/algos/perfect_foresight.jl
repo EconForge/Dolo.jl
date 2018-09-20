@@ -123,7 +123,7 @@ function perfect_foresight(model, exo::AbstractMatrix{Float64}; T=200, verbose=t
     headers = [model.symbols[:exogenous]; model.symbols[:states]; model.symbols[:controls]]
     resp = [driving_process reshape(sol.zero, sh...)]
 
-    out = AxisArray(resp', Axis{:V}(headers) ,Axis{:T}(0:T-1))
+    out = AxisArray(copy(resp'), Axis{:V}(headers) ,Axis{:T}(0:T-1))
     defs = evaluate_definitions(model, out)
     merge(out, defs)
 

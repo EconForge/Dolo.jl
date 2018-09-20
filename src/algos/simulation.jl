@@ -29,7 +29,7 @@ function evaluate_definitions(model, simul::AxisArray{Tf,3}, params=model.calibr
 
     data = permutedims( reinterpret(Float64, y_, (n_y,N,T)), [2,1,3])
 
-    array = AxisArray(data, Axis{:N}(1:N), Axis{:V}(auxiliaries), Axis{:T}(1:T))
+    array = AxisArray(copy(data), Axis{:N}(1:N), Axis{:V}(auxiliaries), Axis{:T}(1:T))
 
 end
 
@@ -77,7 +77,7 @@ function evaluate_definitions(model, _simul::AxisArray{__T,2}, params=model.cali
 
     data = reinterpret(Float64, y_, (n_y, T))
 
-    array = AxisArray(data, Axis{:V}(auxiliaries), simul[Axis{:T}])
+    array = AxisArray(copy(data), Axis{:V}(auxiliaries), simul[Axis{:T}])
 
 end
 
@@ -225,7 +225,6 @@ This function simulates a model given a decision rule.
 # Returns
 * `simulate`: simulated time series.
 """
-
 function simulate(model::AbstractModel, dr::AbstractDecisionRule, dprocess::DiscreteMarkovProcess;
                   i0::Int=default_index(dprocess), s0::AbstractVector=model.calibration[:states], N::Int=1, T::Int=40)
     driving_process = simulate(dprocess, N, T, i0)

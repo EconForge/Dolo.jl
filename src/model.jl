@@ -8,7 +8,7 @@ end
 
 const yaml_types = let
     pairs = [("!Cartesian", :Cartesian),
-            # ("!Smolyak", :Smolyak),
+            ("!Smolyak", :Smolyak),
             ("!Random", :Random),
              ("!Normal", :Normal),
              ("!MarkovChain", :MarkovChain),
@@ -179,9 +179,9 @@ function get_grid(model::ASModel; options=Dict())
                          "Expected to be of dimension $([length(model.calibration[:states])])")
             error(msg)
         end
-    # elseif grid_dict[:tag] == :Smolyak
-    #     mu = get(grid_dict, :mu, 3)
-    #     grid = SmolyakGrid{d}(domain.min, domain.max, mu)
+    elseif grid_dict[:tag] == :Smolyak
+        mu = get(grid_dict, :mu, 3)
+        grid = SmolyakGrid{d}(domain.min, domain.max, mu)
     elseif grid_dict[:tag] == :Random
         n = get(grid_dict, :N, 200)
         grid = RandomGrid{d}(domain.min, domain.max, n)

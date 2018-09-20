@@ -24,12 +24,12 @@ function DecisionRule(exo_grid::CartesianGrid, endo_grid::CartesianGrid, ::Type{
     CubicDR(exo_grid, endo_grid, Val{nx})
 end
 
-# # Smolyak interpolation
-# function DecisionRule(
-#         exo_grid::S, endo_grid::SmolyakGrid, ::Type{Val{nx}}, ::Type{Smolyak}
-#     ) where S <: Union{EmptyGrid,<:UnstructuredGrid} where nx
-#     SmolyakDR(exo_grid, endo_grid, Val{nx})
-# end
+# Smolyak interpolation
+function DecisionRule(
+        exo_grid::S, endo_grid::SmolyakGrid, ::Type{Val{nx}}, ::Type{Smolyak}
+    ) where S <: Union{EmptyGrid,<:UnstructuredGrid} where nx
+    SmolyakDR(exo_grid, endo_grid, Val{nx})
+end
 
 # Complete polynomials
 function DecisionRule(

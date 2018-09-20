@@ -4,7 +4,7 @@
     grid_exo2 = Dolo.UnstructuredGrid{2}(rand(1, 2))
     grid_rand = Dolo.RandomGrid{2}([0.0, 0.0], [1.0, 1.0,], 50)
     pts = rand(200, 2)
-    pts_vec = reinterpret(Dolo.Point{2}, pts', (size(pts, 1),))
+    pts_vec = reinterpret(Dolo.Point{2}, copy(pts'), (size(pts, 1),))
     test_sets = [
         (grid_smol, Dolo.SmolyakDR, Dolo.Smolyak),
         (grid_rand, Dolo.CompletePolyDR, Dolo.CompletePolnomial{3}),
@@ -22,7 +22,7 @@
 
        g = Dolo.nodes(Matrix, grid_endo)
        sg_vals = [sin.(g[:, 1]) cos.(g[:, 2])]
-       sg_vals_vec = reinterpret(Dolo.Point{2}, sg_vals', (size(g,1),))
+       sg_vals_vec = copy(reinterpret(Dolo.Point{2}, copy(sg_vals'), (size(g,1),)))
 
         dr1 = dr_name(grid_exo, grid_endo, Val{2})
         dr2 = Dolo.DecisionRule(grid_exo, grid_endo, Val{2}, drT)

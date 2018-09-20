@@ -26,8 +26,8 @@ using Dolang: _to_expr, inf_to_Inf, solution_order, solve_triangular_system, _ge
 # Numerical Tools
 using MacroTools  # used for eval_with
 import Distributions
-# import BasisMatrices
-# const BM = BasisMatrices
+import BasisMatrices
+const BM = BasisMatrices
 
 # Simulation/presentation
 using AxisArrays
@@ -123,8 +123,8 @@ include("numeric/decision_rules/core.jl")
 include("numeric/decision_rules/csplines.jl")
 include("numeric/decision_rules/constructor.jl")
 include("numeric/decision_rules/compat.jl")
-# include("numeric/decision_rules/smolyak.jl")
-# include("numeric/decision_rules/complete.jl")
+include("numeric/decision_rules/smolyak.jl")
+include("numeric/decision_rules/complete.jl")
 
 include("algos/steady_state.jl")
 include("algos/time_iteration.jl")
