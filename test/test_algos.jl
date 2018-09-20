@@ -13,7 +13,7 @@ path = Dolo.pkg_path
 
         drc = Dolo.ConstantDecisionRule(model_mc.calibration[:controls])
         @time tid_res = Dolo.time_iteration_direct(model_mc, drc; maxit=20, verbose=true)
-        @time ti_res = Dolo.time_iteration(model_mc, tid_res.dr; maxit=20, verbose=false, maxit=10)
+        @time ti_res = Dolo.time_iteration(model_mc, tid_res.dr; maxit=20, verbose=false)
         @time iti_res = Dolo.improved_time_iteration(model_mc; verbose=false, maxit=10000)
         @test Dolo.converged(iti_res)
         @time drv = Dolo.evaluate_policy(model_mc, tid_res.dr; maxit=20, verbose=false)

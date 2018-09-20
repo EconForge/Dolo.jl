@@ -23,7 +23,7 @@ function DiffFun(fun, x0::Vector{ListOfPoints{n_x}}, epsilon=1e-6) where n_x
       end
     end
     J = [reinterpret(SMatrix{n_x,n_x,Float64,n_x^2},JMat[i],(N,)) for i=1:n_m]
-    return (r0,J)::Tuple{Vector{ListOfPoints{n_x}},Vector{Vector{SMatrix{n_x,n_x,Float64,n_x*n_x}}}}
+    return (r0,J) #::Tuple{Vector{ListOfPoints{n_x}},Vector{Vector{SMatrix{n_x,n_x,Float64,n_x*n_x}}}}
 end
 
 struct NewtonResult
@@ -53,7 +53,7 @@ function newton(fun::Function, x0::Vector{ListOfPoints{n_x}}, a::Union{Vector{Li
 
     while (it<maxit) && (err_e_0>tol_e)
         it += 1
-        R_i, D_i = DiffFun(fun, x)::Tuple{Vector{ListOfPoints{n_x}},Vector{Vector{SMatrix{n_x,n_x,Float64,n_x*n_x}}}}
+        R_i, D_i = DiffFun(fun, x) # ::Tuple{Vector{ListOfPoints{n_x}},Vector{Vector{SMatrix{n_x,n_x,Float64,n_x*n_x}}}}
         if !(a isa Void)
             PhiPhi!(R_i,x,a,b,D_i)
         end

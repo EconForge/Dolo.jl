@@ -147,17 +147,18 @@ end
 
 LinearThing(M,S,I) = LinearThing(M,S,I,0)
 
+
 eltype(L::LinearThing) = Float64
-function shape(L::LinearThing)
+function Base.shape(L::LinearThing)
    n_m = size(L.M_ij,1)
    N = size(L.M_ij[1,1],1)
    n_x = size(L.M_ij[1,1][1],1)
    return (n_x, N, n_m)
 end
-size(L::LinearThing,d) = prod(shape(L))
+Base.size(L::LinearThing,d) = prod(shape(L))
 
 
-function *(L::LinearThing,x::Vector{ListOfPoints{n_x}}) where n_x
+function *(L::LinearThing,x::AbstractVector{ListOfPoints{n_x}}) where n_x
    xx = deepcopy(x)
    Dolo.d_filt_dx!(xx, x, L.M_ij, L.S_ij, L.I)
    L.counter += 1
@@ -166,7 +167,8 @@ end
 
 function *(L::LinearThing,m::Array{Float64, 3})
    n_x,N,n_m = size(m)
-   x = [reinterpret(SVector{n_x,Float64},m[:,:,i],(N,)) for i=1:n_m]
+   # TODO remove copy there
+   x = [copy(reinterpret(SVector{n_x,Float64},m[:,:,i],(N,))) for i=1:n_m]
    y = deepcopy(x)
    xx = L*y
    rr = [reinterpret(Float64, xx[i], (n_x,N)) for i=1:length(xx)]
@@ -174,7 +176,7 @@ function *(L::LinearThing,m::Array{Float64, 3})
    return reshape(rrr, n_x,N,n_m)
 end
 
-function *(L::LinearThing,v::AbstractVector{Float64})
+function *(L::LinearThing,v::Vector{Float64})
    m = copy(v)
    sh = shape(L)
    n_x = sh[1]
@@ -187,7 +189,7 @@ function *(L::LinearThing,v::AbstractVector{Float64})
    return mmm[:]
 end
 
-function mul(L::LinearThing,v::AbstractVector{Float64})
+function IterativeSolvers.mul(L::LinearThing,v::AbstractVector{Float64})
    m = copy(v)
    sh = shape(L)
    mm = reshape(m, sh...)
@@ -196,11 +198,15 @@ function mul(L::LinearThing,v::AbstractVector{Float64})
 end
 
 
-function A_mul_B!(w::AbstractVector{Float64},L::LinearThing,v::AbstractVector{Float64})
+function Base.A_mul_B!(w::AbstractVector{Float64},L::LinearThing,v::AbstractVector{Float64})
    w[:] = L*v
    return w
 end
 
+function IterativeSolvers.mul!(w,L::LinearThing,v)
+   w[:] = L*v
+   return w
+end
 
 
 ####

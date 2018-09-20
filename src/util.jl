@@ -31,9 +31,18 @@ end
 ############################
 # norms for list of points #
 ############################
-import Base.maxabs
+# import Base.maxabs
+#
+# function maxabs(s::ListOfPoints)
+#     t = 0.0
+#     for p in s
+#         t = max(t, maximum(p))
+#     end
+#     t
+# end
 
-function Base.maxabs(s::ListOfPoints)
+
+function maxabs(s::AbstractVector{Point{d}}) where d
     t = 0.0
     for p in s
         t = max(t, maximum(p))
@@ -41,13 +50,13 @@ function Base.maxabs(s::ListOfPoints)
     t
 end
 
-Base.maxabs(x::Vector{<:ListOfPoints}) = maximum(maxabs.(x))
+maxabs(x::AbstractVector{<:AbstractVector{Point{d}}}) where d= maximum(maxabs.(x))
 
 ############################
 # serial multiplications #
 ############################
 
-function invert!(A::Vector)
+function invert!(A::AbstractVector)
     # A[i] <- (A[i])^(-1)
     N = length(A)
     for n=1:N
@@ -80,7 +89,7 @@ vector_to_matrix(v) = Matrix(vec(v)')
 # vector_to_matrix(v::RowVector) = Matrix(v)
 
 #(compat)
-to_LOP(::Type{Point{d}}, mat::Matrix) where d = reinterpret(Point{d}, mat', (size(mat,1),))
+to_LOP(::Type{Point{d}}, mat::Matrix) where d = reinterpret(Point{d}, copy(mat'), (size(mat,1),))
 to_LOP(::Type{Point{d}}, mat::AbstractMatrix) where d = to_LOP(Point{d}, Array(mat))
 to_LOP(mat::AbstractArray) = to_LOP(Point{size(mat,2)} ,mat)
 
