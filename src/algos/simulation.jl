@@ -326,7 +326,7 @@ function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
                   m0::Union{Int,AbstractVector}; n_steps::Int=100)
 
     index = findfirst(model.symbols[:states], state)
-    Svalues = linspace(bounds[1], bounds[2], n_steps)
+    Svalues = range(bounds[1], stop=bounds[2], length=n_steps)
     svec = vcat([e' for e in fill(s0, n_steps)]...)
     svec[:, index] = Svalues
 

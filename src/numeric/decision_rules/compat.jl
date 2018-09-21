@@ -11,7 +11,7 @@ end
 
 function DecisionRule(exo_grid, endo_grid, values::Vector{Matrix{Float64}}, tt)
     N,n_x = size(values[1])
-    vals = [reinterpret(Value{n_x}, v', (N,)) for v in values]
+    vals = [reshape(reinterpret(Value{n_x}, vec(v')), (N,)) for v in values]
     DecisionRule(exo_grid, endo_grid, vals, tt)
 end
 
@@ -22,7 +22,7 @@ function evaluate(dr::AbstractDecisionRule{EmptyGrid, CartesianGrid{d}, n_x}, z:
     assert(size(z,2)==d)
     points = to_LOP(Point{d}, z)
     out = evaluate(dr,copy(points))
-    return reinterpret(Float64, out, (n_x,N))'
+    return reshape(reinterpret(Float64, vec(out)), (n_x,N))'
 end
 
 evaluate(dr::AbstractDecisionRule{EmptyGrid, <:CartesianGrid}, z::Vector{Float64}) = vec(evaluate(dr,z'))
@@ -32,7 +32,7 @@ evaluate(dr::AbstractDecisionRule{EmptyGrid, <:CartesianGrid}, x::Union{Vector,A
 function set_values!(dr::AbstractDecisionRule{EmptyGrid, <:CartesianGrid, n_x}, vals::Vector{Matrix{Float64}}) where n_x
     N = size(vals[1],1)
     dims = tuple(dr.grid_endo.n...)
-    V = [reinterpret(Value{n_x}, vals[1]', dims)]
+    V = [reshape(reinterpret(Value{n_x}, vec(vals[1]')), dims)]
     set_values!(dr, V)
 end
 
@@ -44,7 +44,7 @@ function evaluate(dr::AbstractDecisionRule{CartesianGrid{d1}, CartesianGrid{d2},
     xx = to_LOP(Point{d1}, x)
     yy = to_LOP(Point{d2}, y)
     res = evaluate(dr,copy(xx),copy(yy))
-    return reinterpret(Float64, res, (n_x, N))'
+    return reshape(reinterpret(Float64,vec(res)), (n_x, N))'
 end
 #
 evaluate(dr::AbstractDecisionRule{<:CartesianGrid, <:CartesianGrid}, x::Vector{Float64}, y::Matrix{Float64}) = evaluate(dr, repmat(x', size(y,1)), y)
@@ -57,7 +57,7 @@ evaluate(dr::AbstractDecisionRule{CartesianGrid{d1}, CartesianGrid{d2}}, i::Int,
 function set_values!(dr::AbstractDecisionRule{<:CartesianGrid, <:CartesianGrid, n_x}, vals::Vector{Matrix{Float64}}) where n_x
     N = size(vals[1],1)
     dims = tuple(dr.grid_endo.n...)
-    V = [reinterpret(Value{n_x}, v', dims) for v in vals]
+    V = [reshape(reinterpret(Value{n_x}, vec(v')), dims) for v in vals]
     set_values!(dr, V)
 end
 
@@ -70,7 +70,7 @@ function evaluate(dr::AbstractDecisionRule{UnstructuredGrid{d1}, CartesianGrid{d
     points = to_LOP(Point{d2}, z)
     # TODO: remove copy()
     out = evaluate(dr,i,copy(points))
-    reinterpret(Float64, out, (n_x, N))'
+    reshape(reinterpret(Float64, vec(out)), (n_x, N))'
 end
 
 evaluate(dr::AbstractDecisionRule{UnstructuredGrid{d1}, CartesianGrid{d2}, n_x}, i::Int, x::Vector{Float64}) where n_x where d1 where d2 = vec(evaluate(dr,i,vector_to_matrix(x)))

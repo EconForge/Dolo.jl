@@ -2,6 +2,8 @@ __precompile__(true)
 
 module Dolo
 
+using Printf
+
 import Dolang: SymExpr, list_syms
 
 # model import utils
@@ -98,7 +100,7 @@ for f in [:arbitrage, :transition, :auxiliary, :value, :expectation,
           :direct_response, :controls_lb, :controls_ub, :arbitrage_2,
           :arbitrage!, :transition!, :auxiliary!, :value!, :expectation!,
           :direct_response, :controls_lb!, :controls_ub!, :arbitrage_2!]
-    eval(Expr(:function, f))
+    Core.eval(Dolo, Expr(:function, f))
 end
 
 include("numeric/splines/splines.jl")

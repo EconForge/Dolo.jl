@@ -262,7 +262,7 @@ mutable struct Model{ID} <: AModel{ID}
             factories[eqtype] = ff
             code = Dolang.gen_generated_gufun(ff; dispatch=typeof(model))
             print_code && println(code)
-            eval(Dolo, code)
+            Core.eval(Dolo, code)
         end
 
         model.factories = factories
@@ -279,7 +279,7 @@ mutable struct Model{ID} <: AModel{ID}
         )
         fff = Dolang.FlatFunctionFactory(model.definitions, args, typeof(model.definitions)())
         code = Dolang.gen_generated_gufun(fff;dispatch=typeof(model), funname=:evaluate_definitions)
-        eval(Dolo,code)
+        Core.eval(Dolo,code)
 
         return model
     end

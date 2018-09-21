@@ -75,7 +75,7 @@ function tensor_prod(symbs, inds, add_index=false)
         end
         exprs = []
         for i = 1:4
-            e = parse( string(h,"_",i,"*(",tensor_prod(q,cat(inds,[i]; dims=1),add_index),")") )
+            e = Meta.parse( string(h,"_",i,"*(",tensor_prod(q,cat(inds,[i]; dims=1),add_index),")") )
             push!(exprs,e)
         end
         return :(+($(exprs...)))

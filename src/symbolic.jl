@@ -41,11 +41,11 @@ function _handle_arbitrage(arb, controls)
             n_c = length(c_parts)
 
             if n_c == 3
-                push!(controls_lb, _to_expr(inf_to_Inf(parse(c_parts[1]))))
-                push!(controls_ub, _to_expr(inf_to_Inf(parse(c_parts[3]))))
+                push!(controls_lb, _to_expr(inf_to_Inf(Meta.parse(c_parts[1]))))
+                push!(controls_ub, _to_expr(inf_to_Inf(Meta.parse(c_parts[3]))))
 
                 # verify that the control is what we want
-                mid = parse(c_parts[2])
+                mid = Meta.parse(c_parts[2])
                 if mid != controls[i]
                     msg = string("Error in complementarity condition. ",
                                  "Expected $(controls[i]) found $mid")
@@ -55,7 +55,7 @@ function _handle_arbitrage(arb, controls)
                 # only have one_sided condition. Need to work a bit harder
                 ind = 0
                 for (j, ex) in enumerate(c_parts)
-                    if parse(ex) == controls[i]
+                    if Meta.parse(ex) == controls[i]
                         ind = j
                         break
                     end

@@ -57,7 +57,7 @@ end
 function UnstructuredGrid{d}(nodes::Matrix{Float64}) where d
     N = size(nodes,1)
     @assert d == size(nodes,2)
-    UnstructuredGrid{d}(reinterpret(Point{d}, copy(nodes'), (N,)))
+    UnstructuredGrid{d}(reshape(reinterpret(Point{d}, vec(copy(nodes'))), (N,)))
 end
 
 nodes(grid::UnstructuredGrid) = grid.nodes
@@ -79,7 +79,7 @@ end
 
 function mlinspace(min, max, n)
     # this now returns an iterator
-    nodes = map(linspace, min, max, n)
+    nodes = map((x,y,z)->range(x,stop=y,length=z), min, max, n)
     return Base.product(nodes...)
 end
 
@@ -93,7 +93,7 @@ end
 function (::Type{<:CartesianGrid})(min::SVector{d,Float64}, max::SVector{d,Float64}, n::SVector{d,Int64}) where d
     A = [mlinspace(min, max, n)...]
     N = prod(n)
-    mm = reinterpret(Point{d},A,(N,))
+    mm = reshape(reinterpret(Point{d},vec(A)),(N,))
     return CartesianGrid{d}(min, max, n, mm)
 end
 

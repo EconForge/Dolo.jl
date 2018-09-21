@@ -191,12 +191,12 @@ end
 _replace_me(mc::ModelCalibration, s::Symbol) = get(mc.flat, s, s)
 _replace_me(mc, o) = o
 
-# eval with will work on
+# eval_with will work on
 function eval_with(mc::ModelCalibration, ex::Expr)
     # put in let block to allow us to define intermediates in expr and not
     # have them become globals in `Dolo`
     new_ex = MacroTools.prewalk(s->_replace_me(mc, s), ex)
-    eval(Dolo, :(
+    Core.eval(Dolo, :(
     let
         $new_ex
     end))
