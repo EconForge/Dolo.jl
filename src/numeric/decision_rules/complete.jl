@@ -24,14 +24,9 @@ function set_values!(
     B_grid = BM.complete_polynomial(nodes(Matrix,dr.grid_endo), dr.order)
     vv = deepcopy(values)
     for i in 1:length(values)
-        A = qr(B_grid, Val(true))
-        B = values[i]
-        B0 = copy(B)
-        X = dr.coefs[i]
-        return (X,A,B)
-        ldiv!(X,A,B)
-        println("Error: ", maximum(B - B0))
-
+        dr.coefs[i][:,:] = B_grid\values[i]
+        # TODO: understand why the following seems to modify values[i]
+        # q_B_grid = qr(B_grid, Val(true))
         # ldiv!(dr.coefs[i], q_B_grid, values[i])
     end
     println("Error: ", maximum(vv - values))
