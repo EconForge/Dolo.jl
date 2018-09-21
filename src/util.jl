@@ -12,7 +12,7 @@ function fkron(A::AbstractMatrix, B::AbstractMatrix)
 end
 
 rmerge(default_struct, add_options) = add_options
-function rmerge(def_s::Associative, add_s::Associative)
+function rmerge(def_s::AbstractDict, add_s::AbstractDict)
     kl = collect(keys(def_s))
     kr = collect(keys(add_s))
     resp = Dict()

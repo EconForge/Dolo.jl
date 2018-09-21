@@ -156,7 +156,7 @@ function check_calibration(d::YAML.MappingNode, filename="<string>")
           push!(model_symbols, sym.value)
       end
   end
-  model_symbols = cat(1, model_symbols, keys(d[:definitions]))
+  model_symbols = cat(model_symbols, keys(d[:definitions]); dims=1)
 
 
   for (i, key) in enumerate(keys(d["calibration"]))
@@ -195,7 +195,7 @@ function check_equations(d::YAML.MappingNode, filename="<string>")
   # check symbol names:
   required_equation_types = ["transition"]
   optional_equation_types = ["arbitrage", "value", "felicity", "expectation", "direct_response"]
-  known_equation_types = cat(1, required_equation_types, optional_equation_types)
+  known_equation_types = cat(required_equation_types, optional_equation_types; dims=1)
 
   model_equation_types = keys(d[:equations])
 
@@ -224,7 +224,7 @@ function check_equations(d::YAML.MappingNode, filename="<string>")
   end
 
   for (i,sg) in enumerate(keys(d["equations"]))
-      if !(sg in cat(1,known_equation_types))
+      if !(sg in cat(known_equation_types; dims=1))
           errvalue = string(sg)
           errtype = "Unknown equation type"
           msg = ""
@@ -291,7 +291,7 @@ function check_symbols(d::YAML.MappingNode, filename="<string>")
     # check symbol names:
     required_symbol_types = ["states", "controls", "exogenous", "parameters"]
     optional_symbol_types = [ "values", "rewards", "expectations"]
-    known_symbol_types = cat(1, required_symbol_types, optional_symbol_types)
+    known_symbol_types = cat(required_symbol_types, optional_symbol_types; dims=1)
 
     model_symbol_types = keys(d[:symbols])
     model_symbols = []
@@ -321,7 +321,7 @@ function check_symbols(d::YAML.MappingNode, filename="<string>")
     end
 
     for (i,sg) in enumerate(keys(d["symbols"]))
-        if !(sg in cat(1,known_symbol_types))
+        if !(sg in cat(known_symbol_types; dims=1))
             errvalue = string(sg)
             errtype = "Unknown symbol type"
             msg = ""
@@ -482,11 +482,11 @@ end
 
 
 function format_human(errors::Vector{LinterWarning}, warnings::Vector{LinterWarning})
-for err in cat(1,errors)
+for err in cat(errors; dims=1)
     print_error(err)
 end
 
-for err in cat(1,warnings)
+for err in cat(warnings; dims=1)
     print_warning(err)
 end
 end
@@ -501,8 +501,8 @@ function lint(filename::AbstractString; format=:human)
 
   for fun in funnames
     errors2, warnings2 = fun(filename)
-    errors = cat(1, errors, errors2)
-    warnings = cat(1 ,warnings, warnings2)
+    errors = cat(errors, errors2; dims=1)
+    warnings = cat(warnings, warnings2; dims=1)
   end
 
   if format == :human
@@ -510,5 +510,5 @@ function lint(filename::AbstractString; format=:human)
   else
       println("Format '", format, "' not implemented (yet).")
   end
-  return cat(1, errors, warnings)
+  return cat(errors, warnings; dims=1)
 end

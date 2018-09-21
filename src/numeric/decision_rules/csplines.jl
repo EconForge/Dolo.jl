@@ -50,7 +50,7 @@ end
 # end
 
 function CubicDR(exo_grid::CartesianGrid{d1}, endo_grid::CartesianGrid{d2}, i::Union{Val{nx}, Type{Val{nx}}}) where d1 where d2 where nx
-    dims = cat(1, exo_grid.n+2, endo_grid.n+2)
+    dims = cat(exo_grid.n+2, endo_grid.n+2; dims=1)
     c = [zeros(Value{nx},dims...)]
     CubicDR{CartesianGrid{d1}, CartesianGrid{d2}, nx, d1+d2}(exo_grid, endo_grid, c)
 end
@@ -59,10 +59,10 @@ function set_values!(dr::CubicDR{CartesianGrid{d1},CartesianGrid{d2},n_x,d}, V::
     exog = dr.grid_exo
     endog = dr.grid_endo
 
-    data = reshape( cat(1, V...), endog.n..., exog.n...)
+    data = reshape( cat(V...; dims=1), endog.n..., exog.n...)
     d_m = ndims(exog)
     d_s = ndims(endog)
-    perms = cat(1, ((d_s+1):(d_s+d_m))..., (1:d_s)...)
+    perms = cat(((d_s+1):(d_s+d_m))..., (1:d_s)...; dims=1)
     RV = permutedims(data, perms)
     C = dr.itp[1]
     dims = size(C)
@@ -73,9 +73,9 @@ end
 
 
 function evaluate(dr::CubicDR{CartesianGrid{d1},CartesianGrid{d2}, n_x, d}, z::AbstractVector{Point{d}}) where n_x where d where d1 where d2
-    a = cat(1, dr.grid_exo.min, dr.grid_endo.min)
-    b = cat(1, dr.grid_exo.max, dr.grid_endo.max)
-    n = cat(1, dr.grid_exo.n, dr.grid_endo.n)
+    a = cat(dr.grid_exo.min, dr.grid_endo.min; dims=1)
+    b = cat(dr.grid_exo.max, dr.grid_endo.max; dims=1)
+    n = cat(dr.grid_exo.n, dr.grid_endo.n; dims=1)
     cc = dr.itp[1]
     res = eval_UC_spline(a, b, n, cc, z)
     return res

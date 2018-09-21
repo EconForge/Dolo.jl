@@ -16,7 +16,7 @@ driving_process = Dolo.simulate(model2.exogenous, 10, 40, m0)
 sim1 = Dolo.simulate(model, dr, driving_process)
 
 sim = Dolo.simulate(model, dr; N= 1000, T=50)
-# Ac= cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+# Ac= cat(model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls]; dims=1)
 # ll=[Symbol(i) for i in Ac]
 # AA= AxisArray(sim, Axis{:N}(1:1000), Axis{:V}(ll), Axis{:T}(1:50))
 

@@ -48,7 +48,7 @@ end
 
 function get_variables(model::ASModel)
     symbols = get_symbols(model)
-    vars = cat(1, values(symbols)...)
+    vars = cat(values(symbols)...; dims=1)
     dynvars = setdiff(vars, symbols[:parameters] )
 end
 
@@ -110,7 +110,7 @@ function get_equations(model::ASModel)
     end
 
     defs = get_definitions(model)
-    dynvars = cat(1, get_variables(model), [k[1] for k in keys(defs)]...)
+    dynvars = cat(get_variables(model), [k[1] for k in keys(defs)]...; dims=1)
 
     for eqtype in keys(_eqs)
         _eqs[eqtype] = [sanitize(eq,dynvars) for eq in _eqs[eqtype]]
@@ -132,7 +132,7 @@ end
 function get_definitions(model::ASModel)::OrderedDict{Tuple{Symbol,Int},SymExpr}
     # parse defs so values are Expr
     defs = get(model.data,:definitions, Dict())
-    dynvars = cat(1, get_variables(model), keys(defs)...)
+    dynvars = cat(get_variables(model), keys(defs)...; dims=1)
     _defs = OrderedDict{Tuple{Symbol,Int},SymExpr}(
         [ (k,0) => sanitize(_to_expr(v), dynvars) for (k, v) in defs]
     )
@@ -270,7 +270,7 @@ mutable struct Model{ID} <: AModel{ID}
 
         # TEMP: until we have a better method in Dolang
         # Create definitions
-        vars = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+        vars = cat(model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls]; dims=1)
         args = OrderedDict(
             :past => [(v,-1) for v in vars],
             :present => [(v,0) for v in vars],
@@ -318,7 +318,7 @@ function set_calibration!(model::Model, key::Symbol, value::Union{Real,Expr, Sym
     model.calibration
 end
 
-function set_calibration!(model::Model, values::Associative{Symbol,T}) where T
+function set_calibration!(model::Model, values::AbstractDict{Symbol,T}) where T
     for (key,value) in values
         model.data[:calibration][key] = value
     end

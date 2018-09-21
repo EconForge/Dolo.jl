@@ -218,7 +218,7 @@ function discretize(var::VAR1, n_states::Array{Int,1}, n_integration::Array{Int,
     grid = CartesianGrid{length(min)}(min,max,n_states)
     # discretize innovations
     x,w = QE.qnwnorm(n_integration, zeros(size(var.Sigma,1)), var.Sigma)
-    integration_nodes = [ cat(1,[(M + R*(node(grid, i)-M) + x[j,:])' for j=1:size(x,1)]...) for i in 1:n_nodes(grid)]
+    integration_nodes = [ cat([(M + R*(node(grid, i)-M) + x[j,:])' for j=1:size(x,1)]...; dims=1) for i in 1:n_nodes(grid)]
     integration_weights = [w for i in 1:n_nodes(grid)]
     return DiscretizedProcess(grid, integration_nodes, integration_weights)
 end
