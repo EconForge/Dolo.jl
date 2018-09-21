@@ -167,7 +167,7 @@ the shocks and options section. This is particularly useful to make the
 covariance matrix depend on model parameters, or to adapt the
 state-space to the model's calibration.
 
-The calibration is given by an associative dictionary mapping symbols to
+The calibration is given by an AbstractDict dictionary mapping symbols to
 define with values. The values can be either a scalar or an expression.
 All symbols are treated in the same way, and values can depend upon each
 other as long as there is a way to resolve them recursively.

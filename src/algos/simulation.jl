@@ -6,7 +6,7 @@ function evaluate_definitions(model, simul::AxisArray{Tf,3}, params=model.calibr
     T = length( simul[Axis{:T}].val )
     @assert simul[Axis{:T}].val == 1:T
 
-    vars = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+    vars = cat(model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls]; dims=1)
 
     sim = simul[Axis{:V}(vars)]
 
@@ -54,7 +54,7 @@ function evaluate_definitions(model, _simul::AxisArray{__T,2}, params=model.cali
         simul = _simul'
     end
 
-    vars = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+    vars = cat(model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls]; dims=1)
 
     sim = simul[Axis{:V}(vars)]
 
@@ -124,9 +124,9 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
           s_simul[:,:,t+1] = from_LOP(ss)
         end
     end
-    sim = cat(2, epsilons, s_simul, x_simul)::Array{Float64,3}
+    sim = cat(epsilons, s_simul, x_simul; dims=2)::Array{Float64,3}
 
-    Ac = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+    Ac = cat(model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls]; dims=1)
     ll = [Symbol(i) for i in Ac]
 
     sim_aa = AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
@@ -176,13 +176,13 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
         s = s_simul[:, :, t]
         m = epsilons[:, :, t]
 
-        m_ind=cat(1, m)[:, 1]
+        m_ind=cat(m; dims=1)[:, 1]
         m_val= dp_process.values[m_ind, :]
         x = dr(m_ind, s)
         x_simul[:, :, t] = x
         if t < T
             M = epsilons[:, :, t+1]
-            M_cat = cat(1, M)[:, 1]
+            M_cat = cat(M, dims=1)[:, 1]
             M_val = dp_process.values[M_cat, :]
             s_simul[:,:,t+1] = transition(model, m_val, s, x, M_val, params)
         end
@@ -194,10 +194,10 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
       epsilons_values[n,:,:] = permutedims(eps, [1, 3, 2])
     end
 
-    sim = cat(2, epsilons, epsilons_values, s_simul, x_simul)::Array{Float64,3}
+    sim = cat(epsilons, epsilons_values, s_simul, x_simul; dims=2)::Array{Float64,3}
 
     model_sym = :mc_process
-    Ac = cat(1, model_sym, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+    Ac = cat(model_sym, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls], dims=1)
     ll = [Symbol(i) for i in Ac]
     sim_aa = AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
     sim_def=evaluate_definitions(model, sim_aa, model.calibration[:parameters])
@@ -340,7 +340,7 @@ function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
         model_sym = model.symbols[:exogenous]
     end
 
-    l2 = cat(1, model_sym , model.symbols[:states], model.symbols[:controls])
+    l2 = cat(model_sym , model.symbols[:states], model.symbols[:controls]; dims=1)
     tab_AA = AxisArray(reshape(tb,1,size(tb)...), Axis{:T}(1:1), Axis{:N}(1:n_steps), Axis{:V}(l2))
 
     ## add definitions

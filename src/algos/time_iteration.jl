@@ -115,7 +115,7 @@ mutable struct TimeIterationResult
     x_tol::Float64
     err::Float64
     log::TimeIterationLog
-    trace::Union{Void,IterationTrace}
+    trace::Union{Nothing,IterationTrace}
 end
 
 converged(r::TimeIterationResult) = r.x_converged

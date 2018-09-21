@@ -176,7 +176,7 @@ function *(L::LinearThing,m::AbstractArray{Float64, 3})
    y = deepcopy(x)
    xx = L*y
    rr = [reinterpret(Float64, xx[i], (n_x,N)) for i=1:length(xx)]
-   rrr = cat(3,rr...)
+   rrr = cat(rr...; dims=3)
    return reshape(rrr, n_x,N,n_m)
 end
 

@@ -2,7 +2,7 @@
 # Calibration #
 # ----------- #
 
-struct FlatCalibration <: Associative{Symbol,Float64}
+struct FlatCalibration <: AbstractDict{Symbol,Float64}
     d::OrderedDict{Symbol,Float64}
 end
 
@@ -11,7 +11,7 @@ FlatCalibration(pairs::Pair{Symbol,Float64}...) =
 
 FlatCalibration() = FlatCalibration(OrderedDict{Symbol,Float64}())
 
-struct GroupedCalibration <: Associative{Symbol,Vector{Float64}}
+struct GroupedCalibration <: AbstractDict{Symbol,Vector{Float64}}
     d::Dict{Symbol,Vector{Float64}}
 end
 
@@ -27,7 +27,7 @@ let
     Base.getindex(c::Calib, n::Symbol) = c.d[n]
     Base.getindex(c::Calib, nms::Symbol...) = [c[n] for n in nms]
 
-    # define the rest of the Associative interface by forwarding to c.d
+    # define the rest of the AbstractDict interface by forwarding to c.d
 
     # 1-arg functions
     for f in [:length, :keys, :values, :keytype, :valtype, :eltype, :isempty,
@@ -207,7 +207,7 @@ eval_with(mc::ModelCalibration, s::Symbol) = _replace_me(mc, s)
 eval_with(mc::ModelCalibration, x::Number) = x
 eval_with(mc::ModelCalibration, x::AbstractArray) = map(y->eval_with(mc, y), x)
 
-function eval_with(mc::ModelCalibration, d::Associative)
+function eval_with(mc::ModelCalibration, d::AbstractDict)
     out = Dict{Symbol,Any}()
     for (k, v) in d
         sk = Symbol(k)

@@ -89,7 +89,7 @@ function get_gf_derivatives(model::AbstractModel)
         f_S = [_f_M _f_S]
         g_s = [R zeros(size(R, 1), size(_g_s, 2)); _g_m _g_s]
         g_x = [zeros(size(_g_m, 1), size(_g_x, 2)); _g_x]
-        s = cat(1, _m, _s)
+        s = cat(_m, _s; dims=1)
     else
         f_s = _f_s
         f_S = _f_S
@@ -112,7 +112,7 @@ function perturb(model::Model)
     _m, _s, x, p = model.calibration[:exogenous, :states, :controls, :parameters]
 
     if size(R, 1)>0
-        s = cat(1, _m, _s)
+        s = cat(_m, _s; dims=1)
     else
         s = _s
     end

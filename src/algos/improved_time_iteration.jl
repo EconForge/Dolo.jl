@@ -115,7 +115,7 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
 
       if method==:gmres
         L = LinearThing(M_ij, S_ij, ddr_filt)
-        v = cat(1, [reinterpret(Float64, e, (n_x*N,)) for e in π_i]...)
+        v = cat([reinterpret(Float64, e, (n_x*N,)) for e in π_i]...; dims=1)
         n1 = L.counter
         w = gmres(L, v, verbose=false)
         it_invert = L.counter-n1

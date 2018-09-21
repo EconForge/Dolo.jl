@@ -27,7 +27,7 @@ mutable struct ValueIterationResult
     v_tol::Float64
     v_err::Float64
     log::ValueIterationLog
-    trace::Union{Void,IterationTrace}
+    trace::Union{Nothing,IterationTrace}
 end
 
 converged(r::ValueIterationResult) = r.x_converged && r.v_converged

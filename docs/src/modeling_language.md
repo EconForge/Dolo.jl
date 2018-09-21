@@ -26,7 +26,7 @@ line
 - third element   # this is interpreted as ``'third element'``
 ```
 
-Associative arrays map keys(simple strings) to arbitrary values as
+AbstractDict arrays map keys(simple strings) to arbitrary values as
 in the following example:
 
 ``` {.sourceCode .yaml}
@@ -238,7 +238,7 @@ the `domain:`, `exogenous:` and `options:` sections. This is particularly useful
 covariance matrix depend on model parameters, or to adapt the
 state-space to the model's calibration.
 
-The calibration is given by an associative dictionary mapping symbols to
+The calibration is given by an AbstractDict dictionary mapping symbols to
 define with values. The values can be either a scalar or an expression.
 All symbols are treated in the same way, and values can depend upon each
 other as long as there is a way to resolve them recursively.
