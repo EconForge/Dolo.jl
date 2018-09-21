@@ -75,13 +75,9 @@ path = Dolo.pkg_path
         sim = Dolo.simulate(model, tid_res.dr; s0=s0)
         Dolo.simulate(model, tid_res.dr; N=10)
 
-
         res = Dolo.response(model.exogenous, [0.01])
-
         irf = Dolo.response(model, tid_res.dr, :e_z)
-
         irf = Dolo.response(model, tid_res.dr, :e_z, -0.01)
-
 
         # check with random and Smolyak grid
         # @time Dolo.time_iteration(model, maxit=20, grid=Dict(:tag => :Random, :N => 200))

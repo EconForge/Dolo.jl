@@ -22,10 +22,19 @@ function set_values!(
     ) where G <: Union{<:EmptyGrid,<:UnstructuredGrid}
     # TODO the following should be once for all with the result stored in dr
     B_grid = BM.complete_polynomial(nodes(Matrix,dr.grid_endo), dr.order)
-    q_B_grid = qr(B_grid, Val(true))
+    vv = deepcopy(values)
     for i in 1:length(values)
-        ldiv!(dr.coefs[i], q_B_grid, values[i])
+        A = qr(B_grid, Val(true))
+        B = values[i]
+        B0 = copy(B)
+        X = dr.coefs[i]
+        return (X,A,B)
+        ldiv!(X,A,B)
+        println("Error: ", maximum(B - B0))
+
+        # ldiv!(dr.coefs[i], q_B_grid, values[i])
     end
+    println("Error: ", maximum(vv - values))
 end
 
 function set_values!(
@@ -48,14 +57,14 @@ function set_values!(
     end
 end
 
-function evaluate(dr::CompletePolyDR{<:EmptyGrid}, z::AbstractMatrix)
+function evaluate(dr::CompletePolyDR{<:EmptyGrid}, z::AbstractMatrix{Float64})
     B = BM.complete_polynomial(z, dr.order)
     B*dr.coefs[1]
 end
 
 function evaluate(dr::CompletePolyDR{<:EmptyGrid,<:Grid{d}}, points::AbstractVector{Point{d}}) where d
     N = length(points)
-    mat = reinterpret(Float64, points, (d, N))'
+    mat = copy(reinterpret(Float64, points, (d, N))')
     evaluate(dr, mat)
 end
 
@@ -72,7 +81,7 @@ function CompletePolyDR(
     CompletePolyDR{S,typeof(grid_endo),nx}(grid_exo, grid_endo, coeffs, order)
 end
 
-function evaluate(dr::CompletePolyDR{<:UnstructuredGrid}, i::Int, z::AbstractMatrix)
+function evaluate(dr::CompletePolyDR{<:UnstructuredGrid}, i::Int, z::AbstractMatrix{Float64})
     @boundscheck begin
         n_funcs = length(dr.coefs)
         if i > n_funcs

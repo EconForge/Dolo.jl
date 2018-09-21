@@ -1,17 +1,13 @@
-julia 0.6
 MacroTools
-YAML 0.2.1
+YAML
 DataStructures
 AxisArrays
-NLsolve 0.14.0
+NLsolve
 Optim
-Requests
-QuantEcon 0.10.1
+QuantEcon
 Distributions
-Compat 0.17.0
 Dolang
-BasisMatrices 0.3.0
+BasisMatrices
 StringDistances
 StaticArrays
-Iterators
 IterativeSolvers

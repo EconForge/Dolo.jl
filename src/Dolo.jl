@@ -66,7 +66,7 @@ export time_iteration, improved_time_iteration, value_iteration, residuals,
 export ModelCalibration, FlatCalibration, GroupedCalibration
 export AbstractModel, AbstractDecisionRule
 
-# set up core types
+# set up core typesr
 abstract type AbstractSymbolicModel{ID} end
 abstract type AbstractModel{ID} <: AbstractSymbolicModel{ID} end
 

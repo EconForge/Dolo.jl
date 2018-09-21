@@ -4,7 +4,7 @@
     grid_exo2 = Dolo.UnstructuredGrid{2}(rand(1, 2))
     grid_rand = Dolo.RandomGrid{2}([0.0, 0.0], [1.0, 1.0,], 50)
     pts = rand(200, 2)
-    pts_vec = reinterpret(Dolo.Point{2}, copy(pts'), (size(pts, 1),))
+    pts_vec = copy(reinterpret(Dolo.Point{2}, copy(pts'), (size(pts, 1),)))
     test_sets = [
         (grid_smol, Dolo.SmolyakDR, Dolo.Smolyak),
         (grid_rand, Dolo.CompletePolyDR, Dolo.CompletePolnomial{3}),
@@ -29,7 +29,7 @@
         for dr in [dr1, dr2]
             Dolo.set_values!(dr, [sg_vals])
             out = Dolo.evaluate(dr, pts)
-            @test maximum(abs, out - Dolo.evaluate(dr, pts_vec)) < 1e-14
+            @test maximum(abs, out - Dolo.evaluate(dr, pts_vec)) < 1e-14  ### ?
             Dolo.set_values!(dr, [sg_vals_vec])
             @test maximum(abs, out - Dolo.evaluate(dr, pts_vec)) < 1e-14
             @test maximum(abs, out - Dolo.evaluate(dr, pts)) < 1e-14
