@@ -19,7 +19,7 @@ end
 
 function evaluate(dr::AbstractDecisionRule{EmptyGrid, CartesianGrid{d}, n_x}, z::AbstractMatrix{Float64}) where n_x where d
     N = size(z,1)
-    assert(size(z,2)==d)
+    @assert size(z,2)==d
     points = to_LOP(Point{d}, z)
     out = evaluate(dr,copy(points))
     return reshape(reinterpret(Float64, vec(out)), (n_x,N))'
@@ -66,7 +66,7 @@ end
 
 function evaluate(dr::AbstractDecisionRule{UnstructuredGrid{d1}, CartesianGrid{d2},n_x}, i::Int, z::AbstractMatrix{Float64}) where n_x where d1 where d2
     N = size(z,1)
-    assert(size(z,2)==d2)
+    @assert size(z,2)==d2
     points = to_LOP(Point{d2}, z)
     # TODO: remove copy()
     out = evaluate(dr,i,copy(points))

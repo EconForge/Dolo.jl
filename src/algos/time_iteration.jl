@@ -202,7 +202,9 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
     while it<maxit && err>tol_η
 
         it += 1
-        tic()
+
+        t1 = time_ns()
+
         set_values!(dr, x0)
         fobj(u) = euler_residuals_ti(model, dprocess, endo_nodes, u, p, dr)
 
@@ -227,7 +229,7 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
         gain = err / err_0
         err_0 = err
 
-        elapsed = toq()
+        elapsed = time_ns() - t1
 
         append!(log; verbose=verbose, it=it, epsilon=epsil, err=err, gain=gain, time=elapsed, nit=nit)
     end

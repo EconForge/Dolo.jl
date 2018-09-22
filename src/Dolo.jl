@@ -42,7 +42,7 @@ using StaticArrays
 using IterativeSolvers
 
 # Functions from base we extend
-import Base.A_mul_B!
+# import Base.A_mul_B!
 import Base.size
 import Base.eltype
 import Base.*

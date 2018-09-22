@@ -140,7 +140,7 @@ function perfect_foresight(model, exo::Dict{}; kwargs... )
     end
 
     for key in keys(exo)
-        ind = find(model.symbols[:exogenous] .== key)
+        ind = findall(model.symbols[:exogenous] .== key)
         T_key = length(exo[key])
         exo_new[1:T_key,ind] = exo[key]
 

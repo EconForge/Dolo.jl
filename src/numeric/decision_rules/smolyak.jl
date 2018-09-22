@@ -11,8 +11,8 @@ end
 function SmolyakDR(
         grid_exo::S, grid_endo::T, ::Union{Val{nx},Type{Val{nx}}}
     ) where S <: EmptyGrid where T <: SmolyakGrid where nx
-    coefs = [Array{Float64}(n_nodes(grid_endo), nx)]
-    SmolyakDR{S,T,nx}(undef, grid_exo, grid_endo, coefs)
+    coefs = [Array{Float64}(undef,n_nodes(grid_endo), nx)]
+    SmolyakDR{S,T,nx}(grid_exo, grid_endo, coefs)
 end
 
 function set_values!(

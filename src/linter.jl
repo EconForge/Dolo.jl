@@ -32,14 +32,14 @@ end
 
 function yaml_node_from_file(fn::AbstractString)
     txt = open(readstring, fn)
-    txt = replace(txt, "\r", "")
+    txt = replace(txt, "\r"=>"")
     return yaml_node_from_string(txt)
 end
 
 Base.getindex(d::YAML.SequenceNode, k::Integer) = d.value[k]
 Base.keys(s::YAML.MappingNode) =  [e[1].value for e=s.value]
 Base.values(s::YAML.MappingNode) =  [e[2].value for e=s.value]
-Base.getindex(d::YAML.MappingNode, s::AbstractString) = d.value[findfirst(keys(d),s)][2]
+Base.getindex(d::YAML.MappingNode, s::AbstractString) = d.value[something(findfirst(isequal(s),keys(d)))][2]
 Base.getindex(d::YAML.MappingNode, s::Symbol) = d[string(s)]
 # extended index: find
 
