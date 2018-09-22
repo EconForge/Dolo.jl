@@ -39,7 +39,7 @@ end
 Base.getindex(d::YAML.SequenceNode, k::Integer) = d.value[k]
 Base.keys(s::YAML.MappingNode) =  [e[1].value for e=s.value]
 Base.values(s::YAML.MappingNode) =  [e[2].value for e=s.value]
-Base.getindex(d::YAML.MappingNode, s::AbstractString) = d.value[something(findfirst(isequal(s),keys(d)))][2]
+Base.getindex(d::YAML.MappingNode, s::AbstractString) = d.value[something(findfirst(isequal(s),keys(d)),0)][2]
 Base.getindex(d::YAML.MappingNode, s::Symbol) = d[string(s)]
 # extended index: find
 
@@ -169,7 +169,7 @@ function check_calibration(d::YAML.MappingNode, filename="<string>")
       push!(warnings, LinterWarning(errvalue, errtype, msg, loc, filename))
 
     elseif count(c -> c == key, collect( keys(d["calibration"]))) > 1
-      floc = findfirst(keys(d["calibration"]), key)
+      floc = something(findfirst(isequal(key), keys(d["calibration"])), 0)
       loc_first = get_loc(d["calibration"].value[floc][1])
       if i > floc
         errvalue = key
@@ -353,7 +353,7 @@ function check_symbols(d::YAML.MappingNode, filename="<string>")
 
     for (i,symnode) in enumerate(model_symbols_vec)
       if count(c -> c == symnode[2], collect(model_symbols)) > 1
-        floc = findfirst(model_symbols, symnode[2])
+        floc = something(findfirst(isequal(symnode[2]), model_symbols), 0)
         loc_first = get_loc(model_symbols_vec[floc][3])
         if i > floc
           errvalue = symnode[2]
@@ -386,7 +386,7 @@ function check_symbols(d::YAML.MappingNode, filename="<string>")
 
     for (i, key) in enumerate(keys(d["definitions"]))
       if (key in model_symbols)
-        floc = findfirst(model_symbols, key)
+        floc = something(findfirst(isequal(key), model_symbols), 0)
         loc_first = get_loc(model_symbols_vec[floc][3])
         declared_sym_type = model_symbols_vec[floc][1]
 
@@ -397,7 +397,7 @@ function check_symbols(d::YAML.MappingNode, filename="<string>")
         push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
 
       elseif count(c -> c == key, collect( keys(d["definitions"]))) > 1
-        floc = findfirst(keys(d["definitions"]), key)
+        floc = something(findfirst(isequal(key), keys(d["definitions"])), 0)
         loc_first = get_loc(d["definitions"].value[floc][1])
         if i > floc
           errvalue = key
@@ -454,28 +454,28 @@ function check_model(fn::AbstractString)
 end
 
 function print_error(err::LinterWarning)
-print_with_color(:light_red, "error ")
+printstyled("error "; color=:light_red)
 print("at line ",err.loc.start_mark.line, ", column ",err.loc.start_mark.column, " : ")
 print(err.errtype)
 if err.msg != ""
-  print_with_color(:light_green, " '",err.errvalue,"' ")
+  printstyled(" '",err.errvalue,"' "; color=:light_green)
   println(">> ", err.msg)
 else
-  print_with_color(:light_green, " '",err.errvalue,"' ")
+  printstyled(" '",err.errvalue,"' "; color=:light_green)
   println()
 end
 
 end
 
 function print_warning(err::LinterWarning)
-print_with_color(:light_blue, "warning ")
+printstyled("warning "; color=:light_blue)
 print("at line ",err.loc.start_mark.line, ", colummn ",err.loc.start_mark.column, " : ")
 print(err.errtype)
 if err.msg != ""
-  print_with_color(:light_green, " '",err.errvalue,"' ")
+  printstyled(" '",err.errvalue,"' "; color=:light_green)
   println(">> ", err.msg)
 else
-  print_with_color(:light_green, " '",err.errvalue,"' ")
+  printstyled(" '",err.errvalue,"' "; color=:light_green)
   println()
 end
 end

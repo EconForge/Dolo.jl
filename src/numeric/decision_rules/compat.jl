@@ -40,14 +40,14 @@ end
 
 function evaluate(dr::AbstractDecisionRule{CartesianGrid{d1}, CartesianGrid{d2}, n_x}, x::AbstractMatrix, y::AbstractMatrix) where d1 where d2 where n_x
     N = size(x,1)
-    assert(size(y,1)==N)
+    @assert size(y,1)==N
     xx = to_LOP(Point{d1}, x)
     yy = to_LOP(Point{d2}, y)
     res = evaluate(dr,copy(xx),copy(yy))
     return reshape(reinterpret(Float64,vec(res)), (n_x, N))'
 end
 #
-evaluate(dr::AbstractDecisionRule{<:CartesianGrid, <:CartesianGrid}, x::Vector{Float64}, y::Matrix{Float64}) = evaluate(dr, repmat(x', size(y,1)), y)
+evaluate(dr::AbstractDecisionRule{<:CartesianGrid, <:CartesianGrid}, x::Vector{Float64}, y::Matrix{Float64}) = evaluate(dr, repeat(x', size(y,1)), y)
 evaluate(dr::AbstractDecisionRule{<:CartesianGrid, <:CartesianGrid}, x::Vector{Float64}, y::Vector{Float64}) = evaluate(dr, vector_to_matrix(x), vector_to_matrix(y))
 evaluate(dr::AbstractDecisionRule{CartesianGrid{d1}, CartesianGrid{d2}}, z::AbstractMatrix) where d1 where d2 = evaluate(dr, [z[:,1:d1] z[:,1:(d1+1:end)]])
 evaluate(dr::AbstractDecisionRule{<:CartesianGrid, <:CartesianGrid}, z::Vector{Float64}) = vec(evaluate(dr,vector_to_matrix(z)))

@@ -57,7 +57,7 @@ end
 ####
 
 function SmolyakDR(grid_exo::UnstructuredGrid, grid_endo::SmolyakGrid, ::Union{Val{nx},Type{Val{nx}}}) where nx
-    coefs = [Array{Float64}(n_nodes(grid_endo), nx) for i in 1:n_nodes(grid_exo)]
+    coefs = [Array{Float64}(undef, n_nodes(grid_endo), nx) for i in 1:n_nodes(grid_exo)]
     SmolyakDR{typeof(grid_exo),typeof(grid_endo),nx}(grid_exo, grid_endo, coefs)
 end
 

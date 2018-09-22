@@ -30,9 +30,9 @@ end
 (dr::ConstantDecisionRule)(i::Int, j::Int, x::Union{Point{d},Vector{Point{d}}}) where d = dr(x)
 
 # (dr::ConstantDecisionRule)(x::AbstractVector, y::AbstractVector) = dr.constants
-# (dr::ConstantDecisionRule)(x::AbstractVector, y::AbstractMatrix) = repmat(dr.constants', size(y, 1), 1)
-# (dr::ConstantDecisionRule)(x::AbstractMatrix, y::AbstractVector) = repmat(dr.constants', size(x, 1), 1)
-# (dr::ConstantDecisionRule)(x::AbstractMatrix, y::AbstractMatrix) = repmat(dr.constants', size(x, 1), 1)
+# (dr::ConstantDecisionRule)(x::AbstractVector, y::AbstractMatrix) = repeat(dr.constants', size(y, 1), 1)
+# (dr::ConstantDecisionRule)(x::AbstractMatrix, y::AbstractVector) = repeat(dr.constants', size(x, 1), 1)
+# (dr::ConstantDecisionRule)(x::AbstractMatrix, y::AbstractMatrix) = repeat(dr.constants', size(x, 1), 1)
 # (dr::ConstantDecisionRule)(i::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
 # (dr::ConstantDecisionRule)(i::Int, j::Int, x::Union{AbstractVector,AbstractMatrix}) = dr(x)
 

@@ -105,7 +105,7 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
             # update error
             err = max(err, maxabs(x1[i] - x0[i]))
             # copy controls back into x0
-            copy!(x0[i], x1[i])
+            copyto!(x0[i], x1[i])
         end
 
         gain = err/err_0

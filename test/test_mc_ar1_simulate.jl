@@ -16,7 +16,7 @@ T= 50
 Index_mc = Dolo.simulate(model.exogenous, N, T, 1)
 
 s0=model.calibration[:states]
-s0=repmat(s0,N)
+s0=repeat(s0,N)
 typeof(s0)<:AbstractVector
 Index_mc.data
 

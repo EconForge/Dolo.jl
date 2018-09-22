@@ -22,14 +22,12 @@ function set_values!(
     ) where G <: Union{<:EmptyGrid,<:UnstructuredGrid}
     # TODO the following should be once for all with the result stored in dr
     B_grid = BM.complete_polynomial(nodes(Matrix,dr.grid_endo), dr.order)
-    vv = deepcopy(values)
     for i in 1:length(values)
         dr.coefs[i][:,:] = B_grid\values[i]
         # TODO: understand why the following seems to modify values[i]
         # q_B_grid = qr(B_grid, Val(true))
         # ldiv!(dr.coefs[i], q_B_grid, values[i])
     end
-    println("Error: ", maximum(vv - values))
 end
 
 function set_values!(

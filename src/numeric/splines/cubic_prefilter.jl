@@ -60,9 +60,9 @@ function fill_bands!(M::Int, bands::AbstractMatrix, bb::AbstractVector{T}, data:
     bands[M+2, 2] = -2.0
     bands[M+2, 3] = 1.0
 
-    bands[2:end-1,1] = 1.0/6.0
-    bands[2:end-1,2] = 2.0/3.0
-    bands[2:end-1,3] = 1.0/6.0
+    bands[2:end-1,1] .= 1.0/6.0
+    bands[2:end-1,2] .= 2.0/3.0
+    bands[2:end-1,3] .= 1.0/6.0
 
     bb[:] = data[:]
     bb[1] = zero(T)

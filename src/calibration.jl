@@ -29,14 +29,15 @@ let
 
     # define the rest of the AbstractDict interface by forwarding to c.d
 
+    @eval Base.iterate(c::$Calib, args...) = iterate(c.d, args...)
+
     # 1-arg functions
-    for f in [:length, :keys, :values, :keytype, :valtype, :eltype, :isempty,
-              :start]
+    for f in [:length, :keys, :values, :keytype, :valtype, :eltype, :isempty]
         @eval Base.$(f)(c::$(Calib)) = $(f)(c.d)
     end
 
     # 2-arg functions
-    for f in [:haskey, :delete!, :pop!, :sizehint!, :next, :done]
+    for f in [:haskey, :delete!, :pop!, :sizehint!]
         @eval Base.$(f)(c::$(Calib), arg) = $(f)(c.d, arg)
     end
 

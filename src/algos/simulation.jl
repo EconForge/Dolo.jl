@@ -271,7 +271,7 @@ end
 
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, shock_name::Symbol; T::Int=40)
-    index_s = findfirst(model.symbols[:exogenous], shock_name)
+    index_s = something(findfirst(isequal(shock_name), model.symbols[:exogenous]), 0)
     # e1 = zeros(length(model.exogenous.mu))
     e1 = zeros(length(model.calibration[:exogenous]))
     Impulse = sqrt(diag(model.exogenous.Sigma)[index_s])
@@ -306,7 +306,7 @@ Function "response" computes the impulse response functions with several major o
 """
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, shock_name::Symbol, Impulse::Float64; T::Int=40)
-    index_s = findfirst(model.symbols[:exogenous], shock_name)
+    index_s = something(findfirst(isequal(shock_name), model.symbols[:exogenous]), 0)
     e1 = zeros(length(model.calibration[:exogenous]))
     e1[index_s] = Impulse
     s0 = model.calibration[:states]
