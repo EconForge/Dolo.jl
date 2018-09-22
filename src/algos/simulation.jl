@@ -18,16 +18,16 @@ function evaluate_definitions(model, simul::AxisArray{Tf,3}, params=model.calibr
 
     n_v,N,T = size(past)
 
-    x_past = reinterpret(Point{n_v}, past.data, (T*N,))
-    x_present = reinterpret(Point{n_v}, present.data, (T*N,))
-    x_future = reinterpret(Point{n_v}, future.data, (T*N,))
+    x_past = reshape(reinterpret(Point{n_v}, vec(past.data)), (T*N,))
+    x_present = reshape(reinterpret(Point{n_v}, vec(present.data)), (T*N,))
+    x_future = reshape(reinterpret(Point{n_v}, vec(future.data)), (T*N,))
 
     y_ = evaluate_definitions(model, x_past, x_present, x_future, p_)
 
     auxiliaries = [Dolang.arg_name(e) for e in keys(model.definitions)]
     n_y = length(auxiliaries)
 
-    data = permutedims( reinterpret(Float64, y_, (n_y,N,T)), [2,1,3])
+    data = permutedims( reshape(reinterpret(Float64, vec(y_)), (n_y,N,T)), [2,1,3])
 
     array = AxisArray(copy(data), Axis{:N}(1:N), Axis{:V}(auxiliaries), Axis{:T}(1:T))
 
@@ -66,16 +66,16 @@ function evaluate_definitions(model, _simul::AxisArray{__T,2}, params=model.cali
 
     n_v = size(past, 1)
 
-    x_past = reinterpret(Point{n_v}, past.data, (T,))
-    x_present = reinterpret(Point{n_v}, present.data, (T,))
-    x_future = reinterpret(Point{n_v}, future.data, (T,))
+    x_past = reshape(reinterpret(Point{n_v}, vec(past.data)), (T,))
+    x_present = reshape(reinterpret(Point{n_v}, vec(present.data)), (T,))
+    x_future = reshape(reinterpret(Point{n_v}, vec(future.data)), (T,))
 
     y_ = evaluate_definitions(model, x_past, x_present, x_future, p_)
 
     auxiliaries = [Dolang.arg_name(e) for e in keys(model.definitions)]
     n_y = length(auxiliaries)
 
-    data = reinterpret(Float64, y_, (n_y, T))
+    data = reshape(reinterpret(Float64, vec(y_)), (n_y, T))
 
     array = AxisArray(copy(data), Axis{:V}(auxiliaries), simul[Axis{:T}])
 
@@ -106,8 +106,8 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
     nx = length(x0)
     nsx = nx+ns
 
-    s_simul = Array{Float64}(N, ns, T)
-    x_simul = Array{Float64}(N, nx, T)
+    s_simul = Array{Float64}(undef, N, ns, T)
+    x_simul = Array{Float64}(undef, N, nx, T)
     for i in 1:N
       s_simul[i, :, 1] = s0
       x_simul[i, :, 1] = x0
@@ -165,8 +165,8 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
     nsx = nx+ns
     nm = length(model.calibration[:exogenous])
 
-    s_simul = Array{Float64}(N, ns, T)
-    x_simul = Array{Float64}(N, nx, T)
+    s_simul = Array{Float64}(undef, N, ns, T)
+    x_simul = Array{Float64}(undef, N, nx, T)
     for i in 1:N
         s_simul[i, :, 1] = s0
         x_simul[i, :, 1] = x0

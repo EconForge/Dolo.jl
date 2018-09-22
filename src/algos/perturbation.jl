@@ -36,7 +36,7 @@ function perturb_first_order(g_s, g_x, f_s, f_x, f_S, f_X)
 
     nv = ns + nx
 
-    A = [eye(ns) zeros(ns, nx);
+    A = [Matrix(1.0I,ns,ns) zeros(ns, nx);
          -f_S     -f_X]
 
     B = [g_s g_x;

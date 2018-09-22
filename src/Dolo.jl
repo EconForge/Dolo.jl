@@ -47,7 +47,8 @@ import Base.size
 import Base.eltype
 import Base.*
 
-import LinearAlgebra: schur
+using LinearAlgebra
+
 
 # exports
        # model functions

@@ -13,7 +13,7 @@ function CompletePolyDR(
         grid_exo::EmptyGrid, grid_endo::Grid{ns},
         ::Union{Val{nx},Type{Val{nx}}}, order::Int=3
     ) where ns where nx
-    coeffs = [Array{Float64}(BM.n_complete(ns, order), nx)]
+    coeffs = [Array{Float64}(undef, BM.n_complete(ns, order), nx)]
     CompletePolyDR{EmptyGrid,typeof(grid_endo),nx}(grid_exo, grid_endo, coeffs, order)
 end
 
@@ -47,7 +47,7 @@ function set_values!(
 
     for i in 1:length(values)
         N = length(values[i])
-        data = copy(reinterpret(Float64, values[i], (nx, N))')
+        data = copy(reshape(reinterpret(Float64, vec(values[i])), (nx, N))')
         ldiv!(dr.coefs[i], q_B_grid, data)
     end
 end
@@ -59,7 +59,7 @@ end
 
 function evaluate(dr::CompletePolyDR{<:EmptyGrid,<:Grid{d}}, points::AbstractVector{Point{d}}) where d
     N = length(points)
-    mat = copy(reinterpret(Float64, points, (d, N))')
+    mat = copy(reshape(reinterpret(Float64, vec(points)), (d, N))')
     evaluate(dr, mat)
 end
 
@@ -90,6 +90,6 @@ end
 
 function evaluate(dr::CompletePolyDR{<:UnstructuredGrid}, i::Int, z::AbstractVector{Point{d}}) where d
     N = length(z)
-    mat = reinterpret(Float64, z, (d, N))'
+    mat = reshape(reinterpret(Float64, vec(z)), (d, N))'
     evaluate(dr, i, mat)
 end

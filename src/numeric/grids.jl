@@ -69,7 +69,7 @@ function Product(a::UnstructuredGrid{d1}, b::UnstructuredGrid{d2}) where d1 wher
     A = [Base.product(a.nodes, b.nodes)...]
     N = length(A)
     d = d1 + d2
-    nodes = reinterpret(Point{d},A,(N,))
+    nodes = reshape(reinterpret(Point{d},(A)),(N,))
     return UnstructuredGrid{d}(nodes)
 end
 
@@ -146,7 +146,7 @@ function SmolyakGrid{d}(min::Vector{Float64},max::Vector{Float64},mu::Union{Vect
 end
 
 
-nodes(grid::SmolyakGrid{d}) where d  = reinterpret(Point{d}, copy(grid.nodes'),( size(grid.nodes,1),))
+nodes(grid::SmolyakGrid{d}) where d  = reshape(reinterpret(Point{d}, vec(copy(grid.nodes'))),( size(grid.nodes,1),))
 n_nodes(grid::SmolyakGrid) = size(grid.nodes,1)
 node(grid::SmolyakGrid{d}, i::Int) where d = Point{d}(grid.nodes[i,:]...)
 
@@ -162,7 +162,7 @@ struct RandomGrid{d} <: Grid{d}
 end
 
 function  (::Type{<:Union{RandomGrid,RandomGrid{d}}})(min::Point{d}, max::Point{d}, n::Int) where d
-    nodes = reinterpret(Point{d}, rand(d, n), (n,))  # on [0, 1]
+    nodes = reshape(reinterpret(Point{d}, vec(rand(d, n))), (n,))  # on [0, 1]
     for nn=1:length(n)
         nodes[nn] = nodes[nn] .* (max-min) + min
     end

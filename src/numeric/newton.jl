@@ -18,11 +18,11 @@ function DiffFun(fun, x0::Vector{ListOfPoints{n_x}}, epsilon=1e-6) where n_x
       fi = fun(xi)::Vector{ListOfPoints{n_x}}
       di = (fi-r0)/epsilon
       for i_m=1:n_m
-        JMat[i_m][:,i_x,:] = reinterpret(Float64, di[i_m], (n_x, N))
+        JMat[i_m][:,i_x,:] = reshape(reinterpret(Float64, vec(di[i_m])), (n_x, N))
         add_epsilon!(xi[i_m], i_x, -epsilon)
       end
     end
-    J = [reinterpret(SMatrix{n_x,n_x,Float64,n_x^2},JMat[i],(N,)) for i=1:n_m]
+    J = [reshape(reinterpret(SMatrix{n_x,n_x,Float64,n_x^2},vec(JMat[i])),(N,)) for i=1:n_m]
     return (r0,J) #::Tuple{Vector{ListOfPoints{n_x}},Vector{Vector{SMatrix{n_x,n_x,Float64,n_x*n_x}}}}
 end
 

@@ -31,9 +31,9 @@ function eval_UC_spline(a, b, orders, C::Array{Float64}, S::Matrix{Float64})
     n_x = size(C,1)
     dims = tuple(size(C)[2:end]...)
     out = zeros(n_x,N)
-    CC = reinterpret(SVector{n_x,Float64},C,dims)
-    SS = reinterpret(SVector{d,Float64},S,(N,))
-    V  = reinterpret(SVector{n_x,Float64},out,(N,))
+    CC = reshape(reinterpret(SVector{n_x,Float64},vec(C)),dims)
+    SS = reshape(reinterpret(SVector{d,Float64},vec(S)),(N,))
+    V  = reshape(reinterpret(SVector{n_x,Float64},vec(out)),(N,))
     eval_UC_spline!(a, b, orders, CC, SS, V)
     return out
 end

@@ -172,10 +172,10 @@ end
 function *(L::LinearThing,m::AbstractArray{Float64, 3})
    n_x,N,n_m = size(m)
    # TODO remove copy there
-   x = [copy(reinterpret(SVector{n_x,Float64},m[:,:,i],(N,))) for i=1:n_m]
+   x = [copy(reshape(reinterpret(SVector{n_x,Float64},vec(m[:,:,i])),(N,))) for i=1:n_m]
    y = deepcopy(x)
    xx = L*y
-   rr = [reinterpret(Float64, xx[i], (n_x,N)) for i=1:length(xx)]
+   rr = [reshape(reinterpret(Float64, vec(xx[i])), (n_x,N)) for i=1:length(xx)]
    rrr = cat(rr...; dims=3)
    return reshape(rrr, n_x,N,n_m)
 end
@@ -184,7 +184,7 @@ function *(L::LinearThing,v::AbstractVector{Float64})
    m = copy(v)
    sh = shape(L)
    n_x = sh[1]
-   vv = reinterpret(Point{n_x},m,(sh[2],sh[3]))
+   vv = reshape(reinterpret(Point{n_x},vec(m)),(sh[2],sh[3]))
    # x = [view(vv,:,i) for i=1:sh[3]]
    x = [vv[:,i] for i=1:sh[3]]
    y = x-L*x

@@ -5,7 +5,7 @@
         println("Importing ", fname)
         model = yaml_import(joinpath(path, fname))
         res = residuals(model)
-        if !contains(fname,"sudden_stop")
+        if !occursin("sudden_stop", fname)
             @test (maximum(res[:transition]) + maximum(res[:arbitrage]) )<1e-5
         else
             @test (maximum(res[:transition]) + maximum(res[:arbitrage])-0.215)<1e-5
