@@ -11,3 +11,5 @@ BasisMatrices
 StringDistances
 StaticArrays
 IterativeSolvers
+IterTools
+Compat

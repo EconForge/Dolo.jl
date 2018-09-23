@@ -9,7 +9,8 @@ import Dolang: SymExpr, list_syms
 # model import utils
 using DataStructures: OrderedDict
 import YAML; using YAML: load_file, load
-import Iterators
+
+import IterTools
 #using Requests: get
 using StaticArrays
 

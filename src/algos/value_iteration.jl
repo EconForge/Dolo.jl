@@ -164,7 +164,7 @@ function evaluate_policy(model, dprocess::AbstractDiscretizedProcess, grid, dr;
         for i in 1:length(v)
             v[i][:] = u[i] + β*E_V[i]
             err = max(err, maxabs(v[i] - v0[i]))
-            copy!(v0[i], v[i])
+            copyto!(v0[i], v[i])
             E_V[i] *= 0.0
         end
 
@@ -342,8 +342,8 @@ function value_iteration(
         err_v = maxabs(v-v0)
         err_x = maxabs(x-x0)
         for i in 1:nsd
-            copy!(v0[i], v[i])
-            copy!(x0[i], x[i])
+            copyto!(v0[i], v[i])
+            copyto!(x0[i], x[i])
         end
 
         # update values and policies

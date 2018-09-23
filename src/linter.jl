@@ -31,7 +31,7 @@ end
 
 
 function yaml_node_from_file(fn::AbstractString)
-    txt = open(readstring, fn)
+    txt = open(f->read(f,String), fn)
     txt = replace(txt, "\r"=>"")
     return yaml_node_from_string(txt)
 end

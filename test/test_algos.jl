@@ -1,4 +1,3 @@
-
 import Dolo
 import YAML
 using AxisArrays
@@ -71,7 +70,7 @@ path = Dolo.pkg_path
 
         Dolo.simulate(model, tid_res.dr)
 
-        s0 = model.calibration[:states]+0.1
+        s0 = model.calibration[:states] .+ 0.1
         sim = Dolo.simulate(model, tid_res.dr; s0=s0)
         Dolo.simulate(model, tid_res.dr; N=10)
 

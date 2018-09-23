@@ -34,25 +34,30 @@ function evaluate_definitions(model, simul::AxisArray{Tf,3}, params=model.calibr
 end
 
 function evaluate_definitions(model, _simul::AxisArray{__T,2}, params=model.calibration[:parameters]) where __T
+
     p_ = SVector(params...)
 
+    all_v = _simul[Axis{:V}].val
     all_t = _simul[Axis{:T}].val
+
+    # TODO: why are we even doing that ?
     T = length(all_t)
-    if all(all_t .== 0:T-1)
-        all_t += 1
+    if all(all_t .== 0:(T-1))
+        all_t = 1:T
     end
     if all(all_t .!= 1:T)
         msg = "Can only evaluate definitions if the T Axis goes from 1:T or 0:(T-1)"
         error(msg)
     end
 
-    # if necessary, transpose _simul so we can reinterpret colums of `sim`
-    # below
-    if size(_simul, 2) == T
-        simul = _simul
+    # expect dimensions to be (:V,:T) otherwise we transpose
+    if axisnames(_simul) == (:T,:V)
+        data = _simul.data'
     else
-        simul = _simul'
+        data = _simul.data
     end
+
+    simul = AxisArray(data, Axis{:V}(all_v), Axis{:T}(all_t))
 
     vars = cat(model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls]; dims=1)
 

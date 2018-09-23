@@ -70,7 +70,7 @@ function CompletePolyDR(
         ::Union{Val{nx},Type{Val{nx}}}, order::Int=3
     ) where S <: UnstructuredGrid where ns where nx
     n_coefs = BM.n_complete(ns, order)
-    coeffs = [Array{Float64}(n_coefs, nx) for i in 1:n_nodes(grid_exo)]
+    coeffs = [Array{Float64}(undef, n_coefs, nx) for i in 1:n_nodes(grid_exo)]
     CompletePolyDR{S,typeof(grid_endo),nx}(grid_exo, grid_endo, coeffs, order)
 end
 

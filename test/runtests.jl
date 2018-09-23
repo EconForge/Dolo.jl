@@ -1,6 +1,7 @@
 module DoloTests
 
-using Dolo, DataStructures, Base.Test
+using Test
+using Dolo, DataStructures
 
 tests = length(ARGS) > 0 ? ARGS : [
                                    "model_types",
