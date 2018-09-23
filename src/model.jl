@@ -27,9 +27,9 @@ end
 
 function SModel(url::AbstractString)
     if match(r"(http|https):.*", url) != nothing
-        res = get(url)
-        buf = IOBuffer(res.data)
-        data = _symbol_dict(YAML.load(buf, yaml_types))
+        res = HTTP.request("GET", url)
+        txt = (String(res.body))
+        data = _symbol_dict(YAML.load(txt, yaml_types))
     else
         data = _symbol_dict(YAML.load_file(url, yaml_types))
     end
@@ -297,9 +297,9 @@ end
 function Model(url::AbstractString; print_code=false)
     # it looks like it would be cool to use the super constructor ;-)
     if match(r"(http|https):.*", url) != nothing
-        res = get(url)
-        buf = IOBuffer(res.data)
-        data = _symbol_dict(load(buf, yaml_types))
+        res = HTTP.request("GET", url)
+        txt = String(res.body)
+        data = _symbol_dict(load(txt, yaml_types))
     else
         data = _symbol_dict(load_file(url, yaml_types))
     end

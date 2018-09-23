@@ -11,7 +11,7 @@ using DataStructures: OrderedDict
 import YAML; using YAML: load_file, load
 
 import IterTools
-#using Requests: get
+import HTTP
 using StaticArrays
 
 # solvers

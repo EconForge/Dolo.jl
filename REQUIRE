@@ -13,3 +13,4 @@ StaticArrays
 IterativeSolvers
 IterTools
 Compat
+HTTP
