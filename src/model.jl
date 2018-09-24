@@ -254,7 +254,7 @@ mutable struct Model{ID} <: AModel{ID}
                 lhs = [eq.args[2] for eq in equations]
                 rhs = [eq.args[3] for eq in equations]
                 expressions = OrderedDict(zip(targets,rhs))
-                @assert Dolang.normalize.(lhs) == Dolang.normalize.(targets)
+                @assert Dolang.stringify.(lhs) == Dolang.stringify.(targets)
             else
                 expressions = OrderedDict( [Symbol("out_",i)=>eq_to_expr(eq) for (i,eq) in enumerate(equations)])
             end
