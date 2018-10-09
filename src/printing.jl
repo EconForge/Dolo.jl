@@ -65,7 +65,7 @@ function Base.show(io::IO, ::MIME"text/html", model::Model)
             eq = equations[i]
             eq = sanitize(eq, model)
             eqtex = Dolang.latex(eq)
-            eqtex = replace(eqtex, "*", " ")
+            eqtex = replace(eqtex, "*"=>" ")
             fmt_line = "<tr><td>$eqt</td><td>\\[$eqtex\\]</td></tr>"
             push!(table_lines, fmt_line)
         end
