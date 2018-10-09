@@ -148,7 +148,7 @@ end
 
 function simulate(process::DiscreteMarkovProcess, N::Int, T::Int, i0::Int)
     mc_qe = QE.MarkovChain(process.transitions)
-    inds = Array{Int}(T, N)
+    inds = Array{Int}(undef, T, N)
     QE.simulate_indices!(inds, mc_qe, init=i0)
     AxisArray(inds, Axis{:T}(1:T),  Axis{:N}(1:N))
 end
@@ -185,7 +185,7 @@ end
 
 function VAR1(R::Array{Float64,2}, Sigma::Array{Float64,2})
     M = zeros(size(R, 1))
-    assert(size(R)==size(Sigma))
+    @assert size(R)==size(Sigma)
     return VAR1(M, R, Sigma)
 end
 
@@ -195,7 +195,8 @@ function VAR1(rho::Array{Float64,1}, Sigma::Array{Float64,2})
 end
 
 function VAR1(rho::Float64, Sigma::Array{Float64,2})
-    R = eye(size(Sigma,1))*rho
+    p = size(Sigma,1)
+    R = Matrix(rho*I, p, p)
     return VAR1(R, Sigma)
 end
 
@@ -218,7 +219,7 @@ function discretize(var::VAR1, n_states::Array{Int,1}, n_integration::Array{Int,
     grid = CartesianGrid{length(min)}(min,max,n_states)
     # discretize innovations
     x,w = QE.qnwnorm(n_integration, zeros(size(var.Sigma,1)), var.Sigma)
-    integration_nodes = [ cat(1,[(M + R*(node(grid, i)-M) + x[j,:])' for j=1:size(x,1)]...) for i in 1:n_nodes(grid)]
+    integration_nodes = [ cat([(M + R*(node(grid, i)-M) + x[j,:])' for j=1:size(x,1)]...; dims=1) for i in 1:n_nodes(grid)]
     integration_weights = [w for i in 1:n_nodes(grid)]
     return DiscretizedProcess(grid, integration_nodes, integration_weights)
 end
@@ -233,7 +234,7 @@ function discretize(::Type{DiscreteMarkovProcess}, var::VAR1; N::Int=3)
     R =  var.R
     d = size(R, 1)
     ρ = R[1, 1]
-    @assert maximum(abs, R-eye(d)*ρ)<1e-16
+    @assert maximum(abs, R-Matrix(ρ*I,d,d))<1e-16
 
     sigma = var.Sigma
 
@@ -289,7 +290,7 @@ function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64};
     end
 
     if irf
-        E[:, 1, :] = repmat(e0,1,T)
+        E[:, 1, :] = repeat(e0,1,T)
     end
 
     # Initial conditions

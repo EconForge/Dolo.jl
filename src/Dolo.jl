@@ -2,13 +2,16 @@ __precompile__(true)
 
 module Dolo
 
+using Printf
+
 import Dolang: SymExpr, list_syms
 
 # model import utils
 using DataStructures: OrderedDict
 import YAML; using YAML: load_file, load
-import Iterators
-using Requests: get
+
+import IterTools
+import HTTP
 using StaticArrays
 
 # solvers
@@ -40,10 +43,12 @@ using StaticArrays
 using IterativeSolvers
 
 # Functions from base we extend
-import Base.A_mul_B!
+# import Base.A_mul_B!
 import Base.size
 import Base.eltype
 import Base.*
+
+using LinearAlgebra
 
 
 # exports
@@ -65,7 +70,7 @@ export time_iteration, improved_time_iteration, value_iteration, residuals,
 export ModelCalibration, FlatCalibration, GroupedCalibration
 export AbstractModel, AbstractDecisionRule
 
-# set up core types
+# set up core typesr
 abstract type AbstractSymbolicModel{ID} end
 abstract type AbstractModel{ID} <: AbstractSymbolicModel{ID} end
 
@@ -85,7 +90,7 @@ ListOfValues{n} = Vector{Value{n}}
 # recursively make all keys at any layer of nesting a symbol
 # included here instead of util.jl so we can call it on RECIPES below
 _symbol_dict(x) = x
-_symbol_dict(d::Associative) =
+_symbol_dict(d::AbstractDict) =
     Dict{Symbol,Any}([(Symbol(k), _symbol_dict(v)) for (k, v) in d])
 
 const src_path = dirname(@__FILE__)
@@ -97,7 +102,7 @@ for f in [:arbitrage, :transition, :auxiliary, :value, :expectation,
           :direct_response, :controls_lb, :controls_ub, :arbitrage_2,
           :arbitrage!, :transition!, :auxiliary!, :value!, :expectation!,
           :direct_response, :controls_lb!, :controls_ub!, :arbitrage_2!]
-    eval(Expr(:function, f))
+    Core.eval(Dolo, Expr(:function, f))
 end
 
 include("numeric/splines/splines.jl")

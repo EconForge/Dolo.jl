@@ -27,7 +27,7 @@ mutable struct ValueIterationResult
     v_tol::Float64
     v_err::Float64
     log::ValueIterationLog
-    trace::Union{Void,IterationTrace}
+    trace::Union{Nothing,IterationTrace}
 end
 
 converged(r::ValueIterationResult) = r.x_converged && r.v_converged
@@ -164,7 +164,7 @@ function evaluate_policy(model, dprocess::AbstractDiscretizedProcess, grid, dr;
         for i in 1:length(v)
             v[i][:] = u[i] + β*E_V[i]
             err = max(err, maxabs(v[i] - v0[i]))
-            copy!(v0[i], v[i])
+            copyto!(v0[i], v[i])
             E_V[i] *= 0.0
         end
 
@@ -221,27 +221,12 @@ end
 # end
 #
 
-@static if Pkg.installed("Optim") < v"0.9-"
-    function call_optim(fobj, initial_x, lower, upper, optim_opts)
-        if length(initial_x) == 1
-            return optimize(fobj, lower[1], upper[1])
-        end
-        results = optimize(
-            Optim.OnceDifferentiable(fobj), initial_x, lower, upper,
-            Fminbox(), optimizer=NelderMead,
-            x_tol=1e-10, f_tol=1e-10
-        )
+
+function call_optim(fobj, initial_x, lower, upper, optim_opts)
+    if length(initial_x) == 1
+        return optimize(fobj, lower[1], upper[1])
     end
-else
-    function call_optim(fobj, initial_x, lower, upper, optim_opts)
-        if length(initial_x) == 1
-            return optimize(fobj, lower[1], upper[1])
-        end
-        results = optimize(
-            Optim.OnceDifferentiable(fobj, initial_x), initial_x, lower, upper,
-            Fminbox{NelderMead}(), optimizer_o=optim_opts
-        )
-    end
+    return optimize(fobj, lower, upper, initial_x)
 end
 
 """
@@ -357,8 +342,8 @@ function value_iteration(
         err_v = maxabs(v-v0)
         err_x = maxabs(x-x0)
         for i in 1:nsd
-            copy!(v0[i], v[i])
-            copy!(x0[i], x[i])
+            copyto!(v0[i], v[i])
+            copyto!(x0[i], x[i])
         end
 
         # update values and policies

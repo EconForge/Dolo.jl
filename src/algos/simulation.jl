@@ -6,7 +6,7 @@ function evaluate_definitions(model, simul::AxisArray{Tf,3}, params=model.calibr
     T = length( simul[Axis{:T}].val )
     @assert simul[Axis{:T}].val == 1:T
 
-    vars = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+    vars = cat(model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls]; dims=1)
 
     sim = simul[Axis{:V}(vars)]
 
@@ -18,43 +18,48 @@ function evaluate_definitions(model, simul::AxisArray{Tf,3}, params=model.calibr
 
     n_v,N,T = size(past)
 
-    x_past = reinterpret(Point{n_v}, past.data, (T*N,))
-    x_present = reinterpret(Point{n_v}, present.data, (T*N,))
-    x_future = reinterpret(Point{n_v}, future.data, (T*N,))
+    x_past = reshape(reinterpret(Point{n_v}, vec(past.data)), (T*N,))
+    x_present = reshape(reinterpret(Point{n_v}, vec(present.data)), (T*N,))
+    x_future = reshape(reinterpret(Point{n_v}, vec(future.data)), (T*N,))
 
     y_ = evaluate_definitions(model, x_past, x_present, x_future, p_)
 
     auxiliaries = [Dolang.arg_name(e) for e in keys(model.definitions)]
     n_y = length(auxiliaries)
 
-    data = permutedims( reinterpret(Float64, y_, (n_y,N,T)), [2,1,3])
+    data = permutedims( reshape(reinterpret(Float64, vec(y_)), (n_y,N,T)), [2,1,3])
 
-    array = AxisArray(data, Axis{:N}(1:N), Axis{:V}(auxiliaries), Axis{:T}(1:T))
+    array = AxisArray(copy(data), Axis{:N}(1:N), Axis{:V}(auxiliaries), Axis{:T}(1:T))
 
 end
 
 function evaluate_definitions(model, _simul::AxisArray{__T,2}, params=model.calibration[:parameters]) where __T
+
     p_ = SVector(params...)
 
+    all_v = _simul[Axis{:V}].val
     all_t = _simul[Axis{:T}].val
+
+    # TODO: why are we even doing that ?
     T = length(all_t)
-    if all(all_t .== 0:T-1)
-        all_t += 1
+    if all(all_t .== 0:(T-1))
+        all_t = 1:T
     end
     if all(all_t .!= 1:T)
         msg = "Can only evaluate definitions if the T Axis goes from 1:T or 0:(T-1)"
         error(msg)
     end
 
-    # if necessary, transpose _simul so we can reinterpret colums of `sim`
-    # below
-    if size(_simul, 2) == T
-        simul = _simul
+    # expect dimensions to be (:V,:T) otherwise we transpose
+    if axisnames(_simul) == (:T,:V)
+        data = _simul.data'
     else
-        simul = _simul'
+        data = _simul.data
     end
 
-    vars = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+    simul = AxisArray(data, Axis{:V}(all_v), Axis{:T}(all_t))
+
+    vars = cat(model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls]; dims=1)
 
     sim = simul[Axis{:V}(vars)]
 
@@ -66,18 +71,18 @@ function evaluate_definitions(model, _simul::AxisArray{__T,2}, params=model.cali
 
     n_v = size(past, 1)
 
-    x_past = reinterpret(Point{n_v}, past.data, (T,))
-    x_present = reinterpret(Point{n_v}, present.data, (T,))
-    x_future = reinterpret(Point{n_v}, future.data, (T,))
+    x_past = reshape(reinterpret(Point{n_v}, vec(past.data)), (T,))
+    x_present = reshape(reinterpret(Point{n_v}, vec(present.data)), (T,))
+    x_future = reshape(reinterpret(Point{n_v}, vec(future.data)), (T,))
 
     y_ = evaluate_definitions(model, x_past, x_present, x_future, p_)
 
     auxiliaries = [Dolang.arg_name(e) for e in keys(model.definitions)]
     n_y = length(auxiliaries)
 
-    data = reinterpret(Float64, y_, (n_y, T))
+    data = reshape(reinterpret(Float64, vec(y_)), (n_y, T))
 
-    array = AxisArray(data, Axis{:V}(auxiliaries), simul[Axis{:T}])
+    array = AxisArray(copy(data), Axis{:V}(auxiliaries), simul[Axis{:T}])
 
 end
 
@@ -92,7 +97,7 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
 
     # extract data from model
     calib = model.calibration
-    params = calib[:parameters]
+    params = SVector(calib[:parameters]...)
 
     N = size(driving_process, 2)
     T = size(driving_process, 3)
@@ -100,32 +105,33 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
 
     # calculate initial controls using decision rule
     x0 = dr(epsilons[1, :, 1], s0)
+
     # get number of states and controls
     ns = length(s0)
     nx = length(x0)
     nsx = nx+ns
 
-    s_simul = Array{Float64}(N, ns, T)
-    x_simul = Array{Float64}(N, nx, T)
+    s_simul = Array{Float64}(undef, N, ns, T)
+    x_simul = Array{Float64}(undef, N, nx, T)
     for i in 1:N
       s_simul[i, :, 1] = s0
       x_simul[i, :, 1] = x0
     end
 
     for t in 1:T
-        s = s_simul[:, :, t]
-        m = epsilons[:, :, t]
+        s = copy(to_LOP(s_simul[:, :, t]))
+        m = copy(to_LOP(epsilons[:, :, t]))
         x = dr(m, s)
-        x_simul[:, :, t] = x
+        x_simul[:, :, t] = from_LOP(x)
         if t < T
-          M = epsilons[:, :, t+1]
-          ss = s_simul[:, :, t+1]
-          s_simul[:,:,t+1] = transition(model, m, s, x, M, params)
+          M = copy(to_LOP(epsilons[:, :, t+1]))
+          ss = transition(model, m, s, x, M, params)
+          s_simul[:,:,t+1] = from_LOP(ss)
         end
     end
-    sim = cat(2, epsilons, s_simul, x_simul)::Array{Float64,3}
+    sim = cat(epsilons, s_simul, x_simul; dims=2)::Array{Float64,3}
 
-    Ac = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+    Ac = cat(model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls]; dims=1)
     ll = [Symbol(i) for i in Ac]
 
     sim_aa = AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
@@ -164,8 +170,8 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
     nsx = nx+ns
     nm = length(model.calibration[:exogenous])
 
-    s_simul = Array{Float64}(N, ns, T)
-    x_simul = Array{Float64}(N, nx, T)
+    s_simul = Array{Float64}(undef, N, ns, T)
+    x_simul = Array{Float64}(undef, N, nx, T)
     for i in 1:N
         s_simul[i, :, 1] = s0
         x_simul[i, :, 1] = x0
@@ -175,13 +181,13 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
         s = s_simul[:, :, t]
         m = epsilons[:, :, t]
 
-        m_ind=cat(1, m)[:, 1]
+        m_ind=cat(m; dims=1)[:, 1]
         m_val= dp_process.values[m_ind, :]
         x = dr(m_ind, s)
         x_simul[:, :, t] = x
         if t < T
             M = epsilons[:, :, t+1]
-            M_cat = cat(1, M)[:, 1]
+            M_cat = cat(M, dims=1)[:, 1]
             M_val = dp_process.values[M_cat, :]
             s_simul[:,:,t+1] = transition(model, m_val, s, x, M_val, params)
         end
@@ -193,10 +199,10 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
       epsilons_values[n,:,:] = permutedims(eps, [1, 3, 2])
     end
 
-    sim = cat(2, epsilons, epsilons_values, s_simul, x_simul)::Array{Float64,3}
+    sim = cat(epsilons, epsilons_values, s_simul, x_simul; dims=2)::Array{Float64,3}
 
     model_sym = :mc_process
-    Ac = cat(1, model_sym, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+    Ac = cat(model_sym, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls], dims=1)
     ll = [Symbol(i) for i in Ac]
     sim_aa = AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
     sim_def=evaluate_definitions(model, sim_aa, model.calibration[:parameters])
@@ -224,7 +230,6 @@ This function simulates a model given a decision rule.
 # Returns
 * `simulate`: simulated time series.
 """
-
 function simulate(model::AbstractModel, dr::AbstractDecisionRule, dprocess::DiscreteMarkovProcess;
                   i0::Int=default_index(dprocess), s0::AbstractVector=model.calibration[:states], N::Int=1, T::Int=40)
     driving_process = simulate(dprocess, N, T, i0)
@@ -271,7 +276,7 @@ end
 
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, shock_name::Symbol; T::Int=40)
-    index_s = findfirst(model.symbols[:exogenous], shock_name)
+    index_s = something(findfirst(isequal(shock_name), model.symbols[:exogenous]), 0)
     # e1 = zeros(length(model.exogenous.mu))
     e1 = zeros(length(model.calibration[:exogenous]))
     Impulse = sqrt(diag(model.exogenous.Sigma)[index_s])
@@ -306,7 +311,7 @@ Function "response" computes the impulse response functions with several major o
 """
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, shock_name::Symbol, Impulse::Float64; T::Int=40)
-    index_s = findfirst(model.symbols[:exogenous], shock_name)
+    index_s = something(findfirst(isequal(shock_name), model.symbols[:exogenous]), 0)
     e1 = zeros(length(model.calibration[:exogenous]))
     e1[index_s] = Impulse
     s0 = model.calibration[:states]
@@ -326,7 +331,7 @@ function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
                   m0::Union{Int,AbstractVector}; n_steps::Int=100)
 
     index = findfirst(model.symbols[:states], state)
-    Svalues = linspace(bounds[1], bounds[2], n_steps)
+    Svalues = range(bounds[1], stop=bounds[2], length=n_steps)
     svec = vcat([e' for e in fill(s0, n_steps)]...)
     svec[:, index] = Svalues
 
@@ -340,7 +345,7 @@ function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
         model_sym = model.symbols[:exogenous]
     end
 
-    l2 = cat(1, model_sym , model.symbols[:states], model.symbols[:controls])
+    l2 = cat(model_sym , model.symbols[:states], model.symbols[:controls]; dims=1)
     tab_AA = AxisArray(reshape(tb,1,size(tb)...), Axis{:T}(1:1), Axis{:N}(1:n_steps), Axis{:V}(l2))
 
     ## add definitions

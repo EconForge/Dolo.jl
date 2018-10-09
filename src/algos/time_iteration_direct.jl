@@ -73,7 +73,7 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
 
         it += 1
 
-        tic()
+        t1 = time_ns()
 
         E_f = [zeros(Point{n_h},N) for i=1:number_of_smooth_drs(dprocess)]
 
@@ -105,13 +105,13 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
             # update error
             err = max(err, maxabs(x1[i] - x0[i]))
             # copy controls back into x0
-            copy!(x0[i], x1[i])
+            copyto!(x0[i], x1[i])
         end
 
         gain = err/err_0
         err_0 = err
 
-        elapsed = toq()
+        elapsed = time_ns()-t1
 
         append!(log; verbose=verbose, it=it, err=err, gain=gain, time=elapsed, epsilon=NaN, nit=NaN)
 

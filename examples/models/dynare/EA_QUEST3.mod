@@ -207,7 +207,7 @@ inflationannual_exog=1.02;
 //load policy_param.mat;
 //for i=1:33
 //    deep_parameter_name = M_.param_names(i,:);
-//    eval(['M_.params(i)  = ' deep_parameter_name ' ;'])
+//    Core.eval(['M_.params(i)  = ' deep_parameter_name ' ;'])
 //end
 //cd(thispath);
 //std_r_ = 100;                                                            //*

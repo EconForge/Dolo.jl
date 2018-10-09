@@ -26,7 +26,7 @@ function set_values!(dr::CubicDR{EmptyGrid,CartesianGrid{d},n_x,d},  V::Vector{<
     prefilter!(C)
 end
 
-function evaluate(dr::CubicDR{EmptyGrid,CartesianGrid{d}}, points::Vector{Point{d}}) where d
+function evaluate(dr::CubicDR{EmptyGrid,CartesianGrid{d}}, points::AbstractVector{Point{d}}) where d
     a = SVector{d,Float64}(dr.grid_endo.min)
     b = SVector{d,Float64}(dr.grid_endo.max)
     n = SVector{d,Int64}(dr.grid_endo.n)
@@ -50,7 +50,7 @@ end
 # end
 
 function CubicDR(exo_grid::CartesianGrid{d1}, endo_grid::CartesianGrid{d2}, i::Union{Val{nx}, Type{Val{nx}}}) where d1 where d2 where nx
-    dims = cat(1, exo_grid.n+2, endo_grid.n+2)
+    dims = cat(exo_grid.n+2, endo_grid.n+2; dims=1)
     c = [zeros(Value{nx},dims...)]
     CubicDR{CartesianGrid{d1}, CartesianGrid{d2}, nx, d1+d2}(exo_grid, endo_grid, c)
 end
@@ -59,10 +59,10 @@ function set_values!(dr::CubicDR{CartesianGrid{d1},CartesianGrid{d2},n_x,d}, V::
     exog = dr.grid_exo
     endog = dr.grid_endo
 
-    data = reshape( cat(1, V...), endog.n..., exog.n...)
+    data = reshape( cat(V...; dims=1), endog.n..., exog.n...)
     d_m = ndims(exog)
     d_s = ndims(endog)
-    perms = cat(1, ((d_s+1):(d_s+d_m))..., (1:d_s)...)
+    perms = cat(((d_s+1):(d_s+d_m))..., (1:d_s)...; dims=1)
     RV = permutedims(data, perms)
     C = dr.itp[1]
     dims = size(C)
@@ -72,28 +72,28 @@ function set_values!(dr::CubicDR{CartesianGrid{d1},CartesianGrid{d2},n_x,d}, V::
 end
 
 
-function evaluate(dr::CubicDR{CartesianGrid{d1},CartesianGrid{d2}, n_x, d}, z::ListOfPoints{d}) where n_x where d where d1 where d2
-    a = cat(1, dr.grid_exo.min, dr.grid_endo.min)
-    b = cat(1, dr.grid_exo.max, dr.grid_endo.max)
-    n = cat(1, dr.grid_exo.n, dr.grid_endo.n)
+function evaluate(dr::CubicDR{CartesianGrid{d1},CartesianGrid{d2}, n_x, d}, z::AbstractVector{Point{d}}) where n_x where d where d1 where d2
+    a = cat(dr.grid_exo.min, dr.grid_endo.min; dims=1)
+    b = cat(dr.grid_exo.max, dr.grid_endo.max; dims=1)
+    n = cat(dr.grid_exo.n, dr.grid_endo.n; dims=1)
     cc = dr.itp[1]
     res = eval_UC_spline(a, b, n, cc, z)
     return res
 end
 
-function evaluate(dr::CubicDR{CartesianGrid{d1},CartesianGrid{d2}}, x::ListOfPoints{d1}, y::ListOfPoints{d2}) where d1 where d2
+function evaluate(dr::CubicDR{CartesianGrid{d1},CartesianGrid{d2}}, x::AbstractVector{Point{d1}}, y::AbstractVector{Point{d2}}) where d1 where d2
     N = length(x)
     z = [ [x[i]; y[i]] for i=1:N]
     evaluate(dr, z)
 end
 
-function evaluate(dr::CubicDR{CartesianGrid{d1},CartesianGrid{d2}}, x::Point{d1}, y::ListOfPoints{d2}) where d1 where d2
+function evaluate(dr::CubicDR{CartesianGrid{d1},CartesianGrid{d2}}, x::Point{d1}, y::AbstractVector{Point{d2}}) where d1 where d2
     N = length(y)
     z = [ [x; y[i]] for i=1:N]
     evaluate(dr, z)
 end
 
-function evaluate(dr::CubicDR{CartesianGrid{d1},CartesianGrid{d2}}, i::Int64, y::Union{Point{d2},ListOfPoints{d2}}) where d1 where d2
+function evaluate(dr::CubicDR{CartesianGrid{d1},CartesianGrid{d2}}, i::Int64, y::Union{Point{d2},AbstractVector{Point{d2}}}) where d1 where d2
     x = node(Point, dr.grid_exo, i)
     evaluate(dr, x, y)
 end
@@ -121,7 +121,7 @@ function set_values!(dr::CubicDR{UnstructuredGrid{d1},CartesianGrid{d2}, n_x, d2
     end
 end
 
-function evaluate(dr::CubicDR{<:UnstructuredGrid,<:CartesianGrid}, i::Int, z::Vector{Point{d}}) where d
+function evaluate(dr::CubicDR{<:UnstructuredGrid,<:CartesianGrid}, i::Int, z::AbstractVector{Point{d}}) where d
     a = dr.grid_endo.min
     b = dr.grid_endo.max
     n = dr.grid_endo.n

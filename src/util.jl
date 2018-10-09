@@ -12,7 +12,7 @@ function fkron(A::AbstractMatrix, B::AbstractMatrix)
 end
 
 rmerge(default_struct, add_options) = add_options
-function rmerge(def_s::Associative, add_s::Associative)
+function rmerge(def_s::AbstractDict, add_s::AbstractDict)
     kl = collect(keys(def_s))
     kr = collect(keys(add_s))
     resp = Dict()
@@ -31,9 +31,18 @@ end
 ############################
 # norms for list of points #
 ############################
-import Base.maxabs
+# import Base.maxabs
+#
+# function maxabs(s::ListOfPoints)
+#     t = 0.0
+#     for p in s
+#         t = max(t, maximum(p))
+#     end
+#     t
+# end
 
-function Base.maxabs(s::ListOfPoints)
+
+function maxabs(s::AbstractVector{Point{d}}) where d
     t = 0.0
     for p in s
         t = max(t, maximum(p))
@@ -41,13 +50,13 @@ function Base.maxabs(s::ListOfPoints)
     t
 end
 
-Base.maxabs(x::Vector{<:ListOfPoints}) = maximum(maxabs.(x))
+maxabs(x::AbstractVector{<:AbstractVector{Point{d}}}) where d= maximum(maxabs.(x))
 
 ############################
 # serial multiplications #
 ############################
 
-function invert!(A::Vector)
+function invert!(A::AbstractVector)
     # A[i] <- (A[i])^(-1)
     N = length(A)
     for n=1:N
@@ -80,18 +89,18 @@ vector_to_matrix(v) = Matrix(vec(v)')
 # vector_to_matrix(v::RowVector) = Matrix(v)
 
 #(compat)
-to_LOP(::Type{Point{d}}, mat::Matrix) where d = reinterpret(Point{d}, mat', (size(mat,1),))
+to_LOP(::Type{Point{d}}, mat::Matrix) where d = reshape(reinterpret(Point{d}, vec(copy(mat'))), (size(mat,1),))
 to_LOP(::Type{Point{d}}, mat::AbstractMatrix) where d = to_LOP(Point{d}, Array(mat))
 to_LOP(mat::AbstractArray) = to_LOP(Point{size(mat,2)} ,mat)
 
 function from_LOP(lop)
     d = length(lop[1])
     N = length(lop)
-    return reinterpret(Float64, lop, (d,N))'
+    return reshape(reinterpret(Float64, vec(lop)), (d,N))'
 end
 
 function to_LOJ(mat::Array{Float64,3})
     # list of jacobians
     N,d = size(mat)
-    reinterpret(SMatrix{d,d,Float64,d*d}, permutedims(mat,[2,3,1]), (N,))
+    reshape(reinterpret(SMatrix{d,d,Float64,d*d}, vec(permutedims(mat,[2,3,1]))), (N,))
 end

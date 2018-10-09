@@ -3,7 +3,7 @@ abstract type Grid{d} end
 
 # # backward backward compatibility
 nodes(::Type{<:Union{ListOfPoints,ListOfPoints{d}}}, grid::Grid{d}) where d = nodes(grid)
-nodes(::Type{<:Matrix}, grid::Grid) = from_LOP(nodes(grid))
+nodes(::Type{<:Matrix}, grid::Grid) = copy(from_LOP(nodes(grid)))
 
 node(::Type{<:Union{Point,Point{d}}}, grid::Grid{d}, i::Int) where d = node(grid,i)
 node(::Type{<:Vector}, grid::Grid, i::Int) = Vector(node(grid,i))
@@ -57,7 +57,7 @@ end
 function UnstructuredGrid{d}(nodes::Matrix{Float64}) where d
     N = size(nodes,1)
     @assert d == size(nodes,2)
-    UnstructuredGrid{d}(reinterpret(Point{d}, nodes', (N,)))
+    UnstructuredGrid{d}(reshape(reinterpret(Point{d}, vec(copy(nodes'))), (N,)))
 end
 
 nodes(grid::UnstructuredGrid) = grid.nodes
@@ -69,7 +69,7 @@ function Product(a::UnstructuredGrid{d1}, b::UnstructuredGrid{d2}) where d1 wher
     A = [Base.product(a.nodes, b.nodes)...]
     N = length(A)
     d = d1 + d2
-    nodes = reinterpret(Point{d},A,(N,))
+    nodes = reshape(reinterpret(Point{d},(A)),(N,))
     return UnstructuredGrid{d}(nodes)
 end
 
@@ -79,7 +79,7 @@ end
 
 function mlinspace(min, max, n)
     # this now returns an iterator
-    nodes = map(linspace, min, max, n)
+    nodes = map((x,y,z)->range(x,stop=y,length=z), min, max, n)
     return Base.product(nodes...)
 end
 
@@ -93,7 +93,7 @@ end
 function (::Type{<:CartesianGrid})(min::SVector{d,Float64}, max::SVector{d,Float64}, n::SVector{d,Int64}) where d
     A = [mlinspace(min, max, n)...]
     N = prod(n)
-    mm = reinterpret(Point{d},A,(N,))
+    mm = reshape(reinterpret(Point{d},vec(A)),(N,))
     return CartesianGrid{d}(min, max, n, mm)
 end
 
@@ -146,7 +146,7 @@ function SmolyakGrid{d}(min::Vector{Float64},max::Vector{Float64},mu::Union{Vect
 end
 
 
-nodes(grid::SmolyakGrid{d}) where d  = reinterpret(Point{d}, grid.nodes',( size(grid.nodes,1),))
+nodes(grid::SmolyakGrid{d}) where d  = reshape(reinterpret(Point{d}, vec(copy(grid.nodes'))),( size(grid.nodes,1),))
 n_nodes(grid::SmolyakGrid) = size(grid.nodes,1)
 node(grid::SmolyakGrid{d}, i::Int) where d = Point{d}(grid.nodes[i,:]...)
 
@@ -162,11 +162,11 @@ struct RandomGrid{d} <: Grid{d}
 end
 
 function  (::Type{<:Union{RandomGrid,RandomGrid{d}}})(min::Point{d}, max::Point{d}, n::Int) where d
-    nodes = reinterpret(Point{d}, rand(d, n), (n,))  # on [0, 1]
-    for n=1:length(nodes)
-        nodes[n] = nodes[n] .* (max-min) + min
+    nodes = reshape(reinterpret(Point{d}, vec(rand(d, n))), (n,))  # on [0, 1]
+    for nn=1:length(n)
+        nodes[nn] = nodes[nn] .* (max-min) + min
     end
-    RandomGrid(min, max, n, nodes)
+    RandomGrid(min, max, n, copy(nodes))
 end
 
 function RandomGrid(min::Vector{Float64}, max::Vector{Float64}, n::Int)

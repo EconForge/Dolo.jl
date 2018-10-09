@@ -27,9 +27,9 @@ end
 
 function SModel(url::AbstractString)
     if match(r"(http|https):.*", url) != nothing
-        res = get(url)
-        buf = IOBuffer(res.data)
-        data = _symbol_dict(YAML.load(buf, yaml_types))
+        res = HTTP.request("GET", url)
+        txt = (String(res.body))
+        data = _symbol_dict(YAML.load(txt, yaml_types))
     else
         data = _symbol_dict(YAML.load_file(url, yaml_types))
     end
@@ -48,7 +48,7 @@ end
 
 function get_variables(model::ASModel)
     symbols = get_symbols(model)
-    vars = cat(1, values(symbols)...)
+    vars = cat(values(symbols)...; dims=1)
     dynvars = setdiff(vars, symbols[:parameters] )
 end
 
@@ -110,7 +110,7 @@ function get_equations(model::ASModel)
     end
 
     defs = get_definitions(model)
-    dynvars = cat(1, get_variables(model), [k[1] for k in keys(defs)]...)
+    dynvars = cat(get_variables(model), [k[1] for k in keys(defs)]...; dims=1)
 
     for eqtype in keys(_eqs)
         _eqs[eqtype] = [sanitize(eq,dynvars) for eq in _eqs[eqtype]]
@@ -132,7 +132,7 @@ end
 function get_definitions(model::ASModel)::OrderedDict{Tuple{Symbol,Int},SymExpr}
     # parse defs so values are Expr
     defs = get(model.data,:definitions, Dict())
-    dynvars = cat(1, get_variables(model), keys(defs)...)
+    dynvars = cat(get_variables(model), keys(defs)...; dims=1)
     _defs = OrderedDict{Tuple{Symbol,Int},SymExpr}(
         [ (k,0) => sanitize(_to_expr(v), dynvars) for (k, v) in defs]
     )
@@ -254,7 +254,7 @@ mutable struct Model{ID} <: AModel{ID}
                 lhs = [eq.args[2] for eq in equations]
                 rhs = [eq.args[3] for eq in equations]
                 expressions = OrderedDict(zip(targets,rhs))
-                @assert Dolang.normalize.(lhs) == Dolang.normalize.(targets)
+                @assert Dolang.stringify.(lhs) == Dolang.stringify.(targets)
             else
                 expressions = OrderedDict( [Symbol("out_",i)=>eq_to_expr(eq) for (i,eq) in enumerate(equations)])
             end
@@ -262,7 +262,7 @@ mutable struct Model{ID} <: AModel{ID}
             factories[eqtype] = ff
             code = Dolang.gen_generated_gufun(ff; dispatch=typeof(model))
             print_code && println(code)
-            eval(Dolo, code)
+            Core.eval(Dolo, code)
         end
 
         model.factories = factories
@@ -270,7 +270,7 @@ mutable struct Model{ID} <: AModel{ID}
 
         # TEMP: until we have a better method in Dolang
         # Create definitions
-        vars = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+        vars = cat(model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls]; dims=1)
         args = OrderedDict(
             :past => [(v,-1) for v in vars],
             :present => [(v,0) for v in vars],
@@ -279,7 +279,7 @@ mutable struct Model{ID} <: AModel{ID}
         )
         fff = Dolang.FlatFunctionFactory(model.definitions, args, typeof(model.definitions)())
         code = Dolang.gen_generated_gufun(fff;dispatch=typeof(model), funname=:evaluate_definitions)
-        eval(Dolo,code)
+        Core.eval(Dolo,code)
 
         return model
     end
@@ -297,9 +297,9 @@ end
 function Model(url::AbstractString; print_code=false)
     # it looks like it would be cool to use the super constructor ;-)
     if match(r"(http|https):.*", url) != nothing
-        res = get(url)
-        buf = IOBuffer(res.data)
-        data = _symbol_dict(load(buf, yaml_types))
+        res = HTTP.request("GET", url)
+        txt = String(res.body)
+        data = _symbol_dict(load(txt, yaml_types))
     else
         data = _symbol_dict(load_file(url, yaml_types))
     end
@@ -318,7 +318,7 @@ function set_calibration!(model::Model, key::Symbol, value::Union{Real,Expr, Sym
     model.calibration
 end
 
-function set_calibration!(model::Model, values::Associative{Symbol,T}) where T
+function set_calibration!(model::Model, values::AbstractDict{Symbol,T}) where T
     for (key,value) in values
         model.data[:calibration][key] = value
     end

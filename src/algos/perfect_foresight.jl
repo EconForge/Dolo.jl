@@ -92,7 +92,7 @@ function perfect_foresight(model, exo::AbstractMatrix{Float64}; T=200, verbose=t
     sh = size(initial_guess)
 
     function fun(out, in)
-        copy!(out, residuals(model,s0,driving_process, reshape(in, sh...)))
+        copyto!(out, residuals(model,s0,driving_process, reshape(in, sh...)))
     end
     function fun(in)
         out = similar(in)
@@ -107,8 +107,8 @@ function perfect_foresight(model, exo::AbstractMatrix{Float64}; T=200, verbose=t
     else
         ss0 = initial_guess[:, 1:n_s]
         mm0 = driving_process
-        lb = [ss0*0-Inf Dolo.controls_lb(model, mm0, ss0, p0)]
-        ub = [ss0*0+Inf Dolo.controls_ub(model, mm0, ss0, p0)]
+        lb = [(ss0*0 .- Inf) Dolo.controls_lb(model, mm0, ss0, p0)]
+        ub = [(ss0*0 .+ Inf) Dolo.controls_ub(model, mm0, ss0, p0)]
 
         R0 = fun(vv0)
         sol = NLsolve.mcpsolve(
@@ -123,7 +123,7 @@ function perfect_foresight(model, exo::AbstractMatrix{Float64}; T=200, verbose=t
     headers = [model.symbols[:exogenous]; model.symbols[:states]; model.symbols[:controls]]
     resp = [driving_process reshape(sol.zero, sh...)]
 
-    out = AxisArray(resp', Axis{:V}(headers) ,Axis{:T}(0:T-1))
+    out = AxisArray(copy(resp'), Axis{:V}(headers) ,Axis{:T}(0:T-1))
     defs = evaluate_definitions(model, out)
     merge(out, defs)
 
@@ -136,11 +136,11 @@ function perfect_foresight(model, exo::Dict{}; kwargs... )
     T_e = maximum(length(e) for e in values(exo))
     exo_new = zeros(T_e, n_e)
     for (i, key) in enumerate(model.symbols[:exogenous])
-        exo_new[:, i] = model.calibration.flat[key]
+        exo_new[:, i] .= model.calibration.flat[key]
     end
 
     for key in keys(exo)
-        ind = find(model.symbols[:exogenous] .== key)
+        ind = findall(model.symbols[:exogenous] .== key)
         T_key = length(exo[key])
         exo_new[1:T_key,ind] = exo[key]
 
@@ -150,8 +150,6 @@ function perfect_foresight(model, exo::Dict{}; kwargs... )
 
     end
 
-    exo = exo_new
-
-    return perfect_foresight(model, exo; kwargs... )
+    return perfect_foresight(model, exo_new; kwargs... )
 
 end

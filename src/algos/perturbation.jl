@@ -36,25 +36,25 @@ function perturb_first_order(g_s, g_x, f_s, f_x, f_S, f_X)
 
     nv = ns + nx
 
-    A = [eye(ns) zeros(ns, nx);
+    A = [Matrix(1.0I,ns,ns) zeros(ns, nx);
          -f_S     -f_X]
 
     B = [g_s g_x;
          f_s f_x]
 
     # do orderd QZ decomposition
-    gs = schurfact(A, B)
+    gs = schur(A, B)
 
-    genvals = (abs.(gs[:alpha]) ./ abs.(gs[:beta]))
+    genvals = (abs.(gs.α) ./ abs.(gs.β))
     sort!(genvals, rev=true)
     n_keep = ns # number of eigenvalues to keep
     diff = genvals[n_keep+1] - genvals[n_keep]
     eigtol = genvals[n_keep] + diff/2
 
-    select = (abs.(gs[:alpha]) .> eigtol*abs.(gs[:beta]))
+    select = (abs.(gs.α) .> eigtol*abs.(gs.β))
 
     ordschur!(gs, select)
-    S, T, Q, Z = gs[:S], gs[:T], gs[:Q], gs[:Z]
+    S, T, Q, Z = gs.S, gs.T, gs.Q, gs.Z
     diag_S = diag(S)
     diag_T = diag(T)
     eigval = abs.(diag_S./diag_T)
@@ -89,7 +89,7 @@ function get_gf_derivatives(model::AbstractModel)
         f_S = [_f_M _f_S]
         g_s = [R zeros(size(R, 1), size(_g_s, 2)); _g_m _g_s]
         g_x = [zeros(size(_g_m, 1), size(_g_x, 2)); _g_x]
-        s = cat(1, _m, _s)
+        s = cat(_m, _s; dims=1)
     else
         f_s = _f_s
         f_S = _f_S
@@ -112,7 +112,7 @@ function perturb(model::Model)
     _m, _s, x, p = model.calibration[:exogenous, :states, :controls, :parameters]
 
     if size(R, 1)>0
-        s = cat(1, _m, _s)
+        s = cat(_m, _s; dims=1)
     else
         s = _s
     end

@@ -10,8 +10,9 @@ path = Dolo.pkg_path
     sig_b = 0.001
 
     proc = Dolo.ProductProcess(
-        Dolo.VAR1(rho_z, eye(1)*sig_z^2),
-        Dolo.VAR1(rho_b, eye(1)*sig_b^2))
+        Dolo.VAR1(rho_z, ones(1,1)*sig_z^2),
+        Dolo.VAR1(rho_b, ones(1,1)*sig_b^2)
+    )
 
     Dolo.discretize(proc)
     exo = Dolo.discretize(Dolo.DiscretizedProcess, proc)

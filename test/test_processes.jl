@@ -11,7 +11,7 @@ dp = Dolo.discretize(d)
 
 
 # test VAR
-var = Dolo.VAR1([0.0,0.0],[0.99 0.0; 0.0 0.08],eye(2)*0.01)
+var = Dolo.VAR1([0.0,0.0],[0.99 0.0; 0.0 0.08],Matrix(I,2,2)*0.01)
 
 @time sim = Dolo.simulate(var, 500, 500)
 
