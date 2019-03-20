@@ -119,7 +119,7 @@ the corresponding expression in $m_t$,$s_t$ and $x_t$.
 > In the RBC model, three auxiliary variables are defined
 > $y_t, c_t, r_{k,t}$ and $w_t$. They are a closed form function of
 > $a_t, k_t, i_t, n_t$. Defining these variables speeds up computation
-> since they are don't need to be solved for or interpolated.
+> since they don't need to be solved for or interpolated.
 
 #### Utility function and Bellman equation
 
@@ -239,7 +239,7 @@ A general formulation of the Euler equation is:
 $$0 = E_t \left[ f(m_t, s_t, x_t, m_{t+1}, s_{t+1}, x_{t+1}) \right]$$
 
 Note that the Euler equation and the boundaries interact via
-"complentarity equations". Evaluated at one given state, with the vector
+"complementarity equations". Evaluated at one given state, with the vector
 of controls $x=(x_1, ..., x_i, ..., x_{n_x})$, the Euler equation gives
 us the residuals $r=(f_1, ..., f_i, ...,
 f_{n_x})$. Suppose that the $i$-th control $x_i$ is supposed to lie in
@@ -259,7 +259,7 @@ can also be written:
 
 $$0 = E_t \left[ f(m_t, s_t, x_t, m_{t+1}, s_{t+1}, x_{t+1}) \right] \perp \underline{b}(m_t, s_t) \leq x_t \leq \overline{b}(m_t, s_t)$$
 
-Specifying the boundaries together with Euler equation, or providing
+Specifying the boundaries together with the Euler equation, or providing
 them separately is exactly equivalent. In any case, when the boundaries
 are finite and occasionally binding, some attention should be devoted to
 write the Euler equations in a consistent manner. In particular, note
@@ -286,7 +286,7 @@ Bellman problem, but that is not true in general.
 > investment is less desirable, the first expression becomes bigger.
 > When the representative agent is prevented from investing less due to the
 > constraint (i.e. $i_t=0$), the expression is then *positive*,
-> consistent with the complementarity conventions.
+> consistent with the complementarity equations.
 
 #### Expectations
 
