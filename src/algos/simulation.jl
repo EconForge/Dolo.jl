@@ -102,8 +102,8 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
     N = size(driving_process, 2)
     T = size(driving_process, 3)
     epsilons = permutedims(driving_process, [2, 1, 3]) # (N, ne, T)
-
     # calculate initial controls using decision rule
+
     x0 = dr(epsilons[1, :, 1], s0)
 
     # get number of states and controls
@@ -117,6 +117,7 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
       s_simul[i, :, 1] = s0
       x_simul[i, :, 1] = x0
     end
+
 
     for t in 1:T
         s = copy(to_LOP(s_simul[:, :, t]))
@@ -135,8 +136,6 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
     ll = [Symbol(i) for i in Ac]
 
     sim_aa = AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
-    # return sim_aa
-    # println(sim_aa)
     sim_def= evaluate_definitions(model, sim_aa, model.calibration[:parameters])
     return merge(sim_aa,sim_def)
 
@@ -262,7 +261,7 @@ simulate
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, e1::AbstractVector; T::Int=40)
     m_sim = response(model.exogenous, e1; T=T)
-    m_simul = reshape(m_sim, 1, size(m_sim)...)
+    m_simul = reshape(m_sim, size(m_sim,1), 1, size(m_sim,2))
     sim = simulate(model, dr, m_simul; s0=s0)
     sim[1, :, :] # This is now an AxisArray which seems just fine !
 end

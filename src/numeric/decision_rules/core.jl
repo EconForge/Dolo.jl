@@ -48,7 +48,11 @@ mutable struct BiTaylorExpansion{nx} <: AbstractDecisionRule{EmptyGrid,EmptyGrid
     x_s::Matrix{Float64}
 end
 
-(dr::BiTaylorExpansion)(m::AbstractVector, s::AbstractVector) = dr.x0 + dr.x_m*(m-dr.m0) + dr.x_s*(s-dr.s0)
+(dr::BiTaylorExpansion)(m::Point, s::Point) = SVector( (dr.x0 + dr.x_m*(m-dr.m0) + dr.x_s*(s-dr.s0))... )
+
+(dr::BiTaylorExpansion)(m::AbstractVector{<:Point}, s::AbstractVector{<:Point}) = [dr(m[i], s[i]) for i=1:length(s)]
+
+(dr::BiTaylorExpansion)(m::AbstractVector, s::AbstractVector) = Array(dr(SVector(m...), SVector(s...)))
 (dr::BiTaylorExpansion)(m::AbstractMatrix, s::AbstractVector) = vcat([(dr(m[i, :], s))' for i=1:size(m, 1) ]...)
 (dr::BiTaylorExpansion)(m::AbstractVector, s::AbstractMatrix) = vcat([(dr(m, s[i, :]))' for i=1:size(s, 1) ]...)
 (dr::BiTaylorExpansion)(m::AbstractMatrix, s::AbstractMatrix) = vcat([(dr(m[i, :], s[i, :]))' for i=1:size(m, 1) ]...)

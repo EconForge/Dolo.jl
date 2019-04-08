@@ -15,13 +15,16 @@ fff = Dolang.FlatFunctionFactory(OrderedCollections.OrderedDict{Symbol,Union{Exp
  Symbol[:_k__0_], OrderedCollections.OrderedDict{Symbol,Union{Expr, Number, Symbol}}(), :transition)
 
 fun_code = Dolang.gen_generated_gufun(fff)
+ff = Dolo.eval(fun_code)
 
 s0 = SVector(model.calibration[:states]...)
 x0 = SVector(model.calibration[:controls]...)
 m0 = SVector(model.calibration[:exogenous]...)
 p = SVector(model.calibration[:parameters]...)
 
-fun(m0, s0, x0, m0, p)
+println( (s0,x0,m0,p) )
+
+ff(m0, s0, x0, m0, p)
 
 
 
