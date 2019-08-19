@@ -25,6 +25,7 @@ const QE = QuantEcon
 # Dolang
 using Dolang
 using Dolang: _to_expr, inf_to_Inf, solution_order, solve_triangular_system, _get_oorders
+import Dolang: Language, add_language_elements!, FromGreek
 
 # Numerical Tools
 using MacroTools  # used for eval_with
@@ -115,6 +116,17 @@ include("numeric/complementarities.jl")
 include("numeric/newton.jl")
 include("numeric/grids.jl")
 include("numeric/processes.jl")
+
+minilang = Language(Dict())
+add_language_elements!(minilang, Dict(
+    "!Normal"=>Normal,
+    "!MarkovChain"=>MarkovChain,
+    "!Product"=>Product,
+    "!PoissonProcess"=>PoissonProcess,
+    "!DeathProcess"=>DeathProcess,
+    "!AgingProcess"=>AgingProcess,
+    "!VAR1"=>VAR1,
+))
 
 include("linter.jl")
 include("calibration.jl")

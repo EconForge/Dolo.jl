@@ -183,6 +183,8 @@ mutable struct VAR1 <: ContinuousProcess
     Sigma::Array{Float64,2}
 end
 
+VAR1(;rho::Float64=0.0, Sigma=ones(1,1)) = VAR1(rho, Sigma)
+
 function VAR1(R::Array{Float64,2}, Sigma::Array{Float64,2})
     M = zeros(size(R, 1))
     @assert size(R)==size(Sigma)
@@ -372,6 +374,9 @@ mutable struct ProductProcess <: AbstractProcess
     process_2::AbstractProcess
 end
 
+ProductProcess(p) = p
+
+
 function discretize(::Type{DiscreteMarkovProcess}, pp::ProductProcess; opt1=Dict(), opt2=Dict())
     p1 = discretize(DiscreteMarkovProcess, pp.process_1; opt1...)
     p2 = discretize(DiscreteMarkovProcess, pp.process_2; opt2...)
@@ -442,3 +447,5 @@ const AR1 = VAR1
 const MarkovChain = DiscreteMarkovProcess
 const Normal = MvNormal
 const GDP = DiscretizedProcess
+
+MarkovChain(;transitions=ones(1,1), values=[range(1,size(transitions,1))...]) = MarkovChain(transitions, values)

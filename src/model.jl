@@ -1,9 +1,14 @@
 # used for constructing appropraite dict from YAML object.
 function construct_type_map(t::Symbol, constructor::YAML.Constructor,
-                            node::YAML.Node)
+                            node::YAML.MappingNode)
     mapping = _symbol_dict(YAML.construct_mapping(constructor, node))
     mapping[:tag] = t
     mapping
+end
+
+function construct_type_map(t::Symbol, constructor::YAML.Constructor,
+                            node::YAML.SequenceNode)
+    YAML.construct_sequence(constructor, node)
 end
 
 const yaml_types = let
@@ -20,6 +25,7 @@ const yaml_types = let
     Dict{AbstractString,Function}([(t, (c, n) -> construct_type_map(s, c, n))
                            for (t, s) in pairs])
 end
+
 
 mutable struct SModel{ID} <: ASModel{ID}
     data::Dict{Symbol,Any}
@@ -191,7 +197,7 @@ function get_grid(model::ASModel; options=Dict())
     return grid
 end
 
-function get_exogenous(model::ASModel)
+function get_exogenous_old(model::ASModel)
     exo_dict = get(model.data,:exogenous,Dict{Symbol,Any}())
     if length(exo_dict)==0
         exo_dict = get(model.data[:options], :exogenous, Dict{Symbol,Any}())
@@ -202,13 +208,44 @@ function get_exogenous(model::ASModel)
     return exogenous
 end
 
+#
+
+
+function get_exogenous(model::AModel)
+    rdata = model.rdata
+    exo_dict = model.rdata[:exogenous]
+    cond = !(exo_dict.tag=="tag:yaml.org,2002:map")
+    if cond
+        # old style exogenous block
+        return get_exogenous_old(model)
+    else
+        syms = cat( [[Symbol(strip(e)) for e in split(k, ",")] for k in keys(exo_dict)]..., dims=1)
+        expected = model.symbols[:exogenous]
+        if (syms != expected)
+            msg = string("In 'exogenous' section, shocks must be declared in the same order as shock symbol. Found: ", syms, ". Expected: ", expected, ".")
+            throw(ErrorException(msg))
+        end
+        calibration = model.calibration.flat
+        processes = []
+        for k in keys(exo_dict)
+            v = exo_dict[k]
+            p = Dolang.eval_node(v, calibration, minilang, FromGreek())
+            push!(processes, p)
+        end
+        return ProductProcess(processes...)
+    end
+end
+
+
 function set_calibration!(model::ASModel, key::Symbol, value::Union{Real,Expr, Symbol})
     model.data[:calibration][key] = value
 end
 
+
 mutable struct Model{ID} <: AModel{ID}
 
     data::Dict{Symbol,Any}
+    rdata::YAML.Node
     name::String           # weakly immutable
     filename::String
     symbols::OrderedDict{Symbol,Array{Symbol,1}}        # weakly immutable
@@ -222,9 +259,9 @@ mutable struct Model{ID} <: AModel{ID}
     grid
     options
 
-    function Model{ID}(data::Dict{Symbol,Any}; print_code::Bool=false, filename="<string>") where ID
+    function Model{ID}(data::Dict{Symbol,Any}, rdata::YAML.Node; print_code::Bool=false, filename="<string>") where ID
 
-        model = new{ID}(data)
+        model = new{ID}(data, rdata)
         model.name = get_name(model)
         model.filename = filename
         model.symbols = get_symbols(model)
@@ -299,13 +336,14 @@ function Model(url::AbstractString; print_code=false)
     if match(r"(http|https):.*", url) != nothing
         res = HTTP.request("GET", url)
         txt = String(res.body)
-        data = _symbol_dict(load(txt, yaml_types))
     else
-        data = _symbol_dict(load_file(url, yaml_types))
+        txt = read(open(url), String)
     end
+    data = _symbol_dict(load(txt, yaml_types))
+    rdata = Dolang.yaml_node_from_string(txt)
     id = gensym()
     fname = basename(url)
-    return Model{id}(data; print_code=print_code, filename=fname)
+    return Model{id}(data, rdata; print_code=print_code, filename=fname)
 end
 
 function set_calibration!(model::Model, key::Symbol, value::Union{Real,Expr, Symbol})
