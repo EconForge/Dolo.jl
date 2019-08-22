@@ -92,7 +92,7 @@ Dolo.response(model2, dr2, s0, :e_d)
 # irf = Dolo.response(model, dr, e0; horizon = 100)
 
 
-index = findfirst(model.symbols[:states],:k)
+index = findfirst(isequal(:k), model.symbols[:states])
 
 kirf = irf[:,3]
 iirf = irf[:,2]

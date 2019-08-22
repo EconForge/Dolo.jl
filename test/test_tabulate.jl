@@ -10,7 +10,7 @@ model = Dolo.yaml_import(filename)
 n_steps=100
 s0 = model.calibration[:states]
 m0 = model.calibration[:exogenous]
-index = findfirst(model.symbols[:states],:z)
+index = findfirst(isequal(:z), model.symbols[:states])
 bounds = [dr.grid_endo.min[index], dr.grid_endo.max[index]]
 
 

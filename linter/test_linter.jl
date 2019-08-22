@@ -77,7 +77,7 @@ for eq_ in d[:equations][eqg].value
           push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
 
         elseif  (string(sym) in model_symbols)
-          floc = findfirst(model_symbols, sym)
+          floc = findfirst(isequal(sym), model_symbols)
           declared_sym_type = model_symbols_vec[floc][1]
           println(declared_sym_type)
 
