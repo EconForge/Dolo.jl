@@ -151,4 +151,6 @@ include("algos/perturbation.jl")
 include("algos/simulation.jl")
 include("algos/perfect_foresight.jl")
 
+include("algos/ergodic.jl")
+
 end # module

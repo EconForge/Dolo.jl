@@ -1,18 +1,3 @@
-import Dolo: Model, time_iteration, discretize
-using LinearAlgebra, Plots
-
-
-model = Model("examples/models/rbc_mc.yaml")
-
-
-sol = time_iteration(model)
-
-
-import Dolo: UnstructuredGrid, CartesianGrid, transition, n_nodes, n_inodes, inode, iweight, nodes, node, Point
-
-dp = discretize(model.exogenous)
-
-
 function ergodic_distribution(model, dr, exo_grid:: UnstructuredGrid, endo_grid:: CartesianGrid, dp)
     N_m = n_nodes(exo_grid)
     N_s = n_nodes(endo_grid)
@@ -61,58 +46,3 @@ function trembling_hand!(A, x, w)
         A[n, q0_+1] += λ0*w
     end
 end
-
-
-Π, μ = ergodic_distribution(model, dr, dr.grid_exo, dr.grid_endo, dp)
-
-sum(reshape(Π, 40,40), dims=2)
-
-μ = reshape(μ, 2, 20)
-
-plot(μ[1,:])
-
-
-#
-# function trembling_hand(A, x, w)
-#
-#     N,n0,n1 = A.shape
-#     δ0 = 1/(n0-1)
-#     δ1 = 1/(n1-1)
-#
-#     for n in 1:N
-#
-#         x0 = x[n,0]
-#         x0 = min(max(x0, 0),1)
-#         q0 = np.floor_divide(x0, δ0)
-#         q0 = max(0, q0)
-#         q0 = min(q0, n0-2)
-#
-#         x1 = x[n,1]
-#         x1 = min(max(x1, 0),1)
-#         q1 = np.floor_divide(x1, δ1)
-#         q1 = max(0, q1)
-#         q1 = min(q1, n1-2)
-#
-#         λ0 = (x0-q0*δ0)/δ0 # ∈[0,1[ by construction
-#         q0_ = int(q0)
-#
-#         λ1 = (x1-q1*δ1)/δ1 # ∈[0,1[ by construction
-#         q1_ = int(q1)
-#
-#         A[n, q0_, q1_]   += (1-λ0)*(1-λ1)*w
-#         A[n, q0_, q1_+1]   += (1-λ0)*(λ1)*w
-#         A[n, q0_+1, q1_]   += (λ0)*(1-λ1)*w
-#         A[n, q0_+1, q1_+1]   += (λ0)*(λ1)*w
-#
-#     end
-# end
-#
-
-
-
-
-dr(1,s[1])
-
-ss0
-
-s[1]
