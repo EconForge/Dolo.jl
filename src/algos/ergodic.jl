@@ -33,7 +33,6 @@ function trembling_hand!(A, x, w)
     N,n0 = size(A)
     δ0 = 1.0./(n0-1.0)
     for n in 1:N
-        print("hey")
         x0 = x[n][1]
         x0 = min.(max.(x0, 0.0),1.0)
         q0 = div.(x0, δ0)
@@ -41,7 +40,6 @@ function trembling_hand!(A, x, w)
         q0 = min.(q0, n0-2)
         λ0 = (x0./δ0-q0) # ∈[0,1[ by construction
         q0_ = round.(Int,q0) + 1
-        println("n:", n, ":", q0_, ":", λ0, ":", w)
         A[n, q0_]   += (1-λ0)*w
         A[n, q0_+1] += λ0*w
     end
