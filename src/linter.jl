@@ -36,14 +36,6 @@ function yaml_node_from_file(fn::AbstractString)
     return yaml_node_from_string(txt)
 end
 
-Base.getindex(d::YAML.SequenceNode, k::Integer) = d.value[k]
-Base.keys(s::YAML.MappingNode) =  [e[1].value for e=s.value]
-Base.values(s::YAML.MappingNode) =  [e[2].value for e=s.value]
-Base.getindex(d::YAML.MappingNode, s::AbstractString) = d.value[something(findfirst(isequal(s),keys(d)),0)][2]
-Base.getindex(d::YAML.MappingNode, s::Symbol) = d[string(s)]
-# extended index: find
-
-
 mutable struct Location
     start_mark::YAML.Mark
     end_mark::YAML.Mark

@@ -69,7 +69,7 @@ export time_iteration, improved_time_iteration, value_iteration, residuals,
         response, simulate, perfect_foresight, time_iteration_direct, find_deterministic_equilibrium, perturb, tabulate
 
 export ModelCalibration, FlatCalibration, GroupedCalibration
-export AbstractModel, AbstractDecisionRule
+export AbstractModel, AbstractDecisionRule, Model
 
 # set up core typesr
 abstract type AbstractSymbolicModel{ID} end

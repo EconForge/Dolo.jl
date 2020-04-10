@@ -22,7 +22,7 @@ const yaml_types = let
              ("!DeathProcess", :DeathProcess),
              ("!AgingProcess", :AgingProcess),
              ("!VAR1", :VAR1)]
-    Dict{AbstractString,Function}([(t, (c, n) -> construct_type_map(s, c, n))
+    Dict{String,Function}([(t, (c, n) -> construct_type_map(s, c, n))
                            for (t, s) in pairs])
 end
 

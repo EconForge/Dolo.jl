@@ -21,8 +21,8 @@
 function Phi(u::Point{d},v::Point{d}) where d
     sq = sqrt.(u.^2+v.^2)
     p = u+v-sq
-    J_u = 1 - u./sq
-    J_v = 1 - v./sq
+    J_u = 1 .- u./sq
+    J_v = 1 .- v./sq
     return p, SDiagonal(J_u), SDiagonal(J_v)
 end
 
