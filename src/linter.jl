@@ -2,7 +2,7 @@ function yaml_node_from_string(fn::AbstractString)
 
     # Didn't find how to access the top node more easily.
     #
-    yml_types = Dict{AbstractString,Function}()
+    yml_types = Dict{String,Function}()
     yml_types["!Cartesian"] = ((c,n)->n)
     yml_types["!Smolyak"] = ((c,n)->n)
     yml_types["!Normal"] = ((c,n)->n)
