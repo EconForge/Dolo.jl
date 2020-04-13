@@ -19,7 +19,7 @@ matrix:
 notifications:
   email: false
 script:
-    - julia -e 'using Pkg; Pkg.develop("Dolang"); Pkg.develop("AxisArrays"); Pkg.develop("BasisMatrices")'
+    - julia -e 'using Pkg; Pkg.develop("Dolang");'
     - julia -e 'using Pkg; Pkg.clone(pwd()); Pkg.build("Dolo"); Pkg.add("Coverage"); Pkg.test("Dolo"; coverage=true)'
 after_success:
     - echo $TRAVIS_JULIA_VERSION
