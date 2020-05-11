@@ -17,22 +17,19 @@ function find_deterministic_equilibrium(model::AModel, calibration::ModelCalibra
     ns = length(s0)
     nx = length(x0)
 
-    function obj!(sx, out)
-        s = view(sx, 1:ns)
-        x = view(sx, ns+1:ns+nx)
-        s_out = view(out, 1:ns)
-        x_out = view(out, ns+1:ns+nx)
+    function obj!(sx)
+        s = sx[1:ns]
+        x = sx[ns+1:ns+nx]
 
         # update state part of residual
-        transition!(model, s_out, m, s, x, m, p)
-        broadcast!(-, s_out, s_out, s)
+        s_new = transition(model, m, s, x, m, p)
 
         # now update control part
-        arbitrage!(model, x_out, m, s, x, m, s, x, p)
-        out
+        resids = arbitrage(model, m, s, x, m, s, x, p)
+        vcat(s_new - s, resids)
     end
 
-    sol = nlsolve(obj!, vcat(s0, x0))
+    sol = nlsolve(obj!, vcat(s0, x0),  autodiff=:central, inplace=false)
     NLsolve.converged(sol) || error("Nonlinear solver failed to find steady state")
 
     # otherwise set controls

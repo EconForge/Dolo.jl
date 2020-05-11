@@ -2,7 +2,7 @@ function yaml_node_from_string(fn::AbstractString)
 
     # Didn't find how to access the top node more easily.
     #
-    yml_types = Dict{AbstractString,Function}()
+    yml_types = Dict{String,Function}()
     yml_types["!Cartesian"] = ((c,n)->n)
     yml_types["!Smolyak"] = ((c,n)->n)
     yml_types["!Normal"] = ((c,n)->n)
@@ -31,25 +31,17 @@ end
 
 
 function yaml_node_from_file(fn::AbstractString)
-    txt = open(readstring, fn)
-    txt = replace(txt, "\r", "")
+    txt = open(f->read(f,String), fn)
+    txt = replace(txt, "\r"=>"")
     return yaml_node_from_string(txt)
 end
 
-Base.getindex(d::YAML.SequenceNode, k::Integer) = d.value[k]
-Base.keys(s::YAML.MappingNode) =  [e[1].value for e=s.value]
-Base.values(s::YAML.MappingNode) =  [e[2].value for e=s.value]
-Base.getindex(d::YAML.MappingNode, s::AbstractString) = d.value[findfirst(keys(d),s)][2]
-Base.getindex(d::YAML.MappingNode, s::Symbol) = d[string(s)]
-# extended index: find
-
-
-type Location
+mutable struct Location
     start_mark::YAML.Mark
     end_mark::YAML.Mark
 end
 
-type MissingElement <: Exception
+mutable struct MissingElement <: Exception
     path::Vector{AbstractString}
     k::Integer # index of first missing element
     loc::Location
@@ -74,13 +66,13 @@ function Base.getindex(d::YAML.MappingNode, l::Symbol...)
 end
 
 
-type LinterException <: Exception
+mutable struct LinterException <: Exception
     msg::AbstractString
     loc::Location
     src::AbstractString
 end
 
-type LinterWarning <: Exception
+mutable struct LinterWarning <: Exception
     errvalue::AbstractString
     errtype::AbstractString
     msg::AbstractString
@@ -156,7 +148,7 @@ function check_calibration(d::YAML.MappingNode, filename="<string>")
           push!(model_symbols, sym.value)
       end
   end
-  model_symbols = cat(1, model_symbols, keys(d[:definitions]))
+  model_symbols = cat(model_symbols, keys(d[:definitions]); dims=1)
 
 
   for (i, key) in enumerate(keys(d["calibration"]))
@@ -169,7 +161,7 @@ function check_calibration(d::YAML.MappingNode, filename="<string>")
       push!(warnings, LinterWarning(errvalue, errtype, msg, loc, filename))
 
     elseif count(c -> c == key, collect( keys(d["calibration"]))) > 1
-      floc = findfirst(keys(d["calibration"]), key)
+      floc = something(findfirst(isequal(key), keys(d["calibration"])), 0)
       loc_first = get_loc(d["calibration"].value[floc][1])
       if i > floc
         errvalue = key
@@ -195,7 +187,7 @@ function check_equations(d::YAML.MappingNode, filename="<string>")
   # check symbol names:
   required_equation_types = ["transition"]
   optional_equation_types = ["arbitrage", "value", "felicity", "expectation", "direct_response"]
-  known_equation_types = cat(1, required_equation_types, optional_equation_types)
+  known_equation_types = cat(required_equation_types, optional_equation_types; dims=1)
 
   model_equation_types = keys(d[:equations])
 
@@ -224,7 +216,7 @@ function check_equations(d::YAML.MappingNode, filename="<string>")
   end
 
   for (i,sg) in enumerate(keys(d["equations"]))
-      if !(sg in cat(1,known_equation_types))
+      if !(sg in cat(known_equation_types; dims=1))
           errvalue = string(sg)
           errtype = "Unknown equation type"
           msg = ""
@@ -291,7 +283,7 @@ function check_symbols(d::YAML.MappingNode, filename="<string>")
     # check symbol names:
     required_symbol_types = ["states", "controls", "exogenous", "parameters"]
     optional_symbol_types = [ "values", "rewards", "expectations"]
-    known_symbol_types = cat(1, required_symbol_types, optional_symbol_types)
+    known_symbol_types = cat(required_symbol_types, optional_symbol_types; dims=1)
 
     model_symbol_types = keys(d[:symbols])
     model_symbols = []
@@ -321,7 +313,7 @@ function check_symbols(d::YAML.MappingNode, filename="<string>")
     end
 
     for (i,sg) in enumerate(keys(d["symbols"]))
-        if !(sg in cat(1,known_symbol_types))
+        if !(sg in cat(known_symbol_types; dims=1))
             errvalue = string(sg)
             errtype = "Unknown symbol type"
             msg = ""
@@ -353,7 +345,7 @@ function check_symbols(d::YAML.MappingNode, filename="<string>")
 
     for (i,symnode) in enumerate(model_symbols_vec)
       if count(c -> c == symnode[2], collect(model_symbols)) > 1
-        floc = findfirst(model_symbols, symnode[2])
+        floc = something(findfirst(isequal(symnode[2]), model_symbols), 0)
         loc_first = get_loc(model_symbols_vec[floc][3])
         if i > floc
           errvalue = symnode[2]
@@ -386,7 +378,7 @@ function check_symbols(d::YAML.MappingNode, filename="<string>")
 
     for (i, key) in enumerate(keys(d["definitions"]))
       if (key in model_symbols)
-        floc = findfirst(model_symbols, key)
+        floc = something(findfirst(isequal(key), model_symbols), 0)
         loc_first = get_loc(model_symbols_vec[floc][3])
         declared_sym_type = model_symbols_vec[floc][1]
 
@@ -397,7 +389,7 @@ function check_symbols(d::YAML.MappingNode, filename="<string>")
         push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
 
       elseif count(c -> c == key, collect( keys(d["definitions"]))) > 1
-        floc = findfirst(keys(d["definitions"]), key)
+        floc = something(findfirst(isequal(key), keys(d["definitions"])), 0)
         loc_first = get_loc(d["definitions"].value[floc][1])
         if i > floc
           errvalue = key
@@ -454,39 +446,39 @@ function check_model(fn::AbstractString)
 end
 
 function print_error(err::LinterWarning)
-print_with_color(:light_red, "error ")
+printstyled("error "; color=:light_red)
 print("at line ",err.loc.start_mark.line, ", column ",err.loc.start_mark.column, " : ")
 print(err.errtype)
 if err.msg != ""
-  print_with_color(:light_green, " '",err.errvalue,"' ")
+  printstyled(" '",err.errvalue,"' "; color=:light_green)
   println(">> ", err.msg)
 else
-  print_with_color(:light_green, " '",err.errvalue,"' ")
+  printstyled(" '",err.errvalue,"' "; color=:light_green)
   println()
 end
 
 end
 
 function print_warning(err::LinterWarning)
-print_with_color(:light_blue, "warning ")
+printstyled("warning "; color=:light_blue)
 print("at line ",err.loc.start_mark.line, ", colummn ",err.loc.start_mark.column, " : ")
 print(err.errtype)
 if err.msg != ""
-  print_with_color(:light_green, " '",err.errvalue,"' ")
+  printstyled(" '",err.errvalue,"' "; color=:light_green)
   println(">> ", err.msg)
 else
-  print_with_color(:light_green, " '",err.errvalue,"' ")
+  printstyled(" '",err.errvalue,"' "; color=:light_green)
   println()
 end
 end
 
 
 function format_human(errors::Vector{LinterWarning}, warnings::Vector{LinterWarning})
-for err in cat(1,errors)
+for err in cat(errors; dims=1)
     print_error(err)
 end
 
-for err in cat(1,warnings)
+for err in cat(warnings; dims=1)
     print_warning(err)
 end
 end
@@ -501,8 +493,8 @@ function lint(filename::AbstractString; format=:human)
 
   for fun in funnames
     errors2, warnings2 = fun(filename)
-    errors = cat(1, errors, errors2)
-    warnings = cat(1 ,warnings, warnings2)
+    errors = cat(errors, errors2; dims=1)
+    warnings = cat(warnings, warnings2; dims=1)
   end
 
   if format == :human
@@ -510,5 +502,5 @@ function lint(filename::AbstractString; format=:human)
   else
       println("Format '", format, "' not implemented (yet).")
   end
-  return cat(1, errors, warnings)
+  return cat(errors, warnings; dims=1)
 end

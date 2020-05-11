@@ -1,9 +1,9 @@
-@compat abstract type Grid{d} end
+abstract type Grid{d} end
 #
 
 # # backward backward compatibility
 nodes(::Type{<:Union{ListOfPoints,ListOfPoints{d}}}, grid::Grid{d}) where d = nodes(grid)
-nodes(::Type{<:Matrix}, grid::Grid) = from_LOP(nodes(grid))
+nodes(::Type{<:Matrix}, grid::Grid) = copy(from_LOP(nodes(grid)))
 
 node(::Type{<:Union{Point,Point{d}}}, grid::Grid{d}, i::Int) where d = node(grid,i)
 node(::Type{<:Vector}, grid::Grid, i::Int) = Vector(node(grid,i))
@@ -19,7 +19,7 @@ function Base.show(io::IO, grid::Grid)
 end
 
 
-immutable EmptyGrid <: Grid{0}
+struct EmptyGrid <: Grid{0}
     # this grid does not exist ;-)
 end
 
@@ -31,7 +31,7 @@ node(grid::EmptyGrid, i::Int) = nothing # fail if i!=1 ?
 # Grid made of one point #
 ##########################
 
-immutable PointGrid{d} <: Grid{d}
+struct PointGrid{d} <: Grid{d}
     point::SVector{d,Float64}
 end
 
@@ -49,15 +49,15 @@ node(grid::PointGrid, i::Int) = grid.point # fail if i!=1 ?
 # Unstructured Grid #
 #####################
 
-immutable UnstructuredGrid{d} <: Grid{d}
+struct UnstructuredGrid{d} <: Grid{d}
     nodes::ListOfPoints{d}
 end
 
 # Old-convention
-function (::Type{UnstructuredGrid{d}})(nodes::Matrix{Float64}) where d
+function UnstructuredGrid{d}(nodes::Matrix{Float64}) where d
     N = size(nodes,1)
     @assert d == size(nodes,2)
-    UnstructuredGrid{d}(reinterpret(Point{d}, nodes', (N,)))
+    UnstructuredGrid{d}(reshape(reinterpret(Point{d}, vec(copy(nodes'))), (N,)))
 end
 
 nodes(grid::UnstructuredGrid) = grid.nodes
@@ -69,7 +69,7 @@ function Product(a::UnstructuredGrid{d1}, b::UnstructuredGrid{d2}) where d1 wher
     A = [Base.product(a.nodes, b.nodes)...]
     N = length(A)
     d = d1 + d2
-    nodes = reinterpret(Point{d},A,(N,))
+    nodes = reshape(reinterpret(Point{d},(A)),(N,))
     return UnstructuredGrid{d}(nodes)
 end
 
@@ -79,11 +79,11 @@ end
 
 function mlinspace(min, max, n)
     # this now returns an iterator
-    nodes = map(linspace, min, max, n)
+    nodes = map((x,y,z)->range(x,stop=y,length=z), min, max, n)
     return Base.product(nodes...)
 end
 
-immutable CartesianGrid{d} <: Grid{d}
+struct CartesianGrid{d} <: Grid{d}
     min::Point{d}
     max::Point{d}
     n::SVector{d,Int}
@@ -93,7 +93,7 @@ end
 function (::Type{<:CartesianGrid})(min::SVector{d,Float64}, max::SVector{d,Float64}, n::SVector{d,Int64}) where d
     A = [mlinspace(min, max, n)...]
     N = prod(n)
-    mm = reinterpret(Point{d},A,(N,))
+    mm = reshape(reinterpret(Point{d},vec(A)),(N,))
     return CartesianGrid{d}(min, max, n, mm)
 end
 
@@ -115,7 +115,7 @@ end
 # Smolyak Grid #
 ################
 
-immutable SmolyakGrid{d} <: Grid{d}
+struct SmolyakGrid{d} <: Grid{d}
     smol_params::BM.SmolyakParams{Float64,Vector{Int}}
     nodes::Matrix{Float64}
     B_nodes::Matrix{Float64}
@@ -134,19 +134,19 @@ SmolyakGrid{d}(min::Point{d}, max::Point{d}, mu::Int64) where d = SmolyakGrid{d}
 
 function SmolyakGrid(min::Vector{Float64},max::Vector{Float64},mu::Union{Vector{Int64},Int64})
     d = length(min)
-    mmu = mu isa Int? ffill(mu,d) : mu
+    mmu = mu isa Int ? ffill(mu,d) : mu
     @assert d == length(max) == length(mmu)
     SmolyakGrid{d}(SVector(min...), SVector(max...), SVector(mu...))
 end
 #
 function SmolyakGrid{d}(min::Vector{Float64},max::Vector{Float64},mu::Union{Vector{Int64},Int64}) where d
-    mmu = mu isa Int? fill(mu,d) : mu
+    mmu = mu isa Int ? fill(mu,d) : mu
     @assert d == length(min) == length(max) == length(mmu)
     SmolyakGrid{d}(SVector(min...), SVector(max...), SVector(mu...))
 end
 
 
-nodes(grid::SmolyakGrid{d}) where d  = reinterpret(Point{d}, grid.nodes',( size(grid.nodes,1),))
+nodes(grid::SmolyakGrid{d}) where d  = reshape(reinterpret(Point{d}, vec(copy(grid.nodes'))),( size(grid.nodes,1),))
 n_nodes(grid::SmolyakGrid) = size(grid.nodes,1)
 node(grid::SmolyakGrid{d}, i::Int) where d = Point{d}(grid.nodes[i,:]...)
 
@@ -154,7 +154,7 @@ node(grid::SmolyakGrid{d}, i::Int) where d = Point{d}(grid.nodes[i,:]...)
 # Random Grid #
 ###############
 
-immutable RandomGrid{d} <: Grid{d}
+struct RandomGrid{d} <: Grid{d}
     min::SVector{d,Float64}
     max::SVector{d,Float64}
     n::Int64
@@ -162,14 +162,14 @@ immutable RandomGrid{d} <: Grid{d}
 end
 
 function  (::Type{<:Union{RandomGrid,RandomGrid{d}}})(min::Point{d}, max::Point{d}, n::Int) where d
-    nodes = reinterpret(Point{d}, rand(d, n), (n,))  # on [0, 1]
-    for n=1:length(nodes)
-        nodes[n] = nodes[n] .* (max-min) + min
+    nodes = reshape(reinterpret(Point{d}, vec(rand(d, n))), (n,))  # on [0, 1]
+    for nn=1:length(n)
+        nodes[nn] = nodes[nn] .* (max-min) + min
     end
-    RandomGrid(min, max, n, nodes)
+    RandomGrid(min, max, n, copy(nodes))
 end
 
-function (::Type{RandomGrid})(min::Vector{Float64}, max::Vector{Float64}, n::Int)
+function RandomGrid(min::Vector{Float64}, max::Vector{Float64}, n::Int)
     d = length(min)
     @assert d == length(max)
     dim_err = DimensionMismatch("min was length $d, max must be also")
@@ -178,7 +178,7 @@ function (::Type{RandomGrid})(min::Vector{Float64}, max::Vector{Float64}, n::Int
     RandomGrid{d}(SVector(min...),SVector(max...),n)
 end
 
-function (::Type{RandomGrid{d}})(min::Vector{Float64}, max::Vector{Float64}, n::Int) where d
+function RandomGrid{d}(min::Vector{Float64}, max::Vector{Float64}, n::Int) where d
     @assert d == length(min)
     RandomGrid(min,max,d)
 end

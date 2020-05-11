@@ -1,32 +1,22 @@
-import Dolo
-include("tmp_module.jl")
-import temp
-include("steady_state.jl")
+using Dolo
+
 dolo_dir = Dolo.pkg_path
 
-model = Dolo.yaml_import("rbc_dtcc_iid.yaml")
+model = Dolo.yaml_import("examples/models/rbc_iid.yaml")
+
+process = Dolo.MvNormal(0.001)
+
+dp = Dolo.discretize(process)
 
 
-process = nothing
-ptype = "MC"
-if ptype == "IID"
-    process = MvNormal(0.01)
-elseif ptype == "MC"
-
-    values = [ 0.0 ]'
-    transitions = [
-        1.0
-    ]'
-
-    process = DiscreteMarkovProcess(transitions, values)
-end
-
-dp = discretize(process)
 
 
-steady_state(model, model.calibration)
+@time sol = time_iteration(model, dp; verbose=true, maxit=5)
 
-@time dr = time_iteration(model, process, verbose=true)
+@time dd = Dolo.improved_time_iteration(model, dp, sol.dr; verbose=true)
+
+
+
 
 ivals = [dr(1, [i])[1] for i=kvec ]
 nvals = [dr(1, [i])[2] for i=kvec ]

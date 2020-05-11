@@ -145,7 +145,12 @@ mutable struct LinearThing
    counter::Int
 end
 
+import LinearAlgebra
+import LinearAlgebra: *, mul!
+using LinearAlgebra
+
 LinearThing(M,S,I) = LinearThing(M,S,I,0)
+
 
 eltype(L::LinearThing) = Float64
 function shape(L::LinearThing)
@@ -157,20 +162,21 @@ end
 size(L::LinearThing,d) = prod(shape(L))
 
 
-function *(L::LinearThing,x::Vector{ListOfPoints{n_x}}) where n_x
+function *(L::LinearThing,x::AbstractVector{<:AbstractVector{Point{n_x}}}) where n_x
    xx = deepcopy(x)
    Dolo.d_filt_dx!(xx, x, L.M_ij, L.S_ij, L.I)
    L.counter += 1
    return xx
 end
 
-function *(L::LinearThing,m::Array{Float64, 3})
+function *(L::LinearThing,m::AbstractArray{Float64, 3})
    n_x,N,n_m = size(m)
-   x = [reinterpret(SVector{n_x,Float64},m[:,:,i],(N,)) for i=1:n_m]
+   # TODO remove copy there
+   x = [copy(reshape(reinterpret(SVector{n_x,Float64},vec(m[:,:,i])),(N,))) for i=1:n_m]
    y = deepcopy(x)
    xx = L*y
-   rr = [reinterpret(Float64, xx[i], (n_x,N)) for i=1:length(xx)]
-   rrr = cat(3,rr...)
+   rr = [reshape(reinterpret(Float64, vec(xx[i])), (n_x,N)) for i=1:length(xx)]
+   rrr = cat(rr...; dims=3)
    return reshape(rrr, n_x,N,n_m)
 end
 
@@ -178,7 +184,7 @@ function *(L::LinearThing,v::AbstractVector{Float64})
    m = copy(v)
    sh = shape(L)
    n_x = sh[1]
-   vv = reinterpret(Point{n_x},m,(sh[2],sh[3]))
+   vv = reshape(reinterpret(Point{n_x},vec(m)),(sh[2],sh[3]))
    # x = [view(vv,:,i) for i=1:sh[3]]
    x = [vv[:,i] for i=1:sh[3]]
    y = x-L*x
@@ -202,10 +208,15 @@ function A_mul_B!(w::AbstractVector{Float64},L::LinearThing,v::AbstractVector{Fl
 end
 
 
+function mul!(w,L::LinearThing,v)
+   w[:] = L*v
+   return w
+end
+
 
 ####
 
-type ImprovedTimeIterationResult
+mutable struct ImprovedTimeIterationResult
   dr::AbstractDecisionRule
   N::Int
   f_x::Float64

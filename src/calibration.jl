@@ -2,7 +2,7 @@
 # Calibration #
 # ----------- #
 
-immutable FlatCalibration <: Associative{Symbol,Float64}
+struct FlatCalibration <: AbstractDict{Symbol,Float64}
     d::OrderedDict{Symbol,Float64}
 end
 
@@ -11,7 +11,7 @@ FlatCalibration(pairs::Pair{Symbol,Float64}...) =
 
 FlatCalibration() = FlatCalibration(OrderedDict{Symbol,Float64}())
 
-immutable GroupedCalibration <: Associative{Symbol,Vector{Float64}}
+struct GroupedCalibration <: AbstractDict{Symbol,Vector{Float64}}
     d::Dict{Symbol,Vector{Float64}}
 end
 
@@ -22,21 +22,22 @@ GroupedCalibration(pairs::Pair{Symbol,Vector{Float64}}...) =
 
 # use let block so `Calib` isn't a member of the Dolo module
 let
-    const Calib = Union{FlatCalibration,GroupedCalibration}
+    Calib = Union{FlatCalibration,GroupedCalibration}
 
     Base.getindex(c::Calib, n::Symbol) = c.d[n]
     Base.getindex(c::Calib, nms::Symbol...) = [c[n] for n in nms]
 
-    # define the rest of the Associative interface by forwarding to c.d
+    # define the rest of the AbstractDict interface by forwarding to c.d
+
+    @eval Base.iterate(c::$Calib, args...) = iterate(c.d, args...)
 
     # 1-arg functions
-    for f in [:length, :keys, :values, :keytype, :valtype, :eltype, :isempty,
-              :start]
+    for f in [:length, :keys, :values, :keytype, :valtype, :eltype, :isempty]
         @eval Base.$(f)(c::$(Calib)) = $(f)(c.d)
     end
 
     # 2-arg functions
-    for f in [:haskey, :delete!, :pop!, :sizehint!, :next, :done]
+    for f in [:haskey, :delete!, :pop!, :sizehint!]
         @eval Base.$(f)(c::$(Calib), arg) = $(f)(c.d, arg)
     end
 
@@ -48,10 +49,10 @@ let
     # methods that didn't match signatures above
     Base.get!(f::Function, c::Calib, key) = get!(f, c.d, key)
     Base.get(f::Function, c::Calib, key) = get(f, c.d, key)
-    Base.merge!{T<:Calib}(c::T, others::T...) =
+    Base.merge!(c::T, others::T...) where {T<:Calib} =
         T(merge!(c.d, [o.d for o in others]...))
-    Base.copy{T<:Calib}(c::T) = T(copy(c.d))
-    Base.deepcopy{T<:Calib}(c::T) = T(deepcopy(c.d))
+    Base.copy(c::T) where {T<:Calib} = T(copy(c.d))
+    Base.deepcopy(c::T) where {T<:Calib} = T(deepcopy(c.d))
 end
 
 # setting a single value
@@ -95,7 +96,7 @@ function Base.setindex!(gc::GroupedCalibration, vs::Tuple, ks::Symbol...)
 end
 
 # Contains a FlatCalibration and GroupedCalibration, plus information on symbols
-immutable ModelCalibration
+struct ModelCalibration
     flat::FlatCalibration
     grouped::GroupedCalibration
     symbol_table::Dict{Symbol,Tuple{Symbol,Int}}
@@ -191,12 +192,12 @@ end
 _replace_me(mc::ModelCalibration, s::Symbol) = get(mc.flat, s, s)
 _replace_me(mc, o) = o
 
-# eval with will work on
+# eval_with will work on
 function eval_with(mc::ModelCalibration, ex::Expr)
     # put in let block to allow us to define intermediates in expr and not
     # have them become globals in `Dolo`
     new_ex = MacroTools.prewalk(s->_replace_me(mc, s), ex)
-    eval(Dolo, :(
+    Core.eval(Dolo, :(
     let
         $new_ex
     end))
@@ -207,7 +208,7 @@ eval_with(mc::ModelCalibration, s::Symbol) = _replace_me(mc, s)
 eval_with(mc::ModelCalibration, x::Number) = x
 eval_with(mc::ModelCalibration, x::AbstractArray) = map(y->eval_with(mc, y), x)
 
-function eval_with(mc::ModelCalibration, d::Associative)
+function eval_with(mc::ModelCalibration, d::AbstractDict)
     out = Dict{Symbol,Any}()
     for (k, v) in d
         sk = Symbol(k)

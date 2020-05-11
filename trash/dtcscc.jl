@@ -30,13 +30,13 @@ function solve_steady_state(m::DTCSCCModel, mc::ModelCalibration=m.calibration)
 end
 
 # define custom exception types that hold some data for us to catch/explore
-immutable GeneralizedEigenvaluesError <: Exception
+struct GeneralizedEigenvaluesError <: Exception
     msg::AbstractString
     diag_S::Vector{Float64}
     diag_T::Vector{Float64}
 end
 
-immutable BlanchardKahnError <: Exception
+struct BlanchardKahnError <: Exception
     msg::AbstractString
     n_found::Int
     n_expected::Int

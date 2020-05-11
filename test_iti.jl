@@ -3,8 +3,29 @@ import Dolo
 import Dolo: n_nodes, n_inodes, nodes, CachedDecisionRule
 import Dolo: invert_jac
 
-model = Dolo.yaml_import("examples/models/rbc_dtcc_mc.yaml")
+model = Dolo.yaml_import("examples/models/rbc_mc.yaml")
 dp = Dolo.discretize(model.exogenous)
+
+using StaticArrays
+import OrderedCollections
+import Dolang
+fff = Dolang.FlatFunctionFactory(OrderedCollections.OrderedDict{Symbol,Union{Expr, Number, Symbol}}(:_k__0_=>:((1 - _delta_) * _k_m1_ + _i_m1_)), OrderedCollections.OrderedDict(
+:m=>[:_z_m1_, :_z2_m1_],:s=>[:_k_m1_],:x=>[:_n_m1_, :_i_m1_],:M=>[:_z__0_, :_z2__0_],
+:p=>[:_beta_, :_sigma_, :_eta_, :_chi_, :_delta_, :_alpha_, :_rho_, :_zbar_, :_sig_z_]),
+ Symbol[:_k__0_], OrderedCollections.OrderedDict{Symbol,Union{Expr, Number, Symbol}}(), :transition)
+
+fun_code = Dolang.gen_generated_gufun(fff)
+ff = Dolo.eval(fun_code)
+
+s0 = SVector(model.calibration[:states]...)
+x0 = SVector(model.calibration[:controls]...)
+m0 = SVector(model.calibration[:exogenous]...)
+p = SVector(model.calibration[:parameters]...)
+
+println( (s0,x0,m0,p) )
+
+ff(m0, s0, x0, m0, p)
+
 
 
 @time sol = Dolo.time_iteration(model, verbose=false, complementarities=false)

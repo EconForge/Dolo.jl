@@ -1,9 +1,14 @@
 # used for constructing appropraite dict from YAML object.
 function construct_type_map(t::Symbol, constructor::YAML.Constructor,
-                            node::YAML.Node)
+                            node::YAML.MappingNode)
     mapping = _symbol_dict(YAML.construct_mapping(constructor, node))
     mapping[:tag] = t
     mapping
+end
+
+function construct_type_map(t::Symbol, constructor::YAML.Constructor,
+                            node::YAML.SequenceNode)
+    YAML.construct_sequence(constructor, node)
 end
 
 const yaml_types = let
@@ -17,19 +22,20 @@ const yaml_types = let
              ("!DeathProcess", :DeathProcess),
              ("!AgingProcess", :AgingProcess),
              ("!VAR1", :VAR1)]
-    Dict{AbstractString,Function}([(t, (c, n) -> construct_type_map(s, c, n))
+    Dict{String,Function}([(t, (c, n) -> construct_type_map(s, c, n))
                            for (t, s) in pairs])
 end
 
-type SModel{ID} <: ASModel{ID}
+
+mutable struct SModel{ID} <: ASModel{ID}
     data::Dict{Symbol,Any}
 end
 
 function SModel(url::AbstractString)
     if match(r"(http|https):.*", url) != nothing
-        res = get(url)
-        buf = IOBuffer(res.data)
-        data = _symbol_dict(YAML.load(buf, yaml_types))
+        res = HTTP.request("GET", url)
+        txt = (String(res.body))
+        data = _symbol_dict(YAML.load(txt, yaml_types))
     else
         data = _symbol_dict(YAML.load_file(url, yaml_types))
     end
@@ -48,7 +54,7 @@ end
 
 function get_variables(model::ASModel)
     symbols = get_symbols(model)
-    vars = cat(1, values(symbols)...)
+    vars = cat(values(symbols)...; dims=1)
     dynvars = setdiff(vars, symbols[:parameters] )
 end
 
@@ -110,7 +116,7 @@ function get_equations(model::ASModel)
     end
 
     defs = get_definitions(model)
-    dynvars = cat(1, get_variables(model), [k[1] for k in keys(defs)]...)
+    dynvars = cat(get_variables(model), [k[1] for k in keys(defs)]...; dims=1)
 
     for eqtype in keys(_eqs)
         _eqs[eqtype] = [sanitize(eq,dynvars) for eq in _eqs[eqtype]]
@@ -132,7 +138,7 @@ end
 function get_definitions(model::ASModel)::OrderedDict{Tuple{Symbol,Int},SymExpr}
     # parse defs so values are Expr
     defs = get(model.data,:definitions, Dict())
-    dynvars = cat(1, get_variables(model), keys(defs)...)
+    dynvars = cat(get_variables(model), keys(defs)...; dims=1)
     _defs = OrderedDict{Tuple{Symbol,Int},SymExpr}(
         [ (k,0) => sanitize(_to_expr(v), dynvars) for (k, v) in defs]
     )
@@ -191,7 +197,7 @@ function get_grid(model::ASModel; options=Dict())
     return grid
 end
 
-function get_exogenous(model::ASModel)
+function get_exogenous_old(model::ASModel)
     exo_dict = get(model.data,:exogenous,Dict{Symbol,Any}())
     if length(exo_dict)==0
         exo_dict = get(model.data[:options], :exogenous, Dict{Symbol,Any}())
@@ -202,13 +208,44 @@ function get_exogenous(model::ASModel)
     return exogenous
 end
 
+#
+
+
+function get_exogenous(model::AModel)
+    rdata = model.rdata
+    exo_dict = model.rdata[:exogenous]
+    cond = !(exo_dict.tag=="tag:yaml.org,2002:map")
+    if cond
+        # old style exogenous block
+        return get_exogenous_old(model)
+    else
+        syms = cat( [[Symbol(strip(e)) for e in split(k, ",")] for k in keys(exo_dict)]..., dims=1)
+        expected = model.symbols[:exogenous]
+        if (syms != expected)
+            msg = string("In 'exogenous' section, shocks must be declared in the same order as shock symbol. Found: ", syms, ". Expected: ", expected, ".")
+            throw(ErrorException(msg))
+        end
+        calibration = model.calibration.flat
+        processes = []
+        for k in keys(exo_dict)
+            v = exo_dict[k]
+            p = Dolang.eval_node(v, calibration, minilang, FromGreek())
+            push!(processes, p)
+        end
+        return ProductProcess(processes...)
+    end
+end
+
+
 function set_calibration!(model::ASModel, key::Symbol, value::Union{Real,Expr, Symbol})
     model.data[:calibration][key] = value
 end
 
-type Model{ID} <: AModel{ID}
+
+mutable struct Model{ID} <: AModel{ID}
 
     data::Dict{Symbol,Any}
+    rdata::YAML.Node
     name::String           # weakly immutable
     filename::String
     symbols::OrderedDict{Symbol,Array{Symbol,1}}        # weakly immutable
@@ -222,9 +259,9 @@ type Model{ID} <: AModel{ID}
     grid
     options
 
-    function (::Type{Model{ID}}){ID}(data::Dict{Symbol,Any}; print_code::Bool=false, filename="<string>")
+    function Model{ID}(data::Dict{Symbol,Any}, rdata::YAML.Node; print_code::Bool=false, filename="<string>") where ID
 
-        model = new{ID}(data)
+        model = new{ID}(data, rdata)
         model.name = get_name(model)
         model.filename = filename
         model.symbols = get_symbols(model)
@@ -254,7 +291,7 @@ type Model{ID} <: AModel{ID}
                 lhs = [eq.args[2] for eq in equations]
                 rhs = [eq.args[3] for eq in equations]
                 expressions = OrderedDict(zip(targets,rhs))
-                @assert Dolang.normalize.(lhs) == Dolang.normalize.(targets)
+                @assert Dolang.stringify.(lhs) == Dolang.stringify.(targets)
             else
                 expressions = OrderedDict( [Symbol("out_",i)=>eq_to_expr(eq) for (i,eq) in enumerate(equations)])
             end
@@ -262,7 +299,7 @@ type Model{ID} <: AModel{ID}
             factories[eqtype] = ff
             code = Dolang.gen_generated_gufun(ff; dispatch=typeof(model))
             print_code && println(code)
-            eval(Dolo, code)
+            Core.eval(Dolo, code)
         end
 
         model.factories = factories
@@ -270,7 +307,7 @@ type Model{ID} <: AModel{ID}
 
         # TEMP: until we have a better method in Dolang
         # Create definitions
-        vars = cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+        vars = cat(model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls]; dims=1)
         args = OrderedDict(
             :past => [(v,-1) for v in vars],
             :present => [(v,0) for v in vars],
@@ -279,14 +316,14 @@ type Model{ID} <: AModel{ID}
         )
         fff = Dolang.FlatFunctionFactory(model.definitions, args, typeof(model.definitions)())
         code = Dolang.gen_generated_gufun(fff;dispatch=typeof(model), funname=:evaluate_definitions)
-        eval(Dolo,code)
+        Core.eval(Dolo,code)
 
         return model
     end
 
 end
 
-_numeric_mod_type{ID}(::Model{ID}) = Model{ID}
+_numeric_mod_type(::Model{ID}) where {ID} = Model{ID}
 
 function Base.show(io::IO, model::Model)
     print(io, "Model")
@@ -297,15 +334,16 @@ end
 function Model(url::AbstractString; print_code=false)
     # it looks like it would be cool to use the super constructor ;-)
     if match(r"(http|https):.*", url) != nothing
-        res = get(url)
-        buf = IOBuffer(res.data)
-        data = _symbol_dict(load(buf, yaml_types))
+        res = HTTP.request("GET", url)
+        txt = String(res.body)
     else
-        data = _symbol_dict(load_file(url, yaml_types))
+        txt = read(open(url), String)
     end
+    data = _symbol_dict(load(txt, yaml_types))
+    rdata = Dolang.yaml_node_from_string(txt)
     id = gensym()
     fname = basename(url)
-    return Model{id}(data; print_code=print_code, filename=fname)
+    return Model{id}(data, rdata; print_code=print_code, filename=fname)
 end
 
 function set_calibration!(model::Model, key::Symbol, value::Union{Real,Expr, Symbol})
@@ -318,7 +356,7 @@ function set_calibration!(model::Model, key::Symbol, value::Union{Real,Expr, Sym
     model.calibration
 end
 
-function set_calibration!{T}(model::Model, values::Associative{Symbol,T})
+function set_calibration!(model::Model, values::AbstractDict{Symbol,T}) where T
     for (key,value) in values
         model.data[:calibration][key] = value
     end

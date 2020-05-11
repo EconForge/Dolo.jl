@@ -5,7 +5,7 @@ include(path)
 
 
 
-filename = Pkg.dir("Dolo","linter/models/rbc_dtcc_iid.yaml")
+filename = Pkg.dir("Dolo","linter/models/rbc_iid.yaml")
 filename
 
 #DL = DoloLinter
@@ -77,7 +77,7 @@ for eq_ in d[:equations][eqg].value
           push!(errors, LinterWarning(errvalue, errtype, msg, loc, filename))
 
         elseif  (string(sym) in model_symbols)
-          floc = findfirst(model_symbols, sym)
+          floc = findfirst(isequal(sym), model_symbols)
           declared_sym_type = model_symbols_vec[floc][1]
           println(declared_sym_type)
 
@@ -105,17 +105,17 @@ end
 
 function format_human(errors::Vector{LinterException}, warnings::Vector{LinterWarning})
     # ouptputs all errors then all warnings, line-by-line
-    # example from python's `dolo-lint --format=human examples/models/rbc_dtcc_iid.yaml`
+    # example from python's `dolo-lint --format=human examples/models/rbc_iid.yaml`
     # error: 12, 30: Symbol 'beta' already declared as 'parameters'. (pos (12, 16))
 end
 
 function format_dict(exc::Union{LinterException, LinterWarning})
     # Output should be a dictionary like:
-    # {"type": "error", "source": "examples/models/rbc_dtcc_iid.yaml", "range": [[11, 29], [11, 33]], "text": "Symbol 'beta' already declared as 'parameters'."}
+    # {"type": "error", "source": "examples/models/rbc_iid.yaml", "range": [[11, 29], [11, 33]], "text": "Symbol 'beta' already declared as 'parameters'."}
 end
 
 function format_json(errors::Vector{LinterException}, warnings::Vector{LinterWarning})
     # Structure compatible with atom linter
-    # see python's `dolo-lint --format=json examples/models/rbc_dtcc_iid.yaml` for an example
-    # [{"type": "error", "source": "examples/models/rbc_dtcc_iid.yaml", "range": [[11, 29], [11, 33]], "text": "Symbol 'beta' already declared as 'parameters'. (pos (12, 16))"}]
+    # see python's `dolo-lint --format=json examples/models/rbc_iid.yaml` for an example
+    # [{"type": "error", "source": "examples/models/rbc_iid.yaml", "range": [[11, 29], [11, 33]], "text": "Symbol 'beta' already declared as 'parameters'. (pos (12, 16))"}]
 end

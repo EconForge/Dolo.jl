@@ -1,13 +1,16 @@
 __precompile__(true)
 module Dolo
 
+using Printf
+
 import Dolang: SymExpr, list_syms
 
 # model import utils
 using DataStructures: OrderedDict
 import YAML; using YAML: load_file, load
-import Iterators
-using Requests: get
+
+import IterTools
+import HTTP
 using StaticArrays
 
 # solvers
@@ -21,6 +24,7 @@ const QE = QuantEcon
 # Dolang
 using Dolang
 using Dolang: _to_expr, inf_to_Inf, solution_order, solve_triangular_system, _get_oorders
+import Dolang: Language, add_language_elements!, FromGreek
 
 # Numerical Tools
 using MacroTools  # used for eval_with
@@ -39,10 +43,12 @@ using StaticArrays
 using IterativeSolvers
 
 # Functions from base we extend
-import Base.A_mul_B!
+# import Base.A_mul_B!
 import Base.size
 import Base.eltype
 import Base.*
+
+using LinearAlgebra
 
 
 # exports
@@ -59,32 +65,32 @@ export arbitrage, transition, auxiliary, value, expectation,
 export lint, yaml_import, eval_with, evaluate, evaluate!, model_type, name, filename, id, features, set_calibration!
 
 export time_iteration, improved_time_iteration, value_iteration, residuals,
-        response, simulate, perfect_foresight, time_iteration_direct, find_deterministic_equilibrium, perturbate
+        response, simulate, perfect_foresight, time_iteration_direct, find_deterministic_equilibrium, perturb, tabulate
 
 export ModelCalibration, FlatCalibration, GroupedCalibration
-export AbstractModel, AbstractDecisionRule
+export AbstractModel, AbstractDecisionRule, Model
 
-# set up core types
-@compat abstract type AbstractSymbolicModel{ID} end
-@compat abstract type AbstractModel{ID} <: AbstractSymbolicModel{ID} end
+# set up core typesr
+abstract type AbstractSymbolicModel{ID} end
+abstract type AbstractModel{ID} <: AbstractSymbolicModel{ID} end
 
 const ASModel = AbstractSymbolicModel
 const AModel = AbstractModel
 
-id{ID}(::AbstractModel{ID}) = ID
+id(::AbstractModel{ID}) where {ID} = ID
 
 
 # conventions for list of points
-@compat Point{d} = SVector{d,Float64}
-@compat Value{n} = SVector{n,Float64}
-@compat ListOfPoints{d} = Vector{Point{d}}
-@compat ListOfValues{n} = Vector{Value{n}}
+Point{d} = SVector{d,Float64}
+Value{n} = SVector{n,Float64}
+ListOfPoints{d} = Vector{Point{d}}
+ListOfValues{n} = Vector{Value{n}}
 
 
 # recursively make all keys at any layer of nesting a symbol
 # included here instead of util.jl so we can call it on RECIPES below
 _symbol_dict(x) = x
-_symbol_dict(d::Associative) =
+_symbol_dict(d::AbstractDict) =
     Dict{Symbol,Any}([(Symbol(k), _symbol_dict(v)) for (k, v) in d])
 
 const src_path = dirname(@__FILE__)
@@ -96,7 +102,7 @@ for f in [:arbitrage, :transition, :auxiliary, :value, :expectation,
           :direct_response, :controls_lb, :controls_ub, :arbitrage_2,
           :arbitrage!, :transition!, :auxiliary!, :value!, :expectation!,
           :direct_response, :controls_lb!, :controls_ub!, :arbitrage_2!]
-    eval(Expr(:function, f))
+    Core.eval(Dolo, Expr(:function, f))
 end
 
 include("numeric/splines/splines.jl")
@@ -110,6 +116,17 @@ include("numeric/complementarities.jl")
 include("numeric/newton.jl")
 include("numeric/grids.jl")
 include("numeric/processes.jl")
+
+minilang = Language(Dict())
+add_language_elements!(minilang, Dict(
+    "!Normal"=>Normal,
+    "!MarkovChain"=>MarkovChain,
+    "!Product"=>Product,
+    "!PoissonProcess"=>PoissonProcess,
+    "!DeathProcess"=>DeathProcess,
+    "!AgingProcess"=>AgingProcess,
+    "!VAR1"=>VAR1,
+))
 
 include("linter.jl")
 include("calibration.jl")
@@ -133,5 +150,7 @@ include("algos/value_iteration.jl")
 include("algos/perturbation.jl")
 include("algos/simulation.jl")
 include("algos/perfect_foresight.jl")
+
+include("algos/ergodic.jl")
 
 end # module

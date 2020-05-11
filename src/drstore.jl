@@ -14,9 +14,9 @@ Main.getindex(ds::DRStore,x...) = getindex(ds.data,x...)
 Main.setindex!(ds::DRStore,x...) = setindex!(ds.data,x...)
 Main.abs(ds::DRStore{T}) where T = abs(ds.flat)
 
-Main.maxabs(ds::DRStore{T}) where T = maximum(e->norm(e,Inf), ds.flat)
+maxabs(ds::DRStore{T}) where T = maximum(e->norm(e,Inf), ds.flat)
 
-Main.norm(ds::DRStore{T}) where T = maximum(e->norm(e,Inf), ds.flat)
+norm(ds::DRStore{T}) where T = maximum(e->norm(e,Inf), ds.flat)
 # Main.norm(ds::DRStore{T},k::Int) where T = norm( (norm(e,k) for e in ds.flat), k)
 distance(ds1::DRStore{T}, ds2::DRStore{T}) where T = maximum( k->norm(k[1]-k[2],Inf), zip(ds1.flat,ds2.flat) )
 # distance(ds1::DRStore{T}, ds2::DRStore{T}, k::Int) where T = norm( (norm(e[1]-e[2],k) for e in zip(ds1.flat,ds2.flat)), k )

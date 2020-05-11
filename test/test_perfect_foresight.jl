@@ -4,7 +4,7 @@ path = Dolo.pkg_path
 
 @testset "testing perfect_foresight" begin
 
-    fn = joinpath(path, "examples", "models", "rbc_dtcc_ar1.yaml")
+    fn = joinpath(path, "examples", "models", "rbc.yaml")
 
     model = Dolo.yaml_import(fn)
 
@@ -30,7 +30,7 @@ end
 # Compare the results with the previous method
 
 path = Dolo.pkg_path
-fn = joinpath(path, "examples", "models", "rbc_dtcc_ar1.yaml");
+fn = joinpath(path, "examples", "models", "rbc.yaml");
 
 model = Dolo.yaml_import(fn);
 

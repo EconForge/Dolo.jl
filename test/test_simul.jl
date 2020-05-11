@@ -16,7 +16,7 @@ driving_process = Dolo.simulate(model2.exogenous, 10, 40, m0)
 sim1 = Dolo.simulate(model, dr, driving_process)
 
 sim = Dolo.simulate(model, dr; N= 1000, T=50)
-# Ac= cat(1, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls])
+# Ac= cat(model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls]; dims=1)
 # ll=[Symbol(i) for i in Ac]
 # AA= AxisArray(sim, Axis{:N}(1:1000), Axis{:V}(ll), Axis{:T}(1:50))
 
@@ -71,7 +71,7 @@ Dolo.response(model2, dr2, s0, :e_d)
 
 #########################################################################
 
-# filename = joinpath(path,"examples","models","rbc_dtcc_ar1.yaml")
+# filename = joinpath(path,"examples","models","rbc.yaml")
 # model = Dolo.yaml_import(filename)
 # # model2 = Dolo.yaml_import(filename2)
 # N = 1
@@ -92,7 +92,7 @@ Dolo.response(model2, dr2, s0, :e_d)
 # irf = Dolo.response(model, dr, e0; horizon = 100)
 
 
-index = findfirst(model.symbols[:states],:k)
+index = findfirst(isequal(:k), model.symbols[:states])
 
 kirf = irf[:,3]
 iirf = irf[:,2]

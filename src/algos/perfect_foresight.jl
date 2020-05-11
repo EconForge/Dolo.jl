@@ -35,7 +35,7 @@ function perfect_foresight(model, exo::AbstractMatrix{Float64}; T=200, verbose=t
 
     u0 = [s0; x0]
 
-    sol_init = NLsolve.nlsolve(not_in_place(u->res_ss(u,m0)), u0)
+    sol_init = NLsolve.nlsolve(u->res_ss(u,m0), u0, inplace=false, autodiff=:central)
     if ~NLsolve.converged(sol_init)
         error("Couldn't find initial guess.")
     end
@@ -91,20 +91,29 @@ function perfect_foresight(model, exo::AbstractMatrix{Float64}; T=200, verbose=t
 
     sh = size(initial_guess)
 
-    fun = u->residuals(model,s0,driving_process,reshape(u, sh...))[:]
+    function fun(out, in)
+        copyto!(out, residuals(model,s0,driving_process, reshape(in, sh...)))
+    end
+    function fun(in)
+        out = similar(in)
+        fun(out, in)
+        out
+    end
 
     vv0 = initial_guess[:]
 
     if ~complementarities
-        sol = NLsolve.nlsolve(not_in_place(fun), vv0, show_trace=verbose)
+        sol = NLsolve.nlsolve(fun, vv0, show_trace=verbose, inplace=false)
     else
         ss0 = initial_guess[:, 1:n_s]
         mm0 = driving_process
-        lb = [ss0*0-Inf Dolo.controls_lb(model, mm0, ss0, p0)]
-        ub = [ss0*0+Inf Dolo.controls_ub(model, mm0, ss0, p0)]
+        lb = [(ss0*0 .- Inf) Dolo.controls_lb(model, mm0, ss0, p0)]
+        ub = [(ss0*0 .+ Inf) Dolo.controls_ub(model, mm0, ss0, p0)]
 
         R0 = fun(vv0)
-        sol = NLsolve.mcpsolve(not_in_place(fun), lb[:], ub[:], vv0, show_trace=verbose)
+        sol = NLsolve.mcpsolve(
+            fun, lb[:], ub[:], vv0, show_trace=verbose,
+        )
     end
 
     if ~NLsolve.converged(sol)
@@ -114,30 +123,33 @@ function perfect_foresight(model, exo::AbstractMatrix{Float64}; T=200, verbose=t
     headers = [model.symbols[:exogenous]; model.symbols[:states]; model.symbols[:controls]]
     resp = [driving_process reshape(sol.zero, sh...)]
 
-    return AxisArray(resp', Axis{:V}(headers) ,Axis{:T}(0:T-1))
+    out = AxisArray(copy(resp'), Axis{:V}(headers) ,Axis{:T}(0:T-1))
+    defs = evaluate_definitions(model, out)
+    merge(out, defs)
 
 end
 
 # Constructs the matrix exo given a dictionary exo and calls the original method
 function perfect_foresight(model, exo::Dict{}; kwargs... )
-  convert(Dict{Symbol,Array{Float64,1}}, exo)
-  n_e = length(model.symbols[:exogenous])
-  T_e = maximum(length(e) for e in values(exo))
-  exo_new = zeros(T_e,n_e)
+    convert(Dict{Symbol,Array{Float64,1}}, exo)
+    n_e = length(model.symbols[:exogenous])
+    T_e = maximum(length(e) for e in values(exo))
+    exo_new = zeros(T_e, n_e)
+    for (i, key) in enumerate(model.symbols[:exogenous])
+        exo_new[:, i] .= model.calibration.flat[key]
+    end
 
     for key in keys(exo)
-      ind = find(model.symbols[:exogenous] .== key)
-      T_key = length(exo[key])
-      exo_new[1:T_key,ind] = exo[key]
+        ind = findall(model.symbols[:exogenous] .== key)
+        T_key = length(exo[key])
+        exo_new[1:T_key,ind] = exo[key]
 
-      for t=(T_key+1):T_e
-        exo_new[t,ind] =  exo[key][end]
-      end
+        for t=(T_key+1):T_e
+            exo_new[t,ind] =  exo[key][end]
+        end
 
     end
 
-  exo = exo_new
-
-  return perfect_foresight(model, exo; kwargs... )
+    return perfect_foresight(model, exo_new; kwargs... )
 
 end

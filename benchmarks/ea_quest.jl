@@ -4,7 +4,7 @@ const ff = Dolang.FunctionFactory(sm, :dynare)
 
 # functions we will benchmark
 regex_create_symbolic_model(path) = Dolo.load_modfile(path)
-parse_normalize(sm) = Dolang.normalize(sm.equations[:dynare])
+parse_stringify(sm) = Dolang.stringify(sm.equations[:dynare])
 build_function_factory(sm) = Dolang.FunctionFactory(sm, :dynare)
 build_levels_func_body(ff) = Dolang.func_body(ff, Dolang.Der{0})
 compute_jacobian_derivatives(ff) = Dolang._jacobian_expr_mat(ff)
@@ -18,7 +18,7 @@ dynare_import(path) = Dolo.dynare_import(path)
 suite["eaquest"] = BenchmarkGroup(["eaquest"])
 
 for (f, arg) in [(regex_create_symbolic_model, path),
-                 (parse_normalize, sm),
+                 (parse_stringify, sm),
                  (build_function_factory, sm),
                  (build_levels_func_body, ff),
                  (compute_jacobian_derivatives, ff),

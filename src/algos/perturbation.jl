@@ -5,11 +5,11 @@ function get_ss_derivatives(model)
     g_diff, f_diff
 end
 
-perturbate(p::IIDExogenous) = (zeros(0), zeros(0, 0))
-perturbate(p::VAR1) = (p.mu, p.R)
+perturb(p::IIDExogenous) = (zeros(0), zeros(0, 0))
+perturb(p::VAR1) = (p.mu, p.R)
 
-type PerturbationResult
-    solution::BiTaylorExpansion
+mutable struct PerturbationResult
+    dr::BiTaylorExpansion
     generalized_eigenvalues::Vector
     stable::Bool     # biggest e.v. lam of solution is < 1
     determined::Bool # next eigenvalue is > lam + epsilon (MOD solution well defined)
@@ -27,7 +27,7 @@ end
 
 blanchard_kahn(fos::PerturbationResult) = fos.stable && fos.unique
 
-function perturbate_first_order(g_s, g_x, f_s, f_x, f_S, f_X)
+function perturb_first_order(g_s, g_x, f_s, f_x, f_S, f_X)
 
     eigtol = 1.0+1e-6
 
@@ -36,25 +36,25 @@ function perturbate_first_order(g_s, g_x, f_s, f_x, f_S, f_X)
 
     nv = ns + nx
 
-    A = [eye(ns) zeros(ns, nx);
+    A = [Matrix(1.0I,ns,ns) zeros(ns, nx);
          -f_S     -f_X]
 
     B = [g_s g_x;
          f_s f_x]
 
     # do orderd QZ decomposition
-    gs = schurfact(A, B)
+    gs = schur(A, B)
 
-    genvals = (abs.(gs[:alpha]) ./ abs.(gs[:beta]))
+    genvals = (abs.(gs.α) ./ abs.(gs.β))
     sort!(genvals, rev=true)
     n_keep = ns # number of eigenvalues to keep
     diff = genvals[n_keep+1] - genvals[n_keep]
     eigtol = genvals[n_keep] + diff/2
 
-    select = (abs.(gs[:alpha]) .> eigtol*abs.(gs[:beta]))
+    select = (abs.(gs.α) .> eigtol*abs.(gs.β))
 
     ordschur!(gs, select)
-    S, T, Q, Z = gs[:S], gs[:T], gs[:Q], gs[:Z]
+    S, T, Q, Z = gs.S, gs.T, gs.Q, gs.Z
     diag_S = diag(S)
     diag_T = diag(T)
     eigval = abs.(diag_S./diag_T)
@@ -78,7 +78,7 @@ function get_gf_derivatives(model::AbstractModel)
     _f_m, _f_s, _f_x, _f_M, _f_S, _f_X = f_diff
     _g_m, _g_s, _g_x, _g_M = g_diff
 
-    (M, R) = perturbate(model.exogenous)
+    (M, R) = perturb(model.exogenous)
 
     f_x = _f_x
     f_X = _f_X
@@ -89,7 +89,7 @@ function get_gf_derivatives(model::AbstractModel)
         f_S = [_f_M _f_S]
         g_s = [R zeros(size(R, 1), size(_g_s, 2)); _g_m _g_s]
         g_x = [zeros(size(_g_m, 1), size(_g_x, 2)); _g_x]
-        s = cat(1, _m, _s)
+        s = cat(_m, _s; dims=1)
     else
         f_s = _f_s
         f_S = _f_S
@@ -103,21 +103,21 @@ end
 """
 TBD
 """
-function perturbate(model::Model)
+function perturb(model::Model)
 
     g_s, g_x, f_s, f_x, f_S, f_X = get_gf_derivatives(model)
     nx = size(g_x, 2)
 
-    (M, R) = perturbate(model.exogenous)
+    (M, R) = perturb(model.exogenous)
     _m, _s, x, p = model.calibration[:exogenous, :states, :controls, :parameters]
 
     if size(R, 1)>0
-        s = cat(1, _m, _s)
+        s = cat(_m, _s; dims=1)
     else
         s = _s
     end
 
-    C, genvals = perturbate_first_order(g_s, g_x, f_s, f_x, f_S, f_X)
+    C, genvals = perturb_first_order(g_s, g_x, f_s, f_x, f_S, f_X)
     sort!(genvals)
 
     if size(R, 1)>0

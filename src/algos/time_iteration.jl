@@ -43,7 +43,7 @@ end
 
 
 
-immutable TimeIterationLog
+struct TimeIterationLog
     header::Array{String, 1}
     keywords::Array{Symbol, 1}
     entries::Array{Any, 1}
@@ -101,12 +101,12 @@ end
 ###
 
 
-type IterationTrace
+mutable struct IterationTrace
     trace::Array{Any,1}
 end
 
 
-type TimeIterationResult
+mutable struct TimeIterationResult
     dr::AbstractDecisionRule
     iterations::Int
     complementarities::Bool
@@ -115,7 +115,7 @@ type TimeIterationResult
     x_tol::Float64
     err::Float64
     log::TimeIterationLog
-    trace::Union{Void,IterationTrace}
+    trace::Union{Nothing,IterationTrace}
 end
 
 converged(r::TimeIterationResult) = r.x_converged
@@ -202,7 +202,9 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
     while it<maxit && err>tol_η
 
         it += 1
-        tic()
+
+        t1 = time_ns()
+
         set_values!(dr, x0)
         fobj(u) = euler_residuals_ti(model, dprocess, endo_nodes, u, p, dr)
 
@@ -227,7 +229,7 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
         gain = err / err_0
         err_0 = err
 
-        elapsed = toq()
+        elapsed = time_ns() - t1
 
         append!(log; verbose=verbose, it=it, epsilon=epsil, err=err, gain=gain, time=elapsed, nit=nit)
     end

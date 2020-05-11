@@ -24,7 +24,7 @@ function sanitize(a,model::Dolo.ASModel)
     return sanitize(a, dynvars)
 end
 
-function Base.show{ID}(io::IO, m::SModel{ID})
+function Base.show(io::IO, m::SModel{ID}) where ID
     println(io,
     """NumericModel
       - name: $(m.name)
@@ -65,7 +65,7 @@ function Base.show(io::IO, ::MIME"text/html", model::Model)
             eq = equations[i]
             eq = sanitize(eq, model)
             eqtex = Dolang.latex(eq)
-            eqtex = replace(eqtex, "*", " ")
+            eqtex = replace(eqtex, "*"=>" ")
             fmt_line = "<tr><td>$eqt</td><td>\\[$eqtex\\]</td></tr>"
             push!(table_lines, fmt_line)
         end

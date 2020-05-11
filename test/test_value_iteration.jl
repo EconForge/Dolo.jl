@@ -1,6 +1,6 @@
 import Dolo
 
-model = Dolo.yaml_import("rbc_dtcc_iid.yaml")
+model = Dolo.yaml_import("rbc_iid.yaml")
 
 # define
 include("tmp_module.jl")

@@ -1,5 +1,5 @@
 function add_epsilon!(x::ListOfPoints{d}, i, epsilon) where d
-  ei = SVector{d,Float64}([(j==i?epsilon:0.0) for j=1:d])
+  ei = SVector{d,Float64}([(j==i ? epsilon : 0.0) for j=1:d])
   for i=1:length(x)
     x[i] += ei
   end
@@ -18,12 +18,12 @@ function DiffFun(fun, x0::Vector{ListOfPoints{n_x}}, epsilon=1e-6) where n_x
       fi = fun(xi)::Vector{ListOfPoints{n_x}}
       di = (fi-r0)/epsilon
       for i_m=1:n_m
-        JMat[i_m][:,i_x,:] = reinterpret(Float64, di[i_m], (n_x, N))
+        JMat[i_m][:,i_x,:] = reshape(reinterpret(Float64, vec(di[i_m])), (n_x, N))
         add_epsilon!(xi[i_m], i_x, -epsilon)
       end
     end
-    J = [reinterpret(SMatrix{n_x,n_x,Float64,n_x^2},JMat[i],(N,)) for i=1:n_m]
-    return (r0,J)::Tuple{Vector{ListOfPoints{n_x}},Vector{Vector{SMatrix{n_x,n_x,Float64,n_x*n_x}}}}
+    J = [reshape(reinterpret(SMatrix{n_x,n_x,Float64,n_x^2},vec(JMat[i])),(N,)) for i=1:n_m]
+    return (r0,J) #::Tuple{Vector{ListOfPoints{n_x}},Vector{Vector{SMatrix{n_x,n_x,Float64,n_x*n_x}}}}
 end
 
 struct NewtonResult
@@ -37,7 +37,7 @@ struct NewtonResult
     errors::Vector{Float64}
 end
 
-function newton(fun::Function, x0::Vector{ListOfPoints{n_x}}, a::Union{Vector{ListOfPoints{n_x}},Void}=nothing, b::Union{Vector{ListOfPoints{n_x}},Void}=nothing; maxit=10, verbose=false, n_bsteps=5, lam_bsteps=0.5) where n_x
+function newton(fun::Function, x0::Vector{ListOfPoints{n_x}}, a::Union{Vector{ListOfPoints{n_x}},Nothing}=nothing, b::Union{Vector{ListOfPoints{n_x}},Nothing}=nothing; maxit=10, verbose=false, n_bsteps=5, lam_bsteps=0.5) where n_x
 
     steps = (lam_bsteps).^collect(0:n_bsteps)
 
@@ -53,8 +53,8 @@ function newton(fun::Function, x0::Vector{ListOfPoints{n_x}}, a::Union{Vector{Li
 
     while (it<maxit) && (err_e_0>tol_e)
         it += 1
-        R_i, D_i = DiffFun(fun, x)::Tuple{Vector{ListOfPoints{n_x}},Vector{Vector{SMatrix{n_x,n_x,Float64,n_x*n_x}}}}
-        if !(a isa Void)
+        R_i, D_i = DiffFun(fun, x) # ::Tuple{Vector{ListOfPoints{n_x}},Vector{Vector{SMatrix{n_x,n_x,Float64,n_x*n_x}}}}
+        if !(a isa Nothing)
             PhiPhi!(R_i,x,a,b,D_i)
         end
         err_e_0 = maxabs(R_i)
@@ -68,7 +68,7 @@ function newton(fun::Function, x0::Vector{ListOfPoints{n_x}}, a::Union{Vector{Li
             i_bckstps += 1
             new_x = x-dx*steps[i_bckstps]
             new_res = fun(new_x)::Vector{ListOfPoints{n_x}} # no diff
-            if !(a isa Void)
+            if !(a isa Nothing)
                 new_res = [PhiPhi0.(new_res[i],new_x[i],a[i],b[i]) for i=1:n_m]
             end
             err_e_1 = maxabs(new_res)

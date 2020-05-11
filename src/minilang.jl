@@ -2,21 +2,21 @@
 # Grid types #
 # ---------- #
 
-@compat abstract type AbstractGrid end
+abstract type AbstractGrid end
 
-immutable Cartesian <: AbstractGrid
+struct Cartesian <: AbstractGrid
     a::Vector{Float64}
     b::Vector{Float64}
     orders::Vector{Int}
 end
 
-type Domain
+mutable struct Domain
     states::Vector{Symbol}
     min::Vector{Float64}
     max::Vector{Float64}
 end
 
-function Cartesian(stuff::Associative, calib::ModelCalibration)
+function Cartesian(stuff::AbstractDict, calib::ModelCalibration)
     kind = get(stuff, :tag, nothing)
     if kind != :Cartesian
         error("Can't build Cartesian from dict with kind $(kind)")
@@ -30,7 +30,7 @@ end
 
 Cartesian(;a=[], b=[], orders=[]) = Cartesian(a, b, orders)
 
-function _build_grid(data::Associative, calib::ModelCalibration)
+function _build_grid(data::AbstractDict, calib::ModelCalibration)
     if data[:tag] == :Cartesian
         return Cartesian(data, calib)
     else
@@ -43,9 +43,9 @@ end
 # Distribution types #
 # ------------------ #
 
-@compat abstract type AbstractDistribution end
+abstract type AbstractDistribution end
 
-function _build_dist(data::Associative, calib::ModelCalibration)
+function _build_dist(data::AbstractDict, calib::ModelCalibration)
     if data[:tag] == :Normal
         n = length(calib[:shocks])
         Sigma = reshape(vcat(data[:Sigma]...), n, n)
@@ -63,9 +63,9 @@ end
 to_vector(tab::Number) = [tab]
 to_matrix(tab::Number) = reshape([tab], 1, 1)
 to_matrix(tab::Array) = hcat([Array{Float64}(e) for e in tab]...)
-to_matrix(tab::Array{Array{Float64,1},1}) = cat(1, [e' for e in tab]...)
+to_matrix(tab::Array{Array{Float64,1},1}) = cat([e' for e in tab]...; dims=1)
 
-function _build_exogenous_entry(data::Associative, calib::ModelCalibration)
+function _build_exogenous_entry(data::AbstractDict, calib::ModelCalibration)
 
     if data[:tag] == :Product
         p1 = _build_exogenous_entry(data[:p1], calib)

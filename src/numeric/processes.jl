@@ -1,11 +1,11 @@
-@compat abstract type AbstractExogenous end
+abstract type AbstractExogenous end
 
-@compat abstract type AbstractProcess <: AbstractExogenous end
-@compat abstract type DiscreteProcess <: AbstractProcess end
-@compat abstract type ContinuousProcess <: AbstractProcess end
-@compat abstract type IIDExogenous <: ContinuousProcess end
+abstract type AbstractProcess <: AbstractExogenous end
+abstract type DiscreteProcess <: AbstractProcess end
+abstract type ContinuousProcess <: AbstractProcess end
+abstract type IIDExogenous <: ContinuousProcess end
 
-@compat abstract type AbstractDiscretizedProcess <: DiscreteProcess end
+abstract type AbstractDiscretizedProcess <: DiscreteProcess end
 
 # this is a bit crude but not performance critical, for now
 function node(::Type{Point}, dp::DiscreteProcess, i::Int)
@@ -22,7 +22,7 @@ end
 ###
 
 # date-t grid has a known structure
-type DiscretizedProcess{TG<:Grid} <: AbstractDiscretizedProcess
+mutable struct DiscretizedProcess{TG<:Grid} <: AbstractDiscretizedProcess
     grid::TG
     integration_nodes::Array{Matrix{Float64},1}
     integration_weights::Array{Vector{Float64},1}
@@ -46,7 +46,7 @@ end
 
 
 # date-t grid is unstructured
-type DiscreteMarkovProcess <: AbstractDiscretizedProcess
+mutable struct DiscreteMarkovProcess <: AbstractDiscretizedProcess
     grid::UnstructuredGrid
     transitions::Matrix{Float64}
     values::Matrix{Float64}
@@ -84,7 +84,7 @@ end
 
 # date-t grid is empty
 
-type DiscretizedIIDProcess <: AbstractDiscretizedProcess
+mutable struct DiscretizedIIDProcess <: AbstractDiscretizedProcess
     # nodes::Matrix{Float64}
     grid::EmptyGrid
     integration_nodes::Matrix{Float64}
@@ -101,7 +101,7 @@ node(dip::DiscretizedIIDProcess, i) = zeros(n_inodes(dip, 1))
 
 # Normal law
 
-immutable MvNormal <: IIDExogenous
+struct MvNormal <: IIDExogenous
     mu::Vector{Float64}
     Sigma::Matrix{Float64}
 end
@@ -148,7 +148,7 @@ end
 
 function simulate(process::DiscreteMarkovProcess, N::Int, T::Int, i0::Int)
     mc_qe = QE.MarkovChain(process.transitions)
-    inds = Array{Int}(T, N)
+    inds = Array{Int}(undef, T, N)
     QE.simulate_indices!(inds, mc_qe, init=i0)
     AxisArray(inds, Axis{:T}(1:T),  Axis{:N}(1:N))
 end
@@ -177,15 +177,17 @@ end
 
 # VAR 1
 
-type VAR1 <: ContinuousProcess
+mutable struct VAR1 <: ContinuousProcess
     mu::Array{Float64,1}
     R::Array{Float64,2}
     Sigma::Array{Float64,2}
 end
 
+VAR1(;rho::Float64=0.0, Sigma=ones(1,1)) = VAR1(rho, Sigma)
+
 function VAR1(R::Array{Float64,2}, Sigma::Array{Float64,2})
     M = zeros(size(R, 1))
-    assert(size(R)==size(Sigma))
+    @assert size(R)==size(Sigma)
     return VAR1(M, R, Sigma)
 end
 
@@ -195,7 +197,8 @@ function VAR1(rho::Array{Float64,1}, Sigma::Array{Float64,2})
 end
 
 function VAR1(rho::Float64, Sigma::Array{Float64,2})
-    R = eye(size(Sigma,1))*rho
+    p = size(Sigma,1)
+    R = Matrix(rho*I, p, p)
     return VAR1(R, Sigma)
 end
 
@@ -218,7 +221,7 @@ function discretize(var::VAR1, n_states::Array{Int,1}, n_integration::Array{Int,
     grid = CartesianGrid{length(min)}(min,max,n_states)
     # discretize innovations
     x,w = QE.qnwnorm(n_integration, zeros(size(var.Sigma,1)), var.Sigma)
-    integration_nodes = [ cat(1,[(M + R*(node(grid, i)-M) + x[j,:])' for j=1:size(x,1)]...) for i in 1:n_nodes(grid)]
+    integration_nodes = [ cat([(M + R*(node(grid, i)-M) + x[j,:])' for j=1:size(x,1)]...; dims=1) for i in 1:n_nodes(grid)]
     integration_weights = [w for i in 1:n_nodes(grid)]
     return DiscretizedProcess(grid, integration_nodes, integration_weights)
 end
@@ -233,7 +236,7 @@ function discretize(::Type{DiscreteMarkovProcess}, var::VAR1; N::Int=3)
     R =  var.R
     d = size(R, 1)
     ρ = R[1, 1]
-    @assert maximum(abs, R-eye(d)*ρ)<1e-16
+    @assert maximum(abs, R-Matrix(ρ*I,d,d))<1e-16
 
     sigma = var.Sigma
 
@@ -289,7 +292,7 @@ function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64};
     end
 
     if irf
-        E[:, 1, :] = repmat(e0,1,T)
+        E[:, 1, :] = repeat(e0,1,T)
     end
 
     # Initial conditions
@@ -366,10 +369,13 @@ end
 #### ProductProcess
 
 
-type ProductProcess <: AbstractProcess
+mutable struct ProductProcess <: AbstractProcess
     process_1::AbstractProcess
     process_2::AbstractProcess
 end
+
+ProductProcess(p) = p
+
 
 function discretize(::Type{DiscreteMarkovProcess}, pp::ProductProcess; opt1=Dict(), opt2=Dict())
     p1 = discretize(DiscreteMarkovProcess, pp.process_1; opt1...)
@@ -441,3 +447,5 @@ const AR1 = VAR1
 const MarkovChain = DiscreteMarkovProcess
 const Normal = MvNormal
 const GDP = DiscretizedProcess
+
+MarkovChain(;transitions=ones(1,1), values=[range(1,size(transitions,1))...]) = MarkovChain(transitions, values)

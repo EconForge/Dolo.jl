@@ -11,15 +11,16 @@ end
 function SmolyakDR(
         grid_exo::S, grid_endo::T, ::Union{Val{nx},Type{Val{nx}}}
     ) where S <: EmptyGrid where T <: SmolyakGrid where nx
-    coefs = [Array{Float64}(n_nodes(grid_endo), nx)]
+    coefs = [Array{Float64}(undef,n_nodes(grid_endo), nx)]
     SmolyakDR{S,T,nx}(grid_exo, grid_endo, coefs)
 end
 
 function set_values!(
         dr::SmolyakDR{<:G}, values::Vector{Matrix{Float64}}
     ) where G <: Union{EmptyGrid,UnstructuredGrid}
+    qnodes = qr(dr.grid_endo.B_nodes, Val(true))
     for i in 1:length(values)
-        A_ldiv_B!(dr.coefs[i], dr.grid_endo.B_nodes, values[i])
+        ldiv!(dr.coefs[i], qnodes , values[i])
     end
 end
 
@@ -32,11 +33,11 @@ function set_values!(
         msg *= "as the length of the coefficient Vector ($(length(dr.coefs)))"
         error(msg)
     end
-
+    qnodes = qr(dr.grid_endo.B_nodes,Val(true))
     for i in 1:length(values)
         N = length(values[i])
-        data = reinterpret(Float64, values[i], (nx, N))'
-        A_ldiv_B!(dr.coefs[i], dr.grid_endo.B_nodes, data)
+        data = reshape(reinterpret(Float64, vec(values[i])), (nx, N))'
+        ldiv!(dr.coefs[i], qnodes, data)
     end
 end
 
@@ -45,9 +46,9 @@ function evaluate(dr::SmolyakDR{<:EmptyGrid}, z::AbstractMatrix)
     B*dr.coefs[1]
 end
 
-function evaluate(dr::SmolyakDR{<:EmptyGrid,SmolyakGrid{d}}, points::Vector{Point{d}}) where d
+function evaluate(dr::SmolyakDR{<:EmptyGrid,SmolyakGrid{d}}, points::AbstractVector{Point{d}}) where d
     N = length(points)
-    mat = reinterpret(Float64, points, (d, N))'
+    mat = reshape(reinterpret(Float64, (points)), (d, N))'
     evaluate(dr, mat)
 end
 
@@ -55,8 +56,8 @@ end
 #### UnstructuredGrid × CartesianGrid 2 continous arguments d.r.
 ####
 
-function SmolyakDR{nx}(grid_exo::UnstructuredGrid, grid_endo::SmolyakGrid, ::Union{Val{nx},Type{Val{nx}}})
-    coefs = [Array{Float64}(n_nodes(grid_endo), nx) for i in 1:n_nodes(grid_exo)]
+function SmolyakDR(grid_exo::UnstructuredGrid, grid_endo::SmolyakGrid, ::Union{Val{nx},Type{Val{nx}}}) where nx
+    coefs = [Array{Float64}(undef, n_nodes(grid_endo), nx) for i in 1:n_nodes(grid_exo)]
     SmolyakDR{typeof(grid_exo),typeof(grid_endo),nx}(grid_exo, grid_endo, coefs)
 end
 
@@ -73,6 +74,6 @@ end
 
 function evaluate(dr::SmolyakDR{<:UnstructuredGrid}, i::Int, z::Vector{Point{d}}) where d
     N = length(z)
-    mat = reinterpret(Float64, z, (d, N))'
+    mat = reshape(reinterpret(Float64, vec(z)), (d, N))'
     evaluate(dr, i, mat)
 end

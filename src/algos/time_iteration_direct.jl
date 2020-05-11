@@ -85,7 +85,7 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
 
         it += 1
 
-        tic()
+        t1 = time_ns()
 
         set_values!(dr, [ds0.data...])
 
@@ -121,7 +121,7 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
         gain = err/err_0
         err_0 = err
 
-        elapsed = toq()
+        elapsed = time_ns()-t1
 
         append!(log; verbose=verbose, it=it, err=err, gain=gain, time=elapsed, epsilon=NaN, nit=NaN)
 

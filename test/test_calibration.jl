@@ -1,7 +1,7 @@
 @testset "Testing model calibration" begin
 
     path = joinpath(Dolo.pkg_path, "examples", "models")
-    model = Dolo.yaml_import(joinpath(path, "rbc_dtcc_iid.yaml"))
+    model = Dolo.yaml_import(joinpath(path, "rbc_iid.yaml"))
 
     calib_0 = copy( model.calibration.flat )
 
