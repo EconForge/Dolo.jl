@@ -1,7 +1,35 @@
+function numdiff(f, x0; ϵ=1e-6)
+    f0 = f(x0)
+    p = size(f0,1)
+    q = size(x0,1)
+    J = zeros(p,q)
+    for j=1:q
+        ei = zeros(q)
+        ei[j] = 1.0
+        J[:,j] = (f(x0+ϵ*ei) - f0)/ϵ
+    end
+    return J
+end
+
 function get_ss_derivatives(model)
     m, s, x, p = model.calibration[:exogenous, :states, :controls, :parameters]
-    g_diff = transition(model,Val{(1,2,3,4)}, m, s, x, m, p)
-    f_diff = arbitrage(model, Val{(1,2,3,4,5,6)}, m, s, x, m, s, x, p)
+    # g_diff = transition(model,Val{(1,2,3,4)}, m, s, x, m, p)
+    # f_diff = arbitrage(model, Val{(1,2,3,4,5,6)}, m, s, x, m, s, x, p)
+    g_diff = [numdiff(f,u) for (f,u) in [
+        (u->transition(model, u, s, x, m, p),m),
+        (u->transition(model, m, u, x, m, p),s),
+        (u->transition(model, m, s, u, m, p),x),
+        (u->transition(model, u, s, x, u, p),m)
+    ]]
+
+    f_diff = [numdiff(f,u) for (f,u) in [
+        (u->arbitrage(model, u, s, x, m, s, x, p), m),
+        (u->arbitrage(model, s, u, x, m, s, x, p), s),
+        (u->arbitrage(model, s, s, u, m, s, x, p), x),
+        (u->arbitrage(model, s, s, x, u, s, x, p), m),
+        (u->arbitrage(model, s, s, x, m, u, x, p), s),
+        (u->arbitrage(model, s, s, x, m, s, u, p), x),
+    ]]
     g_diff, f_diff
 end
 
@@ -139,4 +167,60 @@ function perturb(model::Model)
         genvals[n_s+1]>1
     )
 
+end
+
+
+
+
+function linear_time_iteration(model;maxit=1000)
+    g_s, g_x, f_s, f_x, f_S, f_X = Dolo.get_gf_derivatives(model)
+    return linear_time_iteration(g_s, g_x, f_s, f_x, f_S, f_X; maxit=maxit)
+end
+
+
+function L(P, Q, X, Y, u)
+    return P*u*Q
+end
+
+function linear_time_iteration(g_s, g_x, f_s, f_x, f_S, f_X; maxit=1000, tol_ϵ=1e-6, improve=0, verbose=false)
+
+    n_x, n_s = size(f_s)
+
+    K = f_s + f_S*g_s
+
+    X_0 = 1 .+rand(n_x, n_s)
+    local X
+    for it=1:maxit
+        Y = X_0
+        B = -K - f_X*Y*g_s
+        A = f_x + f_S*g_x + f_X*Y*g_x
+        X = A\B
+        ϵ = maximum(abs.(X-X_0))
+        if ϵ<tol_ϵ
+            return (X,it)
+        end
+        if verbose
+            println(it, "\t: ", ϵ)
+        end
+        if (improve>0)
+            S = (X-X_0)
+            δ = (X-X_0)
+            P = -(f_x + f_S*g_x + f_X*Y*g_x)\f_X
+            Q = g_s + g_x*X
+            for k=1:improve
+                S = δ + L(P, Q, X, Y, S)
+            end
+            X_0 = X_0 + S
+        else
+            X_0 = X
+        end
+    end
+
+    return (X,-1)
+
+end
+
+function ttest(g_s, g_x, f_s, f_x, f_S, f_X, X)
+    res = f_s + f_x*X + f_S*(g_s+g_x*X) + f_X*X*(g_s+g_x*X)
+    return res
 end

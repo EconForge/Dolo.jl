@@ -21,7 +21,7 @@ definitions:
 equations:
 
     arbitrage:
-        - chi*n^eta*c^sigma - w                      | 0 <= n <= inf
+        - chi*n^eta*c^sigma - (1-alpha)*exp(z)*k^alpha*n^(1-alpha)/n                      | 0 <= n <= inf
         - 1 - beta*(c/c(1))^(sigma)*(1-delta+rk(1))  | 0 <= i <= inf
         # - V0 = c^(1-sigma)/(1-sigma) - chi*n^(1+eta)/(1+eta) + beta*V0(1) |  -100000<=V0<=100000
 
@@ -74,9 +74,8 @@ domain:
     k: [k*0.5, k*1.5]
 
 exogenous: !VAR1
-    rho: 0.8
-    Sigma: sig_z^2
-    N: 5
+    ρ: 0.8
+    Σ: [[sig_z^2]]
 
 options:
     grid: !Cartesian
