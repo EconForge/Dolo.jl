@@ -80,8 +80,8 @@ function _build_exogenous_entry(data::AbstractDict, calib::ModelCalibration)
         return MarkovChain(Π, states_values)
     elseif data[:tag] == :VAR1
         # need to extract rho an dSigma
-        rho = eval_with(calib, data[:rho])
-        Sigma = eval_with(calib, data[:Sigma])
+        rho = eval_with(calib, data[:ρ])
+        Sigma = eval_with(calib, data[:Σ])
         N = eval_with(calib, get(data, :N, 10))  # TODO: should default be 10??
         # rho = to_matrix(rho)
         Sigma = to_matrix(Sigma)
