@@ -13,23 +13,23 @@ end
 
 function get_ss_derivatives(model)
     m, s, x, p = model.calibration[:exogenous, :states, :controls, :parameters]
-    g_diff = transition(model,Val{(1,2,3,4)}, m, s, x, m, p)
-    f_diff = arbitrage(model, Val{(1,2,3,4,5,6)}, m, s, x, m, s, x, p)
-    # g_diff = [numdiff(f,u) for (f,u) in [
-    #     (u->transition(model, u, s, x, m, p),m),
-    #     (u->transition(model, m, u, x, m, p),s),
-    #     (u->transition(model, m, s, u, m, p),x),
-    #     (u->transition(model, u, s, x, u, p),m)
-    # ]]
+    # g_diff = transition(model,Val{(1,2,3,4)}, m, s, x, m, p)
+    # f_diff = arbitrage(model, Val{(1,2,3,4,5,6)}, m, s, x, m, s, x, p)
+    g_diff = [numdiff(f,u) for (f,u) in [
+        (u->transition(model, u, s, x, m, p),m),
+        (u->transition(model, m, u, x, m, p),s),
+        (u->transition(model, m, s, u, m, p),x),
+        (u->transition(model, u, s, x, u, p),m)
+    ]]
 
-    # f_diff = [numdiff(f,u) for (f,u) in [
-    #     (u->arbitrage(model, u, s, x, m, s, x, p), m),
-    #     (u->arbitrage(model, s, u, x, m, s, x, p), s),
-    #     (u->arbitrage(model, s, s, u, m, s, x, p), x),
-    #     (u->arbitrage(model, s, s, x, u, s, x, p), m),
-    #     (u->arbitrage(model, s, s, x, m, u, x, p), s),
-    #     (u->arbitrage(model, s, s, x, m, s, u, p), x),
-    # ]]
+    f_diff = [numdiff(f,u) for (f,u) in [
+        (u->arbitrage(model, u, s, x, m, s, x, p), m),
+        (u->arbitrage(model, s, u, x, m, s, x, p), s),
+        (u->arbitrage(model, s, s, u, m, s, x, p), x),
+        (u->arbitrage(model, s, s, x, u, s, x, p), m),
+        (u->arbitrage(model, s, s, x, m, u, x, p), s),
+        (u->arbitrage(model, s, s, x, m, s, u, p), x),
+    ]]
     g_diff, f_diff
 end
 
