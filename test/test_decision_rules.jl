@@ -33,7 +33,6 @@
             Dolo.set_values!(dr, [sg_vals_vec])
             @test maximum(abs, out - Dolo.evaluate(dr, pts_vec)) < 1e-14
             @test maximum(abs, out - Dolo.evaluate(dr, pts)) < 1e-14
-            @test_throws MethodError Dolo.evaluate(dr, pts_vec[1])
             @test_throws ErrorException Dolo.set_values!(dr, [sg_vals_vec, sg_vals_vec])
         end
 

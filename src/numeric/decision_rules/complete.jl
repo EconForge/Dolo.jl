@@ -35,7 +35,7 @@ function set_values!(
         values::Vector{<:Array{Value{nx}}}
     ) where G <: Union{EmptyGrid,UnstructuredGrid} where nx
     B_grid = BM.complete_polynomial(nodes(Matrix,dr.grid_endo), dr.order)
-    q_B_grid = qr(B_grid, Val(true))
+    # q_B_grid = qr(B_grid, Val(true))
 
     if length(values) != length(dr.coefs)
         msg = "The length of values ($(length(values))) is not the same "
@@ -45,8 +45,10 @@ function set_values!(
 
     for i in 1:length(values)
         N = length(values[i])
-        data = copy(reshape(reinterpret(Float64, vec(values[i])), (nx, N))')
-        ldiv!(dr.coefs[i], q_B_grid, data)
+        # data = copy(reshape(reinterpret(Float64, vec(values[i])), (nx, N))')
+        data = copy(from_LOP(values[i]))
+        dr.coefs[i] = B_grid \ data
+        # ldiv!(dr.coefs[i], q_B_grid, data)
     end
 end
 

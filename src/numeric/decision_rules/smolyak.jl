@@ -52,6 +52,10 @@ function evaluate(dr::SmolyakDR{<:EmptyGrid,SmolyakGrid{d}}, points::AbstractVec
     evaluate(dr, mat)
 end
 
+function evaluate(dr::SmolyakDR{<:EmptyGrid,SmolyakGrid{d}}, points::Point{d}) where d
+    Point{d}(evaluate(dr, reshape([points...], (1,d)))[1,:]...)
+end
+
 ####
 #### UnstructuredGrid × CartesianGrid 2 continous arguments d.r.
 ####
