@@ -4,10 +4,6 @@ sudo: false
 os:
   - linux
   # - osx  # we don't do any binary dependencies or OS specific magic
-addons:
-  apt:
-    packages:
-    - libnlopt0
 julia:
   - 1.5
   - 1.4
