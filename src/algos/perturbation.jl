@@ -11,25 +11,28 @@ function numdiff(f, x0; ϵ=1e-6)
     return J
 end
 
-function get_ss_derivatives(model)
+function get_ss_derivatives(model; method=:symbolic)
     m, s, x, p = model.calibration[:exogenous, :states, :controls, :parameters]
-    # g_diff = transition(model,Val{(1,2,3,4)}, m, s, x, m, p)
-    # f_diff = arbitrage(model, Val{(1,2,3,4,5,6)}, m, s, x, m, s, x, p)
-    g_diff = [numdiff(f,u) for (f,u) in [
-        (u->transition(model, u, s, x, m, p),m),
-        (u->transition(model, m, u, x, m, p),s),
-        (u->transition(model, m, s, u, m, p),x),
-        (u->transition(model, u, s, x, u, p),m)
-    ]]
-
-    f_diff = [numdiff(f,u) for (f,u) in [
-        (u->arbitrage(model, u, s, x, m, s, x, p), m),
-        (u->arbitrage(model, s, u, x, m, s, x, p), s),
-        (u->arbitrage(model, s, s, u, m, s, x, p), x),
-        (u->arbitrage(model, s, s, x, u, s, x, p), m),
-        (u->arbitrage(model, s, s, x, m, u, x, p), s),
-        (u->arbitrage(model, s, s, x, m, s, u, p), x),
-    ]]
+    if method==:symbolic
+        # it is still incorrect
+        g_diff = transition(model,Val{(1,2,3,4)}, m, s, x, m, p)
+        f_diff = arbitrage(model, Val{(1,2,3,4,5,6)}, m, s, x, m, s, x, p)
+    else
+        g_diff = [numdiff(f,u) for (f,u) in [
+            (u->transition(model, u, s, x, m, p),m),
+            (u->transition(model, m, u, x, m, p),s),
+            (u->transition(model, m, s, u, m, p),x),
+            (u->transition(model, m, s, x, u, p),m)
+        ]]
+        f_diff = [numdiff(f,u) for (f,u) in [
+            (u->arbitrage(model, u, s, x, m, s, x, p), m),
+            (u->arbitrage(model, m, u, x, m, s, x, p), s),
+            (u->arbitrage(model, m, s, u, m, s, x, p), x),
+            (u->arbitrage(model, m, s, x, u, s, x, p), m),
+            (u->arbitrage(model, m, s, x, m, u, x, p), s),
+            (u->arbitrage(model, m, s, x, m, s, u, p), x),
+        ]]
+    end
     g_diff, f_diff
 end
 
@@ -149,6 +152,7 @@ function perturb(model::Model; method=:qz)
         s = _s
     end
 
+    return (g_s, g_x, f_s, f_x, f_S, f_X)
     n_s = size(g_s, 1)
     if method==:qz
         tol = 1e-6 # minimum distance betweel lam_n and lam_{n+1}
