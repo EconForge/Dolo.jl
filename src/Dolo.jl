@@ -80,7 +80,8 @@ const AModel = AbstractModel
 
 id(::AbstractModel{ID}) where {ID} = ID
 
-
+Expression = Union{Expr, Symbol, Float64, Int64}
+ 
 # conventions for list of points
 Point{d} = SVector{d,Float64}
 Value{n} = SVector{n,Float64}

@@ -1,3 +1,5 @@
+using Dolang: sanitize
+
 # used for constructing appropraite dict from YAML object.
 function construct_type_map(t::Symbol, constructor::YAML.Constructor,
                             node::YAML.MappingNode)
@@ -73,6 +75,7 @@ function eq_to_expr(eq::Expr)
       :($rhs-$lhs)
    end
 end
+eq_to_expr(eq::Expression) = eq
 
 function get_equations(model::ASModel)
 
@@ -81,7 +84,7 @@ function get_equations(model::ASModel)
     _symbols = get_symbols(model)
 
     # prep equations: parse to Expr
-    _eqs = OrderedDict{Symbol,Vector{Expr}}()
+    _eqs = OrderedDict{Symbol,Vector{Expression}}()
     # for k in Dolo.keys(recipe[:specs])
     for k in Dolo.keys(eqs)
       if !(k in Dolo.keys(recipe[:specs]))
@@ -103,7 +106,7 @@ function get_equations(model::ASModel)
           length(these_eq) == 0 && error("equation section $k required")
       end
       # finally pass in the expressions
-      _eqs[k] = Expr[_to_expr(eq) for eq in these_eq]
+      _eqs[k] = Expression[_to_expr(eq) for eq in these_eq]
     end
     # end
     # handle the arbitrage, arbitrage_exp, controls_lb, and controls_ub
@@ -116,10 +119,10 @@ function get_equations(model::ASModel)
     end
 
     defs = get_definitions(model)
-    dynvars = cat(get_variables(model), [k[1] for k in keys(defs)]...; dims=1)
 
+    dynvars = cat(get_variables(model), [k[1] for k in keys(defs)]...; dims=1)
     for eqtype in keys(_eqs)
-        _eqs[eqtype] = [sanitize(eq,dynvars) for eq in _eqs[eqtype]]
+        _eqs[eqtype] = [sanitize(eq; variables=dynvars) for eq in _eqs[eqtype]]
     end
 
     return _eqs
@@ -140,7 +143,7 @@ function get_definitions(model::ASModel)::OrderedDict{Tuple{Symbol,Int},SymExpr}
     defs = get(model.data,:definitions, Dict())
     dynvars = cat(get_variables(model), keys(defs)...; dims=1)
     _defs = OrderedDict{Tuple{Symbol,Int},SymExpr}(
-        [ (k,0) => sanitize(_to_expr(v), dynvars) for (k, v) in defs]
+        [ (k,0) => Dolang.parse_string(v; variables= dynvars) for (k, v) in defs]
     )
     return _defs
 end
@@ -288,8 +291,9 @@ mutable struct Model{ID} <: AModel{ID}
             if :target in keys(spec)
                 sg,t,s = spec[:target]
                 targets = [(e,t) for e in symbols[Symbol(sg)]]
-                lhs = [eq.args[2] for eq in equations]
-                rhs = [eq.args[3] for eq in equations]
+                peq = [Dolang.match_equality(eq) for eq in equations]
+                lhs = [eq[1] for eq in peq]
+                rhs = [eq[2] for eq in peq]
                 expressions = OrderedDict(zip(targets,rhs))
                 @assert Dolang.stringify.(lhs) == Dolang.stringify.(targets)
             else
@@ -298,7 +302,7 @@ mutable struct Model{ID} <: AModel{ID}
             ff = Dolang.FlatFunctionFactory(expressions, arguments, tdefs; funname=eqtype )
             factories[eqtype] = ff
             code = Dolang.gen_generated_gufun(ff; dispatch=typeof(model))
-            print_code && println(code)
+            print_code && println("equation '", eqtype, "'", code)
             Core.eval(Dolo, code)
         end
 
