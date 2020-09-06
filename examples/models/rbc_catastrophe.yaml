@@ -74,8 +74,8 @@ domain:
 
 exogenous: !Product
     p1: !VAR1
-         rho: 0.8
-         Sigma: [[0.001]]
+        ρ: 0.8
+        Σ: [[0.001]]
     p2: !MarkovChain
         values: [[0.0],[0.1]]
         transitions: [[0.97, 0.03], [0.1, 0.9]]

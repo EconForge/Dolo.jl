@@ -169,18 +169,15 @@ function  (::Type{<:Union{RandomGrid,RandomGrid{d}}})(min::Point{d}, max::Point{
     RandomGrid(min, max, n, copy(nodes))
 end
 
-function RandomGrid(min::Vector{Float64}, max::Vector{Float64}, n::Int)
-    d = length(min)
-    @assert d == length(max)
-    dim_err = DimensionMismatch("min was length $d, max must be also")
-    length(max) == d || dim_err
-    all(max .> min) || error("max must be greater than min")
-    RandomGrid{d}(SVector(min...),SVector(max...),n)
-end
+# function RandomGrid(min::Vector{Float64}, max::Vector{Float64}, n::Int)
+#     d = length(min)
+#     RandomGrid{d}(SVector(min...),SVector(max...),n)
+# end
 
 function RandomGrid{d}(min::Vector{Float64}, max::Vector{Float64}, n::Int) where d
     @assert d == length(min)
-    RandomGrid(min,max,d)
+    all(max .> min) || error("max must be greater than min")
+    RandomGrid{d}(SVector{d}(min...),SVector{d}(max...),n)
 end
 
 nodes(grid::RandomGrid) = grid.nodes

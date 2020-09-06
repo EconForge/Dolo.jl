@@ -48,8 +48,8 @@ domain:
     k: [k*0.5, k*1.5]
 
 exogenous: !VAR1
-    rho: rho
-    Sigma: [[ 0.00001 ]]
+    ρ: rho
+    Σ: [[ 0.00001 ]]
 
 options:
     grid: !Cartesian

@@ -32,6 +32,7 @@ equations:
         #         - log(R/R_st) - phi_pi*log(pi(1)/pi_st) - phi_y*log(C/C_star)
         - R - R_st*(pi)^(phi_pi)*(C/C_star)^phi_y
         - real_r = R/pi(+1)
+        
     transition:
         - z = rho_z*z(-1) + e_z
         - Delta__L=Delta(-1)
