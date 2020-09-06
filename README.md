@@ -1,6 +1,7 @@
 # Dolo
 
-[![Build Status](https://travis-ci.org/EconForge/Dolo.jl.svg?branch=master)](https://travis-ci.org/EconForge/Dolo.jl)
+![Build Status](https://github.com/EconForge/Dolo.jl/workflows/CI/badge.svg)
+
 
 Documentation: [http://www.econforge.org/Dolo.jl/latest/](http://www.econforge.org/Dolo.jl/latest/)
 
