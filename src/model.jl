@@ -390,10 +390,9 @@ function features(model::Dolo.ASModel)
     features[:one_state] = (length(model.symbols[:states])==1)
     features[:one_control] = (length(model.symbols[:controls])==1)
     features[:one_dimensional] = features[:one_state] && features[:one_state]
-    rhs_transitions = [eq.args[3] for eq in model.equations[:transition]]
     it = Dolang.IncidenceTable( model.equations[:transition] )
     features[:nonstochastic_transitions] = (length( intersect(it.by_date[0], model.symbols[:exogenous] ) )==0)
-    it = Dolang.IncidenceTable( [model.equations[:controls_lb]; model.equations[:controls_lb]] )
+    it = Dolang.IncidenceTable( [model.equations[:controls_lb], model.equations[:controls_ub]] )
     features[:bounds_are_constant] = (length(it.by_var) == 0)
     return features
 end
