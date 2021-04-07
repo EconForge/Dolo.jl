@@ -10,7 +10,6 @@ import Dolang
 import Dolang: yaml_node_from_string, yaml_node_from_file
 using Dolang: SymExpr
 import Dolang: LTree
-
 import Dolang
 
 
@@ -19,8 +18,7 @@ using DataStructures: OrderedDict
 
 
 # defind language understood in yaml files
-const language = Dolang.Language()
-language.objects["!Cartesian"] = Dolo.Cartesian
+language = minilang
 
 abstract type AbstractModel{ID} end
 
@@ -31,6 +29,7 @@ mutable struct Model{ID} <: AbstractModel{ID}
     calibration::ModelCalibration
     exogenous
     domain::AbstractDomain
+    factories
 
     function Model{ID}(data::YAML.Node) where ID
         model = new{ID}(data)
@@ -40,6 +39,7 @@ mutable struct Model{ID} <: AbstractModel{ID}
         model.domain = get_domain(model)
         
         factories = get_factories(model)
+        model.factories = factories
         for (k,fact) in factories
             code = Dolang.gen_generated_gufun(fact; dispatch=typeof(model))
             # print_code && println("equation '", eq_type, "'", code)
@@ -110,7 +110,11 @@ end
 
 
 function get_exogenous(model::AModel)
+
     rdata = model.data
+    if !("exogenous" in keys(model.data))
+        return nothing
+    end
     exo_dict = model.data[:exogenous]
     cond = !(exo_dict.tag=="tag:yaml.org,2002:map")
 
@@ -175,12 +179,12 @@ function get_equation_block(model, eqname; stringify=true)
 
     for eq in equations
         if eq.data == "double_complementarity"
-            inegality = eq.children[2]
+            inequality = eq.children[2]
             # @assert inegality.data == "double_inequality"
-            eq_lb = Dolang.convert(Expr, inegality.children[1]; stringify=stringify)
-            eq_cc = Dolang.convert(Expr, inegality.children[2]; stringify=stringify)
+            eq_lb = Dolang.convert(Expr, inequality.children[1]; stringify=stringify)
+            eq_cc = Dolang.convert(Expr, inequality.children[2]; stringify=stringify)
             # TODO: check complementarities order
-            eq_ub = Dolang.convert(Expr, inegality.children[3]; stringify=stringify)
+            eq_ub = Dolang.convert(Expr, inequality.children[3]; stringify=stringify)
             eq = eq.children[1]
             push!(eqs_lb, eq_lb)
             push!(eqs_ub, eq_ub)

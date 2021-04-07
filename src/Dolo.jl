@@ -122,6 +122,7 @@ include("numeric/processes.jl")
 minilang = Language(Dict())
 add_language_elements!(minilang, Dict(
     "!Normal"=>Normal,
+    # "!UNormal"=>UNormal,
     "!MarkovChain"=>MarkovChain,
     "!Product"=>Product,
     "!PoissonProcess"=>PoissonProcess,

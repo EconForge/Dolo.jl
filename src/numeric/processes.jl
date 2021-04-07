@@ -107,13 +107,16 @@ struct MvNormal <: IIDExogenous
 end
 
 MvNormal(Sigma::Matrix{Float64}) = MvNormal(zeros(size(Sigma, 1)), Sigma)
-MvNormal(sigma::Float64) = MvNormal(reshape([sigma], 1, 1))
+MvNormal(sigma::Float64) = MvNormal(reshape([sigma^2], 1, 1))
+
+MvNormal(;sigma=0.0) = MvNormal(sigma)
 
 function discretize(mvn::MvNormal)
     n = fill(5, size(mvn.mu))
     x, w = QE.qnwnorm(n, mvn.mu, mvn.Sigma)
     DiscretizedIIDProcess(x, w)
 end
+
 
 function Base.rand(mvn::MvNormal, args...)
     dist = Distributions.MvNormal(mvn.mu, mvn.Sigma)
