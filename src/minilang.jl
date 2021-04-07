@@ -10,7 +10,14 @@ struct Cartesian <: AbstractGrid
     orders::Vector{Int}
 end
 
-mutable struct Domain
+abstract type AbstractDomain end
+
+
+struct EmptyDomain <: AbstractDomain 
+    states::Vector{Symbol}
+end
+
+mutable struct Domain <: AbstractDomain
     states::Vector{Symbol}
     min::Vector{Float64}
     max::Vector{Float64}
