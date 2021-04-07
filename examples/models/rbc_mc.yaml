@@ -28,20 +28,20 @@ equations:
         # - V0 = c^(1-sigma)/(1-sigma) - chi*n^(1+eta)/(1+eta) + beta*V0(1) |  -100000<=V0<=100000
 
     transition:
-        - k = (1-delta)*k(-1) + i(-1)
+        - k[t] = (1-delta)*k(-1) + i(-1)
 
     value:
-        - V = c^(1-sigma)/(1-sigma) - chi*n^(1+eta)/(1+eta) + beta*V(1)
+        - V[t] = c^(1-sigma)/(1-sigma) - chi*n^(1+eta)/(1+eta) + beta*V(1)
 
     felicity:
-        - u =  c^(1-sigma)/(1-sigma) - chi*n^(1+eta)/(1+eta)
+        - u[t] =  c^(1-sigma)/(1-sigma) - chi*n^(1+eta)/(1+eta)
 
     expectation:
-        - m = beta/c(1)^sigma*(1-delta+rk(1))
+        - m[t] = beta/c(1)^sigma*(1-delta+rk(1))
 
     direct_response:
-        - n = ((1-alpha)*exp(z)*k^alpha*m/chi)^(1/(eta+alpha))
-        - i = exp(z)*k^alpha*n^(1-alpha) - (m)^(-1/sigma)
+        - n[t] = ((1-alpha)*exp(z)*k^alpha*m/chi)^(1/(eta+alpha))
+        - i[t] = exp(z)*k^alpha*n^(1-alpha) - (m)^(-1/sigma)
 
 calibration:
 
@@ -75,9 +75,10 @@ calibration:
 domain:
     k: [k*0.5, k*1.5]
 
-exogenous: !MarkovChain
-    values: [[-0.01, 0.1],[0.01, 0.5]]
-    transitions: [[0.4, 0.6], [0.6, 0.4]]
+exogenous: 
+    z, z2: !MarkovChain
+        values: [[-0.01, 0.1],[0.01, 0.5]]
+        transitions: [[0.4, 0.6], [0.6, 0.4]]
 
 options:
 

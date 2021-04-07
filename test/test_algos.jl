@@ -11,11 +11,12 @@ path = Dolo.pkg_path
         model_mc = Dolo.yaml_import(fn)
 
         drc = Dolo.ConstantDecisionRule(model_mc.calibration[:controls])
-        @time tid_res = Dolo.time_iteration_direct(model_mc, drc; maxit=20, verbose=true)
-        @time ti_res = Dolo.time_iteration(model_mc, tid_res.dr; maxit=20, verbose=false)
+        # @time tid_res = Dolo.time_iteration_direct(model_mc, drc; maxit=20, verbose=true)
+        # @time ti_res = Dolo.time_iteration(model_mc, tid_res.dr; maxit=20, verbose=false)
+        @time ti_res = Dolo.time_iteration(model_mc; maxit=20, verbose=false)
         @time iti_res = Dolo.improved_time_iteration(model_mc; verbose=false, maxit=10000)
         @test Dolo.converged(iti_res)
-        @time drv = Dolo.evaluate_policy(model_mc, tid_res.dr; maxit=20, verbose=false)
+        # @time drv = Dolo.evaluate_policy(model_mc, tid_res.dr; maxit=20, verbose=false)
 
         sim = Dolo.simulate(model_mc, ti_res.dr, model_mc.exogenous) #; N=100, T=20)
 
@@ -61,22 +62,23 @@ path = Dolo.pkg_path
 
         drc = Dolo.ConstantDecisionRule(model.calibration[:controls])
 
-        @time tid_res = Dolo.time_iteration_direct(model, drc; maxit=20, verbose=true)
-        @time ti_res = Dolo.time_iteration(model, tid_res.dr; maxit=20, verbose=false)
+        # @time tid_res = Dolo.time_iteration_direct(model, drc; maxit=20, verbose=true)
+        # @time ti_res = Dolo.time_iteration(model, tid_res.dr; maxit=20, verbose=false)
+        @time ti_res = Dolo.time_iteration(model; maxit=20, verbose=false)
         @time iti_res = Dolo.improved_time_iteration(model; maxit=20, verbose=false)
         @test Dolo.converged(iti_res)
         #
         # @time sol_v = Dolo.value_iteration(model, tid_res.dr; maxit=20, verbose=true)
 
-        Dolo.simulate(model, tid_res.dr)
+        # Dolo.simulate(model, tid_res.dr)
 
         s0 = model.calibration[:states] .+ 0.1
-        sim = Dolo.simulate(model, tid_res.dr; s0=s0)
-        Dolo.simulate(model, tid_res.dr; N=10)
+        sim = Dolo.simulate(model, ti_res.dr; s0=s0)
+        Dolo.simulate(model, ti_res.dr; N=10)
 
         res = Dolo.response(model.exogenous, [0.01])
-        irf = Dolo.response(model, tid_res.dr, :e_z)
-        irf = Dolo.response(model, tid_res.dr, :e_z, -0.01)
+        irf = Dolo.response(model, ti_res.dr, :e_z)
+        irf = Dolo.response(model, ti_res.dr, :e_z, -0.01)
 
         # check with random and Smolyak grid
         # @time Dolo.time_iteration(model, maxit=20, grid=Dict(:tag => :Random, :N => 200))
@@ -105,20 +107,20 @@ path = Dolo.pkg_path
         dp = Dolo.discretize(model.exogenous)
 
         @time dr = Dolo.perturb(model)
-        @time tid_res = Dolo.time_iteration_direct(model; maxit=20, verbose=true)
-        @time ti_res = Dolo.time_iteration(model, tid_res.dr; maxit=20, verbose=false)
+        # @time tid_res = Dolo.time_iteration_direct(model; maxit=20, verbose=true)
+        @time ti_res = Dolo.time_iteration(model; maxit=20, verbose=false)
         @time iti_res = Dolo.improved_time_iteration(model; maxit=20, verbose=false)
         @test Dolo.converged(iti_res)
         # @time sol_v = Dolo.value_iteration(model, ti_res.dr; maxit=3, verbose=true)
 
         model.symbols[:exogenous]
         #
-        Dolo.simulate(model, tid_res.dr; m0=[0.015], N=10)
+        Dolo.simulate(model, ti_res.dr; m0=[0.015], N=10)
         Dolo.response(model.exogenous, [0.01])
         #
-        sim = Dolo.response(model, tid_res.dr, :z)
+        sim = Dolo.response(model, ti_res.dr, :z)
         #
-        irf = Dolo.response(model, tid_res.dr, :z, -0.01)
+        irf = Dolo.response(model, ti_res.dr, :z, -0.01)
         @test true
     end
 

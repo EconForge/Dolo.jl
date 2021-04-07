@@ -122,7 +122,7 @@ include("numeric/processes.jl")
 minilang = Language(Dict())
 add_language_elements!(minilang, Dict(
     "!Normal"=>Normal,
-    # "!UNormal"=>UNormal,
+    "!UNormal"=>UNormal,
     "!MarkovChain"=>MarkovChain,
     "!Product"=>Product,
     "!PoissonProcess"=>PoissonProcess,
@@ -131,12 +131,10 @@ add_language_elements!(minilang, Dict(
     "!VAR1"=>VAR1,
 ))
 
-include("linter.jl")
+# include("linter.jl")
 include("calibration.jl")
 include("minilang.jl")
-include("new_model.jl")
-# include("model.jl")
-# include("symbolic.jl")
+include("model.jl")
 # include("printing.jl")
 
 include("numeric/decision_rules/core.jl")

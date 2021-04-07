@@ -85,6 +85,8 @@ function Model(url::AbstractString; print_code=false)
 
 end
 
+yaml_import(filename::AbstractString) = Model(filename)
+
 function Base.show(io::IO, model::Model)
     print(io, "Model")
 end
@@ -168,13 +170,28 @@ function get_calibration(model::Model)
     return ModelCalibration(calibration, symbols)
 end
 
-function set_calibration!(model::Model, key::Symbol, value::Union{Real,Expr, Symbol})
+function set_calibration!(model::Model, key::Symbol, value)
     # TODO: set proper type for ScalarNode
     # this will fail is parameter wasn't defined before
     model.data[:calibration][key].value = string(value)
+    model.calibration = get_calibration(model)
+    model.exogenous = get_exogenous(model)
+    model.domain = get_domain(model)
 end
 
+function set_calibration!(model::Model, values::AbstractDict{Symbol, Any})
+    calib = model.data[:calibration]
+    for (k,v) in values
+        calib[k].value = string(v)
+    end
+    model.calibration = get_calibration(model)
+    model.exogenous = get_exogenous(model)
+    model.domain = get_domain(model)
+end
 
+function set_calibration!(model::Model; kwargs...)
+    set_calibration!(model, Dict(kwargs))
+end
 
 
 function get_equation_block(model, eqname; stringify=true)

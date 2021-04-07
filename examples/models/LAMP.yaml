@@ -77,8 +77,9 @@ calibration:
 
       e_z: 0.0
 
-exogenous: !Normal
-    Sigma: [[sig_z^2]]
+exogenous: 
+    e_z: !Normal
+        Sigma: [[sig_z^2]]
 
 domain:
     z: [ -sig_z, sig_z]

@@ -109,7 +109,10 @@ end
 MvNormal(Sigma::Matrix{Float64}) = MvNormal(zeros(size(Sigma, 1)), Sigma)
 MvNormal(sigma::Float64) = MvNormal(reshape([sigma^2], 1, 1))
 
-MvNormal(;sigma=0.0) = MvNormal(sigma)
+Normal(;Sigma=zeros(1,1)) = MvNormal(Sigma)
+
+UNormal(;sigma=0.0) = MvNormal(reshape([sigma^2], 1, 1))
+
 
 function discretize(mvn::MvNormal)
     n = fill(5, size(mvn.mu))
@@ -448,7 +451,6 @@ get_integration_nodes(::typeof(Point), dprocess::Dolo.AbstractDiscretizedProcess
 # compatibility names
 const AR1 = VAR1
 const MarkovChain = DiscreteMarkovProcess
-const Normal = MvNormal
 const GDP = DiscretizedProcess
 
 MarkovChain(;transitions=ones(1,1), values=[range(1,size(transitions,1))...]) = MarkovChain(transitions, values)
