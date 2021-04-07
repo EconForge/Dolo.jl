@@ -30,6 +30,7 @@ mutable struct Model{ID} <: AbstractModel{ID}
     exogenous
     domain::AbstractDomain
     factories
+    definitions
 
     function Model{ID}(data::YAML.Node) where ID
         model = new{ID}(data)
@@ -45,6 +46,22 @@ mutable struct Model{ID} <: AbstractModel{ID}
             # print_code && println("equation '", eq_type, "'", code)
             Core.eval(Dolo, code)
         end
+
+        # # Create definitions
+        defs = get_definitions(model; stringify=true)
+        model.definitions = defs
+        definitions = OrderedDict{Symbol, SymExpr}( [(stringify(k),v) for (k,v) in defs])
+        vars = cat(model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls]; dims=1)
+        args = OrderedDict(
+            :past => [Dolang.stringify(v,-1) for v in vars],
+            :present => [Dolang.stringify(v,0) for v in vars],
+            :future => [Dolang.stringify(v,1) for v in vars],
+            :params => [Dolang.stringify(e) for e in model.symbols[:parameters]]
+        )
+        ff = Dolang.FunctionFactory(definitions, args, OrderedDict{Symbol, SymExpr}(), :definitions)
+        code = Dolang.gen_generated_gufun(ff;dispatch=typeof(model), funname=:evaluate_definitions)
+        Core.eval(Dolo,code)
+        model.factories[:definitions] = ff
         
 
         return model

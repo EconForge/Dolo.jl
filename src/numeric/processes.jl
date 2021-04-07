@@ -295,7 +295,7 @@ function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64};
     end
 
     if irf
-        E[:, 1, :] = repeat(e0,1,T)
+        E[:, :, 1] = repeat(e0,N,1)
     end
 
     # Initial conditions
