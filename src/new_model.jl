@@ -323,8 +323,9 @@ function get_factory(model::Model, eq_type::String)
 
         symbols = get_symbols(model)
 
+        #TODO : fix crazy bug: it doesn't work without the trailing underscore !
         equations = OrderedDict{Symbol, Union{Expr, Number, Symbol}}(
-            Symbol(string("out_", i)) => eqs[i]
+            Symbol(string("out_", i, "_")) => eqs[i]
             for i =1:length(eqs)
         )
         arguments = OrderedDict(
@@ -340,11 +341,11 @@ function get_factory(model::Model, eq_type::String)
         ff = FunctionFactory(equations, arguments, definitions, Symbol(eq_type))
 
         equations_lb = OrderedDict{Symbol, Union{Expr, Number, Symbol}}(
-                Symbol(string("out_", i)) => eq_lb[i]
+                Symbol(string("out_", i, "_")) => eq_lb[i]
                 for i =1:length(eqs)
             )
         equations_ub = OrderedDict{Symbol, Union{Expr, Number, Symbol}}(
-                Symbol(string("out_", i)) => eq_ub[i]
+                Symbol(string("out_", i,"_")) => eq_ub[i]
                 for i =1:length(eqs)
             )
         arguments_bounds = OrderedDict(
