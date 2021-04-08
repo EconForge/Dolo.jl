@@ -152,7 +152,6 @@ function perturb(model::Model; method=:qz)
         s = _s
     end
 
-    return (g_s, g_x, f_s, f_x, f_S, f_X)
     n_s = size(g_s, 1)
     if method==:qz
         tol = 1e-6 # minimum distance betweel lam_n and lam_{n+1}

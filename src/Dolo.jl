@@ -72,10 +72,11 @@ export ModelCalibration, FlatCalibration, GroupedCalibration
 export AbstractModel, AbstractDecisionRule, Model
 
 # set up core typesr
-abstract type AbstractSymbolicModel{ID} end
-abstract type AbstractModel{ID} <: AbstractSymbolicModel{ID} end
+# abstract type AbstractSymbolicModel{ID} end
+# abstract type AbstractModel{ID} <: AbstractSymbolicModel{ID} end
 
-const ASModel = AbstractSymbolicModel
+abstract type AbstractModel{ID} end
+
 const AModel = AbstractModel
 
 id(::AbstractModel{ID}) where {ID} = ID
@@ -121,6 +122,7 @@ include("numeric/processes.jl")
 minilang = Language(Dict())
 add_language_elements!(minilang, Dict(
     "!Normal"=>Normal,
+    "!UNormal"=>UNormal,
     "!MarkovChain"=>MarkovChain,
     "!Product"=>Product,
     "!PoissonProcess"=>PoissonProcess,
@@ -129,12 +131,11 @@ add_language_elements!(minilang, Dict(
     "!VAR1"=>VAR1,
 ))
 
-include("linter.jl")
+# include("linter.jl")
 include("calibration.jl")
 include("minilang.jl")
 include("model.jl")
-include("symbolic.jl")
-include("printing.jl")
+# include("printing.jl")
 
 include("numeric/decision_rules/core.jl")
 include("numeric/decision_rules/csplines.jl")

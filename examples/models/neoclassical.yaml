@@ -47,9 +47,10 @@ calibration:
 domain:
     k: [k*0.5, k*1.5]
 
-exogenous: !VAR1
-    ρ: rho
-    Σ: [[ 0.00001 ]]
+exogenous: 
+    z: !VAR1
+        ρ: rho
+        Σ: [[ 0.00001 ]]
 
 options:
     grid: !Cartesian

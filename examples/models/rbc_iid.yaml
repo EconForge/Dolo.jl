@@ -26,8 +26,8 @@ equations:
 
 
     transition:
-        - z = rho*z(-1) + e_z
-        - k = (1-delta)*k(-1) + i(-1)
+        - z[t] = rho*z(-1) + e_z
+        - k[t] = (1-delta)*k(-1) + i(-1)
 
     expectation:
         - m = beta/c(1)^sigma*(1-delta+rk(1))
@@ -74,8 +74,9 @@ domain:
     z: [-2*sig_z/(1-rho^2)^0.5,  2*sig_z/(1-rho^2)^0.5]
     k: [k*0.9, k*1.1]
 
-exogenous: !Normal
-    Sigma: sig_z^2
+exogenous: 
+    e_z: !Normal
+        Sigma: sig_z^2
 
 options:
     grid: !Cartesian

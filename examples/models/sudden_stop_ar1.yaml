@@ -36,10 +36,11 @@ calibration:
     y: exp(ly)
     c: 1.0 + y
 
-exogenous: !VAR1
-    ρ: 0.01
-    Σ: 0.065^2
-    N: 2
+exogenous: 
+    ly: !VAR1
+        ρ: 0.01
+        Σ: 0.065^2
+        N: 2
 
 domain:
     l: [-1.0, 1.0]

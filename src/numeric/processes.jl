@@ -107,13 +107,19 @@ struct MvNormal <: IIDExogenous
 end
 
 MvNormal(Sigma::Matrix{Float64}) = MvNormal(zeros(size(Sigma, 1)), Sigma)
-MvNormal(sigma::Float64) = MvNormal(reshape([sigma], 1, 1))
+MvNormal(sigma::Float64) = MvNormal(reshape([sigma^2], 1, 1))
+
+Normal(;Sigma=zeros(1,1)) = MvNormal(Sigma)
+
+UNormal(;sigma=0.0) = MvNormal(reshape([sigma^2], 1, 1))
+
 
 function discretize(mvn::MvNormal)
     n = fill(5, size(mvn.mu))
     x, w = QE.qnwnorm(n, mvn.mu, mvn.Sigma)
     DiscretizedIIDProcess(x, w)
 end
+
 
 function Base.rand(mvn::MvNormal, args...)
     dist = Distributions.MvNormal(mvn.mu, mvn.Sigma)
@@ -292,7 +298,7 @@ function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64};
     end
 
     if irf
-        E[:, 1, :] = repeat(e0,1,T)
+        E[:, :, 1] = repeat(e0,N,1)
     end
 
     # Initial conditions
@@ -445,7 +451,6 @@ get_integration_nodes(::typeof(Point), dprocess::Dolo.AbstractDiscretizedProcess
 # compatibility names
 const AR1 = VAR1
 const MarkovChain = DiscreteMarkovProcess
-const Normal = MvNormal
 const GDP = DiscretizedProcess
 
 MarkovChain(;transitions=ones(1,1), values=[range(1,size(transitions,1))...]) = MarkovChain(transitions, values)
