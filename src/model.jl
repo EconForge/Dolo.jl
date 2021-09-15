@@ -306,7 +306,15 @@ function get_definitions(model::Model; tshift=0, stringify=false) # ::OrderedDic
 
     _defs =  OrderedDict{Tuple{Symbol,Int64},Union{Expr, Number, Symbol}}()  # {Symbol,Int}()
 
-    for (k,v) in defs
+    for (kkk,v) in defs
+        kk = Dolang.parse_equation(kkk)
+        if kk.data == "symbol"
+            k = kk.children[1].value
+        elseif kk.data=="variable"
+            k = kk.children[1].children[1].value
+        else
+            error("Invalid key.")
+        end
         vv = Dolang.parse_equation(v.value; variables=(dynvars))::LTree
         if tshift != 0
             vv = Dolang.time_shift(vv, tshift)::LTree
@@ -353,6 +361,7 @@ function get_factory(model::Model, eq_type::String)
         defs_0 = get_definitions(model; stringify=true)
         defs_1 = get_definitions(model; tshift=1, stringify=true)
         definitions = OrderedDict{Symbol, SymExpr}([ (Dolang.stringify(k), v) for (k,v) in merge(defs_0, defs_1)])
+
         eqs, eq_lb, eq_ub = get_equation_block(model, eq_type)
 
         symbols = get_symbols(model)
@@ -399,7 +408,13 @@ function get_factory(model::Model, eq_type::String)
     else
         # defs_0  = get_definitions(model; stringify=true)
         defs_m1 = get_definitions(model; tshift=-1, stringify=true)
+
+        for k in defs_m1
+            println(k)
+        end
+
         definitions = OrderedDict{Symbol, SymExpr}([ (Dolang.stringify(k), v) for (k,v) in  defs_m1 ])
+
         equations = get_assignment_block(model, eq_type)
         symbols = get_symbols(model)
         arguments = OrderedDict(
