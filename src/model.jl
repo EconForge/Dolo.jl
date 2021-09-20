@@ -409,10 +409,6 @@ function get_factory(model::Model, eq_type::String)
         # defs_0  = get_definitions(model; stringify=true)
         defs_m1 = get_definitions(model; tshift=-1, stringify=true)
 
-        for k in defs_m1
-            println(k)
-        end
-
         definitions = OrderedDict{Symbol, SymExpr}([ (Dolang.stringify(k), v) for (k,v) in  defs_m1 ])
 
         equations = get_assignment_block(model, eq_type)
