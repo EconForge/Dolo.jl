@@ -17,7 +17,7 @@ USER gitpod
 #         julia \
 #     && sudo rm -rf /var/lib/apt/lists/*
 
-RUN wget https://julialang-s3.julialang.org/bin/linux/x64/1.6/julia-1.6.3-linux-x86_64.tar.gz && tar -xzf julia-1.6.3-linux-x86_64.tar.gz && ln -s julia-1.6.3/bin/julia /usr/bin/julia
+RUN wget https://julialang-s3.julialang.org/bin/linux/x64/1.6/julia-1.6.3-linux-x86_64.tar.gz && tar -xzf julia-1.6.3-linux-x86_64.tar.gz && sudo ln -s julia-1.6.3/bin/julia /usr/bin/julia
 
 # Give control back to Gitpod Layer
 USER root
