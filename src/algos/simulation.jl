@@ -324,7 +324,9 @@ function response(model::AbstractModel,  dr::AbstractDecisionRule,
 end
 
 
-
+"""
+Function "tabulate" produces a 2-dimensional AxisArray{Float64,2,...}  with 2 axes : V (containing all the variables of the model) and the name of the state variable chosen in input. 
+"""
 function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
                   bounds::Array{Float64,1}, s0::AbstractVector,
                   m0::Union{Int,AbstractVector}; n_steps::Int=100)
@@ -356,12 +358,10 @@ function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
     res' # so that we can index it directly
 end
 
-
-
 function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
                   s0::AbstractVector, m0::Union{Int,AbstractVector};  n_steps=100)
     index = findfirst(isequal(state), model.symbols[:states])
-    bounds = [dr.grid_endo.min[index], dr.grid_endo.max[index]]
+    bounds = [model.domain.min[index], model.domain.max[index]]
     tabulate(model, dr, state, bounds, s0, m0;  n_steps=100)
 end
 
