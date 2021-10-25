@@ -126,7 +126,7 @@ function Base.rand(mvn::MvNormal, args...)
     return rand(dist, args...)
 end
 
-function simulate(mvn::MvNormal, N::Integer, T::Int, e0::Vector{Float64}; stochastic::Bool=true)
+function simulate(mvn::MvNormal, e0::Vector{Float64}; N::Integer, T::Int, stochastic::Bool=true)
     dist = QE.MVNSampler(mvn.mu, mvn.Sigma)
     d = length(mvn.mu)
     out = zeros(d, N, T)
@@ -141,6 +141,14 @@ function simulate(mvn::MvNormal, N::Integer, T::Int, e0::Vector{Float64}; stocha
     AxisArray(out, Axis{:V}(1:d), Axis{:N}(1:N), Axis{:T}(1:T))
 end
 
+function simulate(mvn::MvNormal, N::Integer, T::Int, e0::Vector{Float64}; stochastic::Bool=true)
+    simulate(mvn, e0; N=N, T=T, stochastic=stochastic)
+end
+
+function simulate(mvn::MvNormal; N::Integer, T::Int, stochastic::Bool=true)
+    simulate(mvn, mvn.mu; N=N, T=T, stochastic=stochastic)
+end
+
 function simulate(mvn::MvNormal, N::Integer, T::Int; stochastic::Bool=true)
     simulate(mvn, N, T, mvn.mu; stochastic=stochastic)
 end
@@ -152,33 +160,45 @@ function response(mvn::MvNormal, e1::AbstractVector; T::Int=40)
     return out
 end
 
-function simulate(process::DiscreteMarkovProcess, N::Int, T::Int, i0::Int)
+function simulate(process::DiscreteMarkovProcess; N::Int, T::Int, i0::Int)
     mc_qe = QE.MarkovChain(process.transitions)
     inds = Array{Int}(undef, T, N)
     QE.simulate_indices!(inds, mc_qe, init=i0)
     AxisArray(inds, Axis{:T}(1:T),  Axis{:N}(1:N))
 end
 
-function simulate(process::DiscreteMarkovProcess, N::Int, T::Int, m0::AbstractVector{Float64})
+function simulate(process::DiscreteMarkovProcess, N::Int, T::Int, i0::Int)
+    simulate(process; N=N, T=T, i0=i0)
+end
+
+function simulate(process::DiscreteMarkovProcess, m0::AbstractVector{Float64}; N::Int, T::Int)
     # try to find index in process.values. IF we do, then simulate using
     # the corresponding row index. If we don't, then throw an error
     for i in 1:size(process.values, 1)
         if process.values[i, :] == m0
-            return simulate(process, N, T, i)
+            return simulate(process; N=N, T=T, i0=i)
         end
     end
     error("Couldn't find the vector `m0` in process.values. "*
           "Try passing an integer `i0` instead")
 end
 
-function simulate_values(process::DiscreteMarkovProcess, N::Int, T::Int, i0::Int)
-    inds = simulate(process, N, T, i0)
+function simulate(process::DiscreteMarkovProcess, N::Int, T::Int, m0::AbstractVector{Float64})
+    simulate(process, m0; N=N, T=T)
+end
+
+function simulate_values(process::DiscreteMarkovProcess; N::Int, T::Int, i0::Int)
+    inds = simulate(process; N=N, T=T, i0=i0)
     n_values = size(process.values, 2)
     out_values = Array{Float64}(n_values, N, T)
     for n in 1:N, t in 1:T
         out_values[:, n, t] = process.values[inds[t, n], :]
     end
     AxisArray(out_values, Axis{:n}(1:n_values), Axis{:T}(1:T), Axis{:N}(1:N))
+end
+
+function simulate_values(process::DiscreteMarkovProcess, N::Int, T::Int, i0::Int)
+    simulate_values(process; N=N, T=T, i0=i0)
 end
 
 # VAR 1
@@ -283,8 +303,8 @@ false, set all shocks to 0 (unless `irf` is true -- see above).
 
 The output is an `AxisArray` contining variables, paths, and time on the 3 axes
 """
-function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64};
-                  stochastic::Bool=true, irf::Bool=false, e0::Vector{Float64}=zeros(0))
+function simulate(var::VAR1, x0::Vector{Float64}; N::Int, T::Int,
+    stochastic::Bool=true, irf::Bool=false, e0::Vector{Float64}=zeros(0))
 
     n = size(var.mu, 1)
     XN = zeros(n, N, T)
@@ -311,29 +331,39 @@ function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64};
     AxisArray(XN, Axis{:V}(1:n), Axis{:N}(1:N), Axis{:T}(1:T))
 end
 
+function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64};
+    stochastic::Bool=true, irf::Bool=false, e0::Vector{Float64}=zeros(0))
+
+    simulate(var, x0; N=N, T=T, stochastic=stochastic, irf=irf, e0=e0)
+end
+
+function simulate(var::VAR1; N::Int, T::Int, kwargs...)
+    return simulate(var, var.mu; N=N, T=T, kwargs...)
+end
+
 function simulate(var::VAR1, N::Int, T::Int; kwargs...)
-    return simulate(var, N, T, var.mu; kwargs...)
+    return simulate(var; N=N, T=T, kwargs...)
 end
 
 function response(var::VAR1, x0::AbstractVector,
                   e1::AbstractVector; T::Int=40)
-    simulate(var, 1, T, x0; stochastic=false, irf=true, e0=e1)[1, :, :]
+    simulate(var, x0; N=1, T=T, stochastic=false, irf=true, e0=e1)[1, :, :]
 end
 
 function response(var::VAR1, e1::AbstractVector; T::Int=40)
-    simulate(var, 1, T; stochastic=false, irf=true, e0=e1)[1, :, :]
+    simulate(var; N=1, T=T, stochastic=false, irf=true, e0=e1)[1, :, :]
 end
 
 function response(var::VAR1, x0::AbstractVector, index_s::Int; T::Int=40)
     e1 = zeros(size(var.mu, 1))
     Impulse = sqrt.(diag(var.Sigma)[index_s])
     e1[index_s] = Impulse
-    simulate(var, 1, T, x0; stochastic=false, irf=true, e0=e1)[1, :, :]
+    simulate(var, x0; N=1, T=T, stochastic=false, irf=true, e0=e1)[1, :, :]
 end
 
 function response(var::VAR1; T::Int=40)
     e1 = sqrt.(diag(var.Sigma))
-    simulate(var, 1, T; stochastic=false, irf=true, e0=e1)[1, :, :]
+    simulate(var; N=1, T=T, stochastic=false, irf=true, e0=e1)[1, :, :]
 end
 
 function ErgodDist(var::VAR1, N::Int, T::Int)

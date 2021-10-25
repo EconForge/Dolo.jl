@@ -231,7 +231,7 @@ This function simulates a model given a decision rule.
 """
 function simulate(model::AbstractModel, dr::AbstractDecisionRule, dprocess::DiscreteMarkovProcess;
                   i0::Int=default_index(dprocess), s0::AbstractVector=model.calibration[:states], N::Int=1, T::Int=40)
-    driving_process = simulate(dprocess, N, T, i0)
+    driving_process = simulate(dprocess; N=N, T=T, i0=i0)
     return simulate(model, dr, driving_process, dprocess; s0=s0)
 end
 
@@ -239,7 +239,7 @@ end
 function simulate(model::AbstractModel, dr::AbstractDecisionRule, dprocess::ContinuousProcess;
                   m0::AbstractVector=model.calibration[:exogenous], s0::AbstractVector=model.calibration[:states],
                   N::Int=1, T::Int=40)
-    driving_process = simulate(dprocess, N, T, m0)
+    driving_process = simulate(dprocess, m0; N=N, T=T)
     return simulate(model, dr, driving_process; s0 = s0)
 end
 
@@ -258,8 +258,8 @@ simulate
 ## Impulse response functions
 
 
-function response(model::AbstractModel,  dr::AbstractDecisionRule,
-                  s0::AbstractVector, e1::AbstractVector; T::Int=40)
+function response(model::AbstractModel,  dr::AbstractDecisionRule;
+                  s0::AbstractVector, e1::AbstractVector, T::Int=40)
     m_sim = response(model.exogenous, e1; T=T)
     m_simul = reshape(m_sim, size(m_sim,1), 1, size(m_sim,2))
     sim = simulate(model, dr, m_simul; s0=s0)
@@ -267,11 +267,16 @@ function response(model::AbstractModel,  dr::AbstractDecisionRule,
 end
 
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
-                  e1::AbstractVector; T::Int=40)
-    s0 = model.calibration[:states]
-    response(model, dr, s0, e1; T=T)
+    s0::AbstractVector, e1::AbstractVector; T::Int=40)
+
+    response(model,  dr; s0=s0, e1=e1, T=T)
 end
 
+function response(model::AbstractModel,  dr::AbstractDecisionRule,
+                  e1::AbstractVector; T::Int=40)
+    s0 = model.calibration[:states]
+    response(model, dr; s0=s0, e1=e1, T=T)
+end
 
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, shock_name::Symbol; T::Int=40)
@@ -280,7 +285,7 @@ function response(model::AbstractModel,  dr::AbstractDecisionRule,
     e1 = zeros(length(model.calibration[:exogenous]))
     Impulse = sqrt(diag(model.exogenous.Sigma)[index_s])
     e1[index_s] = Impulse
-    response(model, dr, s0, e1; T=T)
+    response(model, dr; s0=s0, e1=e1, T=T)
 end
 
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
@@ -314,7 +319,7 @@ function response(model::AbstractModel,  dr::AbstractDecisionRule,
     e1 = zeros(length(model.calibration[:exogenous]))
     e1[index_s] = Impulse
     s0 = model.calibration[:states]
-    response(model, dr, s0, e1; T=T)
+    response(model, dr; s0=s0, e1=e1, T=T)
 end
 
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
