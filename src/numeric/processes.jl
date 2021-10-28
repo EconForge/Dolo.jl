@@ -144,6 +144,8 @@ end
 function simulate(mvn::MvNormal, N::Integer, T::Int, e0::Vector{Float64}; stochastic::Bool=true)
     simulate(mvn, e0; N=N, T=T, stochastic=stochastic)
 end
+@deprecate simulate(mvn::MvNormal, N::Integer, T::Int, e0::Vector{Float64}; stochastic::Bool=true) simulate(mvn::MvNormal, e0::Vector{Float64}; N::Integer, T::Int, stochastic::Bool=true)
+
 
 function simulate(mvn::MvNormal; N::Integer, T::Int, stochastic::Bool=true)
     simulate(mvn, mvn.mu; N=N, T=T, stochastic=stochastic)
@@ -152,6 +154,7 @@ end
 function simulate(mvn::MvNormal, N::Integer, T::Int; stochastic::Bool=true)
     simulate(mvn, N, T, mvn.mu; stochastic=stochastic)
 end
+@deprecate simulate(mvn::MvNormal, N::Integer, T::Int; stochastic::Bool=true) simulate(mvn::MvNormal; N::Integer, T::Int, stochastic::Bool=true)
 
 function response(mvn::MvNormal, e1::AbstractVector; T::Int=40)
     d = length(mvn.mu)
@@ -170,6 +173,7 @@ end
 function simulate(process::DiscreteMarkovProcess, N::Int, T::Int, i0::Int)
     simulate(process; N=N, T=T, i0=i0)
 end
+@deprecate simulate(process::DiscreteMarkovProcess, N::Int, T::Int, i0::Int) simulate(process::DiscreteMarkovProcess; N::Int, T::Int, i0::Int)
 
 function simulate(process::DiscreteMarkovProcess, m0::AbstractVector{Float64}; N::Int, T::Int)
     # try to find index in process.values. IF we do, then simulate using
@@ -186,6 +190,7 @@ end
 function simulate(process::DiscreteMarkovProcess, N::Int, T::Int, m0::AbstractVector{Float64})
     simulate(process, m0; N=N, T=T)
 end
+@deprecate simulate(process::DiscreteMarkovProcess, N::Int, T::Int, m0::AbstractVector{Float64}) simulate(process::DiscreteMarkovProcess, m0::AbstractVector{Float64}; N::Int, T::Int)
 
 function simulate_values(process::DiscreteMarkovProcess; N::Int, T::Int, i0::Int)
     inds = simulate(process; N=N, T=T, i0=i0)
@@ -200,6 +205,7 @@ end
 function simulate_values(process::DiscreteMarkovProcess, N::Int, T::Int, i0::Int)
     simulate_values(process; N=N, T=T, i0=i0)
 end
+@deprecate simulate_values(process::DiscreteMarkovProcess, N::Int, T::Int, i0::Int) simulate_values(process::DiscreteMarkovProcess; N::Int, T::Int, i0::Int)
 
 # VAR 1
 
@@ -336,6 +342,7 @@ function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64};
 
     simulate(var, x0; N=N, T=T, stochastic=stochastic, irf=irf, e0=e0)
 end
+@deprecate simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64}; stochastic::Bool=true, irf::Bool=false, e0::Vector{Float64}=zeros(0)) simulate(var::VAR1, x0::Vector{Float64}; N::Int, T::Int, stochastic::Bool=true, irf::Bool=false, e0::Vector{Float64}=zeros(0))
 
 function simulate(var::VAR1; N::Int, T::Int, kwargs...)
     return simulate(var, var.mu; N=N, T=T, kwargs...)
@@ -344,15 +351,16 @@ end
 function simulate(var::VAR1, N::Int, T::Int; kwargs...)
     return simulate(var; N=N, T=T, kwargs...)
 end
+@deprecate simulate(var::VAR1, N::Int, T::Int; kwargs...) simulate(var::VAR1; N::Int, T::Int, kwargs...)
 
-function response(var::VAR1, x0::AbstractVector,
-                  e1::AbstractVector; T::Int=40)
+function response(var::VAR1, x0::AbstractVector, e1::AbstractVector; T::Int=40)
     simulate(var, x0; N=1, T=T, stochastic=false, irf=true, e0=e1)[1, :, :]
 end
 
 function response(var::VAR1, e1::AbstractVector; T::Int=40)
     simulate(var; N=1, T=T, stochastic=false, irf=true, e0=e1)[1, :, :]
 end
+@deprecate response(var::VAR1, e1::AbstractVector; T::Int=40) response(var::VAR1, x0::AbstractVector, e1::AbstractVector; T::Int=40)
 
 function response(var::VAR1, x0::AbstractVector, index_s::Int; T::Int=40)
     e1 = zeros(size(var.mu, 1))
