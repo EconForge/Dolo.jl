@@ -285,13 +285,27 @@ function get_domain(model::Model)::AbstractDomain
     end
 
     domain = model.data["domain"]
+    
+    kk = keys(domain)
+    if "min" in kk
+        # TODO: deprecation warning
+        calib = model.calibration.flat
+        min = [Dolang.eval_node(domain[(k)][1], calib) for k in states]
+        max = [Dolang.eval_node(domain[(k)][2], calib) for k in states]
+        return Domain(states, min, max)
 
-    calib = model.calibration.flat
-
-    # TODO deal with empty dict and make robust construction
-    min = [Dolang.eval_node(domain[(k)][1], calib) for k in states]
-    max = [Dolang.eval_node(domain[(k)][2], calib) for k in states]
-    return Domain(states, min, max)
+    else
+        calib = model.calibration.flat
+        kk = tuple([Symbol(k) for k in keys(domain)]...)
+        ss = tuple(states...)
+        if kk != ss
+            error("The declaration order in the domain section ($kk) must match the symbols orders ($ss)")
+        end
+        vals = [Dolang.eval_node(domain[k], calib) for k in kk]
+        min = [e[1] for e in vals]
+        max = [e[2] for e in vals]
+        return Domain(states, min, max)
+    end
 
 end
 

@@ -126,6 +126,7 @@ add_language_elements!(minilang, Dict(
     "!MarkovChain"=>MarkovChain,
     "!Product"=>Product,
     "!PoissonProcess"=>PoissonProcess,
+    "!ConstantProcess"=>ConstantProcess,
     "!DeathProcess"=>DeathProcess,
     "!AgingProcess"=>AgingProcess,
     "!VAR1"=>VAR1,

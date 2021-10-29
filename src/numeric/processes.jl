@@ -17,6 +17,15 @@ function inode(::Type{Point}, dp::DiscreteProcess, i::Int, j::Int)
     SVector{length(v)}(v)
 end
 
+struct ConstantProcess <: ContinuousProcess
+    mu::Array{Float64,1}
+end
+
+ConstantProcess(;μ=zeros(1)) = ConstantProcess(μ)
+ConstantProcess(;mu=zeros(1)) = ConstantProcess(mu)
+
+
+
 ###
 ### Discretized process
 ###
@@ -405,13 +414,22 @@ end
 #### ProductProcess
 
 
-mutable struct ProductProcess <: AbstractProcess
-    process_1::AbstractProcess
-    process_2::AbstractProcess
+mutable struct ProductProcess{P1<:AbstractProcess,P2<:AbstractProcess} <: AbstractProcess
+    process_1::P1
+    process_2::P2
 end
 
 ProductProcess(p) = p
 
+function discretize(pp::ProductProcess{ConstantProcess, <:IIDExogenous}; opt=Dict())
+    diidp = discretize(pp.process_2)
+    inodes = diidp.integration_nodes
+    iit = hcat(
+        vcat([pp.process_1.mu' for i=1:size(inodes,1)]...), 
+        inodes
+    )
+    return DiscretizedIIDProcess(diidp.grid, iit, diidp.integration_weights)
+end
 
 function discretize(::Type{DiscreteMarkovProcess}, pp::ProductProcess; opt1=Dict(), opt2=Dict())
     p1 = discretize(DiscreteMarkovProcess, pp.process_1; opt1...)
