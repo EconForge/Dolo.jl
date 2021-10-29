@@ -271,6 +271,7 @@ function response(model::AbstractModel,  dr::AbstractDecisionRule,
 
     response(model,  dr; s0=s0, e1=e1, T=T)
 end
+@deprecate response(model::AbstractModel,  dr::AbstractDecisionRule,s0::AbstractVector, e1::AbstractVector; T::Int=40) response(model,  dr; s0=s0, e1=e1, T=T)
 
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   e1::AbstractVector; T::Int=40)
