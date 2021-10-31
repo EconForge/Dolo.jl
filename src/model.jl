@@ -47,7 +47,7 @@ mutable struct Model{ID} <: AbstractModel{ID}
             Core.eval(Dolo, code)
         end
 
-        # # Create definitions
+        # Create definitions
         defs = get_definitions(model; stringify=true)
         model.definitions = defs
         definitions = OrderedDict{Symbol, SymExpr}( [(stringify(k),v) for (k,v) in defs])
@@ -113,7 +113,15 @@ function get_defined_variables(model::Model)
     if !("definitions" in keys(model.data))
         return Symbol[]
     else
-        return [Symbol(e) for e in keys(model.data["definitions"])]
+        # TODO: this is awfully redundant. This should be done "after" definitions are parsed
+        try
+            # OBSOLETE
+            return [Symbol(e) for e in keys(model.data["definitions"])]
+        catch
+            defeqs = Dolang.parse_assignment_block(model.data["definitions"].value).children
+            return [Symbol(eq.children[1].children[1].children[1].value) for eq in defeqs]
+
+        end
     end
 end
 
@@ -310,33 +318,63 @@ function get_domain(model::Model)::AbstractDomain
 end
 
 function get_definitions(model::Model; tshift=0, stringify=false) # ::OrderedDict{Tuple{Symbol,Int}}
+    
+    # return OrderedDict{Tuple{Symbol,Int64},Union{Expr, Number, Symbol}}()
+
     # parse defs so values are Expr
-    if "definitions" in keys(model.data)
-        defs = model.data[:definitions]
-    else
+    if !("definitions" in keys(model.data))
+        return OrderedDict{Tuple{Symbol,Int64},Union{Expr, Number, Symbol}}()
+    end
+
+    if model.data["definitions"].tag == "tag:yaml.org,2002:map"
+
+        # LEGACY
         defs = Dict()
-    end
-    dynvars = string.( cat(get_variables(model), keys(defs)...; dims=1) )
 
-    _defs =  OrderedDict{Tuple{Symbol,Int64},Union{Expr, Number, Symbol}}()  # {Symbol,Int}()
+        dynvars = string.( cat(get_variables(model), keys(defs)...; dims=1) )
 
-    for (kkk,v) in defs
-        kk = Dolang.parse_equation(kkk)
-        if kk.data == "symbol"
-            k = kk.children[1].value
-        elseif kk.data=="variable"
-            k = kk.children[1].children[1].value
-        else
-            error("Invalid key.")
+        _defs =  OrderedDict{Tuple{Symbol,Int64},Union{Expr, Number, Symbol}}()  # {Symbol,Int}()
+
+        for (kkk,v) in defs
+            kk = Dolang.parse_equation(kkk)
+            if kk.data == "symbol"
+                k = kk.children[1].value
+            elseif kk.data=="variable"
+                k = kk.children[1].children[1].value
+            else
+                error("Invalid key.")
+            end
+            vv = Dolang.parse_equation(v.value; variables=(dynvars))::LTree
+            if tshift != 0
+                vv = Dolang.time_shift(vv, tshift)::LTree
+            end
+            _defs[(Symbol(k),tshift)] = Dolang.convert(Expr, vv; stringify=stringify)::SymExpr
         end
-        vv = Dolang.parse_equation(v.value; variables=(dynvars))::LTree
-        if tshift != 0
-            vv = Dolang.time_shift(vv, tshift)::LTree
+
+        return _defs
+
+    else
+
+        @assert model.data["definitions"].tag == "tag:yaml.org,2002:str"
+        _defs =  OrderedDict{Tuple{Symbol,Int64},Union{Expr, Number, Symbol}}()  # {Symbol,Int}()
+        equations = Dolang.parse_assignment_block(model.data["definitions"].value).children
+        # TODO : check that equations are correct
+        for eq in equations
+            dest, val = eq.children
+            # TODO : create conveniences functions in dolang to avoid the follwowing
+            name = dest.children[1].children[1].value
+            # TODO : check that name is already defined at this stage
+            t = parse(Int, dest.children[2].children[1].value)
+
+            @assert t == 0
+
+            vv = Dolang.time_shift(val, tshift)
+
+            _defs[(Symbol(name),tshift)] = Dolang.convert(Expr, vv; stringify=stringify)::SymExpr
         end
-        _defs[(Symbol(k),tshift)] = Dolang.convert(Expr, vv; stringify=stringify)::SymExpr
+        return _defs
     end
 
-    return _defs
 end
 
 
