@@ -1,7 +1,6 @@
 using Dolang: sanitize
 using Lerche: Tree, Token
 
-import Dolo
 using Dolo: ModelCalibration
 import Dolang: solve_triangular_system
 
@@ -20,20 +19,18 @@ using DataStructures: OrderedDict
 # defind language understood in yaml files
 language = minilang
 
-abstract type AbstractModel{ID} end
-
-mutable struct Model{ID} <: AbstractModel{ID}
+mutable struct Model{ID, ExoT} <: AbstractModel{ExoT}
 
     data::YAML.MappingNode
     symbols::Dict{Symbol, Vector{Symbol}}
     calibration::ModelCalibration
-    exogenous
+    exogenous::ExoT
     domain::AbstractDomain
     factories
     definitions
 
-    function Model{ID}(data::YAML.Node) where ID
-        model = new{ID}(data)
+    function Model{ID, ExoT}(data::YAML.Node) where ID where ExoT
+        model = new{ID, ExoT}(data)
         model.calibration = get_calibration(model)
         model.symbols = get_symbols(model)
         model.exogenous = get_exogenous(model)
@@ -69,6 +66,30 @@ mutable struct Model{ID} <: AbstractModel{ID}
 
 end
 
+id(::Model{ID}) where {ID} = ID
+
+
+function check_exogenous_type(data)
+    if !("exogenous" in keys(data))
+        return EmptyProcess
+    end
+    exo = data["exogenous"]
+    exo_types = [exo[k].tag for k in keys(exo)]
+
+    iid_types = ("!UNormal", "!ULogNormal", "!Normal", "!MvNormal", "!ConstantProcess")
+    mc_types = ("!MarkovChain", "!ConstantProcess")
+    acorr_types = ("!AR1", "!VAR1", "!ConstantProcess")
+
+    if exo_types ⊆ iid_types
+        return   IIDExogenous
+    elseif exo_types ⊆ mc_types
+        return DiscreteProcess
+    else
+        return ContinuousProcess
+    end
+end
+
+
 function Model(url::AbstractString; print_code=false)
 
     # it looks like it would be cool to use the super constructor ;-)
@@ -81,7 +102,8 @@ function Model(url::AbstractString; print_code=false)
     data = Dolang.yaml_node_from_string(txt)
     id = gensym()
     fname = basename(url)
-    return Model{id}(data)
+    typ = check_exogenous_type(data)
+    return Model{id, typ}(data)
 
 end
 

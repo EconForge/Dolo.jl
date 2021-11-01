@@ -75,11 +75,10 @@ export AbstractModel, AbstractDecisionRule, Model
 # abstract type AbstractSymbolicModel{ID} end
 # abstract type AbstractModel{ID} <: AbstractSymbolicModel{ID} end
 
-abstract type AbstractModel{ID} end
+abstract type AbstractModel{ExoT} end
 
 const AModel = AbstractModel
 
-id(::AbstractModel{ID}) where {ID} = ID
 
 Expression = Union{Expr, Symbol, Float64, Int64}
  
@@ -155,5 +154,17 @@ include("algos/simulation.jl")
 include("algos/perfect_foresight.jl")
 
 include("algos/ergodic.jl")
+
+
+# shortcuts for IID models
+
+function transition(model::AbstractModel{IIDExogenous}, s, x, e, p)
+    return transition(model, e,s,x,e,p)
+end
+
+function arbitrage(model::AbstractModel{IIDExogenous}, s, x, E, S, X, p)
+    return arbitrage(model, E, s, x, E, S, X, p)
+end
+
 
 end # module

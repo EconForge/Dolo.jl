@@ -1,5 +1,6 @@
 abstract type AbstractExogenous end
 
+abstract type EmptyProcess <: AbstractExogenous end
 abstract type AbstractProcess <: AbstractExogenous end
 abstract type DiscreteProcess <: AbstractProcess end
 abstract type ContinuousProcess <: AbstractProcess end
