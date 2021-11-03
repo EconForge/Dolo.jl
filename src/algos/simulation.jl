@@ -136,8 +136,13 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
     ll = [Symbol(i) for i in Ac]
 
     sim_aa = AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
-    sim_def= evaluate_definitions(model, sim_aa, model.calibration[:parameters])
-    return merge(sim_aa,sim_def)
+
+    if length(model.definitions)>0
+        sim_def= evaluate_definitions(model, sim_aa, model.calibration[:parameters])
+        return merge(sim_aa,sim_def)
+    else
+        return sim_aa
+    end
 
 end
 
@@ -204,8 +209,13 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
     Ac = cat(model_sym, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls], dims=1)
     ll = [Symbol(i) for i in Ac]
     sim_aa = AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
-    sim_def=evaluate_definitions(model, sim_aa, model.calibration[:parameters])
-    return merge(sim_aa,sim_def)
+
+    if length(model.definitions)>0
+        sim_def=evaluate_definitions(model, sim_aa, model.calibration[:parameters])
+        return merge(sim_aa,sim_def)
+    else
+        return sim_aa
+    end
 
 end
 
@@ -356,8 +366,13 @@ function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
 
     ## add definitions
     tab_AAA = permutedims(tab_AA, [2,3,1])
-    tab_defs = evaluate_definitions(model, tab_AAA)
-    tab_ = merge(tab_AAA, tab_defs)[Axis{:T}(1)]
+
+    if length(model.definitions)>0
+        tab_defs = evaluate_definitions(model, tab_AAA)
+        tab_ = merge(tab_AAA, tab_defs)[Axis{:T}(1)]
+    else
+        tab_ = tab_AAA[Axis{:T}(1)]
+    end
     #change axis names
     res = AxisArray(tab_.data, Axis{state}(tb[:, index+1]), tab_[Axis{:V}])
     res' # so that we can index it directly

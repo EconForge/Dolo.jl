@@ -1,6 +1,21 @@
+function label_density(μ, symbols,  grid_exo::EmptyGrid, grid_endo::CartesianGrid)
+    endo_names = symbols[:states]
+    sc = scales(grid_endo)
+    d = Dict(endo_names[i]=>sc[i] for i=1:length(grid_endo.n))
+    return AxisArray(μ; d...)
+end
+
+
 function ergodic_distribution(model, sol)
     return ergodic_distribution(model, sol.dr, sol.dr.grid_exo, sol.dr.grid_endo, sol.dprocess)
 end
+
+function ergodic_distribution(model::Model{T, Q}, sol) where T where Q<:Dolo.IIDExogenous
+    P, μ = ergodic_distribution(model, sol.dr, sol.dr.grid_exo, sol.dr.grid_endo, sol.dprocess)
+    
+    return label_density(μ, model.symbols,  sol.dr.grid_exo, sol.dr.grid_endo)
+end
+
 
 function ergodic_distribution(model, dr, exo_grid:: UnstructuredGrid, endo_grid:: CartesianGrid, dp)
     N_m = n_nodes(exo_grid)

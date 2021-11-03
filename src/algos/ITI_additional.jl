@@ -223,6 +223,7 @@ mutable struct ImprovedTimeIterationResult
   d_x::Float64
   x_converged::Bool
   complementarities::Bool
+  dprocess::AbstractDiscretizedProcess
   # Time_search::
   tol::Float64
   Lambda::Float64

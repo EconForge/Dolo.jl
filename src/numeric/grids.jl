@@ -99,6 +99,8 @@ end
 
 (::Type{<:CartesianGrid})(min::Vector{Float64},max::Vector{Float64},n::Vector{Int64}) = CartesianGrid(SVector(min...), SVector(max...), SVector(n...))
 
+scales(grid::CartesianGrid{d}) where d = Tuple{Vararg{Vector{Float64},d}}([range(grid.min[i], grid.max[i];length=grid.n[i]) for i=1:d])
+
 nodes(grid::CartesianGrid{d}) where d = grid.nodes
 n_nodes(grid::CartesianGrid{d}) where d = length(grid.nodes)
 node(grid::CartesianGrid{d}, i::Int) where d = grid.nodes[i]

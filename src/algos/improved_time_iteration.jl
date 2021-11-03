@@ -167,7 +167,7 @@ function improved_time_iteration(model::AbstractModel, dprocess::AbstractDiscret
 
    converged = err_0<tol
 
-   return ImprovedTimeIterationResult(ddr.dr, it, err_0, err_2, converged, complementarities, tol, lam0, it_invert, 5.0, lam, trace_data)
+   return ImprovedTimeIterationResult(ddr.dr, it, err_0, err_2, converged, complementarities, dprocess, tol, lam0, it_invert, 5.0, lam, trace_data)
 
 end
 

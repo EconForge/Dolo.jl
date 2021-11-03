@@ -39,6 +39,11 @@ function evaluate(dr::CubicDR{EmptyGrid,CartesianGrid{d}}, y::Point{d}) where d
     return evaluate(dr, [y])[1]
 end
 
+function evaluate(dr::CubicDR{EmptyGrid,CartesianGrid{d}}, y::Vector{Float64}) where d
+    p = evaluate(dr, Point{d}(y...))
+    return [p...]
+end
+
 ####
 #### 2 CartesianGrid continous arguments d.r.
 ####
