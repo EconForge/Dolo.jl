@@ -12,13 +12,12 @@ symbols:
    parameters: [beta, sigma, eta, chi, delta, alpha, rho, zbar, sig_z]
    rewards: [u]
 
-definitions:
-    y: exp(z)*k^alpha*n^(1-alpha)
-    c: y - i
-    rk: alpha*y/k
-    w: (1-alpha)*y/n
-    # rk(1): alpha*y(1)/k(1)
-    # c(1)
+definitions: |
+    y[t] = exp(z[t])*k[t]^alpha*n[t]^(1-alpha)
+    c[t] = y[t] - i[t]
+    rk[t] = alpha*y[t]/k[t]
+    w[t] = (1-alpha)*y[t]/n[t]
+    
 equations:
 
     arbitrage:

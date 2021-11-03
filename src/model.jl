@@ -184,11 +184,14 @@ function get_exogenous(model::AModel)
 
 end
 
-function get_calibration(model::Model)
+function get_calibration(model::Model; kwargs...)
     calib = model.data[:calibration]
     # prep calib: parse to Expr, Symbol, or Number
     _calib  = OrderedDict{Symbol,Union{Expr,Symbol,Number}}()
     # add calibration for definitions
+    for (k,v) in kwargs
+        calib[k].value = string(v)
+    end
     for k in keys(calib)
         x = Dolang.parse_equation(calib[k].value)
         e = Dolang.convert(Expr, x, stringify=false)
@@ -206,22 +209,19 @@ function set_calibration!(model::Model, key::Symbol, value)
     model.data[:calibration][key].value = string(value)
     model.calibration = get_calibration(model)
     model.exogenous = get_exogenous(model)
-    model.domain = get_domain(model)
+    model.domain = get_domain(model);
 end
 
-function set_calibration!(model::Model, values::AbstractDict{Symbol, Any})
+function set_calibration!(model::Model; values...)
     calib = model.data[:calibration]
     for (k,v) in values
         calib[k].value = string(v)
     end
     model.calibration = get_calibration(model)
     model.exogenous = get_exogenous(model)
-    model.domain = get_domain(model)
+    model.domain = get_domain(model);
 end
 
-function set_calibration!(model::Model; kwargs...)
-    set_calibration!(model, Dict(kwargs))
-end
 
 
 function get_equation_block(model, eqname; stringify=true)

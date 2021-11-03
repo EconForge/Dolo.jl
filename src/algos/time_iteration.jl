@@ -240,8 +240,11 @@ function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
     #       making the return type right here non-inferrable.
 
     converged = err < tol_η
+
     res = TimeIterationResult(dr.dr, it, true, dprocess, converged, tol_η, err, log, ti_trace)
 
+    return res
+    
 end
 
 # get grid for endogenous
