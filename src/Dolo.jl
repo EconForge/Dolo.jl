@@ -113,6 +113,14 @@ import .splines: eval_UC_spline, eval_UC_spline!, prefilter!
 
 include("util.jl")
 
+struct MSM{T}
+    data::Vector{T}
+    sizes::Vector{Int64}
+    views::Vector{
+        SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true}
+    }
+end
+
 include("numeric/complementarities.jl")
 include("numeric/newton.jl")
 include("numeric/grids.jl")

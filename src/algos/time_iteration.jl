@@ -21,27 +21,34 @@ If the list of current controls `x` is provided as a two-dimensional array (`Lis
 # Returns
 * `res`: Residuals of the arbitrage equation associated with each exogenous shock.
 """
-function euler_residuals_ti(model, dprocess::AbstractDiscretizedProcess,s::ListOfPoints{d}, x::Vector{ListOfPoints{n_x}}, p::SVector, dr) where n_x where d
+function euler_residuals_ti!(res::MSM{Point{n_x}}, model, dprocess::AbstractDiscretizedProcess,s::ListOfPoints{d}, x::MSM{Point{n_x}}, p::SVector, dr) where n_x where d
 
     N = length(s)
-    # TODO: allocate properly...
-    res = deepcopy(x)
-    for i_m=1:length(res)
-        res[i_m][:] *= 0.0
-    end
-    for i in 1:size(res, 1)
+
+    for i in 1:length(res)
         m = node(Point, dprocess, i)
         for (w, M, j) in get_integration_nodes(Point, dprocess,i)
             # Update the states
-            S = Dolo.transition(model, m, s, x[i], M, p)
+            # TODO: replace views here
+            S = Dolo.transition(model, m, s, x.views[i], M, p)
             X = dr(i, j, S)
-            res[i] += w*Dolo.arbitrage(model, m, s, x[i], M, S, X, p)
+            res.views[i][:] += w*Dolo.arbitrage(model, m, s, x.views[i], M, S, X, p)
         end
     end
     return res
 end
 
-
+function euler_residuals_ti(model, dprocess::AbstractDiscretizedProcess,s::ListOfPoints{d}, x::Vector{Vector{Point{n_x}}}, p::SVector, dr) where n_x where d
+    # res = deepcopy(x)
+    # for i_m=1:length(res)
+    #     res[i_m][:] *= 0.0
+    # end
+    xx = MSM(x)
+    res = deepcopy(xx)
+    reset!(res)
+    euler_residuals_ti!(res, model, dprocess, s, xx, p, dr)
+    return vecvec(res)
+end
 
 struct TimeIterationLog
     header::Array{String, 1}

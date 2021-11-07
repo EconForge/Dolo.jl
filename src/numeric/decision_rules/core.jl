@@ -7,6 +7,54 @@ end
 outdim(dr::AbstractDecisionRule{<:Grid,<:Grid,nx}) where nx = nx
 
 
+import Base
+
+
+
+function MSM(v::AbstractVector{<:AbstractVector{T}}) where T
+    x = cat(v...;dims=1)
+    sizes = [length(e) for e in v]
+    offset = 0
+    coords = Tuple{Int64, Int64}[]
+    for s in sizes
+        push!(coords, (offset+1, offset+s ))
+        offset += s
+    end
+    views = [view(x, c[1]:c[2]) for c in coords]
+    MSM{T}(x,sizes,views)
+end
+
+function MSM(data::Vector{T}, sizes) where T
+    # WARNING: this holds  a reference on data (rename?)
+    offset = 0
+    coords = Tuple{Int64, Int64}[]
+
+    for s in sizes
+        push!(coords, (offset+1, offset+s ))
+        offset += s
+    end
+    views = [view(data, c[1]:c[2]) for c in coords]
+    MSM{T}(data, sizes, views)
+
+end
+
+function zeros_like(m::MSM{T}) where T
+    data = m.data*0
+    sizes = m.sizes
+    return MSM{T}(data, sizes)
+end
+
+Base.getindex(m::MSM, I::Vararg{Int, 2}) = m.views[I[1]][I[2]]
+Base.length(m::MSM) = length(m.views)
+vecvec(m::MSM) = [copy(e) for e in m.views]
+
+
+function reset!(m)
+    m.data[:] .*= 0.0
+end
+
+
+
 # ---------------------- #
 # Constant decision rule #
 # ---------------------- #

@@ -16,7 +16,12 @@ function CubicDR(exo_grid::EmptyGrid, endo_grid::CartesianGrid{d}, i::Union{Val{
     CubicDR{EmptyGrid, CartesianGrid{d}, nx, d}(exo_grid, endo_grid, c)
 end
 
-function set_values!(dr::CubicDR{EmptyGrid,CartesianGrid{d},n_x,d},  V::Vector{<:Array{Value{n_x}}}) where n_x where d
+function set_values!(dr::CubicDR{EmptyGrid,CartesianGrid{d},n_x,d},  V::MSM{Value{n_x}}) where n_x where d
+    set_values!(dr, V.views)
+end
+
+
+function set_values!(dr::CubicDR{EmptyGrid,CartesianGrid{d},n_x,d},  V::AbstractVector{<:AbstractVector{Value{n_x}}}) where n_x where d
     n = dr.grid_endo.n
     C = dr.itp[1]
     ind = [2:(n[i]+1) for i=1:length(n)]
@@ -60,7 +65,11 @@ function CubicDR(exo_grid::CartesianGrid{d1}, endo_grid::CartesianGrid{d2}, i::U
     CubicDR{CartesianGrid{d1}, CartesianGrid{d2}, nx, d1+d2}(exo_grid, endo_grid, c)
 end
 #
-function set_values!(dr::CubicDR{CartesianGrid{d1},CartesianGrid{d2},n_x,d}, V::Vector{<:Array{Value{n_x}}}) where n_x where d where d1 where d2
+function set_values!(dr::CubicDR{CartesianGrid{d1},CartesianGrid{d2},n_x,d}, V::MSM{Value{n_x}}) where n_x where d where d1 where d2
+    set_values!(dr, V.views)
+end
+
+function set_values!(dr::CubicDR{CartesianGrid{d1},CartesianGrid{d2},n_x,d}, V::AbstractVector{<:AbstractVector{Value{n_x}}}) where n_x where d where d1 where d2
     exog = dr.grid_exo
     endog = dr.grid_endo
 
@@ -117,7 +126,11 @@ function CubicDR(exo_grid::UnstructuredGrid{d1}, endo_grid::CartesianGrid{d2}, i
     CubicDR{UnstructuredGrid{d1}, CartesianGrid{d2}, nx, d2}(exo_grid, endo_grid, c)
 end
 
-function set_values!(dr::CubicDR{UnstructuredGrid{d1},CartesianGrid{d2}, n_x, d2}, values::Vector{<:Array{Value{n_x}}}) where d1 where d2 where n_x
+function set_values!(dr::CubicDR{UnstructuredGrid{d1},CartesianGrid{d2}, n_x, d2}, V::MSM{Value{n_x}}) where d1 where d2 where n_x
+    set_values!(dr, V.views)
+end
+
+function set_values!(dr::CubicDR{UnstructuredGrid{d1},CartesianGrid{d2}, n_x, d2}, values::AbstractVector{<:AbstractVector{Value{n_x}}}) where d1 where d2 where n_x
     orders = dr.grid_endo.n
     inds = [2:(o+1) for o in orders]
     for (i,C) in enumerate(dr.itp)
