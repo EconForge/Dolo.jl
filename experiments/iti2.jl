@@ -82,15 +82,7 @@ function (F::Euler)(x0::MSM, x1::MSM, set_future=true)
         set_values!(F.dr, x1)
     end
     
-    # rr = Dolo.euler_residuals_ti!(res, F.model, F.dprocess, F.s0, x0, F.p, F.dr) 
-
-    s = F.s0
-    ddr = F.dr
-    dprocess= F.dprocess
-    p = F.p
-    xx = x0
-
-    rr =   euler_residuals(model,s,xx,ddr,dprocess,p;keep_J_S=false)
+    rr =   euler_residuals(model,F.s0,x0,F.dr,F.dprocess,F.p;keep_J_S=false)
 
     return rr
 
@@ -214,16 +206,8 @@ function df_B(F, z0, z1; set_future=false)
     if set_future
         set_values!(F.dr, z1)
     end
-    
-    # rr = Dolo.euler_residuals_ti!(res, F.model, F.dprocess, F.s0, x0, F.p, F.dr) 
 
-    s = F.s0
-    ddr = F.dr
-    dprocess= F.dprocess
-    p = F.p
-    xx = z0
-
-    _,J_ij,S_ij  =   euler_residuals(model,s,xx,ddr,dprocess,p;keep_J_S=true)
+    _,J_ij,S_ij  =   euler_residuals(model, F.s0, z0 , F.dr, F.dprocess, F.p; keep_J_S=true)
 
     L = LinearThing(J_ij, S_ij, ddr_filt)
 
@@ -296,42 +280,6 @@ function ldiv(a::MSM{S}, b::MSM{T}) where S where T
     MSM(r, a.sizes)
 end
 
-
-J \ res
-
-L*z0;
-
-
-# function A_df_B(F, z0, z1; set_future=false)
-
-
-#     _,J_ij,S_ij =   euler_residuals(model,s,x,ddr,dprocess,p,keep_J_S=true,set_dr=true)
-
-#     R_i, D_i = DiffFun(fun, x)
-
-
-#     err_0 = maxabs((R_i))
-
-#     ####################
-#     # Invert Jacobians
-#     t2 = time();
-
-#     π_i, M_ij, S_ij = Dolo.preinvert!(R_i, D_i, J_ij, S_ij)
-
-#     if method==:gmres
-#       L = LinearThing(M_ij, S_ij, ddr_filt)
-
-
-# end
-# # df_B(F, x0, x1)
-
-
-
-
-
-
-
-
 # @code_warntype df_A(F, z0, z0);
 
 import Dolo: newton
@@ -372,7 +320,7 @@ end
 @time loop_ti(F, z0);
 
 
-function loop_iti(F::Euler, z0::MSM{V}; tol_η=1e-7, tol_ε=1e-8, tol_κ=1e-8, T=500, K=500, switch=5, mode=:iti) where V
+function loop_iti(F::Euler, z0::MSM{V}; verbose=true, tol_η=1e-7, tol_ε=1e-8, tol_κ=1e-8, T=500, K=500, switch=5, mode=:iti) where V
 
     local err
 
@@ -430,7 +378,9 @@ function loop_iti(F::Euler, z0::MSM{V}; tol_η=1e-7, tol_ε=1e-8, tol_κ=1e-8, T
 
         err = norm(δ)
 
-        println("$t | $err_1 | $err | $count")
+        if verbose
+            println("$t | $err_1 | $err | $count")
+        end
 
         if err<tol_η
             return 
@@ -447,7 +397,7 @@ end
 
 @time res =  loop_iti(F, z0; T=1000, switch=500, K=50);
 
-@time res =  loop_iti(F, z0; T=1000, switch=500, K=50, mode=:newton);
+@time res =  loop_iti(F, z0; T=1000, verbose=false, switch=500, K=50, mode=:newton);
 
 @time time_iteration(model, verbose=false, m)
 
@@ -476,5 +426,135 @@ end
 
 using ProfileView
 
+@time res =  loop_iti(F, z0; T=500, switch=0, K=50, verbose=false);
+@profview  loop_iti(F, z0; T=500, switch=0, K=50, verbose=false);
 
-@profview  loop_iti(F, z0; T=500, switch=0, K=50);
+
+
+
+
+N = 1000000
+
+m0, s0, x0, p = [SVector(e...) for e in model.calibration[:exogenous,:states,:controls,:parameters]]
+
+
+mvv = [m0 for i in 1:N]
+svv = [s0 for i in 1:N]
+xvv = [x0 for i in 1:N]
+pvv = [p for i in 1:N]
+
+
+out = copy(xvv)
+out[:]*=0
+
+@time arbitrage(model, m0, s0, x0, m0, s0, x0, p);
+
+@time arbitrage( model, mvv, svv, xvv, mvv, svv, xvv, pvv, out);
+
+
+fun(u...) = arbitrage(model, u...);
+
+fun(m0, s0, x0,m0, s0, x0, p)
+
+@time fun(mvv, svv, xvv, mvv, svv, xvv, pvv);
+
+@time fun.(mvv, svv, xvv, mvv, svv, xvv, pvv);
+
+fff = model.factories[:transition]
+
+import Dolang
+code = Dolang.gen_kernel(fff, [0]; funname=:transit)
+
+transit = eval(code)
+
+
+@time Dolo.transition(model, mvv, svv, xvv, mvv, pvv);
+
+@time transit.(mvv, svv, xvv, mvv, pvv);
+
+
+function transit(m::SVector{1, Float64}, s::SVector{1, Float64}, x::SVector{2, Float64}, M::SVector{1, Float64}, p::SVector{9, Float64})
+    z_m1_ = m[1]
+    k_m1_ = s[1]
+    n_m1_ = x[1]
+    i_m1_ = x[2]
+    z__0_ = M[1]
+    beta_ = p[1]
+    sigma_ = p[2]
+    eta_ = p[3]
+    chi_ = p[4]
+    delta_ = p[5]
+    alpha_ = p[6]
+    rho_ = p[7]
+    zbar_ = p[8]
+    sig_z_ = p[9]
+    y_m1_ = (exp(z_m1_) * k_m1_ ^ alpha_) * n_m1_ ^ (1.0 - alpha_)
+    w_m1_ = ((1.0 - alpha_) * y_m1_) / n_m1_
+    rk_m1_ = (alpha_ * y_m1_) / k_m1_
+    k__0_ = (1.0 - delta_) * k_m1_ + i_m1_
+    c_m1_ = y_m1_ - i_m1_
+    oo_1 = SVector(k__0_)
+    res_ = (oo_1,)
+    return res_
+end
+
+function transit2(m::SVector{1, Float64}, s::SVector{1, Float64}, x::SVector{2, Float64}, M::SVector{1, Float64}, p::SVector{9, Float64})
+    # z_m1_ = m[1]
+    k_m1_ = s[1]
+    # n_m1_ = x[1]
+    i_m1_ = x[2]
+    # z__0_ = M[1]
+    # beta_ = p[1]
+    # sigma_ = p[2]
+    # eta_ = p[3]
+    # chi_ = p[4]
+    delta_ = p[5]
+    # alpha_ = p[6]
+    # rho_ = p[7]
+    # zbar_ = p[8]
+    # sig_z_ = p[9]
+    # y_m1_ = (exp(z_m1_) * k_m1_ ^ alpha_) * n_m1_ ^ (1.0 - alpha_)
+    # w_m1_ = ((1.0 - alpha_) * y_m1_) / n_m1_
+    # rk_m1_ = (alpha_ * y_m1_) / k_m1_
+    k__0_ = (1.0 - delta_) * k_m1_ + i_m1_
+    # c_m1_ = y_m1_ - i_m1_
+    oo_1 = SVector(k__0_)
+    res_ = (oo_1,)
+    return res_
+end
+
+
+
+
+function transit_stupid(z_m1_, k_m1_, n_m1_, i_m1_, z__0_, beta_, sigma_, eta_, chi_, delta_, alpha_, rho_, zbar_, sig_z_)
+    begin
+        
+    y_m1_ = (exp(z_m1_) * k_m1_ ^ alpha_) * n_m1_ ^ (1.0 - alpha_)
+    w_m1_ = ((1.0 - alpha_) * y_m1_) / n_m1_
+    rk_m1_ = (alpha_ * y_m1_) / k_m1_
+    k__0_ = (1.0 - delta_) * k_m1_ + i_m1_
+
+    end
+    
+    c_m1_ = y_m1_ - i_m1_
+    oo_1 = SVector(k__0_)
+    res_ = (oo_1,)
+    return res_
+
+end
+
+function transit_stupid(m::SVector{1, Float64}, s::SVector{1, Float64}, x::SVector{2, Float64}, M::SVector{1, Float64}, p::SVector{9, Float64})
+    transit_stupid(m..., s..., x..., M..., p...)
+end
+
+transit_stupid(m0, s0, x0, m0, p)
+
+@time transit_stupid.(mvv, svv, xvv, mvv, pvv);
+
+
+@time transit.(mvv, svv, xvv, mvv, pvv);
+
+@time transit2.(mvv, svv, xvv, mvv, pvv);
+
+
+@code_warntype transit(m0, s0, x0, m0, p);
