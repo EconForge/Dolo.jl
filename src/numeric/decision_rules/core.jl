@@ -24,6 +24,20 @@ function MSM(v::AbstractVector{<:AbstractVector{T}}) where T
     MSM{T}(x,sizes,views)
 end
 
+function MSM{T}(data::Vector{T}, sizes) where T
+    # WARNING: this holds  a reference on data (rename?)
+    offset = 0
+    coords = Tuple{Int64, Int64}[]
+
+    for s in sizes
+        push!(coords, (offset+1, offset+s ))
+        offset += s
+    end
+    views = [view(data, c[1]:c[2]) for c in coords]
+    MSM{T}(data, sizes, views)
+
+end
+
 function MSM(data::Vector{T}, sizes) where T
     # WARNING: this holds  a reference on data (rename?)
     offset = 0

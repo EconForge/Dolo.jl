@@ -79,7 +79,7 @@ exogenous:
 
 options:
     grid: !Cartesian
-        orders: [50]
+        orders: [1000]
 
 test: |
     chi*n^eta*c^sigma - (1-alpha)*y/n           | 0 <= n <= inf

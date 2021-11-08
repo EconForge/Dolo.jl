@@ -1,39 +1,18 @@
-function euler_residuals(model, s::ListOfPoints, x::MSM{SVector{n_x,Float64}}, dr, dprocess, parms::SVector; keep_J_S=false, set_dr=true) where n_x #, jres=nothing, S_ij=nothing)
-
-    xx = [copy(e) for e in x.views]
-
-    res = euler_residuals(model, s, xx, dr, dprocess, parms; keep_J_S=keep_J_S,set_dr=set_dr)
-
-    if keep_J_S==false
-
-        return MSM(cat(res...; dims=1), x.sizes)
-
-    else
-
-        return res
-
-    end
-
-end
-
-function euler_residuals(model, s::ListOfPoints, x::AbstractVector{<:AbstractVector{SVector{n_x, Float64}}}, dr, dprocess, parms::SVector; keep_J_S=false, set_dr=true) where n_x #, jres=nothing, S_ij=nothing)
+function euler_residuals(model, s::ListOfPoints, x::MSM{Point{n_x}}, dr, dprocess, parms::SVector; keep_J_S=false) where n_x #, jres=nothing, S_ij=nothing)
     #
-    if set_dr ==true
-      set_values!(dr,x)
-    end
+    # if set_dr ==true
+    #   set_values!(dr,x)
+    # end
 
     N_s = length(s) # Number of gris points for endo_var
     n_s = length(s[1]) # Number of states
 
-    n_ms = length(x)  # number of exo states today
+    n_ms = length(x.views)  # number of exo states today
     n_mst = n_inodes(dprocess,1)  # number of exo states tomorrow
     d = length(s[1])
 
     # TODO: allocate properly...
-    res = deepcopy(x)
-    for i_m=1:length(res)
-        res[i_m][:] *= 0.0
-    end
+    res = zeros_like(x)::MSM{Point{n_x}}
 
     if keep_J_S
         jres = zeros((n_ms,n_mst,N_s,n_x,n_x))
@@ -44,21 +23,24 @@ function euler_residuals(model, s::ListOfPoints, x::AbstractVector{<:AbstractVec
 
     for i_ms in 1:n_ms
         m = node(Point, dprocess,i_ms)
+        xx = x.views[i_ms]
         for I_ms in 1:n_mst
             M = inode(Point, dprocess, i_ms, I_ms)
             w = iweight(dprocess, i_ms, I_ms)
-            S = transition(model, m, s, x[i_ms], M, parms)
+            S = transition(model, m, s, xx, M, parms)
             X = dr(i_ms, I_ms, S)
             if keep_J_S==true
-                rr, rr_XM = arbitrage(model,Val{(0,6)},m,s,x[i_ms],M,S,X,parms)
+                rr, rr_XM = arbitrage(model,Val{(0,6)},m,s,xx,M,S,X,parms)
                 J_ij[i_ms,I_ms][:] = w*rr_XM
                 S_ij[i_ms,I_ms][:] = S
             else
-                rr = arbitrage(model, m,s,x[i_ms],M,S,X,parms)
+                rr = arbitrage(model, m,s,xx,M,S,X,parms)
             end
-            res[i_ms][:] += w*rr
+            res.views[i_ms][:] += w*rr
         end
     end
+
+
     if keep_J_S
         return res,J_ij,S_ij
     else
@@ -69,6 +51,20 @@ end
 ####################################
 # one in place filtering step: M.r #
 ####################################
+
+
+function d_filt_dx!(Π_i::MSM{Point{n_x}}, π_i::MSM{Point{n_x}}, M_ij, S_ij::Matrix{ListOfPoints{d}}, dumdr::Dolo.CachedDecisionRule) where n_x where d
+    n_m,n_mt = size(M_ij)
+    Dolo.set_values!(dumdr,π_i)
+    for i in 1:n_m
+        Π_i.views[i][:] .*= 0.0
+        for j in 1:n_mt
+            A = M_ij[i,j]
+            B = dumdr(i,j,S_ij[i,j])
+            addmul!(Π_i.views[i],A,B)
+        end
+    end
+end
 
 function d_filt_dx!(Π_i::Vector{ListOfPoints{n_x}}, π_i::AbstractVector{<:AbstractVector{Point{n_x}}}, M_ij, S_ij::Matrix{ListOfPoints{d}}, dumdr::Dolo.CachedDecisionRule) where n_x where d
     n_m,n_mt = size(M_ij)
@@ -179,56 +175,65 @@ end
 size(L::LinearThing,d) = prod(shape(L))
 
 
-function *(L::LinearThing,x::AbstractVector{<:AbstractVector{Point{n_x}}}) where n_x
-   xx = [copy(e) for e in x]
-   Dolo.d_filt_dx!(xx, x, L.M_ij, L.S_ij, L.I)
-   L.counter += 1
-   return xx
-end
-
-function *(L::LinearThing,m::AbstractArray{Float64, 3})
-   n_x,N,n_m = size(m)
-   # TODO remove copy there
-   x = [copy(reshape(reinterpret(SVector{n_x,Float64},vec(m[:,:,i])),(N,))) for i=1:n_m]
-   y = deepcopy(x)
-   xx = L*y
-   rr = [reshape(reinterpret(Float64, vec(xx[i])), (n_x,N)) for i=1:length(xx)]
-   rrr = cat(rr...; dims=3)
-   return reshape(rrr, n_x,N,n_m)
-end
-
-function *(L::LinearThing,v::AbstractVector{Float64})
-   m = copy(v)
-   sh = shape(L)
-   n_x = sh[1]
-   vv = reshape(reinterpret(Point{n_x},vec(m)),(sh[2],sh[3]))
-   # x = [view(vv,:,i) for i=1:sh[3]]
-   x = [vv[:,i] for i=1:sh[3]]
-   y = x-L*x
-   mm = reshape(m, sh...)
-   mmm = mm-L*mm
-   return mmm[:]
-end
-
-function mul(L::LinearThing,v::AbstractVector{Float64})
-   m = copy(v)
-   sh = shape(L)
-   mm = reshape(m, sh...)
-   mmm = L*mm
-   return mmm[:]
-end
+function *(L::LinearThing,x::MSM{Point{n_x}}) where n_x
+    xx = x*1.0
+    Dolo.d_filt_dx!(xx, x, L.M_ij, L.S_ij, L.I)
+    L.counter += 1
+    return xx
+ end
+ 
 
 
-function A_mul_B!(w::AbstractVector{Float64},L::LinearThing,v::AbstractVector{Float64})
-   w[:] = L*v
-   return w
-end
+# function *(L::LinearThing,x::AbstractVector{<:AbstractVector{Point{n_x}}}) where n_x
+#    xx = [copy(e) for e in x]
+#    Dolo.d_filt_dx!(xx, x, L.M_ij, L.S_ij, L.I)
+#    L.counter += 1
+#    return xx
+# end
+
+# function *(L::LinearThing,m::AbstractArray{Float64, 3})
+#    n_x,N,n_m = size(m)
+#    # TODO remove copy there
+#    x = [copy(reshape(reinterpret(SVector{n_x,Float64},vec(m[:,:,i])),(N,))) for i=1:n_m]
+#    y = deepcopy(x)
+#    xx = L*y
+#    rr = [reshape(reinterpret(Float64, vec(xx[i])), (n_x,N)) for i=1:length(xx)]
+#    rrr = cat(rr...; dims=3)
+#    return reshape(rrr, n_x,N,n_m)
+# end
+
+# function *(L::LinearThing,v::AbstractVector{Float64})
+#    m = copy(v)
+#    sh = shape(L)
+#    n_x = sh[1]
+#    vv = reshape(reinterpret(Point{n_x},vec(m)),(sh[2],sh[3]))
+#    # x = [view(vv,:,i) for i=1:sh[3]]
+#    x = [vv[:,i] for i=1:sh[3]]
+#    y = x-L*x
+#    mm = reshape(m, sh...)
+#    mmm = mm-L*mm
+#    return mmm[:]
+# end
+
+# function mul(L::LinearThing,v::AbstractVector{Float64})
+#    m = copy(v)
+#    sh = shape(L)
+#    mm = reshape(m, sh...)
+#    mmm = L*mm
+#    return mmm[:]
+# end
 
 
-function mul!(w,L::LinearThing,v)
-   w[:] = L*v
-   return w
-end
+# function A_mul_B!(w::AbstractVector{Float64},L::LinearThing,v::AbstractVector{Float64})
+#    w[:] = L*v
+#    return w
+# end
+
+
+# function mul!(w,L::LinearThing,v)
+#    w[:] = L*v
+#    return w
+# end
 
 
 ####

@@ -33,6 +33,7 @@ struct Euler{n_s, n_x, Gx, Ge}
     s0::ListOfPoints{n_s}
     x0::MSM{SVector{n_x, Float64}}
     dr::CachedDecisionRule
+    cdr::CachedDecisionRule
 
     function Euler(model)
 
@@ -57,11 +58,13 @@ struct Euler{n_s, n_x, Gx, Ge}
 
         s0 = Dolo.nodes(grid_endo)
         dr = Dolo.CachedDecisionRule(dprocess, grid_endo, xxx)
-        
+        cdr = Dolo.CachedDecisionRule(dprocess, grid_endo, xxx)
+
+
         Gx = typeof(grid_exo)
         Ge = typeof(grid_endo)
 
-        new{n_s, n_x, Gx, Ge}(model, p, grid_endo, grid_exo, dprocess, s0, x0, dr)
+        new{n_s, n_x, Gx, Ge}(model, p, grid_endo, grid_exo, dprocess, s0, x0, dr, cdr)
 
     end
 
@@ -87,7 +90,7 @@ function (F::Euler)(x0::MSM, x1::MSM, set_future=true)
     p = F.p
     xx = x0
 
-    rr =   euler_residuals(model,s,xx,ddr,dprocess,p;keep_J_S=false,set_dr=false)
+    rr =   euler_residuals(model,s,xx,ddr,dprocess,p;keep_J_S=false)
 
     return rr
 
@@ -102,6 +105,7 @@ end
 
 
 z0 = F.x0;
+F(z0,z0);
 
 import Base: -, \, +, /, *
 
@@ -203,9 +207,9 @@ import Dolo: LinearThing
 
 function df_B(F, z0, z1; set_future=false)
 
-    ddr_filt = deepcopy(F.dr)
+    ddr_filt = F.cdr
 
-    res = deepcopy(z0)
+    # res = deepcopy(z0)
 
     if set_future
         set_values!(F.dr, z1)
@@ -219,7 +223,7 @@ function df_B(F, z0, z1; set_future=false)
     p = F.p
     xx = z0
 
-    _,J_ij,S_ij  =   euler_residuals(model,s,xx,ddr,dprocess,p;keep_J_S=true,set_dr=true)
+    _,J_ij,S_ij  =   euler_residuals(model,s,xx,ddr,dprocess,p;keep_J_S=true)
 
     L = LinearThing(J_ij, S_ij, ddr_filt)
 
@@ -232,18 +236,36 @@ J = df_A(F, z0, z0);
 
 L = df_B(F, z0, z0);
 
+function *(x::MSM, y::MSM)
+    data = x.data .* y.data
+    return MSM(data, x.sizes)
+end
 
-function *(L::LinearThing,x::MSM{SVector{n_x, Float64}}) where n_x
-    res = L*x.views
-    return MSM(cat(res...; dims=1), x.sizes)
+# function *(L::LinearThing,x::MSM{SVector{n_x, Float64}}) where n_x
+#     res = L*x.views
+#     return MSM(cat(res...; dims=1), x.sizes)
+# end
+
+function prediv!(L::LinearThing,x::MSM)
+    for i=1:size(L.M_ij,1)
+        N = length(x.views[i])
+        for j=1:size(L.M_ij,2)
+            for n=1:N
+                L.M_ij[i,j][n] = x.views[i][n] \ L.M_ij[i,j][n]
+            end
+        end
+
+    end
+    return L
 end
 
 function premult!(L::LinearThing,x::MSM)
-    for i=1:length(x.sizes)
-        sz = x.sizes[i]
-        for j=1:sz
-            el =  L.M_ij[i][j]
-            L.M_ij[i][j] = x.views[i][j] \ el
+    for i=1:size(L.M_ij,1)
+        N = length(x.views[i])
+        for j=1:size(L.M_ij,2)
+            for n=1:N
+                L.M_ij[i,j][n] = x.views[i][n] * L.M_ij[i,j][n]
+            end
         end
 
     end
@@ -251,16 +273,20 @@ function premult!(L::LinearThing,x::MSM)
 end
 
 function mult!(L::LinearThing,x::Number)
-    for i=1:length(L.M_ij)
-        sz = length(L.M_ij[i])
-        for j=1:sz
-            el =  L.M_ij[i][j]
-            L.M_ij[i][j] = el*x
+    for i=1:size(L.M_ij,1)
+        for j=1:size(L.M_ij,2)
+            L.M_ij[i,j][:] *= x
         end
 
     end
-    return L
 end
+
+function invert!(x::MSM)
+    for i=1:length(x.data)
+        x.data[i] = inv(x.data[i] )
+    end
+end
+
 
 
 premult!(L, J)
@@ -343,7 +369,10 @@ function loop_ti(F::Euler, z0::MSM{V}; tol_η=1e-7, tol_ε=1e-8, T=100) where V
     return err
 end
 
-function loop_iti(F::Euler, z0::MSM{V}; tol_η=1e-7, tol_ε=1e-8, T=100, K=100) where V
+@time loop_ti(F, z0);
+
+
+function loop_iti(F::Euler, z0::MSM{V}; tol_η=1e-7, tol_ε=1e-8, tol_κ=1e-8, T=500, K=500, switch=5, mode=:iti) where V
 
     local err
 
@@ -353,31 +382,55 @@ function loop_iti(F::Euler, z0::MSM{V}; tol_η=1e-7, tol_ε=1e-8, T=100, K=100) 
 
         err_1 = norm(r)
 
-        J = df_A(F, z0, z0 ; set_future=false)
-        L = df_B(F, z0, z0 ; set_future=false)
 
-        if t <=10
+        if mode==:newton
 
-            # incomplete time iteration step
-            δ = -J\r
-
+            sol = newton(u-> F(u,z0,false), z0)
+            z1 = sol.solution
+    
+            δ = z1 - z0
+            count = sol.iterations
+    
         else
 
-            mult!(L, -1.0)
-            premult!(L, J)
-            π = J\r
+            J = df_A(F, z0, z0 ; set_future=false)
 
-            δ = -r
-            for i=1:K
-                δ = L*δ + π
+            if t <=switch
+
+                # incomplete time iteration step
+                δ = -J\r
+
+                count = 0
+
+            else
+
+                L = df_B(F, z0, z0 ; set_future=false)
+
+                mult!(L, -1.0)
+                prediv!(L, J) # J\L
+
+                π = -J\r
+
+                count = 0
+
+                u = π
+                δ = π
+                for i=1:K
+                    count +=1
+                    u = L*u
+                    δ += u
+                    if norm(u)<tol_κ
+                        break
+                    end
+                end
+            
             end
-        
-        end
 
+        end
 
         err = norm(δ)
 
-        println("$err_1 | $err")
+        println("$t | $err_1 | $err | $count")
 
         if err<tol_η
             return 
@@ -390,15 +443,38 @@ function loop_iti(F::Euler, z0::MSM{V}; tol_η=1e-7, tol_ε=1e-8, T=100, K=100) 
     return err
 end
 
-@time loop(F, z0);
+@time res =  loop_iti(F, z0; T=500, switch=0, K=50);
+
+@time res =  loop_iti(F, z0; T=1000, switch=500, K=50);
+
+@time res =  loop_iti(F, z0; T=1000, switch=500, K=50, mode=:newton);
+
+@time time_iteration(model, verbose=false, m)
+
+power_iteration(L)
 
 
-@time loop_iti(F, z0; T=20);
 
+function power_iteration(L)
+    N = length(L.M_ij)*length(L.M_ij[1])
+    z0 = rand(500)
 
-
+    z0 = z0./maximum(abs, z0)
+    for k = 1:100
+        z1 = L*z0
+        n1 = maximum(abs, z1)
+        z0 = z1/n1
+        println("norm: $(n1)")
+    end
+end
 
 
 
 @time sol = time_iteration(model; verbose=false, complementarities=false);
 
+
+
+using ProfileView
+
+
+@profview  loop_iti(F, z0; T=500, switch=0, K=50);
