@@ -1,4 +1,22 @@
-function euler_residuals(model, s::ListOfPoints, x::Vector{<:ListOfPoints}, dr, dprocess, parms::SVector; keep_J_S=false, set_dr=true) #, jres=nothing, S_ij=nothing)
+function euler_residuals(model, s::ListOfPoints, x::MSM{SVector{n_x,Float64}}, dr, dprocess, parms::SVector; keep_J_S=false, set_dr=true) where n_x #, jres=nothing, S_ij=nothing)
+
+    xx = [copy(e) for e in x.views]
+
+    res = euler_residuals(model, s, xx, dr, dprocess, parms; keep_J_S=keep_J_S,set_dr=set_dr)
+
+    if keep_J_S==false
+
+        return MSM(cat(res...; dims=1), x.sizes)
+
+    else
+
+        return res
+
+    end
+
+end
+
+function euler_residuals(model, s::ListOfPoints, x::AbstractVector{<:AbstractVector{SVector{n_x, Float64}}}, dr, dprocess, parms::SVector; keep_J_S=false, set_dr=true) where n_x #, jres=nothing, S_ij=nothing)
     #
     if set_dr ==true
       set_values!(dr,x)
@@ -6,7 +24,6 @@ function euler_residuals(model, s::ListOfPoints, x::Vector{<:ListOfPoints}, dr, 
 
     N_s = length(s) # Number of gris points for endo_var
     n_s = length(s[1]) # Number of states
-    n_x = length(x[1][1]) # Number of controls
 
     n_ms = length(x)  # number of exo states today
     n_mst = n_inodes(dprocess,1)  # number of exo states tomorrow
@@ -53,7 +70,7 @@ end
 # one in place filtering step: M.r #
 ####################################
 
-function d_filt_dx!(Π_i::Vector{ListOfPoints{n_x}}, π_i::Vector{ListOfPoints{n_x}}, M_ij, S_ij::Matrix{ListOfPoints{d}}, dumdr::Dolo.CachedDecisionRule) where n_x where d
+function d_filt_dx!(Π_i::Vector{ListOfPoints{n_x}}, π_i::AbstractVector{<:AbstractVector{Point{n_x}}}, M_ij, S_ij::Matrix{ListOfPoints{d}}, dumdr::Dolo.CachedDecisionRule) where n_x where d
     n_m,n_mt = size(M_ij)
     Dolo.set_values!(dumdr,π_i)
     for i in 1:n_m
@@ -163,7 +180,7 @@ size(L::LinearThing,d) = prod(shape(L))
 
 
 function *(L::LinearThing,x::AbstractVector{<:AbstractVector{Point{n_x}}}) where n_x
-   xx = deepcopy(x)
+   xx = [copy(e) for e in x]
    Dolo.d_filt_dx!(xx, x, L.M_ij, L.S_ij, L.I)
    L.counter += 1
    return xx
