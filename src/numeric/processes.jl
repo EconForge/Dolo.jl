@@ -19,11 +19,11 @@ function inode(::Type{Point}, dp::DiscreteProcess, i::Int, j::Int)
 end
 
 struct ConstantProcess <: ContinuousProcess
-    mu::Array{Float64,1}
+    μ::Array{Float64,1}
 end
 
 ConstantProcess(;μ=zeros(1)) = ConstantProcess(μ)
-ConstantProcess(;mu=zeros(1)) = ConstantProcess(mu)
+ConstantProcess(;μ=zeros(1)) = ConstantProcess(μ)
 
 
 
@@ -112,32 +112,32 @@ node(dip::DiscretizedIIDProcess, i) = zeros(n_inodes(dip, 1))
 # Normal law
 
 struct MvNormal <: IIDExogenous
-    mu::Vector{Float64}
-    Sigma::Matrix{Float64}
+    μ::Vector{Float64}
+    Σ::Matrix{Float64}
 end
 
-MvNormal(Sigma::Matrix{Float64}) = MvNormal(zeros(size(Sigma, 1)), Sigma)
-MvNormal(sigma::Float64) = MvNormal(reshape([sigma^2], 1, 1))
+MvNormal(Σ::Matrix{Float64}) = MvNormal(zeros(size(Σ, 1)), Σ)
+MvNormal(σ::Float64) = MvNormal(reshape([σ^2], 1, 1))
 
-Normal(;Sigma=zeros(1,1)) = MvNormal(Sigma)
+Normal(;Σ=zeros(1,1)) = MvNormal(Σ)
 
-UNormal(;sigma=0.0) = MvNormal(reshape([sigma^2], 1, 1))
+UNormal(;σ=0.0) = MvNormal(reshape([σ^2], 1, 1))
 
 
 function discretize(mvn::MvNormal; n=5::Union{Int, Vector{Int}})
-    x, w = QE.qnwnorm(n, mvn.mu, mvn.Sigma)
+    x, w = QE.qnwnorm(n, mvn.μ, mvn.Σ)
     DiscretizedIIDProcess(x, w)
 end
 
 
 function Base.rand(mvn::MvNormal, args...)
-    dist = Distributions.MvNormal(mvn.mu, mvn.Sigma)
+    dist = Distributions.MvNormal(mvn.μ, mvn.Σ)
     return rand(dist, args...)
 end
 
 function simulate(mvn::MvNormal, e0::Vector{Float64}; N::Integer, T::Int, stochastic::Bool=true)
-    dist = QE.MVNSampler(mvn.mu, mvn.Sigma)
-    d = length(mvn.mu)
+    dist = QE.MVNSampler(mvn.μ, mvn.Σ)
+    d = length(mvn.μ)
     out = zeros(d, N, T)
     for i in 1:N
         out[:, i, 1] = e0
@@ -155,15 +155,15 @@ function simulate(mvn::MvNormal, N::Integer, T::Int, e0::Vector{Float64}; stocha
 end
 
 function simulate(mvn::MvNormal; N::Integer, T::Int, stochastic::Bool=true)
-    simulate(mvn, mvn.mu; N=N, T=T, stochastic=stochastic)
+    simulate(mvn, mvn.μ; N=N, T=T, stochastic=stochastic)
 end
 
 function simulate(mvn::MvNormal, N::Integer, T::Int; stochastic::Bool=true)
-    simulate(mvn, N, T, mvn.mu; stochastic=stochastic)
+    simulate(mvn, N, T, mvn.μ; stochastic=stochastic)
 end
 
 function response(mvn::MvNormal, e1::AbstractVector; T::Int=40)
-    d = length(mvn.mu)
+    d = length(mvn.μ)
     out = zeros(d, T)
     out[:, 2] = e1
     return out
@@ -213,38 +213,38 @@ end
 # VAR 1
 
 mutable struct VAR1 <: ContinuousProcess
-    mu::Array{Float64,1}
+    μ::Array{Float64,1}
     R::Array{Float64,2}
-    Sigma::Array{Float64,2}
+    Σ::Array{Float64,2}
 end
 
-VAR1(;rho::Float64=0.0, Sigma=ones(1,1)) = VAR1(rho, Sigma)
+VAR1(;ρ::Float64=0.0, Σ=ones(1,1)) = VAR1(ρ, Σ)
 
-function VAR1(R::Array{Float64,2}, Sigma::Array{Float64,2})
+function VAR1(R::Array{Float64,2}, Σ::Array{Float64,2})
     M = zeros(size(R, 1))
-    @assert size(R)==size(Sigma)
-    return VAR1(M, R, Sigma)
+    @assert size(R)==size(Σ)
+    return VAR1(M, R, Σ)
 end
 
-function VAR1(rho::Array{Float64,1}, Sigma::Array{Float64,2})
-    R = diagm(rho)
-    return VAR1(R, Sigma)
+function VAR1(ρ::Array{Float64,1}, Σ::Array{Float64,2})
+    R = diagm(ρ)
+    return VAR1(R, Σ)
 end
 
-function VAR1(rho::Float64, Sigma::Array{Float64,2})
-    p = size(Sigma,1)
-    R = Matrix(rho*I, p, p)
-    return VAR1(R, Sigma)
+function VAR1(ρ::Float64, Σ::Array{Float64,2})
+    p = size(Σ,1)
+    R = Matrix(ρ*I, p, p)
+    return VAR1(R, Σ)
 end
 
 function discretize(var::VAR1; n::Union{Int, Vector{Int}}=5, n_i::Union{Int, Vector{Int}}=5,  n_std::Int=2)
     R = var.R
-    M = var.mu
-    Sigma = var.Sigma
-    S = QE.solve_discrete_lyapunov(R,Sigma)  # asymptotic variance
+    M = var.μ
+    Σ = var.Σ
+    S = QE.solve_discrete_lyapunov(R,Σ)  # asymptotic variance
     sig = diag(S)
-    min = var.mu - n_std*sqrt.(sig)
-    max = var.mu + n_std*sqrt.(sig)
+    min = var.μ - n_std*sqrt.(sig)
+    max = var.μ + n_std*sqrt.(sig)
     if n isa Int
         N = fill(n, length(min))  ::Vector{Int}
     else
@@ -252,7 +252,7 @@ function discretize(var::VAR1; n::Union{Int, Vector{Int}}=5, n_i::Union{Int, Vec
     end
     grid = CartesianGrid{length(min)}(min,max,N)
     # discretize innovations
-    x,w = QE.qnwnorm(n_i, zeros(size(var.Sigma,1)), var.Sigma)
+    x,w = QE.qnwnorm(n_i, zeros(size(var.Σ,1)), var.Σ)
     integration_nodes = [ cat([(M + R*(node(grid, i)-M) + x[j,:])' for j=1:size(x,1)]...; dims=1) for i in 1:n_nodes(grid)]
     integration_weights = [w for i in 1:n_nodes(grid)]
     return DiscretizedProcess(grid, integration_nodes, integration_weights)
@@ -270,15 +270,15 @@ function discretize(::Type{DiscreteMarkovProcess}, var::VAR1; n::Union{Int, Vect
     ρ = R[1, 1]
     @assert maximum(abs, R-Matrix(ρ*I,d,d))<1e-16
 
-    sigma = var.Sigma
+    σ = var.Σ
 
-    if size(var.Sigma, 1) == 1
-        mc_qe = QE.rouwenhorst(n, ρ, sqrt(sigma[1]))
+    if size(var.Σ, 1) == 1
+        mc_qe = QE.rouwenhorst(n, ρ, sqrt(σ[1]))
         return DiscreteMarkovProcess(mc_qe.p, appenddim(collect(mc_qe.state_values)))
     end
 
 
-    L = chol(sigma) # sigma = L'*L
+    L = chol(σ) # σ = L'*L
     if n isa Int
         NN = fill(n, d) # default: same number of nodes in each dimension
     else
@@ -303,11 +303,11 @@ simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64}
 Construct `N` simulated paths of length `T` the vector autoregressive process
 `var`, starting each simulated path from `x0`.
 
-If `irf` is `true`, then `e0` must be a vector of the same length as `var.mu`
+If `irf` is `true`, then `e0` must be a vector of the same length as `var.μ`
 and `e0` will be used as the initial shocks.
 
 If `stochastic` is `true`, construct a sequence of shocks by drawing `N` paths
-of length `T` from the distribution `Normal(0, var.Sigma)` (where `0` is a
+of length `T` from the distribution `Normal(0, var.Σ)` (where `0` is a
 vector of zeros of the appropriate length). Otherwise, if `stochastic` is
 false, set all shocks to 0 (unless `irf` is true -- see above).
 
@@ -316,12 +316,12 @@ The output is an `AxisArray` contining variables, paths, and time on the 3 axes
 function simulate(var::VAR1, x0::Vector{Float64}; N::Int, T::Int,
     stochastic::Bool=true, irf::Bool=false, e0::Vector{Float64}=zeros(0))
 
-    n = size(var.mu, 1)
+    n = size(var.μ, 1)
     XN = zeros(n, N, T)
     E = zeros(n, N, T)
 
     if stochastic
-        dist = QE.MVNSampler(zeros(n), var.Sigma)
+        dist = QE.MVNSampler(zeros(n), var.Σ)
         for jj in 1:N
             E[:, jj, :] = rand(dist, T)
         end
@@ -335,7 +335,7 @@ function simulate(var::VAR1, x0::Vector{Float64}; N::Int, T::Int,
     for i in 1:N
         XN[:, i, 1] = x0
         for  ii in 1:T-1
-            XN[:, i, ii+1] = var.mu+var.R*(XN[:, i, ii]-var.mu)+E[:, i, ii]
+            XN[:, i, ii+1] = var.μ+var.R*(XN[:, i, ii]-var.μ)+E[:, i, ii]
         end
     end
     AxisArray(XN, Axis{:V}(1:n), Axis{:N}(1:N), Axis{:T}(1:T))
@@ -348,7 +348,7 @@ function simulate(var::VAR1, N::Int, T::Int, x0::Vector{Float64};
 end
 
 function simulate(var::VAR1; N::Int, T::Int, kwargs...)
-    return simulate(var, var.mu; N=N, T=T, kwargs...)
+    return simulate(var, var.μ; N=N, T=T, kwargs...)
 end
 
 function simulate(var::VAR1, N::Int, T::Int; kwargs...)
@@ -365,14 +365,14 @@ function response(var::VAR1, e1::AbstractVector; T::Int=40)
 end
 
 function response(var::VAR1, x0::AbstractVector, index_s::Int; T::Int=40)
-    e1 = zeros(size(var.mu, 1))
-    Impulse = sqrt.(diag(var.Sigma)[index_s])
+    e1 = zeros(size(var.μ, 1))
+    Impulse = sqrt.(diag(var.Σ)[index_s])
     e1[index_s] = Impulse
     simulate(var, x0; N=1, T=T, stochastic=false, irf=true, e0=e1)[1, :, :]
 end
 
 function response(var::VAR1; T::Int=40)
-    e1 = sqrt.(diag(var.Sigma))
+    e1 = sqrt.(diag(var.Σ))
     simulate(var; N=1, T=T, stochastic=false, irf=true, e0=e1)[1, :, :]
 end
 
@@ -380,9 +380,9 @@ function ErgodDist(var::VAR1, N::Int, T::Int)
 
     # Simulate for T period, N times
     #  #    - simulate a VAR1 process for T periods N times#
-    n = size(var.mu, 1)
+    n = size(var.μ, 1)
     # srand(123) # Setting the seed
-    d = MvNormal(var.Sigma)
+    d = MvNormal(var.Σ)
     VAR_process = simulate(var, N, T)
     E = VAR_process[2]
     XN = VAR_process[1]
@@ -390,7 +390,7 @@ function ErgodDist(var::VAR1, N::Int, T::Int)
     Mean_sim = mean(squeeze(mean(VAR_process, 3), 2), 2)
     #Computing the std of simulted Processes (Covariance matrix)
     E1_d = (E[:, :, 1] - repeat(mean(E[:, :, 1], 2), inner=[1, T]))
-    Sigma_sim = mean(diag(cov(E1_d[:, :])))  # mean of covariances across simulations
+    Σ_sim = mean(diag(cov(E1_d[:, :])))  # mean of covariances across simulations
 
     # Autocorrelation matrix
     X_d = zeros(N, T, 2)
@@ -409,7 +409,7 @@ function ErgodDist(var::VAR1, N::Int, T::Int)
         end
     end
 
-    return Mean_sim, Sigma_sim, R_sim
+    return Mean_sim, Σ_sim, R_sim
 end
 
 #### ProductProcess
@@ -426,7 +426,7 @@ function discretize(pp::ProductProcess{ConstantProcess, <:IIDExogenous}; opt=Dic
     diidp = discretize(pp.process_2)
     inodes = diidp.integration_nodes
     iit = hcat(
-        vcat([pp.process_1.mu' for i=1:size(inodes,1)]...), 
+        vcat([pp.process_1.μ' for i=1:size(inodes,1)]...), 
         inodes
     )
     return DiscretizedIIDProcess(diidp.grid, iit, diidp.integration_weights)
@@ -453,30 +453,30 @@ end
 
 ## special processes (could be implemented as types later on)
 
-function DeathProcess(mu::Float64)
+function DeathProcess(μ::Float64)
     values = [0.0 1.0;]'
-    transitions = [(1-mu) mu; 0 1]
+    transitions = [(1-μ) μ; 0 1]
     DiscreteMarkovProcess(transitions, values)
 end
-function PoissonProcess(mu::Float64, K::Int)
+function PoissonProcess(μ::Float64, K::Int)
     values = (0:K)[:,:]*1.0
     transitions = zeros(K+1, K+1)
     for i=1:K
-        transitions[i,i] = 1-mu
-        transitions[i,i+1] = mu
+        transitions[i,i] = 1-μ
+        transitions[i,i+1] = μ
     end
     transitions[K+1,K+1] = 1
     DiscreteMarkovProcess(transitions, values)
 end
-function AgingProcess(mu::Float64, K::Int)
+function AgingProcess(μ::Float64, K::Int)
     values = zeros(K+1,2)
     values[:,1] = 0:K
     values[1,2] = 1
     transitions = zeros(K+1, K+1)
     transitions[1,1] = 1
     for i=2:K
-        transitions[i,i+1] = (1-mu)
-        transitions[i,1] = mu
+        transitions[i,i+1] = (1-μ)
+        transitions[i,1] = μ
     end
     transitions[end,1] = 1
     dp = DiscreteMarkovProcess(transitions, values)

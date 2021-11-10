@@ -177,7 +177,7 @@ function get_exogenous(model::AModel)
     processes = []
     for k in keys(exo_dict)
         v = exo_dict[k]
-        p = Dolang.eval_node(v, calibration, minilang, FromGreek())
+        p = Dolang.eval_node(v, calibration, minilang, ToGreek())
         push!(processes, p)
     end
     return ProductProcess(processes...)

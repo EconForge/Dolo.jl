@@ -25,7 +25,7 @@ const QE = QuantEcon
 # Dolang
 using Dolang
 using Dolang: _to_expr, inf_to_Inf, solution_order, solve_triangular_system, _get_oorders
-import Dolang: Language, add_language_elements!, FromGreek
+import Dolang: Language, add_language_elements!, ToGreek
 
 # Numerical Tools
 using MacroTools  # used for eval_with

@@ -6,13 +6,14 @@ using StaticArrays
 
 model = yaml_import("examples/models/rbc.yaml")
 
+
+
 model = yaml_import("examples/models/rbc_iid.yaml")
 
-mvn = Dolo.MvNormal([0.2 0.1; 0.1 0.2])
 
-𝔼 = Dolo.Euler(model)
+ff = model.factories[:arbitrage]
 
-𝔼.
+
 
 @time sol = time_iteration(model;)
 
