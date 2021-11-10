@@ -1,281 +1,337 @@
+import Dolo: MSM
+
+struct Euler{n_s, n_x, Gx, Ge}
+
+    model::AbstractModel
+    p:: SVector  ## SVector
+    grid_endo
+    grid_exo
+    dprocess
+    s0::ListOfPoints{n_s}
+    x0::MSM{SVector{n_x, Float64}}
+    dr::CachedDecisionRule
+    cdr::CachedDecisionRule
+
+    function Euler(model; discretization=Dict())
+
+        p = SVector(model.calibration[:parameters]...)
+
+        
+        
+        grid_exo, grid_endo, dprocess = discretize(model; discretization...)
+        
+        x = SVector(model.calibration[:controls]...)
+        
+        N_m = Dolo.n_nodes(grid_exo)
+        N_s = Dolo.n_nodes(grid_endo)
+
+        n_s = length(model.symbols[:states])
+        n_x = length(model.symbols[:controls])
+        
+
+        xxx = [[x for i=1:N_s] for j=1:N_m]
+
+        x0 = MSM(xxx)
+
+        s0 = Dolo.nodes(grid_endo)
+        dr = Dolo.CachedDecisionRule(dprocess, grid_endo, xxx)
+        cdr = Dolo.CachedDecisionRule(dprocess, grid_endo, xxx)
 
 
-"""
-Computes the residuals of the arbitrage equations. The general form of the arbitrage equation is
+        Gx = typeof(grid_exo)
+        Ge = typeof(grid_endo)
 
-    `0 = E_t [f(m, s, x, M, S, X; p)]`
+        new{n_s, n_x, Gx, Ge}(model, p, grid_endo, grid_exo, dprocess, s0, x0, dr, cdr)
 
-where `m` are current exogenous variables, `s` are current states,
-`x` are current controls, `M` are next period's exogenous variables, `S` are next period's states, `X` are next period's controls, and `p` are the model parameters. This function evaluates the right hand side of the arbitrage equation for the given inputs.
-
-If the list of current controls `x` is provided as a two-dimensional array (`ListOfPoints`), it is transformed to a one-dimensional array (`ListOfListOfPoints`).
-
-
-# Arguments
-* `model::NumericModel`: Model object that describes the current model environment.
-* `dprocess`: Discretized exogenous process.
-* `s::ListOfPoints`: List of state variable values.
-* `x::ListOfListOfPoints`: List of control variable values associated with each exogenous shock.
-* `p::Vector{Float64}`: Model parameters.
-* `dr`: Current guess for the decision rule.
-# Returns
-* `res`: Residuals of the arbitrage equation associated with each exogenous shock.
-"""
-function euler_residuals_ti!(res::MSM{Point{n_x}}, model, dprocess::AbstractDiscretizedProcess,s::ListOfPoints{d}, x::MSM{Point{n_x}}, p::SVector, dr) where n_x where d
-
-    N = length(s)
-
-    for i in 1:length(res)
-        m = node(Point, dprocess, i)
-        for (w, M, j) in get_integration_nodes(Point, dprocess,i)
-            # Update the states
-            # TODO: replace views here
-            S = Dolo.transition(model, m, s, x.views[i], M, p)
-            X = dr(i, j, S)
-            res.views[i][:] += w*Dolo.arbitrage(model, m, s, x.views[i], M, S, X, p)
-        end
-    end
-    return res
-end
-
-function euler_residuals_ti(model, dprocess::AbstractDiscretizedProcess,s::ListOfPoints{d}, x::Vector{Vector{Point{n_x}}}, p::SVector, dr) where n_x where d
-    # res = deepcopy(x)
-    # for i_m=1:length(res)
-    #     res[i_m][:] *= 0.0
-    # end
-    xx = MSM(x)
-    res = deepcopy(xx)
-    reset!(res)
-    euler_residuals_ti!(res, model, dprocess, s, xx, p, dr)
-    return vecvec(res)
-end
-
-struct TimeIterationLog
-    header::Array{String, 1}
-    keywords::Array{Symbol, 1}
-    entries::Array{Any, 1}
-end
-
-function TimeIterationLog()
-    header = [ "It", "ϵₙ", "ηₙ=|xₙ-xₙ₋₁|", "λₙ=ηₙ/ηₙ₋₁", "Time", "Newton steps"]
-    keywords = [:it, :err, :gain, :time, :nit]
-    TimeIterationLog(header, keywords, [])
-end
-
-function append!(log::TimeIterationLog; verbose=true, entry...)
-    d = Dict(entry)
-    push!(log.entries, d)
-    verbose && show_entry(log, d)
-end
-
-function initialize(log::TimeIterationLog; verbose=true)
-    verbose && show_start(log)
-end
-
-function finalize(log::TimeIterationLog; verbose=true)
-    verbose && show_end(log)
-end
-
-function show(log::TimeIterationLog)
-    show_start(log)
-    for entry in log.entries
-        show_entry(log,entry)
-    end
-    show_end(log)
-end
-
-function show_start(log::TimeIterationLog)
-    println(repeat("-", 66))
-    @printf "%-6s%-16s%-16s%-16s%-16s%-5s\n" "It" "ϵₙ" "ηₙ=|xₙ-xₙ₋₁|" "λₙ=ηₙ/ηₙ₋₁" "Time" "Newton steps"
-    println(repeat("-", 66))
-end
-
-
-function show_entry(log::TimeIterationLog, entry)
-    it = entry[:it]
-    epsilon = entry[:epsilon]
-    err = entry[:err]
-    gain = entry[:gain]
-    time = entry[:time]
-    nit = entry[:nit]
-    @printf "%-6i%-16.2e%-16.2e%-16.2e%-16.2e%-5i\n" it epsilon err gain time nit
-end
-
-function show_end(log::TimeIterationLog)
-    println(repeat("-", 66))
-end
-
-###
-
-
-mutable struct IterationTrace
-    trace::Array{Any,1}
-end
-
-
-mutable struct TimeIterationResult
-    dr::AbstractDecisionRule
-    iterations::Int
-    complementarities::Bool
-    dprocess::AbstractDiscretizedProcess
-    x_converged::Bool
-    x_tol::Float64
-    err::Float64
-    log::TimeIterationLog
-    trace::Union{Nothing,IterationTrace}
-end
-
-converged(r::TimeIterationResult) = r.x_converged
-function Base.show(io::IO, r::TimeIterationResult)
-    @printf io "Results of Time Iteration Algorithm\n"
-    @printf io " * Complementarities: %s\n" string(r.complementarities)
-    @printf io " * Discretized Process type: %s\n" string(typeof(r.dprocess))
-    @printf io " * Decision Rule type: %s\n" string(typeof(r.dr))
-    @printf io " * Number of iterations: %s\n" string(r.iterations)
-    @printf io " * Convergence: %s\n" converged(r)
-    @printf io "   * |x - x'| < %.1e: %s\n" r.x_tol r.x_converged
-end
-
-
-
-"""
-Computes a global solution for a model via backward time iteration. The time iteration is applied to the residuals of the arbitrage equations.
-
-If the initial guess for the decision rule is not explicitly provided, the initial guess is provided by `ConstantDecisionRule`.
-If the stochastic process for the model is not explicitly provided, the process is taken from the default provided by the model object, `model.exogenous`
-
-# Arguments
-* `model::NumericModel`: Model object that describes the current model environment.
-* `process`: The stochastic process associated with the exogenous variables in the model.
-* `init_dr`: Initial guess for the decision rule.
-# Returns
-* `dr`: Solved decision rule.
-"""
-function time_iteration(model::Model, dprocess::AbstractDiscretizedProcess,
-                        grid, init_dr;
-                        verbose::Bool=true,
-                        maxit::Int=500, tol_η::Float64=1e-7, trace::Bool=false, maxbsteps=5, dampen=1.0,
-                        solver=Dict(), complementarities::Bool=true)
-
-    if get(solver, :type, :__missing__) == :direct
-        return time_iteration_direct(
-            model, dprocess, grid, init_dr; verbose=verbose,
-            maxit=maxit, tol_η=tol_η
-        )
     end
 
+end
 
 
-    endo_nodes = nodes(ListOfPoints, grid)
-    N = n_nodes(grid)
-    n_s_endo = size(endo_nodes, 2)
-    n_s_exo = n_nodes(dprocess)
+function (F::Euler)(x0::MSM, x1::MSM, set_future=true) 
 
-    # initial guess
-    # number of smooth decision rules
-    n_m = max(n_s_exo, 1)
-    p = SVector(model.calibration[:parameters]...)
+    res = deepcopy(x0)
 
-    x0 = [init_dr(i, endo_nodes) for i=1:n_m]
-
-    ti_trace = trace ? IterationTrace([x0]) : nothing
-
-    n_x = length(model.calibration[:controls])
-    if complementarities == true
-        x_lb = [controls_lb(model, node(Point,dprocess,i),endo_nodes,p) for i=1:n_m]
-        x_ub = [controls_ub(model, node(Point,dprocess,i),endo_nodes,p) for i=1:n_m]
-        BIG = 100000
-        for i=1:n_m
-          for n=1:N
-            x_lb[i][n] = max.(x_lb[i][n],-BIG)
-            x_ub[i][n] = min.(x_ub[i][n], BIG)
-          end
-        end
+    if set_future
+        set_values!(F.dr, x1)
     end
-
-    # create decision rule (which interpolates x0)
-    dr = CachedDecisionRule(dprocess, grid, x0)
-
-    steps = 0.5.^collect(0:maxbsteps)
-
-
-    err_0 = NaN
-    err = 1.0
-
-    log = TimeIterationLog()
-    initialize(log, verbose=verbose)
-
-    it = 0
-    while it<maxit && err>tol_η
-
-        it += 1
-
-        t1 = time_ns()
-
-        set_values!(dr, x0)
-        fobj(u) = euler_residuals_ti(model, dprocess, endo_nodes, u, p, dr)
-
-        tt = euler_residuals_ti(model, dprocess, endo_nodes, x0, p, dr)
-
-        if complementarities
-            res = newton(fobj, x0, x_lb, x_ub; solver...)
-        else
-            res = newton(fobj, x0; solver...)
-        end
-
-        x1 = res.solution
-        nit = res.iterations
-        epsil = res.errors[1]
-
-
-        trace && push!(ti_trace.trace, x1)
-
-        err = maxabs(x1-x0)
-        x0 = (1-dampen)*x0 + dampen*x1
-
-        gain = err / err_0
-        err_0 = err
-
-        elapsed = time_ns() - t1
-
-        append!(log; verbose=verbose, it=it, epsilon=epsil, err=err, gain=gain, time=elapsed, nit=nit)
-    end
-
-    finalize(log, verbose=verbose)
-
-    # TODO: somehow after defining `fobj` the `dr` object gets `Core.Box`ed
-    #       making the return type right here non-inferrable.
-
-    converged = err < tol_η
-
-    res = TimeIterationResult(dr.dr, it, true, dprocess, converged, tol_η, err, log, ti_trace)
-
-    return res
     
+    rr =   euler_residuals(F.model,F.s0,x0,F.dr,F.dprocess,F.p;keep_J_S=false)
+
+    return rr
+
 end
 
-# get grid for endogenous
-function time_iteration(model, dprocess, dr; grid=Dict(), kwargs...)
-    grid = get_grid(model, options=grid)
-    return time_iteration(model, dprocess, grid, dr;  kwargs...)
-end
+import Base: -, \, +, /, *
 
-# get stupid initial rule
-function time_iteration(model, dprocess::AbstractDiscretizedProcess; grid=Dict(), kwargs...)
-
-    init_dr = ConstantDecisionRule(model.calibration[:controls])
-    return time_iteration(model, dprocess, init_dr;  grid=grid, kwargs...)
-end
-
-
-function time_iteration(model, init_dr; grid=Dict(), kwargs...)
-    dprocess = discretize( model.exogenous )
-    return time_iteration(model, dprocess, init_dr; grid=grid, kwargs...)
+function -(a::MSM)
+    N = length(a.data)
+    sizes = [length(e) for e in a.views]
+    # c = zeros_like(b)
+    data = -a.data
+    return MSM(data, sizes)
 end
 
 
-function time_iteration(model; grid=Dict(), kwargs...)
-    dprocess = discretize( model.exogenous )
-    init_dr = ConstantDecisionRule(model.calibration[:controls])
-    return time_iteration(model, dprocess, init_dr; grid=grid, kwargs...)
+function -(a::MSM, b::MSM)
+    N = length(a.data)
+    sizes = [length(e) for e in a.views]
+    # c = zeros_like(b)
+    data = a.data .- b.data
+    return MSM(data, sizes)
+end
+
+
+
+function +(a::MSM, b::MSM)
+    N = length(a.data)
+    sizes = [length(e) for e in a.views]
+    # c = zeros_like(b)
+    data = a.data .+ b.data
+    return MSM(data, sizes)
+end
+
+
+function \(a::MSM, b::MSM)
+    N = length(a.data)
+    sizes = [length(e) for e in a.views]
+    # c = zeros_like(b)
+    data = a.data .\ b.data
+    return MSM(data, sizes)
+end
+
+function /(a::MSM, b::MSM)
+    N = length(a.data)
+    sizes = [length(e) for e in a.views]
+    # c = zeros_like(b)
+    data = a.data ./ b.data
+    return MSM(data, sizes)
+end
+
+function /(a::MSM, b::Number)
+    N = length(a.data)
+    sizes = [length(e) for e in a.views]
+    # c = zeros_like(b)
+    data = a.data ./ b
+    return MSM(data, sizes)
+end
+
+function *(a::MSM, b::Number)
+    N = length(a.data)
+    sizes = [length(e) for e in a.views]
+    # c = zeros_like(b)
+    data = a.data .* b
+    return MSM(data, sizes)
+end
+
+
+
+import Dolo: maxabs
+
+norm(a::MSM) = maximum( u-> maximum(abs,u), a.data )
+maxabs(a::MSM) = maximum( u-> maximum(abs,u), a.data )
+
+
+function df_A(F, z0, z1; set_future=false)
+
+    fun  = z->F(z, z1, false)
+
+    J = Dolo.DiffFun(fun, z0)[2]
+
+    return (J)
+
+end
+
+
+function df_B(F, z0, z1; set_future=false)
+
+    ddr_filt = F.cdr
+
+    # res = deepcopy(z0)
+
+    if set_future
+        set_values!(F.dr, z1)
+    end
+
+    _,J_ij,S_ij  =   euler_residuals(F.model, F.s0, z0 , F.dr, F.dprocess, F.p; keep_J_S=true)
+
+    L = LinearThing(J_ij, S_ij, ddr_filt)
+
+    return L
+
+end
+
+
+function *(x::MSM, y::MSM)
+    data = x.data .* y.data
+    return MSM(data, x.sizes)
+end
+
+
+function prediv!(L::LinearThing,x::MSM)
+    for i=1:size(L.M_ij,1)
+        N = length(x.views[i])
+        for j=1:size(L.M_ij,2)
+            for n=1:N
+                L.M_ij[i,j][n] = x.views[i][n] \ L.M_ij[i,j][n]
+            end
+        end
+
+    end
+    return L
+end
+
+function premult!(L::LinearThing,x::MSM)
+    for i=1:size(L.M_ij,1)
+        N = length(x.views[i])
+        for j=1:size(L.M_ij,2)
+            for n=1:N
+                L.M_ij[i,j][n] = x.views[i][n] * L.M_ij[i,j][n]
+            end
+        end
+
+    end
+    return L
+end
+
+function mult!(L::LinearThing,x::Number)
+    for i=1:size(L.M_ij,1)
+        for j=1:size(L.M_ij,2)
+            L.M_ij[i,j][:] *= x
+        end
+
+    end
+end
+
+function invert!(x::MSM)
+    for i=1:length(x.data)
+        x.data[i] = inv(x.data[i] )
+    end
+end
+
+
+
+function ldiv(a::MSM{S}, b::MSM{T}) where S where T
+    r = a.data .\ b.data
+    MSM(r, a.sizes)
+end
+
+
+function loop_ti(model::AbstractModel{V}; kwargs...) where V
+    F = Euler(model)
+    z0 = F.x0
+    return loop_ti(F, z0; kwargs...)
+end
+
+
+function loop_iti(model::AbstractModel{V}; kwargs...) where V
+    F = Euler(model)
+    z0 = F.x0
+    return loop_iti(F, z0; kwargs...)
+end
+
+
+function loop_ti(F::Euler, z0::MSM{V}; tol_η=1e-7, tol_ε=1e-8, T=100) where V
+
+    z1 = deepcopy(z0)
+
+    local err
+    for t=1:T
+
+        res = F(z0, z0, true)
+        err_1 = norm(res)
+        if err_1<tol_ε
+            return
+        end
+
+        sol = newton(u-> F(u,z0,false), z0)
+
+        z1 = sol.solution
+
+
+        δ = z1 - z0
+
+        err = norm(δ)
+
+        if err<tol_η
+            return 
+        end
+        z0 = z1
+
+    end
+
+    return err
+end
+
+function loop_iti(F::Euler, z0::MSM{V}; verbose=true, tol_η=1e-7, tol_ε=1e-8, tol_κ=1e-8, T=500, K=500, switch=5, mode=:iti) where V
+
+    local err
+
+    for t=1:T
+
+        r = F(z0, z0, true)
+
+        err_1 = norm(r)
+
+
+        if mode==:newton
+
+            sol = newton(u-> F(u,z0,false), z0)
+            z1 = sol.solution
+    
+            δ = z1 - z0
+            count = sol.iterations
+    
+        else
+
+            J = df_A(F, z0, z0 ; set_future=false)
+
+            if t <=switch
+
+                # incomplete time iteration step
+                δ = -J\r
+
+                count = 0
+
+            else
+
+                L = df_B(F, z0, z0 ; set_future=false)
+
+                mult!(L, -1.0)
+                prediv!(L, J) # J\L
+
+                π = -J\r
+
+                count = 0
+
+                u = π
+                δ = π
+                for i=1:K
+                    count +=1
+                    u = L*u
+                    δ += u
+                    if norm(u)<tol_κ
+                        break
+                    end
+                end
+            
+            end
+
+        end
+
+        err = norm(δ)
+
+        if verbose
+            println("$t | $err_1 | $err | $count")
+        end
+
+        if err<tol_η
+            return 
+        end
+        z0 = z0 + δ
+
+
+    end
+
+    return err
 end

@@ -557,3 +557,11 @@ function get_grid(model::AModel; options=Dict())
 
     return grid
 end
+
+
+function discretize(model)
+    grid = get_grid(model)
+    dprocess = discretize(model.exogenous)
+    return dprocess.grid, grid, dprocess
+end
+

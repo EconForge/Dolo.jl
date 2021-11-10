@@ -124,8 +124,7 @@ Normal(;Sigma=zeros(1,1)) = MvNormal(Sigma)
 UNormal(;sigma=0.0) = MvNormal(reshape([sigma^2], 1, 1))
 
 
-function discretize(mvn::MvNormal)
-    n = fill(5, size(mvn.mu))
+function discretize(mvn::MvNormal; n=5::Union{Int, Vector{Int}})
     x, w = QE.qnwnorm(n, mvn.mu, mvn.Sigma)
     DiscretizedIIDProcess(x, w)
 end
@@ -238,15 +237,7 @@ function VAR1(rho::Float64, Sigma::Array{Float64,2})
     return VAR1(R, Sigma)
 end
 
-function discretize(var::VAR1)
-    d = size(var.R, 1)
-    n_states = ones(Int, d)*5
-    n_integration = ones(Int, d)*5
-    dis = discretize(var, n_states, n_integration)
-    return dis
-end
-
-function discretize(var::VAR1, n_states::Array{Int,1}, n_integration::Array{Int,1}; n_std::Int=2)
+function discretize(var::VAR1; n::Union{Int, Vector{Int}}=5, n_i::Union{Int, Vector{Int}}=5,  n_std::Int=2)
     R = var.R
     M = var.mu
     Sigma = var.Sigma
@@ -254,9 +245,14 @@ function discretize(var::VAR1, n_states::Array{Int,1}, n_integration::Array{Int,
     sig = diag(S)
     min = var.mu - n_std*sqrt.(sig)
     max = var.mu + n_std*sqrt.(sig)
-    grid = CartesianGrid{length(min)}(min,max,n_states)
+    if n isa Int
+        N = fill(n, length(min))  ::Vector{Int}
+    else
+        N = n ::Vector{Int}
+    end
+    grid = CartesianGrid{length(min)}(min,max,N)
     # discretize innovations
-    x,w = QE.qnwnorm(n_integration, zeros(size(var.Sigma,1)), var.Sigma)
+    x,w = QE.qnwnorm(n_i, zeros(size(var.Sigma,1)), var.Sigma)
     integration_nodes = [ cat([(M + R*(node(grid, i)-M) + x[j,:])' for j=1:size(x,1)]...; dims=1) for i in 1:n_nodes(grid)]
     integration_weights = [w for i in 1:n_nodes(grid)]
     return DiscretizedProcess(grid, integration_nodes, integration_weights)
@@ -265,7 +261,7 @@ end
 discretize(::Type{DiscretizedProcess}, var::VAR1; args...) = discretize(var; args...)
 
 
-function discretize(::Type{DiscreteMarkovProcess}, var::VAR1; N::Int=3)
+function discretize(::Type{DiscreteMarkovProcess}, var::VAR1; n::Union{Int, Vector{Int}}=3)
 
     # it would be good to have a special type of VAR1 process
     # which has a scalar autoregressive term
@@ -277,13 +273,17 @@ function discretize(::Type{DiscreteMarkovProcess}, var::VAR1; N::Int=3)
     sigma = var.Sigma
 
     if size(var.Sigma, 1) == 1
-        mc_qe = QE.rouwenhorst(N, ρ, sqrt(sigma[1]))
+        mc_qe = QE.rouwenhorst(n, ρ, sqrt(sigma[1]))
         return DiscreteMarkovProcess(mc_qe.p, appenddim(collect(mc_qe.state_values)))
     end
 
 
     L = chol(sigma) # sigma = L'*L
-    NN = fill(N, d) # default: same number of nodes in each dimension
+    if n isa Int
+        NN = fill(n, d) # default: same number of nodes in each dimension
+    else
+        NN = n
+    end
 
     components = [QE.rouwenhorst(N, ρ, 1.0) for N in NN]
     mc_components = [DiscreteMarkovProcess(mc.p, appenddim(collect(mc.state_values))) for mc in components]
