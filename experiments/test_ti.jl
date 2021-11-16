@@ -3,7 +3,16 @@ using Dolo
 
 model = Model("examples/models/rbc.yaml")
 
+F = Dolo.Euler(model)
+
+F(F.x0, F.x0)
+
 Dolo.time_iteration(model);
+
+
+Dolo.time_iteration(model; ignore_constraints=true);
+
+
 Dolo.improved_time_iteration(model);
 
 

@@ -71,6 +71,29 @@ function PhiPhi!(F::Vector{Vector{Point{d}}},
     end
 end
 
+function PhiPhi!(F::Vector{Vector{Point{d}}},
+                 X::Vector{Vector{Point{d}}},
+                 A::Vector{Vector{Point{d}}},
+                 B::Vector{Vector{Point{d}}},
+                 J::Matrix{w}) where w<:AbstractVector{SMatrix{d,d,Float64,q}} where d where q
+
+    n_m, n_M = size(J)
+    N = length(F[1])
+    for i=1:n_m
+        for n=1:N
+            f = F[i][n]
+            x = X[i][n]
+            a = A[i][n]
+            b = B[i][n]
+            z, z_f, z_x = PhiPhi(f,x,a,b)
+            F[i][n] = z
+            for j=1:n_M
+                J[i,j][n] = z_f*J[i,j][n]
+            end
+        end
+    end
+end
+
 
 function PhiPhi!(F::Vector{Vector{Point{d}}},X::Vector{Vector{Point{d}}},A::Vector{Vector{Point{d}}},B::Vector{Vector{Point{d}}},D::Vector{v}) where v<:AbstractVector{SMatrix{d,d,Float64,q}} where d where q
 
@@ -88,8 +111,6 @@ function PhiPhi!(F::Vector{Vector{Point{d}}},X::Vector{Vector{Point{d}}},A::Vect
         end
     end
 end
-
-
 
 
 function PhiPhi(F::Vector{Vector{Point{d}}},X::Vector{Vector{Point{d}}},A::Vector{Vector{Point{d}}},B::Vector{Vector{Point{d}}},D::Vector{Vector{SMatrix{d,d,Float64,q}}}, J::Matrix{Vector{SMatrix{d,d,Float64,q}}}) where d where q

@@ -156,7 +156,7 @@ function time_iteration(model;
     maxit=500
 )
     
-    F = Euler(model; discretization=discretization, interpolation=interpolation, dr0=dr0)
+    F = Euler(model; discretization=discretization, interpolation=interpolation, dr0=dr0,  ignore_constraints=ignore_constraints)
 
     complementarities = false
 
@@ -209,7 +209,7 @@ function time_iteration(model;
         δ = z1 - z0
 
         err_η = norm(δ)
-        gain = err_η_0 / err_η
+        gain = err_η / err_η_0
         err_η_0 = err_η
 
         if err_η<tol_η

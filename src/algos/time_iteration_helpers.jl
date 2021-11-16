@@ -52,6 +52,7 @@ function euler_residuals_ti(model, dprocess::AbstractDiscretizedProcess,s::ListO
     return vecvec(res)
 end
 
+
 struct Euler{n_s, n_x, Gx, Ge}
 
     model::AbstractModel
@@ -61,7 +62,7 @@ struct Euler{n_s, n_x, Gx, Ge}
     dprocess
     s0::ListOfPoints{n_s}
     x0::MSM{SVector{n_x, Float64}}
-    bounds::Union{Nothing, Tuple{MSM{SVector{n_x, Float64}}}}
+    bounds::Union{Nothing,Tuple{MSM{SVector{n_x, Float64}},MSM{SVector{n_x, Float64}}}}
     dr::CachedDecisionRule
     cdr::CachedDecisionRule
 
@@ -100,9 +101,9 @@ struct Euler{n_s, n_x, Gx, Ge}
         Gx = typeof(grid_exo)
         Ge = typeof(grid_endo)
 
-        if :arbitrage_lb in keys(model.factories)
-            lb = [Dolo.arbitrage_lb(model, m, s, p) for m in Dolo.nodes(grid_exo)]
-            ub = [Dolo.arbitrage_ub(model, m, s, p) for m in Dolo.nodes(grid_exo)]
+        if (:controls_lb in keys(model.factories)) & !ignore_constraints
+            lb = [Dolo.controls_lb(model, m, s0, p) for m in Dolo.nodes(grid_exo)]
+            ub = [Dolo.controls_ub(model, m, s0, p) for m in Dolo.nodes(grid_exo)]
             bounds = (MSM(lb), MSM(ub))
         else
             bounds = nothing
@@ -114,7 +115,7 @@ struct Euler{n_s, n_x, Gx, Ge}
 
 end
 
-function (F::Euler)(x0::MSM, x1::MSM, set_future=true, ignore_constraints=False) 
+function (F::Euler)(x0::MSM, x1::MSM, set_future=true, ignore_constraints=false) 
 
     res = deepcopy(x0)
 
@@ -123,6 +124,13 @@ function (F::Euler)(x0::MSM, x1::MSM, set_future=true, ignore_constraints=False)
     end
     
     rr =   euler_residuals(F.model,F.s0,x0,F.dr,F.dprocess,F.p;keep_J_S=false)
+
+    if (F.bounds!==nothing) & !ignore_constraints
+        lb, ub = F.bounds
+        for n=1:length(rr.data)
+            rr.data[n] = PhiPhi0(rr.data[n], F.x0.data[n], lb.data[n], ub.data[n])
+        end
+    end
 
     return rr
 
@@ -198,18 +206,23 @@ norm(a::MSM) = maximum( u-> maximum(abs,u), a.data )
 maxabs(a::MSM) = maximum( u-> maximum(abs,u), a.data )
 
 
-function df_A(F, z0, z1; set_future=false, ignore_constraints=False)
+function df_A(F, z0, z1; set_future=false)
 
-    fun  = z->F(z, z1, false)
+    fun  = z->F(z, z1, false; ignore_constraints=True)
 
-    J = Dolo.DiffFun(fun, z0)[2]
+    J = Dolo.DiffFun(fun, z0;)[2]
+
+    if (F.bounds!==nothing)
+        lb, ub = F.bounds
+        PhiPhi!(rr.data, z0.data, lb.data, ub.data, J.data)
+    end
 
     return (J)
 
 end
 
 
-function df_B(F, z0, z1; set_future=false, ignore_constraints=False)
+function df_B(F, z0, z1; set_future=false)
 
     ddr_filt = F.cdr
 
@@ -220,6 +233,11 @@ function df_B(F, z0, z1; set_future=false, ignore_constraints=False)
     end
 
     _,J_ij,S_ij  =   euler_residuals(F.model, F.s0, z0 , F.dr, F.dprocess, F.p; keep_J_S=true)
+
+    if (F.bounds!==nothing)
+        lb, ub = F.bounds
+        PhiPhi!(rr.x0, z1.x0, lb.x0, ub.x0, J_ij)
+    end
 
     L = LinearThing(J_ij, S_ij, ddr_filt)
 
