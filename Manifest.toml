@@ -17,6 +17,12 @@ git-tree-sha1 = "03e0550477d86222521d254b741d470ba17ea0b5"
 uuid = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
 version = "0.3.4"
 
+[[Adapt]]
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "84918055d15b3114ede17ac6a7182f68870c16f7"
+uuid = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+version = "3.3.1"
+
 [[ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
 
@@ -347,6 +353,18 @@ git-tree-sha1 = "8a954fed8ac097d5be04921d595f741115c1b2ad"
 uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
 version = "2.8.1+0"
 
+[[Hwloc]]
+deps = ["Hwloc_jll"]
+git-tree-sha1 = "ffdcd4272a7cc36442007bca41aa07ca3cc5fda4"
+uuid = "0e44f5e4-bd66-52a0-8798-143a42290a1d"
+version = "1.3.0"
+
+[[Hwloc_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "3395d4d4aeb3c9d31f5929d32760d8baeee88aaf"
+uuid = "e33a78d0-f292-5ffc-b300-72abe9b543c8"
+version = "2.5.0+0"
+
 [[IfElse]]
 git-tree-sha1 = "debdd00ffef04665ccbb3e150747a77560e8fad1"
 uuid = "615f187c-cbe4-4ef1-ba3b-2fcf58d6d173"
@@ -556,6 +574,12 @@ version = "0.3.5"
 [[Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
+[[LoopVectorization]]
+deps = ["ArrayInterface", "DocStringExtensions", "IfElse", "LinearAlgebra", "OffsetArrays", "Requires", "SLEEFPirates", "ThreadingUtilities", "UnPack", "VectorizationBase"]
+git-tree-sha1 = "5684e4aafadaf668dce27f12d67df4888fa58181"
+uuid = "bdcacae8-1622-11e9-2a5c-532679323890"
+version = "0.11.2"
+
 [[MKL_jll]]
 deps = ["Artifacts", "IntelOpenMP_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg"]
 git-tree-sha1 = "5455aef09b40e5020e1520f551fa3135040d4ed0"
@@ -665,6 +689,12 @@ version = "0.3.5"
 
 [[NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
+
+[[OffsetArrays]]
+deps = ["Adapt"]
+git-tree-sha1 = "043017e0bdeff61cfbb7afeb558ab29536bbb5ed"
+uuid = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
+version = "1.10.8"
 
 [[OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -831,6 +861,12 @@ version = "1.0.0"
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 
+[[SLEEFPirates]]
+deps = ["IfElse", "Libdl", "VectorizationBase"]
+git-tree-sha1 = "ab6194c92dcf38036cd9513e4ab12cd76a613da1"
+uuid = "476501e8-09a2-5ece-8869-fb82de89a1fa"
+version = "0.6.10"
+
 [[Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
@@ -930,6 +966,12 @@ uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
+[[ThreadingUtilities]]
+deps = ["VectorizationBase"]
+git-tree-sha1 = "e3032c97b183e6e2baf4d2cc4fe60c4292a4a707"
+uuid = "8290d209-cae3-49c0-8002-c8c24d57dab5"
+version = "0.2.5"
+
 [[TimeZones]]
 deps = ["Dates", "Downloads", "InlineStrings", "LazyArtifacts", "Mocking", "Pkg", "Printf", "RecipesBase", "Serialization", "Unicode"]
 git-tree-sha1 = "8de32288505b7db196f36d27d7236464ef50dba1"
@@ -958,6 +1000,12 @@ version = "1.0.2"
 
 [[Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
+
+[[VectorizationBase]]
+deps = ["ArrayInterface", "Hwloc", "IfElse", "Libdl", "LinearAlgebra"]
+git-tree-sha1 = "c94635defa037df76b2a2a201223801269854898"
+uuid = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
+version = "0.18.15"
 
 [[Wayland_jll]]
 deps = ["Artifacts", "Expat_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg", "XML2_jll"]

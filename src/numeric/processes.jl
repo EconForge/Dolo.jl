@@ -250,7 +250,7 @@ function discretize(var::VAR1; n::Union{Int, Vector{Int}}=5, n_i::Union{Int, Vec
     else
         N = n ::Vector{Int}
     end
-    grid = CartesianGrid{length(min)}(min,max,N)
+    grid = UCGrid{length(min)}(min,max,N)
     # discretize innovations
     x,w = QE.qnwnorm(n_i, zeros(size(var.Σ,1)), var.Σ)
     integration_nodes = [ cat([(M + R*(node(grid, i)-M) + x[j,:])' for j=1:size(x,1)]...; dims=1) for i in 1:n_nodes(grid)]

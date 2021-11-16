@@ -322,7 +322,7 @@ function get_domain(model::Model)::AbstractDomain
         calib = model.calibration.flat
         min = [Dolang.eval_node(domain[(k)][1], calib) for k in states]
         max = [Dolang.eval_node(domain[(k)][2], calib) for k in states]
-        return Domain(states, min, max)
+        return CartesianDomain(states, min, max)
 
     else
         calib = model.calibration.flat
@@ -334,7 +334,7 @@ function get_domain(model::Model)::AbstractDomain
         vals = [Dolang.eval_node(domain[k], calib) for k in kk]
         min = [e[1] for e in vals]
         max = [e[2] for e in vals]
-        return Domain(states, min, max)
+        return CartesianDomain(states, min, max)
     end
 
 end
@@ -511,7 +511,7 @@ function get_options(model::AModel; options=Dict())
     end
 end
 
-using Dolo: CartesianGrid
+# using Dolo: CartesianGrid
 
 function get_grid(model::AModel; options=Dict())
 
@@ -531,7 +531,7 @@ function get_grid(model::AModel; options=Dict())
             else
                 orders = [20 for i=1:d]
             end
-            grid = CartesianGrid{d}(domain.min, domain.max, orders)
+            grid = UCGrid{d}(domain.min, domain.max, orders)
             if length(orders)!=length(model.calibration[:states])
                 msg = string("Check the dimension of the matrix given in the yaml file, section: options-grid-orders. ",
                              "Expected to be of dimension $([length(model.calibration[:states])])")
@@ -551,7 +551,7 @@ function get_grid(model::AModel; options=Dict())
 
         # default grid
         n = [20 for i=1:d]
-        grid = CartesianGrid{d}(domain.min, domain.max, n)
+        grid = UCGrid{d}(domain.min, domain.max, n)
 
     end
 
@@ -559,9 +559,40 @@ function get_grid(model::AModel; options=Dict())
 end
 
 
-function discretize(model)
-    grid = get_grid(model)
-    dprocess = discretize(model.exogenous)
-    return dprocess.grid, grid, dprocess
+function discretize(model; endogenous=Dict(), exogenous=Dict())
+
+    calib = model.calibration.flat
+
+    data = model.data
+
+    endo_options = try
+        Dolang.eval_node( model.data[:options][:grid][:endo], calib)
+    catch
+        # TODO : raise a warning, do something
+        Dict()
+    end
+    exo_options = try
+        Dolang.eval_node( model.data[:options][:grid][:exo], calib)
+    catch
+        Dict()
+    end
+
+    interpolation_method = try
+        Dolang.eval_node( model.data[:options][:grid][:interpolation], calib)
+    catch
+        :cubic
+    end
+
+    merge!(endo_options, endogenous)
+    merge!(exo_options, exogenous)
+
+    # endo_default = Dict(:n=>20, :min=>domain.min, :max=>domain.max)
+
+
+    endo_grid = Dolo.discretize(model.domain; endo_options...)
+    dprocess = Dolo.discretize(model.exogenous; exo_options...)
+
+    return PGrid(dprocess.grid, endo_grid), dprocess, interpolation_method
+    
 end
 

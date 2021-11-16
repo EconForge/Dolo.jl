@@ -12,15 +12,15 @@ DecisionRule(exo_grid, endo_grid, i::Int64, interp_type) = DecisionRule(exo_grid
 
 
 # cubic interpolation
-function DecisionRule(exo_grid::EmptyGrid, endo_grid::CartesianGrid, ::Type{Val{nx}}, ::Type{Cubic}) where nx
+function DecisionRule(exo_grid::EmptyGrid, endo_grid::UCGrid, ::Type{Val{nx}}, ::Type{Cubic}) where nx
     CubicDR(exo_grid, endo_grid, Val{nx})
 end
 
-function DecisionRule(exo_grid::UnstructuredGrid, endo_grid::CartesianGrid, ::Type{Val{nx}}, ::Type{Cubic}) where nx
+function DecisionRule(exo_grid::UnstructuredGrid, endo_grid::UCGrid, ::Type{Val{nx}}, ::Type{Cubic}) where nx
     CubicDR(exo_grid, endo_grid, Val{nx})
 end
 
-function DecisionRule(exo_grid::CartesianGrid, endo_grid::CartesianGrid, ::Type{Val{nx}}, ::Type{Cubic}) where nx
+function DecisionRule(exo_grid::UCGrid, endo_grid::UCGrid, ::Type{Val{nx}}, ::Type{Cubic}) where nx
     CubicDR(exo_grid, endo_grid, Val{nx})
 end
 
@@ -82,9 +82,9 @@ set_values!(cdr::CachedDecisionRule, v) = set_values!(cdr.dr, v)
 (cdr::CachedDecisionRule)(m::Union{<:Point,<:ListOfPoints}, s::Union{<:Point,<:ListOfPoints}) = evaluate(cdr.dr, m, s)
 
 # Interpolating rules
-(cdr::CachedDecisionRule{<:AbstractDecisionRule{T,<:Grid}, <:AbstractDiscretizedProcess})(i::Int, s::Union{<:Point,<:ListOfPoints}) where T<:Union{CartesianGrid, RandomGrid} = evaluate(cdr.dr,node(Point, cdr.process, i), s)
+(cdr::CachedDecisionRule{<:AbstractDecisionRule{T,<:Grid}, <:AbstractDiscretizedProcess})(i::Int, s::Union{<:Point,<:ListOfPoints}) where T<:Union{UCGrid, RandomGrid} = evaluate(cdr.dr,node(Point, cdr.process, i), s)
 
-(cdr::CachedDecisionRule{<:AbstractDecisionRule{T,<:Grid}, <:AbstractDiscretizedProcess})(i::Int, j::Int, s::Union{<:Point,<:ListOfPoints}) where T<:Union{CartesianGrid, RandomGrid} = evaluate(cdr.dr,inode(Point, cdr.process, i, j), s)
+(cdr::CachedDecisionRule{<:AbstractDecisionRule{T,<:Grid}, <:AbstractDiscretizedProcess})(i::Int, j::Int, s::Union{<:Point,<:ListOfPoints}) where T<:Union{UCGrid, RandomGrid} = evaluate(cdr.dr,inode(Point, cdr.process, i, j), s)
 
 
 (cdr::CachedDecisionRule{<:AbstractDecisionRule{<:EmptyGrid,<:Grid}, <:AbstractDiscretizedProcess})(i::Int, j::Int, s::Union{<:Point,<:ListOfPoints}) = evaluate(cdr.dr, s)
@@ -93,8 +93,8 @@ set_values!(cdr::CachedDecisionRule, v) = set_values!(cdr.dr, v)
 
 # maybe keep only the i,j,s calls.
 
-(cdr::CachedDecisionRule{<:AbstractDecisionRule{T,<:Grid}, <:DiscreteMarkovProcess})(i::Int, s::Union{<:Point,<:ListOfPoints}) where T<:Union{CartesianGrid, RandomGrid} = evaluate(cdr.dr,node(Point, cdr.process, i), s)
-(cdr::CachedDecisionRule{<:AbstractDecisionRule{T,<:Grid}, <:DiscreteMarkovProcess})(i::Int, j::Int, s::Union{<:Point,<:ListOfPoints}) where T<:Union{CartesianGrid, RandomGrid} = evaluate(cdr.dr,inode(Point, cdr.process, i, j), s)
+(cdr::CachedDecisionRule{<:AbstractDecisionRule{T,<:Grid}, <:DiscreteMarkovProcess})(i::Int, s::Union{<:Point,<:ListOfPoints}) where T<:Union{UCGrid, RandomGrid} = evaluate(cdr.dr,node(Point, cdr.process, i), s)
+(cdr::CachedDecisionRule{<:AbstractDecisionRule{T,<:Grid}, <:DiscreteMarkovProcess})(i::Int, j::Int, s::Union{<:Point,<:ListOfPoints}) where T<:Union{UCGrid, RandomGrid} = evaluate(cdr.dr,inode(Point, cdr.process, i, j), s)
 
 (cdr::CachedDecisionRule{<:AbstractDecisionRule{<:UnstructuredGrid,<:Grid}, <:DiscreteMarkovProcess})(i::Int, s::Union{<:Point,<:ListOfPoints}) = evaluate(cdr.dr, i, s)
 (cdr::CachedDecisionRule{<:AbstractDecisionRule{<:UnstructuredGrid,<:Grid}, <:DiscreteMarkovProcess})(i::Int, j::Int, s::Union{<:Point,<:ListOfPoints}) = evaluate(cdr.dr, j, s)

@@ -1,4 +1,4 @@
-function label_density(μ, symbols,  grid_exo::EmptyGrid, grid_endo::CartesianGrid)
+function label_density(μ, symbols,  grid_exo::EmptyGrid, grid_endo::UCGrid)
     endo_names = symbols[:states]
     sc = scales(grid_endo)
     d = Dict(endo_names[i]=>sc[i] for i=1:length(grid_endo.n))
@@ -17,7 +17,7 @@ function ergodic_distribution(model::Model{T, Q}, sol) where T where Q<:Dolo.IID
 end
 
 
-function ergodic_distribution(model, dr, exo_grid:: UnstructuredGrid, endo_grid:: CartesianGrid, dp)
+function ergodic_distribution(model, dr, exo_grid:: UnstructuredGrid, endo_grid:: UCGrid, dp)
     N_m = n_nodes(exo_grid)
     N_s = n_nodes(endo_grid)
     N = N_m*N_s
@@ -51,7 +51,7 @@ function ergodic_distribution(model, dr, exo_grid:: UnstructuredGrid, endo_grid:
     return Π, μ
 end
 
-function ergodic_distribution(model, dr, exo_grid:: CartesianGrid, endo_grid:: CartesianGrid, dp)
+function ergodic_distribution(model, dr, exo_grid:: UCGrid, endo_grid:: UCGrid, dp)
     N_m = n_nodes(exo_grid)
     N_s = n_nodes(endo_grid)
     N = N_m*N_s
@@ -88,7 +88,7 @@ function ergodic_distribution(model, dr, exo_grid:: CartesianGrid, endo_grid:: C
 end
 
 
-function ergodic_distribution(model, dr, exo_grid:: EmptyGrid, endo_grid:: CartesianGrid, dp)
+function ergodic_distribution(model, dr, exo_grid:: EmptyGrid, endo_grid:: UCGrid, dp)
     N_m = 1
     N_s = n_nodes(endo_grid)
     N = N_m*N_s

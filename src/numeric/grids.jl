@@ -9,8 +9,13 @@ node(::Type{<:Union{Point,Point{d}}}, grid::Grid{d}, i::Int) where d = node(grid
 node(::Type{<:Vector}, grid::Grid, i::Int) = Vector(node(grid,i))
 
 
-
 import Base
+
+
+struct PGrid{T1, T2}
+    exo::T1
+    endo::T2
+end
 
 Base.ndims(grid::Grid{d}) where d = d
 
@@ -74,7 +79,7 @@ function Product(a::UnstructuredGrid{d1}, b::UnstructuredGrid{d2}) where d1 wher
 end
 
 #################
-# CartesianGrid #
+# UCGrid #
 #################
 
 function mlinspace(min, max, n)
@@ -83,33 +88,35 @@ function mlinspace(min, max, n)
     return Base.product(nodes...)
 end
 
-struct CartesianGrid{d} <: Grid{d}
+struct UCGrid{d} <: Grid{d}
     min::Point{d}
     max::Point{d}
     n::SVector{d,Int}
     nodes::ListOfPoints{d}
 end
 
-function (::Type{<:CartesianGrid})(min::SVector{d,Float64}, max::SVector{d,Float64}, n::SVector{d,Int64}) where d
+ndims(grid::UCGrid{d}) where d = d
+
+function (::Type{<:UCGrid})(min::SVector{d,Float64}, max::SVector{d,Float64}, n::SVector{d,Int64}) where d
     A = [mlinspace(min, max, n)...]
     N = prod(n)
     mm = reshape(reinterpret(Point{d},vec(A)),(N,))
-    return CartesianGrid{d}(min, max, n, mm)
+    return UCGrid{d}(min, max, n, mm)
 end
 
-(::Type{<:CartesianGrid})(min::Vector{Float64},max::Vector{Float64},n::Vector{Int64}) = CartesianGrid(SVector(min...), SVector(max...), SVector(n...))
+(::Type{<:UCGrid})(min::Vector{Float64},max::Vector{Float64},n::Vector{Int64}) = UCGrid(SVector(min...), SVector(max...), SVector(n...))
 
-scales(grid::CartesianGrid{d}) where d = Tuple{Vararg{Vector{Float64},d}}([range(grid.min[i], grid.max[i];length=grid.n[i]) for i=1:d])
+scales(grid::UCGrid{d}) where d = Tuple{Vararg{Vector{Float64},d}}([range(grid.min[i], grid.max[i];length=grid.n[i]) for i=1:d])
 
-nodes(grid::CartesianGrid{d}) where d = grid.nodes
-n_nodes(grid::CartesianGrid{d}) where d = length(grid.nodes)
-node(grid::CartesianGrid{d}, i::Int) where d = grid.nodes[i]
+nodes(grid::UCGrid{d}) where d = grid.nodes
+n_nodes(grid::UCGrid{d}) where d = length(grid.nodes)
+node(grid::UCGrid{d}, i::Int) where d = grid.nodes[i]
 
-nodes(::Type{<:ListOfPoints}, grid::CartesianGrid{d}) where d  = grid.nodes
-node(::Type{<:Point}, grid::CartesianGrid{d}, i::Int64) where d = node(grid,i)
+nodes(::Type{<:ListOfPoints}, grid::UCGrid{d}) where d  = grid.nodes
+node(::Type{<:Point}, grid::UCGrid{d}, i::Int64) where d = node(grid,i)
 
-function Product(a::CartesianGrid{d1}, b::CartesianGrid{d2}) where d1 where d2
-  return Dolo.CartesianGrid{d1+d2}( [a.min; b.min], [a.max; b.max], [a.n; b.n])
+function Product(a::UCGrid{d1}, b::UCGrid{d2}) where d1 where d2
+  return Dolo.UCGrid{d1+d2}( [a.min; b.min], [a.max; b.max], [a.n; b.n])
 end
 
 

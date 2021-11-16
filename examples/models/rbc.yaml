@@ -78,8 +78,12 @@ exogenous:
         Σ: [[sig_z^2]]
 
 options:
-    grid: !Cartesian
-        orders: [20]
+    grid:
+        endo:
+            n: [20]
+        exo:
+            n: [5]
+        interpolation: cubic
 
 test: |
     chi*n^eta*c^sigma - (1-alpha)*y/n           | 0 <= n <= inf

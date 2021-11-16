@@ -8,18 +8,11 @@ model = yaml_import("examples/models/rbc.yaml")
 
 
 
-model = yaml_import("examples/models/rbc_iid.yaml")
-
-
-ff = model.factories[:arbitrage]
-
-
-
-@time sol = time_iteration(model;)
+# model = yaml_import("examples/models/rbc_iid.yaml")
 
 @time res =  Dolo.loop_ti(model; T=500);
 
-@time res =  Dolo.loop_iti(model; T=500, switch=0, K=30);
+@time res =  Dolo.loop_iti(model; T=500, switch=0, K=50);
 
 @time res =  Dolo.loop_iti(model; T=1000, switch=5, K=50);
 
