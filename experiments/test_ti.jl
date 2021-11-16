@@ -3,7 +3,7 @@ using Dolo
 
 model = Model("examples/models/rbc.yaml")
 
-Dolo.new_time_iteration(model);
+Dolo.time_iteration(model);
 Dolo.improved_time_iteration(model);
 
 

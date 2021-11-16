@@ -1,5 +1,57 @@
 import Dolo: MSM
 
+
+
+"""
+Computes the residuals of the arbitrage equations. The general form of the arbitrage equation is
+
+    `0 = E_t [f(m, s, x, M, S, X; p)]`
+
+where `m` are current exogenous variables, `s` are current states,
+`x` are current controls, `M` are next period's exogenous variables, `S` are next period's states, `X` are next period's controls, and `p` are the model parameters. This function evaluates the right hand side of the arbitrage equation for the given inputs.
+
+If the list of current controls `x` is provided as a two-dimensional array (`ListOfPoints`), it is transformed to a one-dimensional array (`ListOfListOfPoints`).
+
+
+# Arguments
+* `model::NumericModel`: Model object that describes the current model environment.
+* `dprocess`: Discretized exogenous process.
+* `s::ListOfPoints`: List of state variable values.
+* `x::ListOfListOfPoints`: List of control variable values associated with each exogenous shock.
+* `p::Vector{Float64}`: Model parameters.
+* `dr`: Current guess for the decision rule.
+# Returns
+* `res`: Residuals of the arbitrage equation associated with each exogenous shock.
+"""
+function euler_residuals_ti!(res::MSM{Point{n_x}}, model, dprocess::AbstractDiscretizedProcess,s::ListOfPoints{d}, x::MSM{Point{n_x}}, p::SVector, dr) where n_x where d
+
+    N = length(s)
+
+    for i in 1:length(res)
+        m = node(Point, dprocess, i)
+        for (w, M, j) in get_integration_nodes(Point, dprocess,i)
+            # Update the states
+            # TODO: replace views here
+            S = Dolo.transition(model, m, s, x.views[i], M, p)
+            X = dr(i, j, S)
+            res.views[i][:] += w*Dolo.arbitrage(model, m, s, x.views[i], M, S, X, p)
+        end
+    end
+    return res
+end
+
+function euler_residuals_ti(model, dprocess::AbstractDiscretizedProcess,s::ListOfPoints{d}, x::Vector{Vector{Point{n_x}}}, p::SVector, dr) where n_x where d
+    # res = deepcopy(x)
+    # for i_m=1:length(res)
+    #     res[i_m][:] *= 0.0
+    # end
+    xx = MSM(x)
+    res = deepcopy(xx)
+    reset!(res)
+    euler_residuals_ti!(res, model, dprocess, s, xx, p, dr)
+    return vecvec(res)
+end
+
 struct Euler{n_s, n_x, Gx, Ge}
 
     model::AbstractModel

@@ -48,7 +48,7 @@ using IterativeSolvers
 import Base.size
 import Base.eltype
 import Base.*
-
+using Formatting
 using LinearAlgebra
 
 
@@ -153,11 +153,10 @@ include("numeric/decision_rules/smolyak.jl")
 include("numeric/decision_rules/complete.jl")
 
 include("algos/steady_state.jl")
-include("algos/improved_time_iteration.jl")
+include("algos/improved_time_iteration_helpers.jl")
 include("algos/time_iteration_helpers.jl")
 include("algos/time_iteration.jl")
 include("algos/time_iteration_direct.jl")
-include("algos/time_iteration_old.jl")
 include("algos/value_iteration.jl")
 include("algos/perturbation.jl")
 include("algos/simulation.jl")
