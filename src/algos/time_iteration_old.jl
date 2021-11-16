@@ -92,13 +92,14 @@ end
 
 
 function show_entry(log::TimeIterationLog, entry)
-    it = entry[:it]
-    epsilon = entry[:epsilon]
-    err = entry[:err]
-    gain = entry[:gain]
-    time = entry[:time]
-    nit = entry[:nit]
-    @printf "%-6i%-16.2e%-16.2e%-16.2e%-16.2e%-5i\n" it epsilon err gain time nit
+    # it = entry[:it]
+    # # epsilon = entry[:epsilon]
+    # err = entry[:err]
+    # gain = entry[:gain]
+    # time = entry[:time]
+    # nit = entry[:nit]
+    println(entry)
+    # @printf "%-6i%-16.2e%-16.2e%-16.2e%-16.2e%-5i\n" it epsilon err gain time nit
 end
 
 function show_end(log::TimeIterationLog)

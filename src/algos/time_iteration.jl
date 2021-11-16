@@ -1,221 +1,86 @@
-import Dolo: MSM
-
-struct Euler{n_s, n_x, Gx, Ge}
-
-    model::AbstractModel
-    p:: SVector  ## SVector
-    grid_endo
-    grid_exo
-    dprocess
-    s0::ListOfPoints{n_s}
-    x0::MSM{SVector{n_x, Float64}}
-    dr::CachedDecisionRule
-    cdr::CachedDecisionRule
-
-    function Euler(model; discretization=Dict())
-
-        p = SVector(model.calibration[:parameters]...)
-
-        
-        
-        grid_exo, grid_endo, dprocess = discretize(model; discretization...)
-        
-        x = SVector(model.calibration[:controls]...)
-        
-        N_m = Dolo.n_nodes(grid_exo)
-        N_s = Dolo.n_nodes(grid_endo)
-
-        n_s = length(model.symbols[:states])
-        n_x = length(model.symbols[:controls])
-        
-
-        xxx = [[x for i=1:N_s] for j=1:N_m]
-
-        x0 = MSM(xxx)
-
-        s0 = Dolo.nodes(grid_endo)
-        dr = Dolo.CachedDecisionRule(dprocess, grid_endo, xxx)
-        cdr = Dolo.CachedDecisionRule(dprocess, grid_endo, xxx)
 
 
-        Gx = typeof(grid_exo)
-        Ge = typeof(grid_endo)
-
-        new{n_s, n_x, Gx, Ge}(model, p, grid_endo, grid_exo, dprocess, s0, x0, dr, cdr)
-
-    end
-
-end
-
-
-function (F::Euler)(x0::MSM, x1::MSM, set_future=true) 
-
-    res = deepcopy(x0)
-
-    if set_future
-        set_values!(F.dr, x1)
-    end
+function new_time_iteration(model;
+    dr0=Dolo.ConstantDecisionRule(model),
+    discretization=Dict(),
+    interpolation=:cubic,
+    verbose=true,
+    details=true,
+    ignore_constraints=false,
+    trace = false,
+    tol_η = 1e-8,
+    tol_ε = 1e-8,
+    maxit=500
+)
     
-    rr =   euler_residuals(F.model,F.s0,x0,F.dr,F.dprocess,F.p;keep_J_S=false)
+    F = Euler(model; discretization=discretization, interpolation=interpolation, dr0=dr0)
 
-    return rr
-
-end
-
-import Base: -, \, +, /, *
-
-function -(a::MSM)
-    N = length(a.data)
-    sizes = [length(e) for e in a.views]
-    # c = zeros_like(b)
-    data = -a.data
-    return MSM(data, sizes)
-end
+    complementarities = false
 
 
-function -(a::MSM, b::MSM)
-    N = length(a.data)
-    sizes = [length(e) for e in a.views]
-    # c = zeros_like(b)
-    data = a.data .- b.data
-    return MSM(data, sizes)
-end
-
-
-
-function +(a::MSM, b::MSM)
-    N = length(a.data)
-    sizes = [length(e) for e in a.views]
-    # c = zeros_like(b)
-    data = a.data .+ b.data
-    return MSM(data, sizes)
-end
-
-
-function \(a::MSM, b::MSM)
-    N = length(a.data)
-    sizes = [length(e) for e in a.views]
-    # c = zeros_like(b)
-    data = a.data .\ b.data
-    return MSM(data, sizes)
-end
-
-function /(a::MSM, b::MSM)
-    N = length(a.data)
-    sizes = [length(e) for e in a.views]
-    # c = zeros_like(b)
-    data = a.data ./ b.data
-    return MSM(data, sizes)
-end
-
-function /(a::MSM, b::Number)
-    N = length(a.data)
-    sizes = [length(e) for e in a.views]
-    # c = zeros_like(b)
-    data = a.data ./ b
-    return MSM(data, sizes)
-end
-
-function *(a::MSM, b::Number)
-    N = length(a.data)
-    sizes = [length(e) for e in a.views]
-    # c = zeros_like(b)
-    data = a.data .* b
-    return MSM(data, sizes)
-end
-
-
-
-import Dolo: maxabs
-
-norm(a::MSM) = maximum( u-> maximum(abs,u), a.data )
-maxabs(a::MSM) = maximum( u-> maximum(abs,u), a.data )
-
-
-function df_A(F, z0, z1; set_future=false)
-
-    fun  = z->F(z, z1, false)
-
-    J = Dolo.DiffFun(fun, z0)[2]
-
-    return (J)
-
-end
-
-
-function df_B(F, z0, z1; set_future=false)
-
-    ddr_filt = F.cdr
-
-    # res = deepcopy(z0)
-
-    if set_future
-        set_values!(F.dr, z1)
+    if interpolation != :cubic
+        error("Interpolation option ($interpolation) is currently not recognized.")
     end
 
-    _,J_ij,S_ij  =   euler_residuals(F.model, F.s0, z0 , F.dr, F.dprocess, F.p; keep_J_S=true)
-
-    L = LinearThing(J_ij, S_ij, ddr_filt)
-
-    return L
-
-end
+    ti_trace = trace ? IterationTrace([x0]) : nothing
 
 
-function *(x::MSM, y::MSM)
-    data = x.data .* y.data
-    return MSM(data, x.sizes)
-end
+    z0 = deepcopy(F.x0)
+    z1 = deepcopy(z0)
 
+    log = TimeIterationLog()
+    initialize(log, verbose=verbose)
 
-function prediv!(L::LinearThing,x::MSM)
-    for i=1:size(L.M_ij,1)
-        N = length(x.views[i])
-        for j=1:size(L.M_ij,2)
-            for n=1:N
-                L.M_ij[i,j][n] = x.views[i][n] \ L.M_ij[i,j][n]
-            end
+    local err_η
+
+    err_η_0 = NaN
+
+    it = 0
+    while it<=maxit
+
+        it += 1
+
+        t1 = time_ns()
+
+        res = F(z0, z0, true)
+
+        err_ε= norm(res)
+        if err_ε<tol_ε
+            break
         end
 
-    end
-    return L
-end
+        sol = newton(u-> F(u,z0,false), z0)
 
-function premult!(L::LinearThing,x::MSM)
-    for i=1:size(L.M_ij,1)
-        N = length(x.views[i])
-        for j=1:size(L.M_ij,2)
-            for n=1:N
-                L.M_ij[i,j][n] = x.views[i][n] * L.M_ij[i,j][n]
-            end
+        z1 = sol.solution
+
+        trace && push!(ti_trace.trace, z1)
+
+
+        δ = z1 - z0
+
+        err_η = norm(δ)
+        gain = err_η_0 / err_η
+        err_η_0 = err_η
+
+        if err_η<tol_η
+            break 
         end
+        z0 = z1
+
+        elapsed = time_ns() - t1
+
+        append!(log; verbose=verbose, it=it, epsilon=err_ε, err=err_η, gain=gain, time=elapsed, nit=sol.iterations)
 
     end
-    return L
+
+    finalize(log, verbose=verbose)
+
+
+    res = TimeIterationResult(F.dr.dr, it, complementarities, F.dprocess, err_η<tol_η, tol_η, err_η, log, ti_trace)
+
+    return res
+
 end
-
-function mult!(L::LinearThing,x::Number)
-    for i=1:size(L.M_ij,1)
-        for j=1:size(L.M_ij,2)
-            L.M_ij[i,j][:] *= x
-        end
-
-    end
-end
-
-function invert!(x::MSM)
-    for i=1:length(x.data)
-        x.data[i] = inv(x.data[i] )
-    end
-end
-
-
-
-function ldiv(a::MSM{S}, b::MSM{T}) where S where T
-    r = a.data .\ b.data
-    MSM(r, a.sizes)
-end
-
 
 function loop_ti(model::AbstractModel{V}; kwargs...) where V
     F = Euler(model)
@@ -241,7 +106,7 @@ function loop_ti(F::Euler, z0::MSM{V}; tol_η=1e-7, tol_ε=1e-8, T=100) where V
         res = F(z0, z0, true)
         err_1 = norm(res)
         if err_1<tol_ε
-            return
+            break
         end
 
         sol = newton(u-> F(u,z0,false), z0)
@@ -254,7 +119,7 @@ function loop_ti(F::Euler, z0::MSM{V}; tol_η=1e-7, tol_ε=1e-8, T=100) where V
         err = norm(δ)
 
         if err<tol_η
-            return 
+            break 
         end
         z0 = z1
 
@@ -263,75 +128,118 @@ function loop_ti(F::Euler, z0::MSM{V}; tol_η=1e-7, tol_ε=1e-8, T=100) where V
     return err
 end
 
-function loop_iti(F::Euler, z0::MSM{V}; verbose=true, tol_η=1e-7, tol_ε=1e-8, tol_κ=1e-8, T=500, K=500, switch=5, mode=:iti) where V
+function improved_time_iteration(model;
+    dr0=Dolo.ConstantDecisionRule(model),
+    discretization=Dict(),
+    interpolation=:cubic,
+    verbose=true,
+    details=true,
+    ignore_constraints=false,
+    trace = false,
+    tol_η = 1e-8,
+    tol_ε = 1e-8,
+    tol_ν = 1e-10,
+    maxit=500,
+    smaxit=500
+)
+# function loop_iti(F::Euler, z0::MSM{V}; verbose=true, tol_η=1e-7, tol_ε=1e-8, tol_κ=1e-8, T=500, K=500, switch=5, mode=:iti) where V
+    
+    F = Euler(model; discretization=discretization, interpolation=interpolation, dr0=dr0)
 
-    local err
+    complementarities = false
 
-    for t=1:T
+
+    if interpolation != :cubic
+        error("Interpolation option ($interpolation) is currently not recognized.")
+    end
+
+    ti_trace = trace ? IterationTrace([x0]) : nothing
+
+
+    z0 = deepcopy(F.x0)
+
+    local err_η, err_ε
+
+    log = TimeIterationLog(
+        ["It", "ϵₙ", "ηₙ=|xₙ-xₙ₋₁|", "Time"],
+        [:it, :err, :sa, :time],
+        []
+    )
+    initialize(log; verbose=verbose)
+
+ 
+    it = 0
+    while it<=maxit
+
+        t1 = time_ns()
+
+        it += 1
 
         r = F(z0, z0, true)
 
-        err_1 = norm(r)
+        err_ε = norm(r)
 
 
-        if mode==:newton
 
-            sol = newton(u-> F(u,z0,false), z0)
-            z1 = sol.solution
-    
-            δ = z1 - z0
-            count = sol.iterations
-    
-        else
+        J = df_A(F, z0, z0 ; set_future=false)
 
-            J = df_A(F, z0, z0 ; set_future=false)
+        L = df_B(F, z0, z0 ; set_future=false)
 
-            if t <=switch
+        mult!(L, -1.0)
+        prediv!(L, J) # J\L
 
-                # incomplete time iteration step
-                δ = -J\r
+        π = -J\r
 
-                count = 0
+        count = 0
 
-            else
-
-                L = df_B(F, z0, z0 ; set_future=false)
-
-                mult!(L, -1.0)
-                prediv!(L, J) # J\L
-
-                π = -J\r
-
-                count = 0
-
-                u = π
-                δ = π
-                for i=1:K
-                    count +=1
-                    u = L*u
-                    δ += u
-                    if norm(u)<tol_κ
-                        break
-                    end
-                end
-            
+        u = π
+        δ = π
+        for i=1:smaxit
+            count +=1
+            u = L*u
+            δ += u
+            if norm(u)<tol_ν
+                break
             end
-
         end
+        
 
-        err = norm(δ)
-
-        if verbose
-            println("$t | $err_1 | $err | $count")
-        end
-
-        if err<tol_η
-            return 
-        end
         z0 = z0 + δ
 
+        err_η = norm(δ)
+
+        elapsed = time_ns() - t1
+
+        append!(log; verbose=verbose,
+            it = it, 
+            err = err_ε,
+            sa = err_η,
+            time = elapsed
+        )
+
+        if err_η<tol_η
+            break 
+        end
 
     end
 
-    return err
+    finalize(log, verbose=verbose)
+
+    res = ImprovedTimeIterationResult(
+        F.dr.dr,
+        it,
+        err_ε,
+        err_η,
+        err_η<tol_η,
+        complementarities,
+        F.dprocess,
+        tol_ν,
+        NaN,
+        0,
+        0,
+        0,
+        ti_trace
+    )
+        
+    res
 end

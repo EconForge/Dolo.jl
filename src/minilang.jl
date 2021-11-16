@@ -1,27 +1,5 @@
-# ---------- #
-# Grid types #
-# ---------- #
-
-abstract type AbstractGrid end
-
-struct Cartesian <: AbstractGrid
-    a::Vector{Float64}
-    b::Vector{Float64}
-    orders::Vector{Int}
-end
-
-abstract type AbstractDomain end
 
 
-struct EmptyDomain <: AbstractDomain 
-    states::Vector{Symbol}
-end
-
-mutable struct Domain <: AbstractDomain
-    states::Vector{Symbol}
-    min::Vector{Float64}
-    max::Vector{Float64}
-end
 
 function Cartesian(stuff::AbstractDict, calib::ModelCalibration)
     kind = get(stuff, :tag, nothing)

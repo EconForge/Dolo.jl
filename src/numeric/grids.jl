@@ -1,4 +1,15 @@
+abstract type AbstractGrid end
+
 abstract type Grid{d} end
+
+struct ProductGrid{T,S}
+    exo::T
+    endo::S
+end
+
+
+
+×(grid1, grid2) = ProductGrid(grid1, grid2)
 #
 
 # # backward backward compatibility
@@ -7,6 +18,7 @@ nodes(::Type{<:Matrix}, grid::Grid) = copy(from_LOP(nodes(grid)))
 
 node(::Type{<:Union{Point,Point{d}}}, grid::Grid{d}, i::Int) where d = node(grid,i)
 node(::Type{<:Vector}, grid::Grid, i::Int) = Vector(node(grid,i))
+
 
 
 
@@ -90,6 +102,8 @@ struct CartesianGrid{d} <: Grid{d}
     nodes::ListOfPoints{d}
 end
 
+ndims(g::CartesianGrid{d}) where d = d
+
 function (::Type{<:CartesianGrid})(min::SVector{d,Float64}, max::SVector{d,Float64}, n::SVector{d,Int64}) where d
     A = [mlinspace(min, max, n)...]
     N = prod(n)
@@ -98,6 +112,7 @@ function (::Type{<:CartesianGrid})(min::SVector{d,Float64}, max::SVector{d,Float
 end
 
 (::Type{<:CartesianGrid})(min::Vector{Float64},max::Vector{Float64},n::Vector{Int64}) = CartesianGrid(SVector(min...), SVector(max...), SVector(n...))
+(::Type{<:CartesianGrid})(min::Vector{Float64},max::Vector{Float64},n::Int64) = CartesianGrid(min, max, fill(n,length(min)))
 
 scales(grid::CartesianGrid{d}) where d = Tuple{Vararg{Vector{Float64},d}}([range(grid.min[i], grid.max[i];length=grid.n[i]) for i=1:d])
 
@@ -188,3 +203,50 @@ nodes(::Type{<:ListOfPoints}, grid::RandomGrid) = nodes(grid)
 n_nodes(grid::RandomGrid) = length(grid.nodes)
 
 node(grid::RandomGrid,i::Int) = grid.nodes[i]
+
+
+### Cartesian
+
+struct Cartesian <: AbstractGrid
+    a::Vector{Float64}
+    b::Vector{Float64}
+    orders::Vector{Int}
+end
+
+
+### Domains
+
+
+
+
+abstract type AbstractDomain end
+
+
+struct EmptyDomain <: AbstractDomain 
+    states::Vector{Symbol}
+end
+
+
+
+struct CartesianDomain<: AbstractDomain
+    states
+    min::Vector{Float64}
+    max::Vector{Float64}
+end
+
+const Domain = CartesianDomain
+
+ndims(dom::CartesianDomain) = length(dom.min)
+
+
+function discretize(dom::CartesianDomain; n=Union{Int, Vector{Int}})
+    if typeof(n)<:Int
+        nv = fill(n, ndims(dom))
+    else
+        nv = n
+    end
+    min = dom.min
+    max = dom.max
+    return CartesianGrid(min, max, n)
+    
+end

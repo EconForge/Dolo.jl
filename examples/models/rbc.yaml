@@ -1,7 +1,5 @@
 name: Real Business Cycle
 
-model_type: dtcc
-
 symbols:
 
    exogenous: [z]
@@ -77,9 +75,16 @@ exogenous:
         ρ: 0.8
         Σ: [[sig_z^2]]
 
+#####
+
 options:
-    grid: !Cartesian
-        orders: [20]
+    discretization:
+        endo:
+            n: [21]
+        exo:
+            n: 9
+            n_i: 10
+    # interpolation: spline
 
 test: |
     chi*n^eta*c^sigma - (1-alpha)*y/n           | 0 <= n <= inf
