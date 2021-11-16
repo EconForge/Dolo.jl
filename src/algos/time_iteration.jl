@@ -250,8 +250,8 @@ function improved_time_iteration(model;
     maxit=500,
     smaxit=500
 )
-# function loop_iti(F::Euler, z0::MSM{V}; verbose=true, tol_η=1e-7, tol_ε=1e-8, tol_κ=1e-8, T=500, K=500, switch=5, mode=:iti) where V
-    
+
+
     F = Euler(model; discretization=discretization, interpolation=interpolation, dr0=dr0)
 
     complementarities = false
@@ -288,10 +288,7 @@ function improved_time_iteration(model;
 
         err_ε = norm(r)
 
-
-
         J = df_A(F, z0, z0 ; set_future=false)
-
         L = df_B(F, z0, z0 ; set_future=false)
 
         mult!(L, -1.0)

@@ -114,7 +114,7 @@ struct Euler{n_s, n_x, Gx, Ge}
 
 end
 
-function (F::Euler)(x0::MSM, x1::MSM, set_future=true) 
+function (F::Euler)(x0::MSM, x1::MSM, set_future=true, ignore_constraints=False) 
 
     res = deepcopy(x0)
 
@@ -198,7 +198,7 @@ norm(a::MSM) = maximum( u-> maximum(abs,u), a.data )
 maxabs(a::MSM) = maximum( u-> maximum(abs,u), a.data )
 
 
-function df_A(F, z0, z1; set_future=false)
+function df_A(F, z0, z1; set_future=false, ignore_constraints=False)
 
     fun  = z->F(z, z1, false)
 
@@ -209,7 +209,7 @@ function df_A(F, z0, z1; set_future=false)
 end
 
 
-function df_B(F, z0, z1; set_future=false)
+function df_B(F, z0, z1; set_future=false, ignore_constraints=False)
 
     ddr_filt = F.cdr
 
