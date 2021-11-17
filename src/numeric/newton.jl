@@ -133,9 +133,9 @@ function newton(fun::Function, x0::Vector{ListOfPoints{n_x}}, a::Union{Vector{Li
     return res
 end
 
+# TODO: cleanup derivative calculations
 
-
-function newton(fun::Function, x0::MSM{Point{n_x}}, a=nothing, b=nothing; maxit=10, verbose=false, n_bsteps=5, lam_bsteps=0.5) where n_x
+function newton(fun::Function, x0::MSM{Point{n_x}}, a=nothing, b=nothing; diff=true, maxit=10, verbose=false, n_bsteps=5, lam_bsteps=0.5) where n_x
 
   steps = (lam_bsteps).^collect(0:n_bsteps)
 
@@ -154,7 +154,11 @@ function newton(fun::Function, x0::MSM{Point{n_x}}, a=nothing, b=nothing; maxit=
 
       it += 1
 
-      R_i, D_i = DiffFun(fun, x) # ::Tuple{Vector{ListOfPoints{n_x}},Vector{Vector{SMatrix{n_x,n_x,Float64,n_x*n_x}}}}
+      if diff
+        R_i, D_i = DiffFun(fun, x) # ::Tuple{Vector{ListOfPoints{n_x}},Vector{Vector{SMatrix{n_x,n_x,Float64,n_x*n_x}}}}
+      else
+        R_i, D_i = fun(x)
+      end
       if !(a isa Nothing)
           PhiPhi!(R_i,x,a,b,D_i)
       end
@@ -169,7 +173,11 @@ function newton(fun::Function, x0::MSM{Point{n_x}}, a=nothing, b=nothing; maxit=
       while err_e_1>=err_e_0 && i_bckstps<length(steps)
           i_bckstps += 1
           new_x = x-dx*steps[i_bckstps]
+          if diff
           new_res = fun(new_x)::MSM{Point{n_x}} # no diff
+          else
+            new_res = fun(new_x)[1]
+          end
           if !(a isa Nothing)
               new_res = [PhiPhi0.(new_res[i],new_x[i],a[i],b[i]) for i=1:n_m]
           end

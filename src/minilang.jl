@@ -1,8 +1,4 @@
-# ---------- #
-# Grid types #
-# ---------- #
 
-abstract type AbstractGrid end
 
 struct Cartesian <: AbstractGrid
     a::Vector{Float64}
@@ -17,11 +13,11 @@ struct EmptyDomain <: AbstractDomain
     states::Vector{Symbol}
 end
 
-mutable struct CartesianDomain <: AbstractDomain
-    states::Vector{Symbol}
-    min::Vector{Float64}
-    max::Vector{Float64}
-end
+# mutable struct CartesianDomain <: AbstractDomain
+#     states::Vector{Symbol}
+#     min::Vector{Float64}
+#     max::Vector{Float64}
+# end
 
 ndims(dom::CartesianDomain) = length(dom.min)
 

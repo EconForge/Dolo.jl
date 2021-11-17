@@ -351,7 +351,7 @@ function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
     svec = vcat([e' for e in fill(s0, n_steps)]...)
     svec[:, index] = Svalues
 
-    if isa(dr, AbstractDecisionRule{UnstructuredGrid,CartesianGrid})
+    if isa(dr, AbstractDecisionRule{UnstructuredGrid,UCGrid})
         model_sym = :mc_process
     else
         xvec = dr(m0, svec)
@@ -389,7 +389,7 @@ end
 function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
                   s0::AbstractVector; n_steps=100)
 
-    if isa(dr, AbstractDecisionRule{UnstructuredGrid,CartesianGrid})
+    if isa(dr, AbstractDecisionRule{UnstructuredGrid,UCGrid})
         m0 = 1
     else
         m0 = model.calibration[:exogenous]
