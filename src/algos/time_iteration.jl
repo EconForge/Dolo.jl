@@ -181,29 +181,60 @@ function time_iteration(model;
 
     initialize(log, verbose=verbose; message="Time Iteration")
 
-    local err_η
+    local err_η, z0, z1
 
     err_η_0 = NaN
 
     it = 0
+
     while it<=maxit
 
         it += 1
 
         t1 = time_ns()
 
-        res = F(z0, z0, true)
+        res = F(z0, z0; set_future=true)
 
         err_ε= norm(res)
         if err_ε<tol_ε
             break
         end
 
-        fun(u) = (F(u, F.x0, false), Dolo.df_A(F, u, F.x0))
 
-        sol = newton(fun, z0, verbose=false, diff=false)
+        funn(u::Vector{Vector{Point{n_x}}}) where n_x = F( MSM(u), z0; set_future=false).views
 
-        z1 = sol.solution
+        lb, ub = F.bounds
+        sol = newton2(funn, z0.views, lb.views, ub.views)
+        return sol
+
+        # # fun(u) = (F(u, z0; set_future=false), Dolo.df_A(F, u, z0))
+        # # sol = newton(fun, z0, verbose=false, diff=false)
+        # # z1 = sol.solution
+
+        # # if F.bounds !== nothing
+
+        # # println(maxabs(z0))
+
+        #     ub, lb = F.bounds
+        #     # fun(u) = F(u, z0; set_future=false,  ignore_constraints=true)
+        #     sol = newton(
+        #         u->F(u, z0; set_future=false,  ignore_constraints=true),
+        #         z0, lb, ub, verbose=true
+        #     )
+        #     z1 = sol.solution
+
+
+            # println(sol.iterations)
+            # test = fun(z1)
+            # println(Dolo.norm(test))
+
+        # else
+
+        #     fun(u) = F(u, z0;  set_future=false)
+        #     sol = newton(fun, z0, lb, ub, verbose=false)
+        #     z1 = sol.solution
+
+        # end
 
         trace && push!(ti_trace.trace, z1)
 
@@ -217,7 +248,8 @@ function time_iteration(model;
         if err_η<tol_η
             break 
         end
-        z0 = z1
+
+        z0.data[:] .= z1.data
 
         elapsed = time_ns() - t1
 
@@ -254,7 +286,7 @@ function improved_time_iteration(model;
 )
 
 
-    F = Euler(model; discretization=discretization, interpolation=interpolation, dr0=dr0)
+    F = Euler(model; discretization=discretization, interpolation=interpolation, dr0=dr0, ignore_constraints=ignore_constraints)
 
     complementarities = false
 
@@ -286,9 +318,7 @@ function improved_time_iteration(model;
 
         it += 1
 
-        r = F(z0, z0, true)
-
-        return r
+        r = F(z0, z0; set_future=true)
 
         err_ε = norm(r)
 
