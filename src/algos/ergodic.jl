@@ -160,3 +160,51 @@ function trembling_hand!(A::AbstractArray{Float64,3}, x, w)
         A[n, q0_+1, q1_+1] += λ0*λ1*w
     end
 end
+
+function my_trembling_hand_v1!(A, x::Vector{Point{d}}, w::Float64) where d
+
+    if d==1
+        N,n0 = size(A)
+        δ0 = 1.0./(n0-1.0)
+        for n in 1:N
+            x0 = x[n][1]
+            x0 = min.(max.(x0, 0.0),1.0)
+            q0 = div.(x0, δ0)
+            q0 = max.(0, q0)
+            q0 = min.(q0, n0-2)
+            λ0 = (x0./δ0-q0) # ∈[0,1[ by construction
+            q0_ = round.(Int,q0) + 1
+            A[n, q0_]   += (1-λ0)*w
+            A[n, q0_+1] += λ0*w
+        end
+    end
+
+    if d==2
+        N,n0,n1 = size(A)
+        δ0 = 1.0./(n0-1.0)
+        δ1 = 1.0./(n1-1.0)
+        for n in 1:N
+            x0 = x[n][1]
+            x0 = min.(max.(x0, 0.0),1.0)
+            q0 = div.(x0, δ0)
+            q0 = max.(0, q0)
+            q0 = min.(q0, n0-2)
+            λ0 = (x0./δ0-q0) # ∈[0,1[ by construction
+            q0_ = round.(Int,q0) + 1
+
+            x1 = x[n][2]
+            x1 = min.(max.(x1, 0.0),1.0)
+            q1 = div.(x1, δ1)
+            q1 = max.(0, q1)
+            q1 = min.(q1, n1-2)
+            λ1 = (x1./δ1-q1) # ∈[0,1[ by construction
+            q1_ = round.(Int,q1) + 1
+
+            A[n, q0_ ,  q1_] += (1-λ0)*(1-λ1)*w
+            A[n, q0_+1, q1_] += λ0*(1-λ1)*w
+            A[n, q0_, q1_+1] += (1-λ0)*λ1*w
+            A[n, q0_+1, q1_+1] += λ0*λ1*w
+        end
+    end
+
+end
