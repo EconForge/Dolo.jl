@@ -1,23 +1,124 @@
 using Dolo
 
 
-model = Model("examples/models/rbc.yaml")
+# model = Model("examples/models/rbc.yaml")
+model = Model("examples/models/consumption_savings_iid.yaml")
+
+F = Dolo.Euler(model, ignore_constraints=false);
 
 
-model = Model("consumption_savings.yaml")
+F(F.x0, F.x0)
 
-# F = Dolo.Euler(model);
+r = F(F.x0, F.x0; set_future=false)
+j = Dolo.df_A(F, F.x0, F.x0)
 
-# F(F.x0, F.x0)
+import Dolo: norm
 
-# fun(u) = F(u, F.x0, false)
+import Dolo: MSM
+import Dolo: df_A
 
-# fun(F.x0)
+f = u->F(u, F.x0; set_future=false)
+df = u->df_A(F, u, F.x0; set_future=false)
 
-# R_i, D_i = Dolo.DiffFun(fun, F.x0)
+function newton(fun, dfun, x0::MSM; maxit=50, dampen=1.0, verbose=false)
 
-# r = F(F.x0, F.x0, false)
-# j = Dolo.df_A(F, F.x0, F.x0)
+    r0 = fun(x0)
+
+    err = norm(r0)
+
+    local x1
+
+    bcksteps = 5
+
+    for n=1:maxit
+
+        r0 = fun(x0)
+        err_0 = norm(r0)
+
+        j = dfun(x0)
+        δ = j\r0
+
+        for i=0:(bcksteps-1)
+            u = 0.5^i
+            x1 = x0 - δ*u
+            r1 = fun(x1)
+            err_1 = norm(r1)
+            if verbose
+                println( "-    $i: ", err_1)
+            end
+            if err_1<err_0
+                break
+            end
+        end
+
+        if verbose
+            println(n, " | ", norm(r0), " | ",  norm(δ))
+        end
+
+        x0 = x1
+
+    end
+
+    return x0
+
+end
+
+sol = newton(f, df, F.x0; maxit=20, verbose=true)
+
+norm(F(sol, F.x0))
+
+
+F(sol, sol; set_future=true);
+
+
+function loop(F, K)
+
+    x0 = F.x0
+    x1 = x0
+
+    for k=1:K
+
+        res = F(x0, x0; set_future=true)
+        ε = norm(res)
+
+        f = u->F(u, x1; set_future=false)
+        df = u->df_A(F, u, x1; set_future=false)
+
+        x1 = newton(f, df, x0; verbose=false)
+
+        δ = x1 - x0
+        η = norm(δ)
+
+        println(ε, " : ", η)
+
+        x0 = x1
+    end
+
+    return x1
+
+end
+
+
+loop(F, 10);
+
+
+# tab = Dolo.tabulate(model, F.dr.dr, :k)
+# plot(tab[:k], tab[:k])
+# plot!(tab[:j], tab[:c])
+
+
+
+using SimplePlots
+
+
+tab = Dolo.tabulate(model, F.dr.dr, :w)
+plot(tab[:w], tab[:w])
+plot!(tab[:w], tab[:c])
+
+
+# l = Dolo.df_B(F, F.x0, F.x0)
+
+
 
 # Dolo.newton(u->F(u,F.x0), F.x0)
 
@@ -65,3 +166,4 @@ F = Dolo.Euler(model)
 
 
 # using Plots
+

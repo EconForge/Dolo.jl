@@ -260,10 +260,10 @@ function df_B(F, z0, z1; set_future=false)
 
     _,J_ij,S_ij  =   euler_residuals(F.model, F.s0, z0 , F.dr, F.dprocess, F.p; keep_J_S=true)
 
-    if (F.bounds!==nothing)
-        lb, ub = F.bounds
-        PhiPhi!(rr.x0, z1.x0, lb.x0, ub.x0, J_ij)
-    end
+    # if (F.bounds!==nothing)
+    #     lb, ub = F.bounds
+    #     PhiPhi!(rr.x0, z1.x0, lb.x0, ub.x0, J_ij)
+    # end
 
     L = LinearThing(J_ij, S_ij, ddr_filt)
 
