@@ -19,7 +19,7 @@ definitions: |
 equations:
 
     arbitrage: |
-        chi*n^eta*c^sigma - (1-alpha)*y/n            | 0 <= n <= 10000
+        chi*n^eta*c^sigma - (1-alpha)*y/n            | 0 <= n <= 1
         1 - beta*(c/c(1))^(sigma)*(1-delta+rk(1))    | 0 <= i <= 10000
 
     transition: |
@@ -82,8 +82,8 @@ options:
         endo:
             n: [21]
         exo:
-            n: 9
-            n_i: 10
+            n: 2
+            n_i: 1
     # interpolation: spline
 
 test: |

@@ -4,23 +4,96 @@ using Dolo
 # model = Model("examples/models/rbc.yaml")
 model = Model("examples/models/consumption_savings_iid.yaml")
 
+
+
 F = Dolo.Euler(model, ignore_constraints=false);
 
 
 F(F.x0, F.x0)
 
 r = F(F.x0, F.x0; set_future=false)
-j = Dolo.df_A(F, F.x0, F.x0)
 
+
+##### Compare with dolo.py
 import Dolo: norm
 
 import Dolo: MSM
 import Dolo: df_A
 
-f = u->F(u, F.x0; set_future=false)
+f = u->F(u, F.x0; set_future=false, ignore_constraints=false)
 df = u->df_A(F, u, F.x0; set_future=false)
+v1 , j_num = Dolo.DiffFun(f, F.x0)
 
-function newton(fun, dfun, x0::MSM; maxit=50, dampen=1.0, verbose=false)
+f0 = u->F(u, F.x0; set_future=false, ignore_constraints=true)
+v1 , j_0 = Dolo.DiffFun(f0, F.x0)
+
+j = Dolo.df_A(F, F.x0, F.x0)
+
+
+println(v1.data[1])
+
+println("j_0")
+println(j_0.data[1])
+
+println("j num")
+println(j_num.data[1])
+
+println("j phi")
+println(j.data[1])
+
+
+
+
+function PhiTest(u,v) 
+    sq = sqrt(u^2+v^2)
+    p = u+v-sq
+    return p
+end
+
+function PhiPhiTest(x, a, b) 
+    f = x
+    y = PhiTest(f,x-a)
+    z = PhiTest(-y, b-x)
+    return z
+end
+
+fun(u) = PhiPhiTest(u,0, 1)
+dfun(u) = (fun(u+0.000001) - fun(u))/0.000001
+
+zvec = range(-1,1;length=100)
+fvec = fun.(zvec)
+dfvec = dfun.(zvec)
+
+plot(zvec, fvec)
+
+plot(zvec, dfvec)
+
+
+l = [Dolo.PhiPhi(SVector(x), SMatrix{1,1}(1.0), SVector(x), SVector(0.0), SVector(1.0)) for x in zvec]
+fvec2= [e[1][1] for e in l]
+dfvec2= [e[2][1,1] for e in l]
+
+plot(zvec, fvec)
+plot!(zvec, fvec2)
+
+
+
+plot(zvec, dfvec)
+plot!(zvec, dfvec2)
+
+using SimplePlots
+
+
+
+
+
+
+
+(ddf - j).data[1]
+
+
+
+function newton(fun, dfun, x0::MSM; maxit=50, dampen=1.0, verbose=false, bcksteps = 5)
 
     r0 = fun(x0)
 
@@ -28,7 +101,9 @@ function newton(fun, dfun, x0::MSM; maxit=50, dampen=1.0, verbose=false)
 
     local x1
 
-    bcksteps = 5
+    x1data = deepcopy(x0.data)
+    x1 = MSM(x1data, x0.sizes)
+
 
     for n=1:maxit
 
@@ -36,11 +111,10 @@ function newton(fun, dfun, x0::MSM; maxit=50, dampen=1.0, verbose=false)
         err_0 = norm(r0)
 
         j = dfun(x0)
-        δ = j\r0
-
+        δ = (j\r0)
         for i=0:(bcksteps-1)
             u = 0.5^i
-            x1 = x0 - δ*u
+            x1.data[:] .= x0.data - δ.data*u
             r1 = fun(x1)
             err_1 = norm(r1)
             if verbose
@@ -63,7 +137,7 @@ function newton(fun, dfun, x0::MSM; maxit=50, dampen=1.0, verbose=false)
 
 end
 
-sol = newton(f, df, F.x0; maxit=20, verbose=true)
+sol = newton(f, df, F.x0; maxit=15, verbose=true, bcksteps = 20)
 
 norm(F(sol, F.x0))
 
@@ -81,8 +155,8 @@ function loop(F, K)
         res = F(x0, x0; set_future=true)
         ε = norm(res)
 
-        f = u->F(u, x1; set_future=false)
-        df = u->df_A(F, u, x1; set_future=false)
+        f = u->F(u, x0; set_future=false)
+        df = u->df_A(F, u, x0; set_future=false)
 
         x1 = newton(f, df, x0; verbose=false)
 
@@ -99,7 +173,7 @@ function loop(F, K)
 end
 
 
-loop(F, 10);
+loop(F, 100);
 
 
 # tab = Dolo.tabulate(model, F.dr.dr, :k)

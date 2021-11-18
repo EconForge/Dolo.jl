@@ -46,7 +46,7 @@ function euler_residuals_ti(model, dprocess::AbstractDiscretizedProcess,s::ListO
     #     res[i_m][:] *= 0.0
     # end
     xx = MSM(x)
-    res = deepcopy(xx)
+    res = copy(xx)
     reset!(res)
     euler_residuals_ti!(res, model, dprocess, s, xx, p, dr)
     return vecvec(res)
@@ -124,7 +124,7 @@ end
 
 function (F::Euler)(x0::MSM, x1::MSM; set_future=true, ignore_constraints=false) 
 
-    res = deepcopy(x0)
+    res = copy(x0)
 
     if set_future
         set_values!(F.dr, x1)
@@ -144,6 +144,12 @@ function (F::Euler)(x0::MSM, x1::MSM; set_future=true, ignore_constraints=false)
 end
 
 import Base: -, \, +, /, *
+import Base: copy
+
+function copy(m::MSM)
+    dd = deepcopy(m.data)
+    return MSM(dd, m.sizes)
+end
 
 function -(a::MSM)
     N = length(a.data)
@@ -234,13 +240,18 @@ end
 
 function df_A(F, z0, z1; set_future=false)
 
+    # fun  = z->F(z, z1; set_future=false, ignore_constraints=true)
     fun  = z->F(z, z1; set_future=false, ignore_constraints=true)
 
-    rr, J = Dolo.DiffFun(fun, z0;)
+    rr, J = Dolo.DiffFun(fun, z0, 1e-8)
 
     if (F.bounds!==nothing)
         lb, ub = F.bounds
-        tmp!(rr.data, z0.data, lb.data, ub.data, J.data)
+        for n=1:length(rr.data)
+            z,z_f,z_x  = PhiPhi(rr.data[n], z0.data[n], lb.data[n], ub.data[n])
+            rr.data[n] = z
+            J.data[n]= z_f*J.data[n] + z_x
+        end
     end
 
     return (J)

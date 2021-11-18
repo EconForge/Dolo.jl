@@ -825,6 +825,12 @@ git-tree-sha1 = "ee05b5c71bf8c0c93386d37a245357791cf4f8b8"
 uuid = "c46f51b8-102a-5cf2-8d2c-8597cb0e0da7"
 version = "0.6.11"
 
+[[PyCall]]
+deps = ["Conda", "Dates", "Libdl", "LinearAlgebra", "MacroTools", "Serialization", "VersionParsing"]
+git-tree-sha1 = "4ba3651d33ef76e24fef6a598b63ffd1c5e1cd17"
+uuid = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
+version = "1.92.5"
+
 [[QuadGK]]
 deps = ["DataStructures", "LinearAlgebra"]
 git-tree-sha1 = "78aadffb3efd2155af139781b8a8df1ef279ea39"
