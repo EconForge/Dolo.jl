@@ -14,7 +14,10 @@ using Dolo
 model = Dolo.yaml_import("examples/models/consumption_savings_iid.yaml")
 
 
-Dolo.time_iteration(model; maxit=500)
+@time Dolo.time_iteration(model; maxit=500)
+
+@time Dolo.improved_time_iteration(model)
+
 
 
 

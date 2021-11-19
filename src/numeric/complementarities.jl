@@ -29,13 +29,13 @@ end
 function PhiPhi(f::Point{d}, x::Point{d}, a::Point{d}, b::Point{d}) where d
     y, y_f, y_x = Phi(f,x-a)
     z, z_y, z_x = Phi(-y,b-x)
-    return z, (-z_y*y_f), (-z_y*y_x - z_x)
+    return -z, (z_y*y_f), (z_y*y_x + z_x)
 end
 
 function PhiPhi0(f::Point{d}, x::Point{d}, a::Point{d}, b::Point{d}) where d
     y = Phi(f,x-a)[1]
     z = Phi(-y,b-x)[1]
-    return z
+    return -z
 end
 
 

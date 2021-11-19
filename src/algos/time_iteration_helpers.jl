@@ -135,7 +135,7 @@ function (F::Euler)(x0::MSM, x1::MSM; set_future=true, ignore_constraints=false)
     if (F.bounds!==nothing) & !ignore_constraints
         lb, ub = F.bounds
         for n=1:length(rr.data)
-            rr.data[n] = -PhiPhi0(rr.data[n], x0.data[n], lb.data[n], ub.data[n])
+            rr.data[n] = PhiPhi0(rr.data[n], x0.data[n], lb.data[n], ub.data[n])
         end
     end
 
@@ -231,8 +231,8 @@ function df_A(F, z0, z1; set_future=false)
         for n=1:length(rr.data)
             z,z_f,z_x  = PhiPhi(rr.data[n], z0.data[n], lb.data[n], ub.data[n])
             ### TODO: check PhiPhi and avoid -1 multiplication
-            rr.data[n] = -z
-            J.data[n]= - z_f*J.data[n] - z_x
+            rr.data[n] = z
+            J.data[n]= z_f*J.data[n] + z_x
         end
     end
 
@@ -255,18 +255,11 @@ function df_B(F, z0, z1; set_future=false)
 
     if (F.bounds!==nothing)
         lb, ub = F.bounds
-
-        ### TODO: check PhiPhi and avoid -1 multiplication
         PhiPhi!(rr.views, z1.views, lb.views, ub.views, J_ij)
-        L = LinearThing(J_ij, S_ij, ddr_filt)
-        for i=1:size(L.M_ij,1)
-            for j=1:size(L.M_ij,2)
-                L.M_ij[i,j]*=-1.0
-            end
-        end
-    else
-        L = LinearThing(J_ij, S_ij, ddr_filt)
+
     end
+
+    L = LinearThing(J_ij, S_ij, ddr_filt)
 
     return L
 
@@ -305,7 +298,7 @@ function premult!(L::LinearThing,x::MSM)
     return L
 end
 
-function mult!(L::LinearThing,x::Number)
+function mult!(L::LinearThing,x::T) where T<:Number
     for i=1:size(L.M_ij,1)
         for j=1:size(L.M_ij,2)
             L.M_ij[i,j][:] *= x
