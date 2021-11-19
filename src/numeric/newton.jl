@@ -135,7 +135,7 @@ end
 
 # TODO: cleanup derivative calculations
 
-function newton(fun::Function, x0::MSM{Point{n_x}}, a=nothing, b=nothing; diff=true, maxit=10, verbose=false, n_bsteps=5, lam_bsteps=0.5) where n_x
+function newton(fun::Function, x0::MSM{Point{n_x}}; diff=true, maxit=10, verbose=false, n_bsteps=5, lam_bsteps=0.5) where n_x
 
   steps = (lam_bsteps).^collect(0:n_bsteps)
 
@@ -159,9 +159,7 @@ function newton(fun::Function, x0::MSM{Point{n_x}}, a=nothing, b=nothing; diff=t
       else
         R_i, D_i = fun(x)
       end
-      if !(a isa Nothing)
-          PhiPhi!(R_i,x,a,b,D_i)
-      end
+
       err_e_0 = maxabs(R_i)
       push!(errors, err_e_0)
       err_e_1 = err_e_0
@@ -178,14 +176,11 @@ function newton(fun::Function, x0::MSM{Point{n_x}}, a=nothing, b=nothing; diff=t
           else
             new_res = fun(new_x)[1]
           end
-          if !(a isa Nothing)
-              new_res = [PhiPhi0.(new_res[i],new_x[i],a[i],b[i]) for i=1:n_m]
-          end
           err_e_1 = maxabs(new_res)
       end
       x = new_x::MSM{Point{n_x}}
       if verbose
-          println(i_bckstps, " : ", err_x, " : ", err_e_1, )
+          println(i_bckstps, " : ", err_η, " : ", err_e_1, )
       end
   end
 

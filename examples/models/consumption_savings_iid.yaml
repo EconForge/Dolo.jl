@@ -11,11 +11,7 @@ equations:
         w[t] = exp(y[t]) + (w[t-1]-c[t-1])*r
 
     arbitrage: |
-        c[t] | 0 <= c[t] <= 1
-
-
-
-    # β*( c[t+1]/c[t] )^(-γ)*r - 1  | 0.0<=c[t]<=w[t]
+        β*( c[t+1]/c[t] )^(-γ)*r - 1  | 0<=c[t]<=w[t]
 
     # half_transition: |
     #     w[t] = exp(y[t]) + a[t-1]*r
@@ -55,4 +51,4 @@ options:
         endo:
             n: [100]
         exo:
-            n: 5
+            n: 7

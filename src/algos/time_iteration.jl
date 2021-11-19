@@ -128,6 +128,50 @@ function Base.show(io::IO, r::TimeIterationResult)
 end
 
 
+function newton2(fun, dfun, x0::MSM; maxit=50, dampen=1.0, verbose=false, bcksteps = 5)
+
+    r0 = fun(x0)
+
+    err = norm(r0)
+
+    local x1
+
+    x1data = deepcopy(x0.data)
+    x1 = MSM(x1data, x0.sizes)
+
+
+    for n=1:maxit
+
+        r0 = fun(x0)
+        err_0 = norm(r0)
+
+        j = dfun(x0)
+        δ = (j\r0)
+        for i=0:(bcksteps-1)
+            u = 0.5^i
+            x1.data[:] .= x0.data - δ.data*u
+            r1 = fun(x1)
+            err_1 = norm(r1)
+            if verbose
+                println( "-    $i: ", err_1)
+            end
+            if err_1<err_0
+                break
+            end
+        end
+
+        if verbose
+            println(n, " | ", norm(r0), " | ",  norm(δ))
+        end
+
+        x0 = x1
+
+    end
+
+    return x0
+
+end
+
 
 
 """
@@ -200,46 +244,26 @@ function time_iteration(model;
             break
         end
 
+        fun = u->F(u, z0; set_future=false,  ignore_constraints=true)
+        dfun = u->df_A(F,u, z0; set_future=false)
 
-        funn(u::Vector{Vector{Point{n_x}}}) where n_x = F( MSM(u), z0; set_future=false).views
+        sol = newton2(
+            fun, dfun,
+            z0, verbose=false
+        )
 
-        lb, ub = F.bounds
-        sol = newton2(funn, z0.views, lb.views, ub.views)
-        return sol
+        z1 = sol
+        δ = z1 - z0
 
-        # # fun(u) = (F(u, z0; set_future=false), Dolo.df_A(F, u, z0))
-        # # sol = newton(fun, z0, verbose=false, diff=false)
-        # # z1 = sol.solution
+        J = df_A(F, z0, z0; set_future=false)
+        δ = J\res
 
-        # # if F.bounds !== nothing
-
-        # # println(maxabs(z0))
-
-        #     ub, lb = F.bounds
-        #     # fun(u) = F(u, z0; set_future=false,  ignore_constraints=true)
-        #     sol = newton(
-        #         u->F(u, z0; set_future=false,  ignore_constraints=true),
-        #         z0, lb, ub, verbose=true
-        #     )
-        #     z1 = sol.solution
-
-
-            # println(sol.iterations)
-            # test = fun(z1)
-            # println(Dolo.norm(test))
-
-        # else
-
-        #     fun(u) = F(u, z0;  set_future=false)
-        #     sol = newton(fun, z0, lb, ub, verbose=false)
-        #     z1 = sol.solution
-
-        # end
+        z1 = z0 - δ
 
         trace && push!(ti_trace.trace, z1)
 
 
-        δ = z1 - z0
+
 
         err_η = norm(δ)
         gain = err_η / err_η_0
@@ -249,7 +273,8 @@ function time_iteration(model;
             break 
         end
 
-        z0.data[:] .= z1.data
+        # z0.data[:] .= z1.data
+        z0 = z1
 
         elapsed = time_ns() - t1
 

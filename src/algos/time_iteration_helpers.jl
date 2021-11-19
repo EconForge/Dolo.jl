@@ -135,7 +135,7 @@ function (F::Euler)(x0::MSM, x1::MSM; set_future=true, ignore_constraints=false)
     if (F.bounds!==nothing) & !ignore_constraints
         lb, ub = F.bounds
         for n=1:length(rr.data)
-            rr.data[n] = PhiPhi0(rr.data[n], F.x0.data[n], lb.data[n], ub.data[n])
+            rr.data[n] = -PhiPhi0(rr.data[n], x0.data[n], lb.data[n], ub.data[n])
         end
     end
 
@@ -219,25 +219,6 @@ norm(a::MSM) = maximum( u-> maximum(abs,u), a.data )
 maxabs(a::MSM) = maximum( u-> maximum(abs,u), a.data )
 
 
-function tmp!(F::Vector{Point{d}},
-    X::Vector{Point{d}},
-    A::Vector{Point{d}},
-    B::Vector{Point{d}},
-    D::Vector{SMatrix{d,d,Float64,q}}) where d where q
-
-    N = length(F)
-    for i=1:N
-        f = F[i]
-        x = X[i]
-        a = A[i]
-        b = B[i]
-        z, z_f, z_x = Dolo.PhiPhi(f,x,a,b)
-        F[i] = z
-        D[i] = z_f*D[i] + z_x
-
-    end
-end
-
 function df_A(F, z0, z1; set_future=false)
 
     # fun  = z->F(z, z1; set_future=false, ignore_constraints=true)
@@ -249,8 +230,9 @@ function df_A(F, z0, z1; set_future=false)
         lb, ub = F.bounds
         for n=1:length(rr.data)
             z,z_f,z_x  = PhiPhi(rr.data[n], z0.data[n], lb.data[n], ub.data[n])
-            rr.data[n] = z
-            J.data[n]= z_f*J.data[n] + z_x
+            ### TODO: check PhiPhi and avoid -1 multiplication
+            rr.data[n] = -z
+            J.data[n]= - z_f*J.data[n] - z_x
         end
     end
 
@@ -269,14 +251,22 @@ function df_B(F, z0, z1; set_future=false)
         set_values!(F.dr, z1)
     end
 
-    _,J_ij,S_ij  =   euler_residuals(F.model, F.s0, z0 , F.dr, F.dprocess, F.p; keep_J_S=true)
+    rr,J_ij,S_ij  =   euler_residuals(F.model, F.s0, z0 , F.dr, F.dprocess, F.p; keep_J_S=true)
 
-    # if (F.bounds!==nothing)
-    #     lb, ub = F.bounds
-    #     PhiPhi!(rr.x0, z1.x0, lb.x0, ub.x0, J_ij)
-    # end
+    if (F.bounds!==nothing)
+        lb, ub = F.bounds
 
-    L = LinearThing(J_ij, S_ij, ddr_filt)
+        ### TODO: check PhiPhi and avoid -1 multiplication
+        PhiPhi!(rr.views, z1.views, lb.views, ub.views, J_ij)
+        L = LinearThing(J_ij, S_ij, ddr_filt)
+        for i=1:size(L.M_ij,1)
+            for j=1:size(L.M_ij,2)
+                L.M_ij[i,j]*=-1.0
+            end
+        end
+    else
+        L = LinearThing(J_ij, S_ij, ddr_filt)
+    end
 
     return L
 

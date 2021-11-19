@@ -71,10 +71,10 @@ function PhiPhi!(F::Vector{Vector{Point{d}}},
     end
 end
 
-function PhiPhi!(F::Vector{Vector{Point{d}}},
-                 X::Vector{Vector{Point{d}}},
-                 A::Vector{Vector{Point{d}}},
-                 B::Vector{Vector{Point{d}}},
+function PhiPhi!(F::Vector{<:AbstractVector{Point{d}}},
+                 X::Vector{<:AbstractVector{Point{d}}},
+                 A::Vector{<:AbstractVector{Point{d}}},
+                 B::Vector{<:AbstractVector{Point{d}}},
                  J::Matrix{w}) where w<:AbstractVector{SMatrix{d,d,Float64,q}} where d where q
 
     n_m, n_M = size(J)
