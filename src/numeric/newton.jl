@@ -26,7 +26,9 @@ function DiffFun(fun, x0::Vector{ListOfPoints{n_x}}, epsilon=1e-6) where n_x
     J = [reshape(reinterpret(SMatrix{n_x,n_x,Float64,n_x^2},vec(JMat[i])),(N,)) for i=1:n_m]
 
     return (r0,J) #::Tuple{Vector{ListOfPoints{n_x}},Vector{Vector{SMatrix{n_x,n_x,Float64,n_x*n_x}}}}
+
 end
+
 
 function DiffFun(fun, x0::MSM{Point{n_x}}, epsilon=1e-6) where n_x
 
@@ -38,7 +40,7 @@ function DiffFun(fun, x0::MSM{Point{n_x}}, epsilon=1e-6) where n_x
 
   zz = zeros( SMatrix{n_x, n_x, Float64, n_x*n_x}, N)
 
-  JMat = MSM(zz, x0.sizes)
+  JMat = MSM(zz, x0.sizes)::MSM{SMatrix{n_x,n_x,Float64,n_x*n_x}}
   
   Jarray = reshape(reinterpret(Float64, JMat.data), (n_x, n_x, N))
 
@@ -56,6 +58,35 @@ function DiffFun(fun, x0::MSM{Point{n_x}}, epsilon=1e-6) where n_x
   end
 
   return r0, JMat
+
+end
+
+function DiffFun!(fun!, x0::MSM{Point{n_x}}, epsilon=1e-6, out=nothing) where n_x
+
+
+  f0,fi,xi,JMat = out
+  # xi = deepcopy(x0)
+
+  N = length(x0.data)
+
+  fun!(f0, x0)
+  
+  Jarray = reshape(reinterpret(Float64, JMat.data), (n_x, n_x, N))
+
+  for i_x=1:n_x
+
+    add_epsilon!(xi.data, i_x, epsilon)
+
+    fun!(fi, xi)
+    di = (fi-f0)/epsilon
+
+    Jarray[:,i_x,:] = reshape(reinterpret(Float64, di.data), (n_x, N))
+
+    add_epsilon!(xi.data, i_x, -epsilon)
+
+  end
+
+  return f0, JMat
 
 end
 #     for i_m=1:n_m

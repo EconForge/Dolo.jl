@@ -45,6 +45,22 @@ inode(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_nodes[i][j, :]
 iweight(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_weights[i][j]
 
 
+# function node(::Type{Point}, dp::DiscreteProcess, i::Int) where n_x
+#     SVector(dp.grid.nodes[i]...)
+# end
+# function inode(::Type{Point}, dp::DiscreteProcess, i::Int, j::Int) where n_x
+#     v = inode(dp, i, j)
+#     SVector(dp.grid.integration_nodes[i][j,:]...)
+# end
+
+function node(::Type{Point{n_x}}, dp::DiscreteProcess, i::Int) where n_x
+    SVector{n_x}(dp.grid.nodes[i]...)
+end
+function inode(::Type{Point{n_x}}, dp::DiscreteProcess, i::Int, j::Int) where n_x
+    SVector{n_x, Float64}(dp.integration_nodes[i][j,:]...)
+end
+
+
 function Product(gdp1::DiscretizedProcess, gdp2::DiscretizedProcess)
   In = [ gridmake(gdp1.integration_nodes[i], gdp2.integration_nodes[j] ) for i = 1:n_nodes(gdp1)  for j = 1:n_nodes(gdp2) ]
   Iw =[kron(gdp1.integration_weights[i], gdp2.integration_weights[j] ) for i = 1:n_nodes(gdp1)  for j = 1:n_nodes(gdp2) ]

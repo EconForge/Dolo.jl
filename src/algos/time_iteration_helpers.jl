@@ -122,15 +122,21 @@ struct Euler{n_s, n_x, Gx, Ge}
 
 end
 
-function (F::Euler)(x0::MSM, x1::MSM; set_future=true, ignore_constraints=false) 
+function (F::Euler)(x0::MSM, x1::MSM; set_future=true, ignore_constraints=false, out=nothing) 
 
-    res = copy(x0)
+    if out === nothing
+        rr = copy(x0)
+    else
+        rr = out
+    end
 
     if set_future
         set_values!(F.dr, x1)
     end
     
-    rr =   euler_residuals(F.model,F.s0,x0,F.dr,F.dprocess,F.p;keep_J_S=false)
+    # euler_residuals(F.model,F.s0,x0,F.dr,F.dprocess,F.p;keep_J_S=false, out=rr)
+    euler_residuals(F.model,F.s0,x0,F.dr,F.dprocess,F.p;keep_J_S=false, out=rr)
+    # euler_residuals_noalloc(F.model,F.s0,x0,F.dr,F.dprocess,F.p;keep_J_S=false, out=rr)
 
     if (F.bounds!==nothing) & !ignore_constraints
         lb, ub = F.bounds
@@ -219,19 +225,38 @@ norm(a::MSM) = maximum( u-> maximum(abs,u), a.data )
 maxabs(a::MSM) = maximum( u-> maximum(abs,u), a.data )
 
 
-function df_A(F, z0, z1; set_future=false)
+function df_A(F, z0, z1; set_future=false, inplace=false)
 
-    # fun  = z->F(z, z1; set_future=false, ignore_constraints=true)
-    fun  = z->F(z, z1; set_future=false, ignore_constraints=true)
+    if ! inplace
+        fun  = z->F(z, z1; set_future=false, ignore_constraints=true)
+        f0,J = Dolo.DiffFun(fun, z0, 1e-8)
 
-    rr, J = Dolo.DiffFun(fun, z0, 1e-8)
+    else
+        n_x = length(z0.data[1])
 
+        f0 = z0*0
+        fi = z0*0
+        xi = z0*0
+
+        N = length(xi.data)
+        cata = zeros(SMatrix{n_x, n_x, Float64, n_x*n_x}, N)
+        J = MSM(cata, f0.sizes)
+        out = f0, fi, xi, J
+
+        fun!  = (r,z)->F(z, z1; set_future=false, ignore_constraints=true, out=r)
+
+        f00, J0 = Dolo.DiffFun!(fun!, z0, 1e-8, out)
+
+        @assert f00 === f0
+        @assert J === J0
+
+    end
     if (F.bounds!==nothing)
         lb, ub = F.bounds
-        for n=1:length(rr.data)
-            z,z_f,z_x  = PhiPhi(rr.data[n], z0.data[n], lb.data[n], ub.data[n])
+        for n=1:length(f0.data)
+            z,z_f,z_x  = PhiPhi(f0.data[n], z0.data[n], lb.data[n], ub.data[n])
             ### TODO: check PhiPhi and avoid -1 multiplication
-            rr.data[n] = z
+            f0.data[n] = z
             J.data[n]= z_f*J.data[n] + z_x
         end
     end

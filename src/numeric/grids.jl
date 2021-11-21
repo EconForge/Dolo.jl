@@ -105,6 +105,10 @@ struct UCGrid{d} <: Grid{d}
     nodes::ListOfPoints{d}
 end
 
+Base.iterate(ucg::UCGrid{d}, args...) where d = iterate(ucg.nodes, args...)
+Base.length(ucg::UCGrid{d}) where d = length(ucg.nodes)
+Base.eltype(ucg::UCGrid{d}) where d = SVector{n_x, Float64}
+
 ndims(grid::UCGrid{d}) where d = d
 
 function (::Type{<:UCGrid})(min::SVector{d,Float64}, max::SVector{d,Float64}, n::SVector{d,Int64}) where d

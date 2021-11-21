@@ -262,9 +262,6 @@ function time_iteration(model;
 
         trace && push!(ti_trace.trace, z1)
 
-
-
-
         err_η = norm(δ)
         gain = err_η / err_η_0
         err_η_0 = err_η
