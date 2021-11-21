@@ -67,6 +67,8 @@ function DiffFun!(fun!, x0::MSM{Point{n_x}}, epsilon=1e-6, out=nothing) where n_
   f0,fi,xi,JMat = out
   # xi = deepcopy(x0)
 
+  xi.data .= x0.data
+
   N = length(x0.data)
 
   fun!(f0, x0)

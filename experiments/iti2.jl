@@ -3,19 +3,22 @@ using Dolo
 model = yaml_import("examples/models/rbc.yaml")
 
 
-# sol = Dolo.improved_time_iteration(model)
-@time res = Dolo.time_iteration(model, ignore_constraints=true, verbose=false);
+sol = Dolo.improved_time_iteration(model; ignore_constraints=false)
+
+
+
+@time res = Dolo.time_iteration(model, ignore_constraints=false, verbose=false);
 
 
 F = Dolo.Euler(model)
 
 
-J = Dolo.df_A(F, F.x0, F.x0)
+@time F(F.x0, F.x0);
 
-Jii = Dolo.df_A(F, F.x0, F.x0, inplace=true)
+@time J = Dolo.df_A(F, F.x0, F.x0, inplace=false);
+@time J = Dolo.df_A(F, F.x0, F.x0, inplace=true);
 
-z0 = F.x0
-
+Jii = Dolo.df_A(F, F.x0, F.x0, inplace=true);
 
 f0 = z0*0
 fi = z0*0
@@ -40,4 +43,8 @@ fun!(f0, F.x0)
 fp = f0*0
 
 
-J = Dolo.DiffFun!(fun!, F.x0, 1e-8, out)
+fp, Jp = Dolo.DiffFun!(fun!, F.x0, 1e-8, out);
+
+fp.data[1]
+
+F(F.x0, F.x0).data[1]

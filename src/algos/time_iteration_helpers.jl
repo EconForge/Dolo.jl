@@ -227,7 +227,11 @@ maxabs(a::MSM) = maximum( u-> maximum(abs,u), a.data )
 
 function df_A(F, z0, z1; set_future=false, inplace=false)
 
-    if ! inplace
+    if set_future
+        set_values!(F.dr, z1)
+    end
+
+    if !inplace
         fun  = z->F(z, z1; set_future=false, ignore_constraints=true)
         f0,J = Dolo.DiffFun(fun, z0, 1e-8)
 
@@ -281,7 +285,6 @@ function df_B(F, z0, z1; set_future=false)
     if (F.bounds!==nothing)
         lb, ub = F.bounds
         PhiPhi!(rr.views, z1.views, lb.views, ub.views, J_ij)
-
     end
 
     L = LinearThing(J_ij, S_ij, ddr_filt)
