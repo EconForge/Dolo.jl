@@ -215,7 +215,7 @@ version = "0.8.6"
 
 [[Dolang]]
 deps = ["DataStructures", "Lerche", "MacroTools", "Printf", "REPL", "SparseArrays", "StaticArrays", "SymEngine", "YAML"]
-git-tree-sha1 = "0cb6abc85f6f588757435fa51a300dbcba05b84d"
+path = "/home/pablo/.julia/dev/Dolang"
 uuid = "e5c7262c-e9d2-5620-ad8e-1af14eb8a8e3"
 version = "3.2.1"
 

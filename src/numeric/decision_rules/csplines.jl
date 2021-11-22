@@ -11,7 +11,7 @@ end
 #####
 
 function CubicDR(exo_grid::EmptyGrid, endo_grid::UCGrid{d}, i::Union{Val{nx}, Type{Val{nx}}}) where d where nx
-    dims = endo_grid.n+2
+    dims = endo_grid.n .+ 2
     c = [zeros(Value{nx},dims...)]
     CubicDR{EmptyGrid, UCGrid{d}, nx, d}(exo_grid, endo_grid, c)
 end
@@ -60,7 +60,7 @@ end
 # end
 
 function CubicDR(exo_grid::UCGrid{d1}, endo_grid::UCGrid{d2}, i::Union{Val{nx}, Type{Val{nx}}}) where d1 where d2 where nx
-    dims = cat(exo_grid.n+2, endo_grid.n+2; dims=1)
+    dims = cat(exo_grid.n .+ 2, endo_grid.n .+ 2; dims=1)
     c = [zeros(Value{nx},dims...)]
     CubicDR{UCGrid{d1}, UCGrid{d2}, nx, d1+d2}(exo_grid, endo_grid, c)
 end

@@ -2,18 +2,17 @@ using Dolo
 
 model = yaml_import("examples/models/consumption_savings_iid.yaml")
 
-
-model = yaml_import("examples/models/rbc_mc.yaml")
-
+# model = yaml_import("examples/models/rbc.yaml")
 
 
-sol = Dolo.time_iteration(model, verbose=true, ignore_constraints=false, maxit=5);
+
+@time sol = Dolo.time_iteration(model, verbose=true, ignore_constraints=false, maxit=5);
 
 
 simulate(model, sol.dr)
 
 
-sol = Dolo.improved_time_iteration(model; verbose=true, ignore_constraints=false)
+@time sol = Dolo.improved_time_iteration(model; verbose=true, ignore_constraints=false, dr0=sol.dr)
 
 
 using SimplePlots
