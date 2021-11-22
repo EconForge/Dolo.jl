@@ -1,6 +1,6 @@
 name = "Dolo"
 uuid = "9d24351c-2990-5e1b-a277-04c4b809c898"
-version = "0.4.3"
+version = "0.4.4"
 
 [deps]
 AxisArrays = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
