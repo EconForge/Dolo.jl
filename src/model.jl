@@ -177,7 +177,7 @@ function get_exogenous(model::AModel)
     processes = []
     for k in keys(exo_dict)
         v = exo_dict[k]
-        p = Dolang.eval_node(v, calibration, minilang, FromGreek())
+        p = Dolang.eval_node(v, calibration, minilang, ToGreek())
         push!(processes, p)
     end
     return ProductProcess(processes...)
@@ -322,7 +322,7 @@ function get_domain(model::Model)::AbstractDomain
         calib = model.calibration.flat
         min = [Dolang.eval_node(domain[(k)][1], calib) for k in states]
         max = [Dolang.eval_node(domain[(k)][2], calib) for k in states]
-        return Domain(states, min, max)
+        return CartesianDomain(states, min, max)
 
     else
         calib = model.calibration.flat
@@ -334,7 +334,7 @@ function get_domain(model::Model)::AbstractDomain
         vals = [Dolang.eval_node(domain[k], calib) for k in kk]
         min = [e[1] for e in vals]
         max = [e[2] for e in vals]
-        return Domain(states, min, max)
+        return CartesianDomain(states, min, max)
     end
 
 end
@@ -473,7 +473,7 @@ function get_factory(model::Model, eq_type::String)
 
         # definitions: we should remove definitions depending on controls
         # definitions = OrderedDict{Symbol, SymExpr}([ (Dolang.stringify(k), v) for (k,v) in defs_0] )
-        definitions = Dict{Symbol, SymExpr}()
+        definitions = OrderedDict{Symbol, SymExpr}()
         ff_lb = FunctionFactory(equations_lb, arguments_bounds, definitions, :controls_lb)
         ff_ub = FunctionFactory(equations_ub, arguments_bounds, definitions, :controls_ub)
 
@@ -511,49 +511,55 @@ function get_options(model::AModel; options=Dict())
     end
 end
 
-using Dolo: CartesianGrid
+# using Dolo: CartesianGrid
 
-function get_grid(model::AModel; options=Dict())
+function get_discretization_options(model::AModel)
 
     domain = get_domain(model)
     d = length(domain.states)
 
     c = model.calibration.flat
 
-    if ("options" in keys(model.data)) && ( "grid" in keys(model.data["options"]) )
-
-        gopt = model.data["options"]["grid"]
-        if gopt.tag == "!Cartesian"
-            if "n" in keys(gopt)
-                orders = Dolang.eval_node(gopt[:n], c)
-            elseif "orders" in keys(gopt)
-                orders = Dolang.eval_node(gopt[:orders], c)
-            else
-                orders = [20 for i=1:d]
-            end
-            grid = CartesianGrid{d}(domain.min, domain.max, orders)
-            if length(orders)!=length(model.calibration[:states])
-                msg = string("Check the dimension of the matrix given in the yaml file, section: options-grid-orders. ",
-                             "Expected to be of dimension $([length(model.calibration[:states])])")
-                error(msg)
-            end
-        elseif gopt.tag == "Smolyak"
-            mu = gopt[:mu]
-            grid = SmolyakGrid{d}(domain.min, domain.max, mu)
-        elseif gopt.tag == "Random"
-            n = gopt[:N]
-            grid = RandomGrid{d}(domain.min, domain.max, n)
-        else
-            error("Unknown grid type.")
-        end  
-
+    if ("options" in keys(model.data)) && ( "discretization" in keys(model.data["options"]) )
+        gopt = model.data["options"]["discretization"]
+        d = Dolang.eval_node(gopt, c)
+        if !(:exo in keys(d))
+            d[:exo] = Dict()
+        end
+        if !(:exo in keys(d))
+            d[:exo] = Dict()
+        end
+        return d
     else
-
-        # default grid
-        n = [20 for i=1:d]
-        grid = CartesianGrid{d}(domain.min, domain.max, n)
-
+        return Dict(
+            :endo=>Dict(),
+            :exo=>Dict()
+        )
     end
 
-    return grid
+
+        
 end
+
+
+function discretize(model; kwargs...)
+
+    opts = get_discretization_options(model; kwargs...)
+    
+    opts_endo = merge(opts[:endo], get(kwargs, :endo, Dict()) )
+    opts_exo = merge(opts[:exo], get(kwargs, :exo, Dict()) )
+
+    grid_endo = Dolo.discretize(model.domain;  opts_endo...) 
+    dprocess = Dolo.discretize(model.exogenous;  opts_exo...) 
+    grid_exo = dprocess.grid
+    grid = ProductGrid(grid_exo, grid_endo)
+    return grid, dprocess
+
+
+    # dprocess = discretize(model.exogenous)
+#     return ProductGrid(dprocess.grid, grid), dprocess
+    # exo_grid = dprocess.
+    # return ProductGrid(grid, exo_grid)
+    # return dprocess.grid, grid, dprocess
+end
+

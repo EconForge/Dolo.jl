@@ -1,4 +1,15 @@
+abstract type AbstractGrid end
+
 abstract type Grid{d} end
+
+struct ProductGrid{T,S}
+    exo::T
+    endo::S
+end
+
+
+
+×(grid1, grid2) = ProductGrid(grid1, grid2)
 #
 
 # # backward backward compatibility
@@ -8,9 +19,13 @@ nodes(::Type{<:Matrix}, grid::Grid) = copy(from_LOP(nodes(grid)))
 node(::Type{<:Union{Point,Point{d}}}, grid::Grid{d}, i::Int) where d = node(grid,i)
 node(::Type{<:Vector}, grid::Grid, i::Int) = Vector(node(grid,i))
 
-
-
 import Base
+
+
+struct PGrid{T1, T2}
+    exo::T1
+    endo::T2
+end
 
 Base.ndims(grid::Grid{d}) where d = d
 
@@ -26,6 +41,10 @@ end
 nodes(grid::EmptyGrid) = nothing
 n_nodes(grid::EmptyGrid) = 0
 node(grid::EmptyGrid, i::Int) = nothing # fail if i!=1 ?
+function node(::Point{d}, grid::EmptyGrid, i::Int) where d
+    return fill(NaN, SVector{d, Float64})
+end
+
 
 ##########################
 # Grid made of one point #
@@ -63,7 +82,8 @@ end
 nodes(grid::UnstructuredGrid) = grid.nodes
 n_nodes(grid::UnstructuredGrid) = length(grid.nodes)
 node(grid::UnstructuredGrid, i::Int) = grid.nodes[i] # fail if i!=1 ?
-node(::Type{<:Point}, grid::UnstructuredGrid, i::Int) = node(grid,i)
+
+node(::Type{d}, grid::UnstructuredGrid, i::Int) where d = node(grid,i)
 
 function Product(a::UnstructuredGrid{d1}, b::UnstructuredGrid{d2}) where d1 where d2
     A = [Base.product(a.nodes, b.nodes)...]
@@ -74,7 +94,7 @@ function Product(a::UnstructuredGrid{d1}, b::UnstructuredGrid{d2}) where d1 wher
 end
 
 #################
-# CartesianGrid #
+# UCGrid #
 #################
 
 function mlinspace(min, max, n)
@@ -83,33 +103,40 @@ function mlinspace(min, max, n)
     return Base.product(nodes...)
 end
 
-struct CartesianGrid{d} <: Grid{d}
+struct UCGrid{d} <: Grid{d}
     min::Point{d}
     max::Point{d}
     n::SVector{d,Int}
     nodes::ListOfPoints{d}
 end
 
-function (::Type{<:CartesianGrid})(min::SVector{d,Float64}, max::SVector{d,Float64}, n::SVector{d,Int64}) where d
+Base.iterate(ucg::UCGrid{d}, args...) where d = iterate(ucg.nodes, args...)
+Base.length(ucg::UCGrid{d}) where d = length(ucg.nodes)
+Base.eltype(ucg::UCGrid{d}) where d = SVector{n_x, Float64}
+
+ndims(grid::UCGrid{d}) where d = d
+
+function (::Type{<:UCGrid})(min::SVector{d,Float64}, max::SVector{d,Float64}, n::SVector{d,Int64}) where d
     A = [mlinspace(min, max, n)...]
     N = prod(n)
     mm = reshape(reinterpret(Point{d},vec(A)),(N,))
-    return CartesianGrid{d}(min, max, n, mm)
+    return UCGrid{d}(min, max, n, mm)
 end
 
-(::Type{<:CartesianGrid})(min::Vector{Float64},max::Vector{Float64},n::Vector{Int64}) = CartesianGrid(SVector(min...), SVector(max...), SVector(n...))
+(::Type{<:UCGrid})(min::Vector{Float64},max::Vector{Float64},n::Vector{Int64}) = UCGrid(SVector(min...), SVector(max...), SVector(n...))
+(::Type{<:UCGrid})(min::Vector{Float64},max::Vector{Float64},n::Int64) = UCGrid(min, max, fill(n,length(min)))
 
-scales(grid::CartesianGrid{d}) where d = Tuple{Vararg{Vector{Float64},d}}([range(grid.min[i], grid.max[i];length=grid.n[i]) for i=1:d])
+scales(grid::UCGrid{d}) where d = Tuple{Vararg{Vector{Float64},d}}([range(grid.min[i], grid.max[i];length=grid.n[i]) for i=1:d])
 
-nodes(grid::CartesianGrid{d}) where d = grid.nodes
-n_nodes(grid::CartesianGrid{d}) where d = length(grid.nodes)
-node(grid::CartesianGrid{d}, i::Int) where d = grid.nodes[i]
+nodes(grid::UCGrid{d}) where d = grid.nodes
+n_nodes(grid::UCGrid{d}) where d = length(grid.nodes)
+node(grid::UCGrid{d}, i::Int) where d = grid.nodes[i]
 
-nodes(::Type{<:ListOfPoints}, grid::CartesianGrid{d}) where d  = grid.nodes
-node(::Type{<:Point}, grid::CartesianGrid{d}, i::Int64) where d = node(grid,i)
+nodes(::Type{<:ListOfPoints}, grid::UCGrid{d}) where d  = grid.nodes
+node(::Type{<:Point}, grid::UCGrid{d}, i::Int64) where d = node(grid,i)
 
-function Product(a::CartesianGrid{d1}, b::CartesianGrid{d2}) where d1 where d2
-  return Dolo.CartesianGrid{d1+d2}( [a.min; b.min], [a.max; b.max], [a.n; b.n])
+function Product(a::UCGrid{d1}, b::UCGrid{d2}) where d1 where d2
+  return Dolo.UCGrid{d1+d2}( [a.min; b.min], [a.max; b.max], [a.n; b.n])
 end
 
 
@@ -188,3 +215,50 @@ nodes(::Type{<:ListOfPoints}, grid::RandomGrid) = nodes(grid)
 n_nodes(grid::RandomGrid) = length(grid.nodes)
 
 node(grid::RandomGrid,i::Int) = grid.nodes[i]
+
+
+### Cartesian
+
+struct Cartesian <: AbstractGrid
+    a::Vector{Float64}
+    b::Vector{Float64}
+    orders::Vector{Int}
+end
+
+
+### Domains
+
+
+
+
+abstract type AbstractDomain end
+
+
+struct EmptyDomain <: AbstractDomain 
+    states::Vector{Symbol}
+end
+
+
+
+struct CartesianDomain<: AbstractDomain
+    states
+    min::Vector{Float64}
+    max::Vector{Float64}
+end
+
+const Domain = CartesianDomain
+
+ndims(dom::CartesianDomain) = length(dom.min)
+
+
+function discretize(dom::CartesianDomain; n=Union{Int, Vector{Int}})
+    if typeof(n)<:Int
+        nv = fill(n, ndims(dom))
+    else
+        nv = n
+    end
+    min = dom.min
+    max = dom.max
+    return CartesianGrid(min, max, n)
+    
+end

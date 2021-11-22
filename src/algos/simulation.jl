@@ -293,7 +293,7 @@ function response(model::AbstractModel,  dr::AbstractDecisionRule,
     index_s = something(findfirst(isequal(shock_name), model.symbols[:exogenous]), 0)
     # e1 = zeros(length(model.exogenous.mu))
     e1 = zeros(length(model.calibration[:exogenous]))
-    Impulse = sqrt(diag(model.exogenous.Sigma)[index_s])
+    Impulse = sqrt(diag(model.exogenous.Σ)[index_s])
     e1[index_s] = Impulse
     response(model, dr; s0=s0, e1=e1, T=T)
 end
@@ -351,7 +351,7 @@ function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
     svec = vcat([e' for e in fill(s0, n_steps)]...)
     svec[:, index] = Svalues
 
-    if isa(dr, AbstractDecisionRule{UnstructuredGrid,CartesianGrid})
+    if isa(dr, AbstractDecisionRule{UnstructuredGrid,UCGrid})
         model_sym = :mc_process
     else
         xvec = dr(m0, svec)
@@ -389,7 +389,7 @@ end
 function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
                   s0::AbstractVector; n_steps=100)
 
-    if isa(dr, AbstractDecisionRule{UnstructuredGrid,CartesianGrid})
+    if isa(dr, AbstractDecisionRule{UnstructuredGrid,UCGrid})
         m0 = 1
     else
         m0 = model.calibration[:exogenous]

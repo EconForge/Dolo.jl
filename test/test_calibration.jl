@@ -26,7 +26,7 @@
     @test abs(k0-6.37024)<1e-4
 
     # can we change many parameters at the same time?
-    Dolo.set_calibration!(model, Dict(:beta=>0.97, :i=>:(delta*k-0.01)))
+    Dolo.set_calibration!(model; beta=0.97, i=:(delta*k-0.01))
     rk = model.calibration.flat[:rk]
     beta = model.calibration.flat[:beta]
     delta = model.calibration.flat[:delta]
@@ -37,7 +37,7 @@
     @test i0==delta*k0-0.01
 
     # put everything back to original values
-    set_calibration!(model, beta=0.99, i=:(delta*k))
+    set_calibration!(model; beta=0.99, i=:(delta*k))
     # check one value
     beta = model.calibration.flat[:beta]
     delta = model.calibration.flat[:delta]

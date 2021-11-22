@@ -6,6 +6,7 @@ function add_epsilon!(x::ListOfPoints{d}, i, epsilon) where d
 end
 
 function DiffFun(fun, x0::Vector{ListOfPoints{n_x}}, epsilon=1e-6) where n_x
+
     xi = deepcopy(x0)
     N = length(x0[1])
     n_m = length(x0)
@@ -23,8 +24,81 @@ function DiffFun(fun, x0::Vector{ListOfPoints{n_x}}, epsilon=1e-6) where n_x
       end
     end
     J = [reshape(reinterpret(SMatrix{n_x,n_x,Float64,n_x^2},vec(JMat[i])),(N,)) for i=1:n_m]
+
     return (r0,J) #::Tuple{Vector{ListOfPoints{n_x}},Vector{Vector{SMatrix{n_x,n_x,Float64,n_x*n_x}}}}
+
 end
+
+
+function DiffFun(fun, x0::MSM{Point{n_x}}, epsilon=1e-6) where n_x
+
+  xi = deepcopy(x0)
+
+  N = length(x0.data)
+
+  r0 = fun(x0)::MSM{Point{n_x}}
+
+  zz = zeros( SMatrix{n_x, n_x, Float64, n_x*n_x}, N)
+
+  JMat = MSM(zz, x0.sizes)::MSM{SMatrix{n_x,n_x,Float64,n_x*n_x}}
+  
+  Jarray = reshape(reinterpret(Float64, JMat.data), (n_x, n_x, N))
+
+  for i_x=1:n_x
+
+    add_epsilon!(xi.data, i_x, epsilon)
+
+    fi = fun(xi)::MSM{Point{n_x}}
+    di = (fi-r0)/epsilon
+
+    Jarray[:,i_x,:] = reshape(reinterpret(Float64, di.data), (n_x, N))
+
+    add_epsilon!(xi.data, i_x, -epsilon)
+
+  end
+
+  return r0, JMat
+
+end
+
+function DiffFun!(fun!, x0::MSM{Point{n_x}}, epsilon=1e-6, out=nothing) where n_x
+
+
+  f0,fi,xi,JMat = out
+  # xi = deepcopy(x0)
+
+  xi.data .= x0.data
+
+  N = length(x0.data)
+
+  fun!(f0, x0)
+  
+  Jarray = reshape(reinterpret(Float64, JMat.data), (n_x, n_x, N))
+
+  for i_x=1:n_x
+
+    add_epsilon!(xi.data, i_x, epsilon)
+
+    fun!(fi, xi)
+    di = (fi-f0)/epsilon
+
+    Jarray[:,i_x,:] = reshape(reinterpret(Float64, di.data), (n_x, N))
+
+    add_epsilon!(xi.data, i_x, -epsilon)
+
+  end
+
+  return f0, JMat
+
+end
+#     for i_m=1:n_m
+#       JMat[:,i_x,:] = reshape(reinterpret(Float64, vec(di[i_m])), (n_x, N))
+#       add_epsilon!(xi[i_m], i_x, -epsilon)
+#     end
+#   end
+
+
+
 
 struct NewtonResult
     solution
@@ -90,4 +164,68 @@ function newton(fun::Function, x0::Vector{ListOfPoints{n_x}}, a::Union{Vector{Li
         errors
     )
     return res
+end
+
+# TODO: cleanup derivative calculations
+
+function newton(fun::Function, x0::MSM{Point{n_x}}; diff=true, maxit=10, verbose=false, n_bsteps=5, lam_bsteps=0.5) where n_x
+
+  steps = (lam_bsteps).^collect(0:n_bsteps)
+
+  n_m = length(x0)
+
+  # N = length(x0[1])
+  x = x0
+  err_e_0 = 10.0
+  tol_e = 1e-8
+  err_η = 10.0
+  tol_η = -1.0
+  it=0
+  errors = Float64[]
+
+  while (it<maxit) && (err_e_0>tol_e)
+
+      it += 1
+
+      if diff
+        R_i, D_i = DiffFun(fun, x) # ::Tuple{Vector{ListOfPoints{n_x}},Vector{Vector{SMatrix{n_x,n_x,Float64,n_x*n_x}}}}
+      else
+        R_i, D_i = fun(x)
+      end
+
+      err_e_0 = maxabs(R_i)
+      push!(errors, err_e_0)
+      err_e_1 = err_e_0
+      dx = D_i \ R_i
+
+      err_η = maxabs(dx)
+      i_bckstps = 0
+      new_x = x
+      while err_e_1>=err_e_0 && i_bckstps<length(steps)
+          i_bckstps += 1
+          new_x = x-dx*steps[i_bckstps]
+          if diff
+          new_res = fun(new_x)::MSM{Point{n_x}} # no diff
+          else
+            new_res = fun(new_x)[1]
+          end
+          err_e_1 = maxabs(new_res)
+      end
+      x = new_x::MSM{Point{n_x}}
+      if verbose
+          println(i_bckstps, " : ", err_η, " : ", err_e_1, )
+      end
+  end
+
+  res = NewtonResult(
+      x,
+      it,
+      maxit,
+      err_e_0,
+      tol_e,
+      err_η,
+      tol_η,
+      errors
+  )
+  return res
 end

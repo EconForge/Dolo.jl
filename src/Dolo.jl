@@ -1,4 +1,4 @@
-__precompile__(true)
+__precompile__(false)
 
 module Dolo
 
@@ -25,7 +25,7 @@ const QE = QuantEcon
 # Dolang
 using Dolang
 using Dolang: _to_expr, inf_to_Inf, solution_order, solve_triangular_system, _get_oorders
-import Dolang: Language, add_language_elements!, FromGreek
+import Dolang: Language, add_language_elements!, ToGreek
 
 # Numerical Tools
 using MacroTools  # used for eval_with
@@ -48,7 +48,7 @@ using IterativeSolvers
 import Base.size
 import Base.eltype
 import Base.*
-
+using Formatting
 using LinearAlgebra
 
 
@@ -113,6 +113,14 @@ import .splines: eval_UC_spline, eval_UC_spline!, prefilter!
 
 include("util.jl")
 
+struct MSM{T}
+    data::Vector{T}
+    sizes::Vector{Int64}
+    views::Vector{
+        SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int64}}, true}
+    }
+end
+
 include("numeric/complementarities.jl")
 include("numeric/newton.jl")
 include("numeric/grids.jl")
@@ -137,6 +145,9 @@ include("minilang.jl")
 include("model.jl")
 # include("printing.jl")
 
+include("numeric/msm.jl")
+
+
 include("numeric/decision_rules/core.jl")
 include("numeric/decision_rules/csplines.jl")
 include("numeric/decision_rules/constructor.jl")
@@ -145,8 +156,9 @@ include("numeric/decision_rules/smolyak.jl")
 include("numeric/decision_rules/complete.jl")
 
 include("algos/steady_state.jl")
+include("algos/improved_time_iteration_helpers.jl")
+include("algos/time_iteration_helpers.jl")
 include("algos/time_iteration.jl")
-include("algos/improved_time_iteration.jl")
 include("algos/time_iteration_direct.jl")
 include("algos/value_iteration.jl")
 include("algos/perturbation.jl")

@@ -37,7 +37,7 @@ function get_ss_derivatives(model; method=:symbolic)
 end
 
 perturb(p::IIDExogenous) = (zeros(0), zeros(0, 0))
-perturb(p::VAR1) = (p.mu, p.R)
+perturb(p::VAR1) = (p.μ, p.R)
 
 mutable struct PerturbationResult
     dr::BiTaylorExpansion
