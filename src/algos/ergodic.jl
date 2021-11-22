@@ -161,7 +161,7 @@ function trembling_hand!(A::AbstractArray{Float64,3}, x, w)
     end
 end
 
-function my_trembling_hand_v1!(A, x::Vector{Point{d}}, w::Float64) where d
+function my_trembling_hand_v1!(A::AbstractArray{Float64,2}, x::Vector{Point{d}}, w::Float64) where d
 
     if d==1
         N,n0 = size(A)
@@ -177,9 +177,8 @@ function my_trembling_hand_v1!(A, x::Vector{Point{d}}, w::Float64) where d
             A[n, q0_]   += (1-λ0)*w
             A[n, q0_+1] += λ0*w
         end
-    end
 
-    if d==2
+    elseif d==2
         N,n0,n1 = size(A)
         δ0 = 1.0./(n0-1.0)
         δ1 = 1.0./(n1-1.0)
@@ -205,6 +204,57 @@ function my_trembling_hand_v1!(A, x::Vector{Point{d}}, w::Float64) where d
             A[n, q0_, q1_+1] += (1-λ0)*λ1*w
             A[n, q0_+1, q1_+1] += λ0*λ1*w
         end
+
+    else
+        print("Error : grid's dimension limited to 2")
     end
 
 end
+
+function my_trembling_hand_v2!(A, x::Vector{Point{d}}, w::Float64) where d
+ 
+
+    if d==1
+        N,n0 = size(A)
+        δ0 = 1.0./(n0-1.0)
+        for n in 1:N
+            x0 = x[n][1]
+            x0 = min.(max.(x0, 0.0),1.0)
+            q0 = div.(x0, δ0)
+            q0 = max.(0, q0)
+            q0 = min.(q0, n0-2)
+            λ0 = (x0./δ0-q0) # ∈[0,1[ by construction
+            q0_ = round.(Int,q0) + 1
+            A[n, q0_]   += (1-λ0)*w
+            A[n, q0_+1] += λ0*w
+        end
+
+    elseif d==2
+        N,n0,n1 = size(A)
+        vector_n = SVector{2,Float64}(n0,n1)
+        δ = SVector{2,Float64}(1.0./(n0-1.0), 1.0./(n1-1.0))
+        for n in 1:N
+
+            xn = x[n]
+            xn = min.(max.(xn, 0.0),1.0)
+            qn = div.(xn, δ)
+            qn = max.(0, qn)
+            qn = min.(qn, vector_n.-2)
+            λn = (xn./δ.-qn) # ∈[0,1[ by construction
+            qn_ = round.(Int,qn) + 1
+
+            q0_, q1_ = qn_[1], qn_[2]
+            λ0, λ1  = λn[1], λn[2]
+            A[n, q0_ ,  q1_] += (1-λ0)*(1-λ1)*w
+            A[n, q0_+1, q1_] += λ0*(1-λ1)*w
+            A[n, q0_, q1_+1] += (1-λ0)*λ1*w
+            A[n, q0_+1, q1_+1] += λ0*λ1*w
+        end
+    
+    else 
+        print("Error : grid's dimension limited to 2")
+    end
+
+end
+
+
