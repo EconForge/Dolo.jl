@@ -321,7 +321,7 @@ function improved_time_iteration(model;
 
     log = IterationLog(;
         it=("It",Int),
-        err= ("ϵₙ",Float64),
+        err= ("ϵₙ=|F(xₙ,xₙ)|",Float64),
         sa= ("ηₙ=|xₙ-xₙ₋₁|", Float64),
         time=("Time", Float64)
     )

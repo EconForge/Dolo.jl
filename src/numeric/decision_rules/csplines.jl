@@ -122,7 +122,7 @@ end
 ####
 
 function CubicDR(exo_grid::UnstructuredGrid{d1}, endo_grid::UCGrid{d2}, i::Union{Val{nx}, Type{Val{nx}}}) where d1 where d2 where nx
-    c = [zeros(Value{nx},(endo_grid.n+2)...) for _=1:n_nodes(exo_grid)]
+    c = [zeros(Value{nx},(endo_grid.n.+2)...) for _=1:n_nodes(exo_grid)]
     CubicDR{UnstructuredGrid{d1}, UCGrid{d2}, nx, d2}(exo_grid, endo_grid, c)
 end
 

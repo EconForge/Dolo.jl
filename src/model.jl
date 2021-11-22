@@ -473,7 +473,7 @@ function get_factory(model::Model, eq_type::String)
 
         # definitions: we should remove definitions depending on controls
         # definitions = OrderedDict{Symbol, SymExpr}([ (Dolang.stringify(k), v) for (k,v) in defs_0] )
-        definitions = Dict{Symbol, SymExpr}()
+        definitions = OrderedDict{Symbol, SymExpr}()
         ff_lb = FunctionFactory(equations_lb, arguments_bounds, definitions, :controls_lb)
         ff_ub = FunctionFactory(equations_ub, arguments_bounds, definitions, :controls_ub)
 
