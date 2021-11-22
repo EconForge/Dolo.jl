@@ -53,10 +53,10 @@ iweight(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_weights[i][j]
 #     SVector(dp.grid.integration_nodes[i][j,:]...)
 # end
 
-function node(::Type{Point{n_x}}, dp::DiscreteProcess, i::Int) where n_x
+function node(::Type{Point{n_x}}, dp::DiscretizedProcess, i::Int) where n_x
     SVector{n_x}(dp.grid.nodes[i]...)
 end
-function inode(::Type{Point{n_x}}, dp::DiscreteProcess, i::Int, j::Int) where n_x
+function inode(::Type{Point{n_x}}, dp::DiscretizedProcess, i::Int, j::Int) where n_x
     SVector{n_x, Float64}(dp.integration_nodes[i][j,:]...)
 end
 
@@ -123,7 +123,10 @@ n_nodes(dp::DiscretizedIIDProcess) = 0
 n_inodes(dp::DiscretizedIIDProcess, i::Int) = size(dp.integration_nodes, 1)
 inode(dp::DiscretizedIIDProcess, i::Int, j::Int) = dp.integration_nodes[j, :]
 iweight(dp::DiscretizedIIDProcess, i::Int, j::Int) = dp.integration_weights[j]
-node(dip::DiscretizedIIDProcess, i) = zeros(n_inodes(dip, 1))
+node(dip::DiscretizedIIDProcess, i::Int) = fill(NaN, n_inodes(dip, 1))
+
+node(::Type{Point{d}}, dip::DiscretizedIIDProcess, i::Int) where d = fill(NaN, SVector{d,Float64})
+inode(::Type{Point{d}}, dip::DiscretizedIIDProcess, i::Int, j::Int) where d = SVector{d}(dip.integration_nodes[j, :]...)
 
 # Normal law
 

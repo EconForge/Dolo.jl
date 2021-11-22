@@ -1,114 +1,59 @@
-function euler_residuals(model, s::ListOfPoints, x::MSM{Point{n_x}}, dr, dprocess::Dolo.DiscretizedProcess{Dolo.UCGrid{n_m}}, parms::SVector; keep_J_S=false, out=nothing) where n_x where n_m#, jres=nothing, S_ij=nothing)
-    #
-    # if set_dr ==true
-    #   set_values!(dr,x)
-    # end
-    if out === nothing
-        res = zeros_like(x)::MSM{Point{n_x}}
-    else
-        res = out
-    end
 
-    res.data .*= 0.0 # just to be on the safe side...
+
+# function euler_residuals_noalloc(model, s::ListOfPoints, x::MSM{Point{n_x}}, dr, dprocess, parms::SVector; keep_J_S=false, out=nothing) where n_x #, jres=nothing, S_ij=nothing)
+#     #
+#     # if set_dr ==true
+#     #   set_values!(dr,x)
+#     # end
+#     if out === nothing
+#         res = zeros_like(x)::MSM{Point{n_x}}
+#     else
+#         res = out
+#     end
+
+#     res.data .*= 0.0
+
+#     N_s = length(s) # Number of gris points for endo_var
+#     n_s = length(s[1]) # Number of states
+
+#     n_ms = length(x.views)  # number of exo states today
+#     n_mst = n_inodes(dprocess,1)  # number of exo states tomorrow
+#     d = length(s[1])
+
+#     # TODO: allocate properly...
     
-    N_s = length(s) # Number of gris points for endo_var
-    n_s = length(s[1]) # Number of states
-
-    n_ms = length(x.views)  # number of exo states today
-    n_mst = n_inodes(dprocess,1)  # number of exo states tomorrow
-    d = length(s[1])
-
-    # TODO: allocate properly...
-    
-    if keep_J_S
-        jres = zeros((n_ms,n_mst,N_s,n_x,n_x))
-        fut_S = zeros((n_ms,n_mst,N_s,n_s))
-        J_ij = Vector{SMatrix{n_x,n_x,Float64,n_x*n_x}}[to_LOJ(jres[i,j,:,:,:]) for i=1:size(jres,1), j=1:size(jres,2)]
-        S_ij = Vector{Point{d}}[to_LOP(fut_S[i,j,:,:]) for i=1:size(fut_S,1), j=1:size(fut_S,2)]
-    end
-
-    for i_ms in 1:n_ms
-        m = node(Point{n_m}, dprocess,i_ms)
-        xx = x.views[i_ms]
-        for I_ms in 1:n_mst
-            M = inode(Point{n_m}, dprocess, i_ms, I_ms)
-            w = iweight(dprocess, i_ms, I_ms)
-            S = transition(model, m, s, xx, M, parms)
-            X = dr(i_ms, I_ms, S)
-            if keep_J_S==true
-                rr, rr_XM = arbitrage(model,Val{(0,6)},m,s,xx,M,S,X,parms)
-                J_ij[i_ms,I_ms][:] = w*rr_XM
-                S_ij[i_ms,I_ms][:] = S
-                res.views[i_ms][:] += w*rr
-            else
-                rr = arbitrage(model, m, s, xx, M, S, X, parms)
-                res.views[i_ms][:] .+= w*rr
-            end
-        end
-    end
+#     # if keep_J_S
+#     #     jres = zeros((n_ms,n_mst,N_s,n_x,n_x))
+#     #     fut_S = zeros((n_ms,n_mst,N_s,n_s))
+#     #     J_ij = Vector{SMatrix{n_x,n_x,Float64,n_x*n_x}}[to_LOJ(jres[i,j,:,:,:]) for i=1:size(jres,1), j=1:size(jres,2)]
+#     #     S_ij = Vector{Point{d}}[to_LOP(fut_S[i,j,:,:]) for i=1:size(fut_S,1), j=1:size(fut_S,2)]
+#     # end
 
 
-    if keep_J_S
-        return res,J_ij,S_ij
-    else
-        return res
-    end
-end
-
-function euler_residuals_noalloc(model, s::ListOfPoints, x::MSM{Point{n_x}}, dr, dprocess, parms::SVector; keep_J_S=false, out=nothing) where n_x #, jres=nothing, S_ij=nothing)
-    #
-    # if set_dr ==true
-    #   set_values!(dr,x)
-    # end
-    if out === nothing
-        res = zeros_like(x)::MSM{Point{n_x}}
-    else
-        res = out
-    end
-
-    res.data .*= 0.0
-
-    N_s = length(s) # Number of gris points for endo_var
-    n_s = length(s[1]) # Number of states
-
-    n_ms = length(x.views)  # number of exo states today
-    n_mst = n_inodes(dprocess,1)  # number of exo states tomorrow
-    d = length(s[1])
-
-    # TODO: allocate properly...
-    
-    # if keep_J_S
-    #     jres = zeros((n_ms,n_mst,N_s,n_x,n_x))
-    #     fut_S = zeros((n_ms,n_mst,N_s,n_s))
-    #     J_ij = Vector{SMatrix{n_x,n_x,Float64,n_x*n_x}}[to_LOJ(jres[i,j,:,:,:]) for i=1:size(jres,1), j=1:size(jres,2)]
-    #     S_ij = Vector{Point{d}}[to_LOP(fut_S[i,j,:,:]) for i=1:size(fut_S,1), j=1:size(fut_S,2)]
-    # end
+#     # xx = x.views[1]
+#     for i_ms in 1:n_ms
+#         m = node(Point, dprocess,i_ms)
+#         for I_ms in 1:n_mst
+#             M = inode(Point, dprocess, i_ms, I_ms)
+#             w = iweight(dprocess, i_ms, I_ms)
+#             for n=1:N_s
+#                 s_n = s[n]
+#                 x_n = dr(i_ms, s_n)
+#                 S_n = transition(model, m, s_n, x_n, M, parms)
+#                 X_n = dr(i_ms, I_ms, S_n)
+#                 r_n = arbitrage(model, m, s_n, x_n, M,S_n,X_n, parms)
+#                 res.views[i_ms][n] += w*r_n
+#             end
+#         end
+#     end
 
 
-    # xx = x.views[1]
-    for i_ms in 1:n_ms
-        m = node(Point, dprocess,i_ms)
-        for I_ms in 1:n_mst
-            M = inode(Point, dprocess, i_ms, I_ms)
-            w = iweight(dprocess, i_ms, I_ms)
-            for n=1:N_s
-                s_n = s[n]
-                x_n = dr(i_ms, s_n)
-                S_n = transition(model, m, s_n, x_n, M, parms)
-                X_n = dr(i_ms, I_ms, S_n)
-                r_n = arbitrage(model, m, s_n, x_n, M,S_n,X_n, parms)
-                res.views[i_ms][n] += w*r_n
-            end
-        end
-    end
-
-
-    if keep_J_S
-        return res,J_ij,S_ij
-    else
-        return res
-    end
-end
+#     if keep_J_S
+#         return res,J_ij,S_ij
+#     else
+#         return res
+#     end
+# end
 
 ####################################
 # one in place filtering step: M.r #

@@ -217,7 +217,7 @@ function time_iteration(model;
 
     log = IterationLog(
         it = ("n", Int),
-        err =  ("ϵₙ", Float64),
+        err =  ("ϵₙ=|F(xₙ,xₙ)|", Float64),
         sa =  ("ηₙ=|xₙ-xₙ₋₁|", Float64),
         lam = ("λₙ=ηₙ/ηₙ₋₁",Float64),
         elapsed = ("Time", Float64)
@@ -237,14 +237,14 @@ function time_iteration(model;
 
         t1 = time_ns()
 
-        res = F(z0, z0; set_future=true)
+        r0 = F(z0, z0; set_future=true)
 
-        err_ε= norm(res)
+        err_ε= norm(r0)
         if err_ε<tol_ε
             break
         end
 
-        fun = u->F(u, z0; set_future=false,  ignore_constraints=true)
+        fun = u->F(u, z0; set_future=false)
         dfun = u->df_A(F,u, z0; set_future=false)
 
         sol = newton2(
@@ -254,11 +254,6 @@ function time_iteration(model;
 
         z1 = sol
         δ = z1 - z0
-
-        J = df_A(F, z0, z0; set_future=false)
-        δ = J\res
-
-        z1 = z0 - δ
 
         trace && push!(ti_trace.trace, z1)
 
@@ -404,4 +399,27 @@ function improved_time_iteration(model;
     )
         
     res
+end
+
+
+
+function update_guess(F, x0, p0, dp, tol=1e-8, maxit=1000)
+    df = dFdp(F, x0, x0, p0, dp)
+    J = Dolo.df_A(F, x0, x0)
+    L = Dolo.df_B(F, x0, x0)
+    Dolo.prediv!(L, J) 
+    Dolo.mult!(L, -1.0)
+    dπ = -J\df
+    dx = dπ
+    i = 0
+    while i<=maxit
+        i += 1
+        err = Dolo.norm(dπ)
+        if err<tol
+            break
+        end
+        dπ = L*dπ
+        dx += dπ
+    end
+    return dx, i
 end

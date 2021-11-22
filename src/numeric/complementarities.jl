@@ -1,41 +1,30 @@
-# function Phi(u::Float64, v::Float64)
-#     BIG = 10000000
-#     if v>BIG
-#         return (u,1,0)
-#     else
-#         sq = sqrt(u^2+v^2)
-#         p = u+v-sq
-#         J_u = 1 - u/sq
-#         J_v = 1 - v/sq
-#         return (p,J_u,J_v)
-# end
-
-# function Phi(u::Point{d},v::Point{d}) where d
-#     rr = [Phi(u[i], v[i]) for i=1:d]
-#     p = [r[1] for r in rr]
-#     J_u = [r[2] for r in rr]
-#     J_v = [r[3] for r in rr]
-#     return SVector(p...), SDiagonal(J_u...), SDiagonal(J_v...)
-# end
-
-function Phi(u::Point{d},v::Point{d}) where d
+function φmin(u::Point{d},v::Point{d}) where d
     sq = sqrt.(u.^2+v.^2)
-    p = u+v-sq
-    J_u = 1 .- u./sq
-    J_v = 1 .- v./sq
+    p = (u+v-sq)/2
+    J_u = (1 .- u./sq)/2
+    J_v = (1 .- v./sq)/2
+    return p, SDiagonal(J_u), SDiagonal(J_v)
+end
+
+function φmax(u::Point{d},v::Point{d}) where d
+    sq = sqrt.(u.^2+v.^2)
+    p = (u+v+sq)/2
+    J_u = (1 .+ u./sq)/2
+    J_v = (1 .+ v./sq)/2
     return p, SDiagonal(J_u), SDiagonal(J_v)
 end
 
 function PhiPhi(f::Point{d}, x::Point{d}, a::Point{d}, b::Point{d}) where d
-    y, y_f, y_x = Phi(f,x-a)
-    z, z_y, z_x = Phi(-y,b-x)
-    return -z, (z_y*y_f), (z_y*y_x + z_x)
+    y, y_f, y_x = φmin(f,x-a)
+
+    z, z_y, z_x = φmax(y,x-b)
+    return z, (z_y*y_f), (z_y*y_x + z_x)
 end
 
 function PhiPhi0(f::Point{d}, x::Point{d}, a::Point{d}, b::Point{d}) where d
-    y = Phi(f,x-a)[1]
-    z = Phi(-y,b-x)[1]
-    return -z
+    y = φmin(f,x-a)[1]
+    z = φmax(y,x-b)[1]
+    return z
 end
 
 

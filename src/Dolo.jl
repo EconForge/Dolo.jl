@@ -145,6 +145,9 @@ include("minilang.jl")
 include("model.jl")
 # include("printing.jl")
 
+include("numeric/msm.jl")
+
+
 include("numeric/decision_rules/core.jl")
 include("numeric/decision_rules/csplines.jl")
 include("numeric/decision_rules/constructor.jl")

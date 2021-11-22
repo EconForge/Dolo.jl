@@ -41,6 +41,10 @@ end
 nodes(grid::EmptyGrid) = nothing
 n_nodes(grid::EmptyGrid) = 0
 node(grid::EmptyGrid, i::Int) = nothing # fail if i!=1 ?
+function node(::Point{d}, grid::EmptyGrid, i::Int) where d
+    return fill(NaN, SVector{d, Float64})
+end
+
 
 ##########################
 # Grid made of one point #
