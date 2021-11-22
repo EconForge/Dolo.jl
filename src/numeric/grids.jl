@@ -82,7 +82,8 @@ end
 nodes(grid::UnstructuredGrid) = grid.nodes
 n_nodes(grid::UnstructuredGrid) = length(grid.nodes)
 node(grid::UnstructuredGrid, i::Int) = grid.nodes[i] # fail if i!=1 ?
-node(::Type{<:Point}, grid::UnstructuredGrid, i::Int) = node(grid,i)
+
+node(::Type{d}, grid::UnstructuredGrid, i::Int) where d = node(grid,i)
 
 function Product(a::UnstructuredGrid{d1}, b::UnstructuredGrid{d2}) where d1 where d2
     A = [Base.product(a.nodes, b.nodes)...]

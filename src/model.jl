@@ -522,9 +522,14 @@ function get_discretization_options(model::AModel)
 
     if ("options" in keys(model.data)) && ( "discretization" in keys(model.data["options"]) )
         gopt = model.data["options"]["discretization"]
-        return Dolang.eval_node(gopt, c)
-        
-
+        d = Dolang.eval_node(gopt, c)
+        if !(:exo in keys(d))
+            d[:exo] = Dict()
+        end
+        if !(:exo in keys(d))
+            d[:exo] = Dict()
+        end
+        return d
     else
         return Dict(
             :endo=>Dict(),

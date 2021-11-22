@@ -21,8 +21,8 @@ definitions: |
 equations:
 
     arbitrage:
-        - chi*n^eta*c^sigma - w                      | 0.0 <= n <= inf
-        - 1 - beta*(c/c(1))^(sigma)*(1-delta+rk(1))  | 0.0 <= i <= inf
+        - chi*n[t]^eta*c[t]^sigma - w[t]                      | 0 <= n[t] <= inf
+        - 1 - beta*(c[t]/c[t+1])^(sigma)*(1-delta+rk[t+1])  | 0 <= i[t] <= inf
 
 
     transition:
@@ -76,8 +76,9 @@ domain:
 
 exogenous: 
     e_z: !Normal
-        Sigma: sig_z^2
+        Σ: sig_z^2
 
 options:
-    grid: !Cartesian
-        orders: [20, 20]
+    discretization:
+        endo:
+            n: [20, 20]

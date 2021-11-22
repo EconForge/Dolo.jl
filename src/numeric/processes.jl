@@ -91,10 +91,14 @@ DiscreteMarkovProcess(grid::UnstructuredGrid, transitions::Matrix{Float64}, valu
 
 n_nodes(dp::DiscreteMarkovProcess) = size(dp.values, 1)
 n_inodes(dp::DiscreteMarkovProcess, i::Int) = size(dp.values, 1)
-inode(dp::DiscreteMarkovProcess, i::Int, j::Int) = dp.values[j, :]
 iweight(dp::DiscreteMarkovProcess, i::Int, j::Int) = dp.transitions[i, j]
-node(dp::DiscreteMarkovProcess, i) = dp.values[i, :]
 default_index(dp::DiscreteMarkovProcess) = dp.i0
+inode(dp::DiscreteMarkovProcess, i::Int, j::Int) = dp.values[j, :]
+node(dp::DiscreteMarkovProcess, i) = dp.values[i, :]
+inode(::Type{Point{d}}, dp::DiscreteMarkovProcess, i::Int, j::Int) where d = SVector{d}(dp.values[j, :]...)
+node(::Type{Point{d}}, dp::DiscreteMarkovProcess, i) where d = SVector{d}( dp.values[i, :] ...)
+
+
 
 
 function MarkovProduct(mc1::DiscreteMarkovProcess, mc2::DiscreteMarkovProcess)
@@ -125,7 +129,9 @@ inode(dp::DiscretizedIIDProcess, i::Int, j::Int) = dp.integration_nodes[j, :]
 iweight(dp::DiscretizedIIDProcess, i::Int, j::Int) = dp.integration_weights[j]
 node(dip::DiscretizedIIDProcess, i::Int) = fill(NaN, n_inodes(dip, 1))
 
-node(::Type{Point{d}}, dip::DiscretizedIIDProcess, i::Int) where d = fill(NaN, SVector{d,Float64})
+node(::Type{Point{d}}, dip::DiscretizedIIDProcess, i::Int) where d = fill(0, SVector{d,Float64})
+# node(::Type{Point{d}}, dip::DiscretizedIIDProcess, i::Int) where d = fill(NaN, SVector{d,Float64}) # TODO: this should be the correct version !!
+
 inode(::Type{Point{d}}, dip::DiscretizedIIDProcess, i::Int, j::Int) where d = SVector{d}(dip.integration_nodes[j, :]...)
 
 # Normal law

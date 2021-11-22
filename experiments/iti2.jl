@@ -2,15 +2,26 @@ using Dolo
 
 model = yaml_import("examples/models/consumption_savings_iid.yaml")
 
-@time Dolo.time_iteration(model, verbose=false);
+
+model = yaml_import("examples/models/rbc_iid.yaml")
+
+
+F = Dolo.Euler(model)
+F.bounds[2]
+
+@time Dolo.time_iteration(model, verbose=true, ignore_constraints=false, maxit=5);
+
+
+
 
 @time sol = Dolo.improved_time_iteration(model; verbose=false, ignore_constraints=false);
 
 
-F = Dolo.Euler(model)
+using SimplePlots
 
-r0 = F(F.x0, F.x0)
+tab = tabulate(model, sol.dr, :w)
 
+plot(tab[:w], tab[:c])
 
 function step(model)
     sol = Dolo.improved_time_iteration(model; verbose=false, ignore_constraints=false);

@@ -1,16 +1,25 @@
 function φmin(u::Point{d},v::Point{d}) where d
     sq = sqrt.(u.^2+v.^2)
-    p = (u+v-sq)/2
-    J_u = (1 .- u./sq)/2
-    J_v = (1 .- v./sq)/2
+    # p = (u+v-sq)/2
+    # J_u = (1 .- u./sq)/2
+    # J_v = (1 .- v./sq)/2
+    p =    SVector{d}( (v[i]<Inf ? (u[i]+v[i]-sq[i])/2 : u[i]) for i=1:d )
+    J_u =  SVector{d}( (v[i]<Inf ? (1.0 - u[i]./sq[i])/2 : 1) for i=1:d )
+    J_v =  SVector{d}( (v[i]<Inf ? (1.0 - v[i]./sq[i])/2 : 0) for i=1:d )
+
     return p, SDiagonal(J_u), SDiagonal(J_v)
 end
 
 function φmax(u::Point{d},v::Point{d}) where d
     sq = sqrt.(u.^2+v.^2)
-    p = (u+v+sq)/2
-    J_u = (1 .+ u./sq)/2
-    J_v = (1 .+ v./sq)/2
+    # p = (u+v+sq)/2
+    # J_u = (1 .+ u./sq)/2
+    # J_v = (1 .+ v./sq)/2
+
+    p =    SVector{d}( (v[i]>-Inf ? (u[i]+v[i]+sq[i])/2 : u[i]) for i=1:d )
+    J_u =  SVector{d}( (v[i]>-Inf ? (1.0 + u[i]./sq[i])/2 : 1) for i=1:d )
+    J_v =  SVector{d}( (v[i]>-Inf ? (1.0 + v[i]./sq[i])/2 : 0) for i=1:d )
+
     return p, SDiagonal(J_u), SDiagonal(J_v)
 end
 
