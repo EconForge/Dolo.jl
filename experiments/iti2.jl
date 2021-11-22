@@ -13,7 +13,7 @@ sol = Dolo.time_iteration(model, verbose=true, ignore_constraints=false, maxit=5
 simulate(model, sol.dr)
 
 
-@time sol = Dolo.improved_time_iteration(model; verbose=false, ignore_constraints=false);
+sol = Dolo.improved_time_iteration(model; verbose=true, ignore_constraints=false)
 
 
 using SimplePlots

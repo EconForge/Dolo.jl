@@ -19,7 +19,7 @@ definitions: |
 equations:
 
     arbitrage: |
-        chi*n[t]^eta*c[t]^sigma - (1-alpha)*y[t]/n[t]             | 0 <= n[t] <= Inf
+        chi*n[t]^eta*c[t]^sigma = (1-alpha)*y[t]/n[t]
         beta*(c[t]/c[t+1])^(sigma)*(1-delta+rk[t+1]) - 1  = 0
 
     transition: |
