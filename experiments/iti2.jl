@@ -3,15 +3,14 @@ using Dolo
 model = yaml_import("examples/models/consumption_savings_iid.yaml")
 
 
-model = yaml_import("examples/models/rbc_iid.yaml")
+model = yaml_import("examples/models/rbc_mc.yaml")
 
 
-F = Dolo.Euler(model)
-F.bounds[2]
 
-@time Dolo.time_iteration(model, verbose=true, ignore_constraints=false, maxit=5);
+sol = Dolo.time_iteration(model, verbose=true, ignore_constraints=false, maxit=5);
 
 
+simulate(model, sol.dr)
 
 
 @time sol = Dolo.improved_time_iteration(model; verbose=false, ignore_constraints=false);

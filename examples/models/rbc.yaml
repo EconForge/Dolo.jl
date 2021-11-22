@@ -19,8 +19,8 @@ definitions: |
 equations:
 
     arbitrage: |
-        chi*n^eta*c^sigma - (1-alpha)*y/n             | 0 <= n <= 1
-        beta*(c/c(1))^(sigma)*(1-delta+rk(1)) - 1     | 0 <= i <= Inf
+        chi*n[t]^eta*c[t]^sigma - (1-alpha)*y[t]/n[t]             | 0 <= n[t] <= Inf
+        beta*(c[t]/c[t+1])^(sigma)*(1-delta+rk[t+1]) - 1  = 0
 
     transition: |
         k[t] = (1-delta)*k(-1) + i(-1)
@@ -80,7 +80,7 @@ exogenous:
 options:
     discretization:
         endo:
-            n: [1]
+            n: [10]
         exo:
             n: 5
             n_i: 5
