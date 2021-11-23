@@ -26,8 +26,10 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 
 [compat]
+Compat = "^3.40.0"
 Dolang = "^3.3.0"
 AxisArrays = "^0.4.4"
+Lerche = "^0.5.2"
 BasisMatrices = "^0.7"
 DataStructures = "^0.18"
 Distributions = "^0.25"
