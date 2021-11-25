@@ -164,27 +164,34 @@ end
 
 
 function make_λn_weight_vector(λn::Point{d}) where d
-    return [SVector(1-λn[i],λn[i]) for i in 1:d ]
+    return tuple( (SVector(1-λn[i],λn[i]) for i in 1:d)... )
 end
+
+make_λn_weight_vector(SVector{2,Float64}(1,0.5))
 
 function outer(λn_weight_vector::Vararg{Point{2}})
     return [prod(e) for e in Iterators.product(λn_weight_vector...)]
 end
+
+[e for e in Iterators.product(make_λn_weight_vector(SVector{2,Float64}(1,0.5))...)]
+
+outer(make_λn_weight_vector(SVector{2,Float64}(1,0.5))...)
 
 function indexes_to_be_modified(qn_,n::Int64)
     return tuple(n, UnitRange.(qn_,qn_.+1)...)
 end
 
 function fill_transition_matrix!(A, qn_, λn::Point{d}, w::Float64, n::Int64) where d
-    A[indexes_to_be_modified(qn_,n)...] .+= w.*outer(make_λn_weight_vector(λn)...)
+    rhs = outer(make_λn_weight_vector(λn)...)
+    A[indexes_to_be_modified(qn_,n)...] .+= rhs
 end
 
-function my_trembling_hand!(A, x::Vector{Point{d}}, w::Float64) where d
+function my_trembling_hand_v3!(A, x::Vector{Point{d}}, w::Float64) where d
     
     @assert ndims(A) == d+1
     shape_A = size(A)
     grid_dimension = d
-    δ =  SVector{d,Float64}(1.0./(shape_A[1+i]-1) for i in 1:d ) #@SVector[1.0./(shape_A[1+i]-1) for i in 1:(ndims(A)-1)]# SVector( 1.0./(shape_A[1+i]-1) for i in 1:d )
+    δ =  SVector{d,Float64}(1.0./(shape_A[1+i]-1) for i in 1:d )
     
 
     for n in 1:shape_A[1]
