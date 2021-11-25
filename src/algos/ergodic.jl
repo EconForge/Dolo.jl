@@ -164,7 +164,7 @@ end
 
 
 function make_λn_weight_vector(λn::Point{d}) where d
-    return tuple( SVector(1-λn[i],λn[i]) for i in 1:d )
+    return [SVector(1-λn[i],λn[i]) for i in 1:d ]
 end
 
 function outer(λn_weight_vector::Vararg{Point{2}})
@@ -176,8 +176,7 @@ function indexes_to_be_modified(qn_,n::Int64)
 end
 
 function fill_transition_matrix!(A, qn_, λn::Point{d}, w::Float64, n::Int64) where d
-    #A[indexes_to_be_modified(qn_,n)...] .+= w.*outer(make_λn_weight_vector(λn)...)
-    B = A[indexes_to_be_modified(qn_,n)...]
+    A[indexes_to_be_modified(qn_,n)...] .+= w.*outer(make_λn_weight_vector(λn)...)
 end
 
 function my_trembling_hand!(A, x::Vector{Point{d}}, w::Float64) where d
