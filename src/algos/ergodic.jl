@@ -117,76 +117,13 @@ function ergodic_distribution(model, dr, exo_grid:: EmptyGrid, endo_grid:: Carte
     return reshape(Π, N, N), μ
 end
 
-function trembling_hand!(A::AbstractArray{Float64,2}, x, w)
-    N,n0 = size(A)
-    δ0 = 1.0./(n0-1.0)
-    for n in 1:N
-        x0 = x[n][1]
-        x0 = min.(max.(x0, 0.0),1.0)
-        q0 = div.(x0, δ0)
-        q0 = max.(0, q0)
-        q0 = min.(q0, n0-2)
-        λ0 = (x0./δ0-q0) # ∈[0,1[ by construction
-        q0_ = round.(Int,q0) + 1
-        A[n, q0_]   += (1-λ0)*w
-        A[n, q0_+1] += λ0*w
-    end
-end
 
-function trembling_hand!(A::AbstractArray{Float64,3}, x, w)
-    N,n0,n1 = size(A)
-    δ0 = 1.0./(n0-1.0)
-    δ1 = 1.0./(n1-1.0)
-    for n in 1:N
-        x0 = x[n][1]
-        x0 = min.(max.(x0, 0.0),1.0)
-        q0 = div.(x0, δ0)
-        q0 = max.(0, q0)
-        q0 = min.(q0, n0-2)
-        λ0 = (x0./δ0-q0) # ∈[0,1[ by construction
-        q0_ = round.(Int,q0) + 1
-
-        x1 = x[n][2]
-        x1 = min.(max.(x1, 0.0),1.0)
-        q1 = div.(x1, δ1)
-        q1 = max.(0, q1)
-        q1 = min.(q1, n1-2)
-        λ1 = (x1./δ1-q1) # ∈[0,1[ by construction
-        q1_ = round.(Int,q1) + 1
-
-        A[n, q0_ ,  q1_] += (1-λ0)*(1-λ1)*w
-        A[n, q0_+1, q1_] += λ0*(1-λ1)*w
-        A[n, q0_, q1_+1] += (1-λ0)*λ1*w
-        A[n, q0_+1, q1_+1] += λ0*λ1*w
-    end
-end
-
-
-
-function make_λn_weight_vector(λn::Point{d}) where d
-    return tuple( (SVector(1-λn[i],λn[i]) for i in 1:d)... )
-end
-
-make_λn_weight_vector(SVector{2,Float64}(1,0.5))
 
 function outer(λn_weight_vector::Vararg{Point{2}})
     return [prod(e) for e in Iterators.product(λn_weight_vector...)]
 end
 
-[e for e in Iterators.product(make_λn_weight_vector(SVector{2,Float64}(1,0.5))...)]
-
-outer(make_λn_weight_vector(SVector{2,Float64}(1,0.5))...)
-
-function indexes_to_be_modified(qn_,n::Int64)
-    return tuple(n, UnitRange.(qn_,qn_.+1)...)
-end
-
-function fill_transition_matrix!(A, qn_, λn::Point{d}, w::Float64, n::Int64) where d
-    rhs = outer(make_λn_weight_vector(λn)...)
-    A[indexes_to_be_modified(qn_,n)...] .+= rhs
-end
-
-function my_trembling_hand_v3!(A, x::Vector{Point{d}}, w::Float64) where d
+function trembling_hand!(A, x::Vector{Point{d}}, w::Float64) where d
     
     @assert ndims(A) == d+1
     shape_A = size(A)
@@ -204,8 +141,13 @@ function my_trembling_hand_v3!(A, x::Vector{Point{d}}, w::Float64) where d
         λn = (xn./δ.-qn) # ∈[0,1[ by construction
         qn_ = round.(Int,qn) + 1
         
-        
-        fill_transition_matrix!(A,qn_,λn,w,n)
+        λn_weight_vector = tuple( (SVector(1-λn[i],λn[i]) for i in 1:d)... )
+
+        indexes_to_be_modified = tuple(n, UnitRange.(qn_,qn_.+1)...)
+
+        # Filling transition matrix
+        rhs = outer(λn_weight_vector...)
+        A[indexes_to_be_modified...] .+= rhs
         
     end
 
