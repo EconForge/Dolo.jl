@@ -238,18 +238,31 @@ struct EmptyDomain <: AbstractDomain
     states::Vector{Symbol}
 end
 
-
-
-struct CartesianDomain<: AbstractDomain
+struct CartesianDomain <: AbstractDomain
     states
     min::Vector{Float64}
     max::Vector{Float64}
 end
 
-const Domain = CartesianDomain
+function CartesianDomain(min, max)
+    d = length(min)
+    states = [string("x", i) for i =1:d]
+    return CartesianDomain(states, min, max)
+end
+
+
+struct DiscreteDomain{d} <: AbstractDomain
+    points::Vector{Point{d}}
+end
+
+struct ProductDomain{D1, D2} <: AbstractDomain
+    d1::D1
+    d2::D2
+end
 
 ndims(dom::CartesianDomain) = length(dom.min)
 
+discretize(dom::DiscreteDomain{d}) where d = UnstructuredGrid(dom.points)
 
 function discretize(dom::CartesianDomain; n=Union{Int, Vector{Int}})
     if typeof(n)<:Int
@@ -260,5 +273,4 @@ function discretize(dom::CartesianDomain; n=Union{Int, Vector{Int}})
     min = dom.min
     max = dom.max
     return CartesianGrid(min, max, n)
-    
 end

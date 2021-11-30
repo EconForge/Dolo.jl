@@ -9,6 +9,8 @@ module Temp
 
     abstract type AbstractGrid{d} end
 
+    # Cartesian Grid
+
     struct CGrid{d} <: AbstractGrid{d}
         min::Point{d}
         max::Point{d}
@@ -22,8 +24,6 @@ module Temp
         ranges = (range(cg.min[i], cg.max[i];length=cg.n[i]) for i=1:d)
         return ( SVector{d}(v...) for v in Iterators.product(ranges...) )
     end
-
-
     
     CGrid{d}(min::Vector, max::Vector, n::Vector) where d = CGrid(Point{d}(min...), Point{d}(max...), SVector(n...))
 
@@ -31,6 +31,8 @@ module Temp
         g1:: G1
         g2:: G2
     end
+
+    ndims(pg::PGrid{d}) where d = d
 
     # that one looks efficient
     function iter(pg::PGrid{d, G1, G2}) where d where G1 where G2
@@ -41,26 +43,11 @@ module Temp
     PGrid(g1::AbstractGrid{d1}, g2::AbstractGrid{d2}) where d1 where d2 = PGrid{d1+d2, typeof(g2), typeof(g2)}(g1, g2)
     n_nodes(pg::PGrid) = n_nodes(pg.g1)*n_nodes(pg.g2)
 
-    function test_iter_pg(pg::PGrid)
-        k = 0.0
-        for i in iter(pg)
-            v = i[2]
-            k += sum(v)
-        end
-        return k
-    end
 
 
     struct PPGrid{T<:Tuple}
         grids::T
     end
-
-    return (
-        v
-        for v in  Iterators.product(
-            tuple( (enumerate(iter(gr)) for gr in ppg.grids)...  )...
-        )
-    )
 
     PPGrid(grids...) = PPGrid(grids)
 
@@ -90,6 +77,18 @@ module Temp
     end
 
 
+
+
+
+
+    function test_iter_pg(pg::PGrid)
+        k = 0.0
+        for i in iter(pg)
+            v = i[2]
+            k += sum(v)
+        end
+        return k
+    end
 
     function test_iter(cg::CGrid{d}) where d
         l = 0.0
