@@ -601,7 +601,7 @@ function get_discretization_options(model::AModel)
 end
 
 
-function discretize(model; kwargs...)
+function discretize(model::Model; kwargs...)
 
     opts = get_discretization_options(model; kwargs...)
     

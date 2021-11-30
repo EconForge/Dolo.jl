@@ -46,6 +46,8 @@ function node(::Point{d}, grid::EmptyGrid, i::Int) where d
 end
 
 
+
+
 ##########################
 # Grid made of one point #
 ##########################
