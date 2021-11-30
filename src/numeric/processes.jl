@@ -528,3 +528,60 @@ const MarkovChain = DiscreteMarkovProcess
 const GDP = DiscretizedProcess
 
 MarkovChain(;transitions=ones(1,1), values=[range(1,size(transitions,1))...]) = MarkovChain(transitions, values)
+
+
+
+
+
+#### Domains
+
+function get_domain(dmp::DiscreteMarkovProcess)
+    points = dmp.grid
+    d = ndims(dmp)
+    return DiscreteDomain{d}(points)
+end
+
+function get_domain(cp::ConstantProcess)
+    d = length(cp.μ) 
+    min  = fill(-Inf, d) ### not absolutely clear this is the right default
+    max  = fill(Inf, d)
+    return CartesianDomain(min, max)
+end
+
+function get_domain(iid::DiscretizedIIDProcess)
+    return EmptyDomain()
+end
+
+function get_domain(var::VAR1)
+    d = length(var.μ)
+    return CartesianDomain(fill(-Inf, d), fill(Inf, d))
+end
+
+function get_domain(pp::ProductProcess)
+    dom1 = get_domain(pp.process_1)
+    dom2 = get_domain(pp.process_2)
+    return ProductDomain(dom1, dom2)
+end
+
+
+# function discretize(pp::ProductProcess{ConstantProcess, VAR1}; opts...)
+#     cp = pp.process_1
+#     gdp = discretize(pp.process_2; opts...)
+#     v = SVector(cp.μ...)
+#     grid = [SVector(v..., e...) for e in gdp.grid.nodes]
+#     integration_nodes = [cat(fill(cp.μ, size(e,1)), e; dims=2) for e in gdp.integration_nodes]
+#     return DiscretizedProcess(grid, integration_nodes, gdp.integration_weights)
+
+# end
+
+function discretize(::Type{DiscreteMarkovProcess},pp::ProductProcess{ConstantProcess, VAR1}; opts...)
+    mc = discretize(DiscreteMarkovProcess, pp.process_2; opts...)
+    cp = pp.process_1
+    d1 = length(cp.μ)
+    d2 = length(node(mc.grid,1))
+    v = SVector(cp.μ...)
+    grid = [SVector(v..., e...) for e in mc.grid.nodes]
+    transitions = mc.transitions
+    values = copy(from_LOP(grid))
+    return DiscreteMarkovProcess(transitions, values)
+end
