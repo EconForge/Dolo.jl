@@ -608,7 +608,7 @@ function discretize(model::Model; kwargs...)
     opts_endo = merge(opts[:endo], get(kwargs, :endo, Dict()) )
     opts_exo = merge(opts[:exo], get(kwargs, :exo, Dict()) )
 
-    endo_domain = model.domain.d2
+    endo_domain = model.domain.endo
     grid_endo = Dolo.discretize(endo_domain;  opts_endo...) 
     dprocess = Dolo.discretize(model.exogenous;  opts_exo...) 
 

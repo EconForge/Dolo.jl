@@ -3,19 +3,21 @@ module PlayGround
     import Base: product
     using StaticArrays
 
-    abstract type Grid{n_x} end
+    abstract type Grid{d} end
 
-    struct UCGrid{n_x} <: Grid{n_x}
-        a::SVector{n_x, Float64}
-        b::SVector{n_x, Float64}
-        n::SVector{n_x, Int64}
-        nodes:: Vector{SVector{n_x, Float64}}
+    struct UCGrid{d} <: Grid{d}
+        a::SVector{d, Float64}
+        b::SVector{d, Float64}
+        n::SVector{d, Int64}
+        nodes:: Vector{SVector{d, Float64}}
     end
 
+    ndims(g::Grid{d}) where d = d
+
     import Base
-    Base.iterate(ucg::UCGrid{n_x}, args...) where n_x = iterate(ucg.nodes, args...)
-    Base.length(ucg::UCGrid{n_x}) where n_x = length(ucg.nodes)
-    Base.eltype(ucg::UCGrid{n_x}) where n_x = SVector{n_x, Float64}
+    Base.iterate(ucg::UCGrid{d}, args...) where d = iterate(ucg.nodes, args...)
+    Base.length(ucg::UCGrid{d}) where d = length(ucg.nodes)
+    Base.eltype(ucg::UCGrid{d}) where d = SVector{d, Float64}
 
     function UCGrid{d}(a::SVector{d, Float64},
                          b::SVector{d, Float64},
@@ -30,30 +32,44 @@ module PlayGround
         return UCGrid{d}(a,b,n,cnodes[:])
     end
 
+
     function UCGrid(
         a::AbstractVector{Float64},
         b::AbstractVector{Float64},
         n::AbstractVector{Int64})
 
-        n_x = length(n)
-        @assert (length(a)==n_x) & (length(b)==n_x)
+        d = length(n)
+        @assert (length(a)==d) & (length(b)==d)
 
         aa = SVector(a...)
         bb = SVector(b...)
         nn = SVector(n...)
 
-        return UCGrid{n_x}(aa, bb, nn)
+        return UCGrid{d}(aa, bb, nn)
     end
 
+
+
+    # Concatenate SVectors
 end
 
 import Main.PlayGround
 
-grid_1 = Main.PlayGround.UCGrid([0.0, 0.0, 0.0], [1.0, 1.0, 1.0], [2, 2, 2])
-grid_2 = Main.PlayGround.UCGrid([0.0, 0.0, 0.0], [1.0, 1.0, 1.0], [2, 2, 2])
+grid_1 = Main.PlayGround.UCGrid([0.0, 0.0], [1.0, 1.0], [2, 2])
+grid_2 = Main.PlayGround.UCGrid([0.0, 0.0], [1.0, 1.0], [2, 2])
 
-for (k,v) in IterTools.product(grid_1, grid_2)
+pg = Main.PlayGround.PGrid(grid_1, grid_2)
 
-    print(k,v)
 
+show(pg)
+
+for k in Main.PlayGround.iter(pg)
+    println(k)
 end
+
+for k in Main.PlayGround.enumerate_product(pg)
+    println(k)
+end
+
+
+

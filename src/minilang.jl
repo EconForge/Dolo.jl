@@ -6,12 +6,7 @@ struct Cartesian <: AbstractGrid
     orders::Vector{Int}
 end
 
-abstract type AbstractDomain end
 
-
-struct EmptyDomain <: AbstractDomain 
-    states::Vector{Symbol}
-end
 
 # mutable struct CartesianDomain <: AbstractDomain
 #     states::Vector{Symbol}
@@ -19,16 +14,13 @@ end
 #     max::Vector{Float64}
 # end
 
-ndims(dom::CartesianDomain) = length(dom.min)
-
-function discretize(domain::CartesianDomain; n::Union{Int, Vector{Int}}=20)
-    d = ndims(domain)
+function discretize(domain::CartesianDomain{d}; n::Union{Int, <:AbstractVector{Int}}=20) where d
     if n isa Int
-        N = fill(n, d)
+        N = SVector{d}(fill(n, d)...)
     else
-        N = n
+        N = SVector(n...)
     end
-    UCGrid(domain.min, domain.max, N)
+    UCGrid{d}(SVector(domain.min...), SVector(domain.max...), N)
 end
 
 

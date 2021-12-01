@@ -124,7 +124,9 @@ end
 include("numeric/complementarities.jl")
 include("numeric/newton.jl")
 include("numeric/grids.jl")
+include("numeric/domains.jl")
 include("numeric/processes.jl")
+
 
 minilang = Language(Dict())
 add_language_elements!(minilang, Dict(
