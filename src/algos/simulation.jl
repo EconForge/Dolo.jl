@@ -339,6 +339,7 @@ function response(model::AbstractModel,  dr::AbstractDecisionRule,
 end
 
 
+
 """
 Function "tabulate" produces a 2-dimensional AxisArray{Float64,2,...}  with 2 axes : V (containing all the variables of the model) and the name of the state variable chosen in input. 
 """
@@ -347,11 +348,54 @@ function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
                   m0::Union{Int,AbstractVector}; n_steps::Int=100)
 
     index = findfirst(isequal(state), model.symbols[:states])
+    Svalues = range(bounds[1], stop=bounds[2]; length=n_steps)
+    svec = vcat([e' for e in fill(s0, n_steps)]...)
+    svec[:, index] = Svalues
+    s = copy(to_LOP(svec))
+
+    if isa(dr.grid_exo, UnstructuredGrid)
+                model_sym = cat([:mc_process], model.symbols[:exogenous]; dims=1)
+                xvec = dr(m0, s)
+                mv = node(dr.grid_exo, m0)
+                l1 = [SVector( m0, mv..., e..., f...) for (e,f) in zip(s,xvec)]
+    else
+                xvec = dr(m0, s)
+                # l1 = concat.(mm, svec, xvec)
+                l1 = [SVector( m0..., e..., f...) for (e,f) in zip(s,xvec)]
+                model_sym = model.symbols[:exogenous]
+    end
+    tb = copy(from_LOP(l1))
+    
+    l2 = cat(model_sym , model.symbols[:states], model.symbols[:controls]; dims=1)
+    tab_AA = AxisArray(reshape(tb,1,size(tb)...), Axis{:T}(1:1), Axis{:N}(1:n_steps), Axis{:V}(l2))
+
+    ## add definitions
+    tab_AAA = permutedims(tab_AA, [2,3,1])
+
+    if length(model.definitions)>0
+        tab_defs = evaluate_definitions(model, tab_AAA)
+        tab_ = merge(tab_AAA, tab_defs)[Axis{:T}(1)]
+    else
+        tab_ = tab_AAA[Axis{:T}(1)]
+    end
+    #change axis names
+    res = AxisArray(tab_.data, Axis{state}(tb[:, index+1]), tab_[Axis{:V}])
+    res' # so that we can index it directly
+end
+
+"""
+Function "tabulate" produces a 2-dimensional AxisArray{Float64,2,...}  with 2 axes : V (containing all the variables of the model) and the name of the state variable chosen in input. 
+"""
+function tabulate_old(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
+                  bounds::Array{Float64,1}, s0::AbstractVector,
+                  m0::Union{Int,AbstractVector}; n_steps::Int=100)
+
+    index = findfirst(isequal(state), model.symbols[:states])
     Svalues = range(bounds[1], stop=bounds[2], length=n_steps)
     svec = vcat([e' for e in fill(s0, n_steps)]...)
     svec[:, index] = Svalues
 
-    if isa(dr, AbstractDecisionRule{UnstructuredGrid,UCGrid})
+    if isa(dr.grid_exo, UnstructuredGrid)
         model_sym = :mc_process
     else
         xvec = dr(m0, svec)
@@ -381,7 +425,7 @@ end
 function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
                   s0::AbstractVector, m0::Union{Int,AbstractVector};  n_steps=100)
     index = findfirst(isequal(state), model.symbols[:states])
-    bounds = [model.domain.min[index], model.domain.max[index]]
+    bounds = [model.domain.endo.min[index], model.domain.endo.max[index]]
     tabulate(model, dr, state, bounds, s0, m0;  n_steps=100)
 end
 
@@ -389,10 +433,10 @@ end
 function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
                   s0::AbstractVector; n_steps=100)
 
-    if isa(dr, AbstractDecisionRule{UnstructuredGrid,UCGrid})
+     if isa(dr.grid_exo, UnstructuredGrid)
         m0 = 1
     else
-        m0 = model.calibration[:exogenous]
+        m0 = SVector(model.calibration[:exogenous]...)
     end
     tabulate(model, dr, state, s0, m0;  n_steps=100)
 end

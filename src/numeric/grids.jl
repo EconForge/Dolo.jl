@@ -2,48 +2,92 @@ abstract type AbstractGrid end
 
 abstract type Grid{d} end
 
-struct ProductGrid{T,S}
-    exo::T
-    endo::S
-end
+import Base: ndims
 
-
-
-×(grid1, grid2) = ProductGrid(grid1, grid2)
-#
-
-# # backward backward compatibility
-nodes(::Type{<:Union{ListOfPoints,ListOfPoints{d}}}, grid::Grid{d}) where d = nodes(grid)
-nodes(::Type{<:Matrix}, grid::Grid) = copy(from_LOP(nodes(grid)))
-
-node(::Type{<:Union{Point,Point{d}}}, grid::Grid{d}, i::Int) where d = node(grid,i)
-node(::Type{<:Vector}, grid::Grid, i::Int) = Vector(node(grid,i))
-
-import Base
-
-
-struct PGrid{T1, T2}
-    exo::T1
-    endo::T2
-end
-
-Base.ndims(grid::Grid{d}) where d = d
+Base.ndims(grid::T) where T<:Grid{d} where d = d
 
 function Base.show(io::IO, grid::Grid)
     print(io, typeof(grid))
 end
 
 
-struct EmptyGrid <: Grid{0}
-    # this grid does not exist ;-)
+# # # backward backward compatibility
+nodes(::Type{<:Union{ListOfPoints,ListOfPoints{d}}}, grid::Grid{d}) where d = nodes(grid)
+nodes(::Type{<:Matrix}, grid::Grid) = copy(from_LOP(nodes(grid)))
+
+node(::Type{<:Union{Point,Point{d}}}, grid::Grid{d}, i::Int) where d = node(grid,i)
+node(::Type{<:Vector}, grid::Grid, i::Int) = Vector(node(grid,i)...)
+
+
+import Base
+
+### Product Grids
+
+# special product grid, with endo/exo distinction
+
+struct ProductGrid{T,S}
+    exo::T
+    endo::S
 end
 
+⊗(grid1::Grid{d1}, grid2::Grid{d2}) where d1 where d2 = ProductGrid(grid1, grid2)
+
+Base.show(io::IO, pg::ProductGrid) = print(io, pg.exo, "⊗",  pg.endo)
+
+struct PGrid{d, T<:Tuple} <: Grid{d}
+    grids::T
+end
+
+function PGrid(grids...)
+    d = sum( ndims(g) for g in grids)
+    t = typeof(grids)
+    return PGrid{d, t}(grids)
+end
+
+function iter(pg::T) where T <:PGrid
+    (concat(e...) for e in Iterators.product( (g for g in pg.grids)... ))
+end
+
+Base.length(pg:: PGrid{d, T} ) where d where T = prod( (length(g) for g in pg.grids) )
+Base.eltype(pg:: PGrid{d, T} ) where d where T = SVector{d, Float64}
+
+function Base.show(io::IO,x::PGrid{d,T})  where d where T
+    N = length(x.grids)
+    print(io, x.grids[1])
+    if N==1
+        return
+    end
+    for n=2:N
+        print(" ⨯ ")
+        print(io, x.grids[n])
+    end
+end
+
+function enumerate_product(pg::T) where T <:PGrid
+    iter1 = Iterators.product( (1:length(g) for g in pg.grids)... )
+    iter2 = (concat(e...) for e in Iterators.product( (g for g in pg.grids)... ))
+    # return iter1, iter2
+    zip(iter1, iter2)
+end
+
+
+
+### EmptyGrid
+
+
+## TODO: this should probably be of dimension d
+struct EmptyGrid{d} <: Grid{d}
+    # this grid does not exist ;-)
+end
+Base.show(io::IO, g::EmptyGrid{d}) where d = print(io, "EmptyGrid{$d}")
+
 nodes(grid::EmptyGrid) = nothing
-n_nodes(grid::EmptyGrid) = 0
-node(grid::EmptyGrid, i::Int) = nothing # fail if i!=1 ?
-function node(::Point{d}, grid::EmptyGrid, i::Int) where d
+n_nodes(grid::EmptyGrid) = 0 ##### Reconsider: ???
+function node( grid::EmptyGrid, i::Int) where d
     return fill(NaN, SVector{d, Float64})
 end
+
+
 
 
 ##########################
@@ -72,6 +116,8 @@ struct UnstructuredGrid{d} <: Grid{d}
     nodes::ListOfPoints{d}
 end
 
+Base.show(io::IO, gr::UnstructuredGrid{d}) where d = print(io, "UNSgrid{$d}")
+
 # Old-convention
 function UnstructuredGrid{d}(nodes::Matrix{Float64}) where d
     N = size(nodes,1)
@@ -82,8 +128,6 @@ end
 nodes(grid::UnstructuredGrid) = grid.nodes
 n_nodes(grid::UnstructuredGrid) = length(grid.nodes)
 node(grid::UnstructuredGrid, i::Int) = grid.nodes[i] # fail if i!=1 ?
-
-node(::Type{d}, grid::UnstructuredGrid, i::Int) where d = node(grid,i)
 
 function Product(a::UnstructuredGrid{d1}, b::UnstructuredGrid{d2}) where d1 where d2
     A = [Base.product(a.nodes, b.nodes)...]
@@ -112,9 +156,13 @@ end
 
 Base.iterate(ucg::UCGrid{d}, args...) where d = iterate(ucg.nodes, args...)
 Base.length(ucg::UCGrid{d}) where d = length(ucg.nodes)
-Base.eltype(ucg::UCGrid{d}) where d = SVector{n_x, Float64}
+Base.eltype(ucg::UCGrid{d}) where d = SVector{d, Float64}
 
-ndims(grid::UCGrid{d}) where d = d
+
+function Base.show(io::IO, g::UCGrid{d}) where d
+    print("UCGrid{", d, "}")
+end
+
 
 function (::Type{<:UCGrid})(min::SVector{d,Float64}, max::SVector{d,Float64}, n::SVector{d,Int64}) where d
     A = [mlinspace(min, max, n)...]
@@ -136,7 +184,11 @@ nodes(::Type{<:ListOfPoints}, grid::UCGrid{d}) where d  = grid.nodes
 node(::Type{<:Point}, grid::UCGrid{d}, i::Int64) where d = node(grid,i)
 
 function Product(a::UCGrid{d1}, b::UCGrid{d2}) where d1 where d2
-  return Dolo.UCGrid{d1+d2}( [a.min; b.min], [a.max; b.max], [a.n; b.n])
+  return Dolo.UCGrid{d1+d2}(
+      SVector(a.min..., b.min...),
+      SVector(a.max..., b.max...),
+      SVector(a.n..., b.n...)
+  )
 end
 
 
@@ -217,48 +269,4 @@ n_nodes(grid::RandomGrid) = length(grid.nodes)
 node(grid::RandomGrid,i::Int) = grid.nodes[i]
 
 
-### Cartesian
-
-struct Cartesian <: AbstractGrid
-    a::Vector{Float64}
-    b::Vector{Float64}
-    orders::Vector{Int}
-end
-
-
-### Domains
-
-
-
-
-abstract type AbstractDomain end
-
-
-struct EmptyDomain <: AbstractDomain 
-    states::Vector{Symbol}
-end
-
-
-
-struct CartesianDomain<: AbstractDomain
-    states
-    min::Vector{Float64}
-    max::Vector{Float64}
-end
-
-const Domain = CartesianDomain
-
-ndims(dom::CartesianDomain) = length(dom.min)
-
-
-function discretize(dom::CartesianDomain; n=Union{Int, Vector{Int}})
-    if typeof(n)<:Int
-        nv = fill(n, ndims(dom))
-    else
-        nv = n
-    end
-    min = dom.min
-    max = dom.max
-    return CartesianGrid(min, max, n)
-    
-end
+concat(v...) = length(v)==1 ? v[1] : SVector(v[1]..., concat(v[2:end]...)... )

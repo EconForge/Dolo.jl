@@ -32,17 +32,17 @@ ConstantProcess(;μ=zeros(1)) = ConstantProcess(μ)
 ###
 
 # date-t grid has a known structure
-mutable struct DiscretizedProcess{TG<:Grid} <: AbstractDiscretizedProcess
+mutable struct GDP{TG} <: AbstractDiscretizedProcess
     grid::TG
     integration_nodes::Array{Matrix{Float64},1}
     integration_weights::Array{Vector{Float64},1}
 end
 
-n_nodes(dp::DiscretizedProcess) = n_nodes(dp.grid)
-node(dp::DiscretizedProcess, i) = node(dp.grid, i)
-n_inodes(dp::DiscretizedProcess, i::Int) = size(dp.integration_nodes[i], 1)
-inode(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_nodes[i][j, :]
-iweight(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_weights[i][j]
+n_nodes(dp::GDP) = n_nodes(dp.grid)
+node(dp::GDP, i) = node(dp.grid, i)
+n_inodes(dp::GDP, i::Int) = size(dp.integration_nodes[i], 1)
+inode(dp::GDP, i::Int, j::Int) = dp.integration_nodes[i][j, :]
+iweight(dp::GDP, i::Int, j::Int) = dp.integration_weights[i][j]
 
 
 # function node(::Type{Point}, dp::DiscreteProcess, i::Int) where n_x
@@ -53,21 +53,21 @@ iweight(dp::DiscretizedProcess, i::Int, j::Int) = dp.integration_weights[i][j]
 #     SVector(dp.grid.integration_nodes[i][j,:]...)
 # end
 
-function node(::Type{Point{n_x}}, dp::DiscretizedProcess, i::Int) where n_x
+function node(::Type{Point{n_x}}, dp::GDP, i::Int) where n_x
     SVector{n_x}(dp.grid.nodes[i]...)
 end
-function inode(::Type{Point{n_x}}, dp::DiscretizedProcess, i::Int, j::Int) where n_x
+function inode(::Type{Point{n_x}}, dp::GDP, i::Int, j::Int) where n_x
     SVector{n_x, Float64}(dp.integration_nodes[i][j,:]...)
 end
 
 
-function Product(gdp1::DiscretizedProcess, gdp2::DiscretizedProcess)
+function Product(gdp1::GDP, gdp2::GDP)
   In = [ gridmake(gdp1.integration_nodes[i], gdp2.integration_nodes[j] ) for i = 1:n_nodes(gdp1)  for j = 1:n_nodes(gdp2) ]
   Iw =[kron(gdp1.integration_weights[i], gdp2.integration_weights[j] ) for i = 1:n_nodes(gdp1)  for j = 1:n_nodes(gdp2) ]
-  N=length(gdp1.grid.min)+length(gdp2.grid.min)
-  i_grid  = Product(gdp1.grid, gdp2.grid)
+  
+  i_grid  = ProductGrid(gdp1.grid, gdp2.grid)
 
-  return DiscretizedProcess(i_grid, In, Iw)
+  return GDP(i_grid, In, Iw)
 end
 
 
@@ -78,6 +78,8 @@ mutable struct DiscreteMarkovProcess <: AbstractDiscretizedProcess
     values::Matrix{Float64}
     i0::Int
 end
+
+ndims(dmp::DiscreteMarkovProcess) = ndims(dmp.grid)
 
 discretize(::Type{DiscreteMarkovProcess}, mp::DiscreteMarkovProcess) = mp
 discretize(mp::DiscreteMarkovProcess) = mp
@@ -121,7 +123,7 @@ mutable struct DiscretizedIIDProcess <: AbstractDiscretizedProcess
     integration_weights::Vector{Float64}
 end
 
-DiscretizedIIDProcess(x, w) = DiscretizedIIDProcess(EmptyGrid(), x, w)
+DiscretizedIIDProcess(x, w) = DiscretizedIIDProcess(EmptyGrid{size(x,2)}(), x, w)
 
 n_nodes(dp::DiscretizedIIDProcess) = 0
 n_inodes(dp::DiscretizedIIDProcess, i::Int) = size(dp.integration_nodes, 1)
@@ -280,10 +282,10 @@ function discretize(var::VAR1; n::Union{Int, Vector{Int}}=5, n_i::Union{Int, Vec
     x,w = QE.qnwnorm(n_i, zeros(size(var.Σ,1)), var.Σ)
     integration_nodes = [ cat([(M + R*(node(grid, i)-M) + x[j,:])' for j=1:size(x,1)]...; dims=1) for i in 1:n_nodes(grid)]
     integration_weights = [w for i in 1:n_nodes(grid)]
-    return DiscretizedProcess(grid, integration_nodes, integration_weights)
+    return GDP(grid, integration_nodes, integration_weights)
 end
 
-discretize(::Type{DiscretizedProcess}, var::VAR1; args...) = discretize(var; args...)
+discretize(::Type{GDP}, var::VAR1; args...) = discretize(var; args...)
 
 
 function discretize(::Type{DiscreteMarkovProcess}, var::VAR1; n::Union{Int, Vector{Int}}=3)
@@ -464,9 +466,9 @@ function discretize(::Type{DiscreteMarkovProcess}, pp::ProductProcess; opt1=Dict
 end
 
 
-function discretize(::Type{DiscretizedProcess}, pp::ProductProcess; opt1=Dict(), opt2=Dict())
-  p1 = discretize(DiscretizedProcess, pp.process_1; opt1...)
-  p2 = discretize(DiscretizedProcess, pp.process_2; opt2...)
+function discretize(::Type{GDP}, pp::ProductProcess; opt1=Dict(), opt2=Dict())
+  p1 = discretize(GDP, pp.process_1; opt1...)
+  p2 = discretize(GDP, pp.process_2; opt2...)
   return Product(p1,p2)
 end
 
@@ -525,6 +527,78 @@ get_integration_nodes(::typeof(Point), dprocess::Dolo.AbstractDiscretizedProcess
 # compatibility names
 const AR1 = VAR1
 const MarkovChain = DiscreteMarkovProcess
-const GDP = DiscretizedProcess
+# const DiscretizedProcess
 
 MarkovChain(;transitions=ones(1,1), values=[range(1,size(transitions,1))...]) = MarkovChain(transitions, values)
+
+
+
+
+
+#### Domains
+
+get_domain(mv::MvNormal) = EmptyDomain{length(mv.μ)}()
+
+function get_domain(dmp::DiscreteMarkovProcess)
+    points = dmp.grid.nodes
+    d = ndims(dmp)
+    return DiscreteDomain{d}(points)
+end
+
+function get_domain(cp::ConstantProcess)
+    d = length(cp.μ) 
+    min  = fill(-Inf, d) ### not absolutely clear this is the right default
+    max  = fill(Inf, d)
+    return CartesianDomain(min, max)
+end
+
+function get_domain(iid::DiscretizedIIDProcess)
+    return EmptyDomain()
+end
+
+function get_domain(var::VAR1)
+    d = length(var.μ)
+    return CartesianDomain(fill(-Inf, d), fill(Inf, d))
+end
+
+function get_domain(pp::ProductProcess)
+    dom1 = get_domain(pp.process_1)
+    dom2 = get_domain(pp.process_2)
+    return ProductDomain(dom1, dom2)
+end
+
+
+# function discretize(pp::ProductProcess{ConstantProcess, VAR1}; opts...)
+#     cp = pp.process_1
+#     gdp = discretize(pp.process_2; opts...)
+#     v = SVector(cp.μ...)
+#     grid = [SVector(v..., e...) for e in gdp.grid.nodes]
+#     integration_nodes = [cat(fill(cp.μ, size(e,1)), e; dims=2) for e in gdp.integration_nodes]
+#     return DiscretizedProcess(grid, integration_nodes, gdp.integration_weights)
+
+# end
+
+function discretize(::Type{DiscreteMarkovProcess},pp::ProductProcess{ConstantProcess, VAR1}; opts...)
+    mc = discretize(DiscreteMarkovProcess, pp.process_2; opts...)
+    cp = pp.process_1
+    d1 = length(cp.μ)
+    d2 = length(node(mc.grid,1))
+    v = SVector(cp.μ...)
+    grid = [SVector(v..., e...) for e in mc.grid.nodes]
+    transitions = mc.transitions
+    values = copy(from_LOP(grid))
+    return DiscreteMarkovProcess(transitions, values)
+end
+
+
+
+
+
+function discretize(::Type{GDP}, p::ConstantProcess)
+    μ = p.μ
+    grid = PointGrid(μ)
+    integration_nodes = [repeat(μ',1)]
+    integration_weights = [[1.0]]
+    return GDP(grid, integration_nodes, integration_weights)
+end
+

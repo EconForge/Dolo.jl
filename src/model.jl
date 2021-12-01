@@ -19,57 +19,22 @@ using DataStructures: OrderedDict
 # defind language understood in yaml files
 language = minilang
 
-mutable struct Model{ID, ExoT} <: AbstractModel{ExoT}
+mutable struct Model{ID, Dom} <: AbstractModel{Dom}
 
     data::YAML.MappingNode
     symbols::Dict{Symbol, Vector{Symbol}}
     calibration::ModelCalibration
-    exogenous::ExoT
-    domain::AbstractDomain
+    exogenous
+    domain   ## ::Dom
     factories
     definitions
 
-    function Model{ID, ExoT}(data::YAML.Node) where ID where ExoT
-        model = new{ID, ExoT}(data)
-        model.calibration = get_calibration(model)
-        model.symbols = get_symbols(model)
-        model.exogenous = get_exogenous(model)
-        model.domain = get_domain(model)
-        
-        factories = get_factories(model)
-        model.factories = factories
-        for (k,fact) in factories
-            code = Dolang.gen_generated_gufun(fact; dispatch=typeof(model))
-            # print_code && println("equation '", eq_type, "'", code)
-            Core.eval(Dolo, code)
-        end
-
-        # Create definitions
-        defs = get_definitions(model; stringify=true)
-        model.definitions = defs
-        definitions = OrderedDict{Symbol, SymExpr}( [(stringify(k),v) for (k,v) in defs])
-        vars = cat(model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls]; dims=1)
-        args = OrderedDict(
-            :past => [Dolang.stringify(v,-1) for v in vars],
-            :present => [Dolang.stringify(v,0) for v in vars],
-            :future => [Dolang.stringify(v,1) for v in vars],
-            :params => [Dolang.stringify(e) for e in model.symbols[:parameters]]
-        )
-        ff = Dolang.FunctionFactory(definitions, args, OrderedDict{Symbol, SymExpr}(), :definitions)
-        code = Dolang.gen_generated_gufun(ff;dispatch=typeof(model), funname=:evaluate_definitions)
-        Core.eval(Dolo,code)
-        model.factories[:definitions] = ff
-        
-
-        return model
-    end
 
 end
 
-id(::Model{ID}) where {ID} = ID
+id(model::Model{ID, Dom}) where ID where  Dom = ID
 
-
-function check_exogenous_type(data)
+function check_exogenous_domain_type(data)
     if !("exogenous" in keys(data))
         return EmptyProcess
     end
@@ -81,17 +46,19 @@ function check_exogenous_type(data)
     acorr_types = ("!AR1", "!VAR1", "!ConstantProcess")
 
     if exo_types ⊆ iid_types
-        return   IIDExogenous
+        return  EmptyDomain
     elseif exo_types ⊆ mc_types
-        return DiscreteProcess
+        return DiscreteDomain
     else
-        return ContinuousProcess
+        return CartesianDomain
     end
 end
 
 
 function Model(url::AbstractString; print_code=false)
-
+    
+    fname = basename(url)
+    # typ = check_exogenous_domain_type(data)
     # it looks like it would be cool to use the super constructor ;-)
     if match(r"(http|https):.*", url) != nothing
         res = HTTP.request("GET", url)
@@ -100,12 +67,78 @@ function Model(url::AbstractString; print_code=false)
         txt = read(open(url), String)
     end
     data = Dolang.yaml_node_from_string(txt)
-    id = gensym()
-    fname = basename(url)
-    typ = check_exogenous_type(data)
-    return Model{id, typ}(data)
+    # domain = det_domain(data, states, calib)
+    # fspace = ProductDomain(typ, typeof())
+    return Model(data)
 
 end
+
+
+function Model(data::YAML.Node)
+
+    id = gensym()
+
+    calibration = get_calibration(data)
+    symbols = get_symbols(data)
+    exogenous = get_exogenous(data, symbols[:exogenous], calibration.flat)
+
+    endo_domain = get_domain(data, symbols[:states], calibration.flat)
+    exo_domain = get_domain(exogenous)
+    
+    domain = ProductDomain(exo_domain, endo_domain)
+
+    dom_typ = typeof(domain)
+
+
+
+    model = Model{id, dom_typ}(
+        data,
+        symbols,
+        calibration,
+        exogenous,
+        domain,
+        nothing,
+        nothing
+    )
+
+    create_factories!(model)
+
+    return model
+
+end
+
+function create_factories!(model::AModel{id}) where id
+
+    factories = get_factories(model)
+        
+    for (k,fact) in factories
+        code = Dolang.gen_generated_gufun(fact; dispatch=typeof(model))
+        # print_code && println("equation '", eq_type, "'", code)
+        Core.eval(Dolo, code)
+    end
+
+    # Create definitions
+    defs = get_definitions(model; stringify=true)
+    model.definitions = defs
+    definitions = OrderedDict{Symbol, SymExpr}( [(stringify(k),v) for (k,v) in defs])
+    vars = cat(model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls]; dims=1)
+    args = OrderedDict(
+        :past => [Dolang.stringify(v,-1) for v in vars],
+        :present => [Dolang.stringify(v,0) for v in vars],
+        :future => [Dolang.stringify(v,1) for v in vars],
+        :params => [Dolang.stringify(e) for e in model.symbols[:parameters]]
+    )
+    ff = Dolang.FunctionFactory(definitions, args, OrderedDict{Symbol, SymExpr}(), :definitions)
+
+    code = Dolang.gen_generated_gufun(ff;dispatch=typeof(model), funname=:evaluate_definitions)
+    Core.eval(Dolo,code)
+    factories[:definitions] = ff
+
+    model.factories = factories
+
+end
+
+
 
 yaml_import(filename::AbstractString) = Model(filename)
 
@@ -113,10 +146,12 @@ function Base.show(io::IO, model::Model)
     print(io, "Model")
 end
 
-
-
 function get_symbols(model::Model)
-    syms = model.data[:symbols]
+    return get_symbols(model.data)
+end
+
+function get_symbols(data)
+    syms = data[:symbols]
     symbols = OrderedDict{Symbol,Vector{Symbol}}()
     for k in keys(syms)
         symbols[Symbol(k)] = [Symbol(e.value) for e in syms[k]]
@@ -125,22 +160,30 @@ function get_symbols(model::Model)
 end
 
 function get_variables(model::Model)
-    symbols = get_symbols(model)
+    return get_variables(model.data)
+end
+
+function get_variables(data)
+    symbols = get_symbols(data)
     vars = cat(values(symbols)...; dims=1)
     dynvars = setdiff(vars, symbols[:parameters] )
-    dynvars = union( dynvars, get_defined_variables(model) )
+    dynvars = union( dynvars, get_defined_variables(data) )
 end
 
 function get_defined_variables(model::Model)
-    if !("definitions" in keys(model.data))
+    return get_defined_variables(model.data)
+end
+
+function get_defined_variables(data)
+    if !("definitions" in keys(data))
         return Symbol[]
     else
         # TODO: this is awfully redundant. This should be done "after" definitions are parsed
         try
             # OBSOLETE
-            return [Symbol(e) for e in keys(model.data["definitions"])]
+            return [Symbol(e) for e in keys(data["definitions"])]
         catch
-            defeqs = Dolang.parse_assignment_block(model.data["definitions"].value).children
+            defeqs = Dolang.parse_assignment_block(data["definitions"].value).children
             return [Symbol(eq.children[1].children[1].children[1].value) for eq in defeqs]
 
         end
@@ -156,24 +199,31 @@ function get_name(model::Model)
     return name
 end
 
-
-
 function get_exogenous(model::AModel)
+    data = model.data
+    exosyms = model.symbols[:exogenous]
+    fcalib = model.calibration.flat
+    return get_exogenous(data, exosyms, fcalib)
+end
 
-    rdata = model.data
-    if !("exogenous" in keys(model.data))
+function get_exogenous(data, exosyms, fcalib)
+
+    calibration = fcalib
+
+    if !("exogenous" in keys(data))
         return nothing
     end
-    exo_dict = model.data[:exogenous]
+
+    exo_dict = data[:exogenous]
     cond = !(exo_dict.tag=="tag:yaml.org,2002:map")
 
     syms = cat( [[Symbol(strip(e)) for e in split(k, ",")] for k in keys(exo_dict)]..., dims=1)
-    expected = model.symbols[:exogenous]
+    
+    expected = exosyms
     if (syms != expected)
         msg = string("In 'exogenous' section, shocks must be declared in the same order as shock symbol. Found: ", syms, ". Expected: ", expected, ".")
         throw(ErrorException(msg))
     end
-    calibration = model.calibration.flat
     processes = []
     for k in keys(exo_dict)
         v = exo_dict[k]
@@ -184,8 +234,15 @@ function get_exogenous(model::AModel)
 
 end
 
+
 function get_calibration(model::Model; kwargs...)
-    calib = model.data[:calibration]
+
+    return get_calibration(model.data; kwargs...)
+end
+
+function get_calibration(data; kwargs...)
+    symbols = get_symbols(data)
+    calib = data[:calibration]
     # prep calib: parse to Expr, Symbol, or Number
     _calib  = OrderedDict{Symbol,Union{Expr,Symbol,Number}}()
     # add calibration for definitions
@@ -199,7 +256,6 @@ function get_calibration(model::Model; kwargs...)
     end
     # so far _calib is a symbolic calibration
     calibration = solve_triangular_system(_calib)
-    symbols = get_symbols(model)
     return ModelCalibration(calibration, symbols)
 end
 
@@ -306,26 +362,29 @@ function get_assignment_block(model, eqname; stringify=true)
 end
 
 
-function get_domain(model::Model)::AbstractDomain
-
+function get_domain(model::AModel)::AbstractDomain
     states = model.symbols[:states]
+    fcalib = model.calibration.flat
+    data = model.data
+    return get_domain(data, states, fcalib)
+end
 
-    if !("domain" in keys(model.data))
+function get_domain(data, states, calib)::AbstractDomain
+
+    if !("domain" in keys(data))
         return EmptyDomain(states)
     end
 
-    domain = model.data["domain"]
+    domain = data["domain"]
     
     kk = keys(domain)
     if "min" in kk
         # TODO: deprecation warning
-        calib = model.calibration.flat
         min = [Dolang.eval_node(domain[(k)][1], calib) for k in states]
         max = [Dolang.eval_node(domain[(k)][2], calib) for k in states]
         return CartesianDomain(states, min, max)
 
     else
-        calib = model.calibration.flat
         kk = tuple([Symbol(k) for k in keys(domain)]...)
         ss = tuple(states...)
         if kk != ss
@@ -542,15 +601,17 @@ function get_discretization_options(model::AModel)
 end
 
 
-function discretize(model; kwargs...)
+function discretize(model::Model; kwargs...)
 
     opts = get_discretization_options(model; kwargs...)
     
     opts_endo = merge(opts[:endo], get(kwargs, :endo, Dict()) )
     opts_exo = merge(opts[:exo], get(kwargs, :exo, Dict()) )
 
-    grid_endo = Dolo.discretize(model.domain;  opts_endo...) 
+    endo_domain = model.domain.endo
+    grid_endo = Dolo.discretize(endo_domain;  opts_endo...) 
     dprocess = Dolo.discretize(model.exogenous;  opts_exo...) 
+
     grid_exo = dprocess.grid
     grid = ProductGrid(grid_exo, grid_endo)
     return grid, dprocess
