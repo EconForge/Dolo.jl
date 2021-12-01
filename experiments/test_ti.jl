@@ -1,8 +1,10 @@
 using Dolo
 
 
-# model = Model("examples/models/rbc.yaml")
-model = Model("examples/models/consumption_savings_iid.yaml")
+model = Model("examples/models/rbc.yaml")
+# model = Model("examples/models/consumption_savings_iid.yaml")
+
+time_iteration(model)
 
 
 
