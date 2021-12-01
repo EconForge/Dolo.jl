@@ -12,11 +12,11 @@ end
 
 
 # # # backward backward compatibility
-# nodes(::Type{<:Union{ListOfPoints,ListOfPoints{d}}}, grid::Grid{d}) where d = nodes(grid)
-# nodes(::Type{<:Matrix}, grid::Grid) = copy(from_LOP(nodes(grid)))
+nodes(::Type{<:Union{ListOfPoints,ListOfPoints{d}}}, grid::Grid{d}) where d = nodes(grid)
+nodes(::Type{<:Matrix}, grid::Grid) = copy(from_LOP(nodes(grid)))
 
-# node(::Type{<:Union{Point,Point{d}}}, grid::Grid{d}, i::Int) where d = node(grid,i)
-# node(::Type{<:Vector}, grid::Grid, i::Int) = Vector(node(grid,i))
+node(::Type{<:Union{Point,Point{d}}}, grid::Grid{d}, i::Int) where d = node(grid,i)
+node(::Type{<:Vector}, grid::Grid, i::Int) = Vector(node(grid,i)...)
 
 
 import Base
@@ -79,6 +79,7 @@ end
 struct EmptyGrid{d} <: Grid{d}
     # this grid does not exist ;-)
 end
+Base.show(io::IO, g::EmptyGrid{d}) where d = print(io, "EmptyGrid{$d}")
 
 nodes(grid::EmptyGrid) = nothing
 n_nodes(grid::EmptyGrid) = 0 ##### Reconsider: ???

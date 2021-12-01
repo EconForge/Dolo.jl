@@ -9,6 +9,10 @@ struct EmptyDomain{d} <: AbstractDomain{d}
     states::Vector{Symbol}
 end
 
+EmptyDomain{d}() where d = EmptyDomain{d}([Symbol("x$i") for i=1:d])
+
+Base.show(io::IO, ed::EmptyDomain{d}) where d = print(io,join(fill("∅",d)))
+
 struct CartesianDomain{d} <: AbstractDomain{d}
     states
     min::SVector{d,Float64}

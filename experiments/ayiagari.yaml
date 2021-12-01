@@ -46,10 +46,7 @@ exogenous:
 
 options:
     discretization:
-        # exo:
-        #     r,w:
-        #         n: 1
-        #     e:
-        #         n: 5
+        exo:
+            n: 8
         endo:
             n: [100]

@@ -1,17 +1,22 @@
 using Dolo
 
 
-model = Model("examples/models/rbc.yaml")
+# # model = Model("examples/models/rbc.yaml")
 # model = Model("examples/models/consumption_savings_iid.yaml")
 
-time_iteration(model)
 
+model = Model("experiments/ayiagari.yaml")
 
 
 F = Dolo.Euler(model, ignore_constraints=false);
 
+improved_time_iteration(model)
 
-F(F.x0, F.x0)
+
+z0 = SVector(model.calibration[:exogenous][1:2]...)
+x0 = F.x0
+
+F(x0,x0,z0,z0) - F(x0,x0)
 
 r = F(F.x0, F.x0; set_future=false)
 

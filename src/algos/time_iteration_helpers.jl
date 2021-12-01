@@ -124,9 +124,10 @@ struct Euler{ID, n_m, n_s, n_x, Gx, Ge}
 
 end
 
+repsvec(v1::Point{d1}, v2::Point{d}) where d1 where d= SVector(v1..., v2[d1+1:end]...)
+
 function euler_residuals(F::Euler{id, n_m, n_s, n_x}, s::Vector{Point{n_s}}, x::MSM{Point{n_x}}, dr, 
-    dprocess, 
-    parms::SVector; keep_J_S=false, out=nothing) where id where n_s where n_x where n_m #, jres=nothing, S_ij=nothing)
+    dprocess, parms::SVector; exo=nothing, keep_J_S=false, out=nothing) where id where n_s where n_x where n_m #, jres=nothing, S_ij=nothing)
     #
     # if set_dr ==true
     #   set_values!(dr,x)
@@ -159,9 +160,15 @@ function euler_residuals(F::Euler{id, n_m, n_s, n_x}, s::Vector{Point{n_s}}, x::
 
     for i_ms in 1:n_ms
         m = node(Point{n_m}, dprocess,i_ms)
+        if !(exo === nothing)
+            m = repsvec(exo[1], m)   # z0
+        end
         xx = x.views[i_ms]
         for I_ms in 1:n_mst
             M = inode(Point{n_m}, dprocess, i_ms, I_ms)
+            if !(exo === nothing)
+                M = repsvec(exo[2], M)   # z1
+            end
             w = iweight(dprocess, i_ms, I_ms)
             S = transition(model, m, s, xx, M, parms)
             X = dr(i_ms, I_ms, S)
@@ -185,7 +192,11 @@ function euler_residuals(F::Euler{id, n_m, n_s, n_x}, s::Vector{Point{n_s}}, x::
     end
 end
 
-function (F::Euler)(x0::MSM, x1::MSM; set_future=true, ignore_constraints=false, out=nothing, p=F.p) 
+function (F::Euler)(x0::MSM, x1::MSM, z0::Point{n_z}, z1::Point{n_z}; exo=nothing, kwargs...) where n_z
+    F(x0, x1; exo=(z0,z1), kwargs...)
+end
+
+function (F::Euler)(x0::MSM, x1::MSM; exo=nothing, set_future=true, ignore_constraints=false, out=nothing, p=F.p) 
 
     if out === nothing
         rr = copy(x0)
@@ -197,8 +208,8 @@ function (F::Euler)(x0::MSM, x1::MSM; set_future=true, ignore_constraints=false,
         set_values!(F.dr, x1)
     end
     
-    euler_residuals(F,F.s0,x0,F.dr,F.dprocess,p;keep_J_S=false,out=rr)
-
+    euler_residuals(F,F.s0,x0,F.dr,F.dprocess,p;exo=exo,keep_J_S=false,out=rr)
+    
     if (F.bounds!==nothing) & !ignore_constraints
         lb, ub = F.bounds
         for n=1:length(rr.data)
@@ -257,21 +268,21 @@ function df_A(F, z0, z1; set_future=false, inplace=false, ret_res=false)
 end
 
 
-function df_B(F, z0, z1; set_future=false)
+function df_B(F, x0, x1; set_future=false)
 
     ddr_filt = F.cdr
 
     # res = deepcopy(z0)
 
     if set_future
-        set_values!(F.dr, z1)
+        set_values!(F.dr, x1)
     end
 
-    rr,J_ij,S_ij  =   euler_residuals(F, F.s0, z0 , F.dr, F.dprocess, F.p; keep_J_S=true)
+    rr,J_ij,S_ij  = euler_residuals(F, F.s0, x0 , F.dr, F.dprocess, F.p; keep_J_S=true)
 
     if (F.bounds!==nothing)
         lb, ub = F.bounds
-        PhiPhi!(rr.views, z1.views, lb.views, ub.views, J_ij)
+        PhiPhi!(rr.views, x1.views, lb.views, ub.views, J_ij)
     end
 
     L = LinearThing(J_ij, S_ij, ddr_filt)
@@ -279,6 +290,9 @@ function df_B(F, z0, z1; set_future=false)
     return L
 
 end
+
+
+
 
 
 function prediv!(L::LinearThing,x::MSM)

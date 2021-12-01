@@ -237,7 +237,7 @@ end
 
 function get_calibration(model::Model; kwargs...)
 
-    return get_calibation(model.data; kwargs...)
+    return get_calibration(model.data; kwargs...)
 end
 
 function get_calibration(data; kwargs...)

@@ -79,6 +79,8 @@ mutable struct DiscreteMarkovProcess <: AbstractDiscretizedProcess
     i0::Int
 end
 
+ndims(dmp::DiscreteMarkovProcess) = ndims(dmp.grid)
+
 discretize(::Type{DiscreteMarkovProcess}, mp::DiscreteMarkovProcess) = mp
 discretize(mp::DiscreteMarkovProcess) = mp
 
@@ -121,7 +123,7 @@ mutable struct DiscretizedIIDProcess <: AbstractDiscretizedProcess
     integration_weights::Vector{Float64}
 end
 
-DiscretizedIIDProcess(x, w) = DiscretizedIIDProcess(EmptyGrid(), x, w)
+DiscretizedIIDProcess(x, w) = DiscretizedIIDProcess(EmptyGrid{size(x,2)}(), x, w)
 
 n_nodes(dp::DiscretizedIIDProcess) = 0
 n_inodes(dp::DiscretizedIIDProcess, i::Int) = size(dp.integration_nodes, 1)
@@ -535,8 +537,10 @@ MarkovChain(;transitions=ones(1,1), values=[range(1,size(transitions,1))...]) = 
 
 #### Domains
 
+get_domain(mv::MvNormal) = EmptyDomain{length(mv.μ)}()
+
 function get_domain(dmp::DiscreteMarkovProcess)
-    points = dmp.grid
+    points = dmp.grid.nodes
     d = ndims(dmp)
     return DiscreteDomain{d}(points)
 end
