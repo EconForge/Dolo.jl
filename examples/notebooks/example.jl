@@ -38,7 +38,7 @@ function new_distribution_v1(sol, μ0, x0, dr, parms)
             trembling_hand!(view(Π,tuple(i_m,:,i_M,(Colon() for k in 1:(ndims(Π)-3))...)...), S, w)
         end
     end
-    Π0 = (reshape(Π,N,N))' - Matrix(I, N, N)
+    Π0 = (reshape(Π,N,N))
 
     return Π0 * μ0
 end
@@ -65,7 +65,7 @@ function new_distribution_v2(sol, μ0, x0, exo_grid:: UnstructuredGrid, endo_gri
             trembling_hand!(view(Π,tuple(i_m,:,i_M,(Colon() for k in 1:(ndims(Π)-3))...)...), S, w)
         end
     end
-    Π0 = (reshape(Π,N,N))' - Matrix(I, N, N)
+    Π0 = (reshape(Π,N,N))
 
     return Π0 * μ0
 end
@@ -92,7 +92,7 @@ function new_distribution_v2(sol, μ0, x0, exo_grid:: UCGrid, endo_grid:: UCGrid
             trembling_hand!(view(Π,tuple(i_m,:,i_M,(Colon() for k in 1:(ndims(Π)-1))...)...), V, w)
         end
     end
-    Π0 = (reshape(Π,N,N))' - Matrix(I, N, N)
+    Π0 = (reshape(Π,N,N))
 
     return Π0 * μ0
 end
@@ -120,7 +120,7 @@ function new_distribution_v2(sol, μ0, x0, exo_grid:: EmptyGrid, endo_grid:: UCG
         trembling_hand!(Π, S, w)
     end
 
-    Π0 = (reshape(Π,N,N))' - Matrix(I, N, N)
+    Π0 = (reshape(Π,N,N))
 
     return Π0 * μ0
 end
