@@ -3,7 +3,7 @@ using Dolo
 module Temp
     using Dolo 
 
-    struct disG{ID, n_m, n_s, n_x, G_x, G_e}
+    struct DisG{ID, n_m, n_s, n_x, G_x, G_e}
 
         model::AbstractModel
         grid_endo
@@ -11,7 +11,7 @@ module Temp
         dprocess
         s0::Dolo.ListOfPoints{n_s}
 
-        function disG(model; 
+        function DisG(model; 
             discretization=Dict())
 
             grid, dprocess = Dolo.discretize(model; discretization...)
@@ -36,30 +36,28 @@ module Temp
 
     end
    
-    function size_mu(DISG::disG)
+    function size_mu(disg::DisG)
 
-        return length(Dolo.nodes(DISG.grid_endo)) * length(Dolo.nodes(DISG.grid_exo))
+        return length(Dolo.nodes(disg.grid_endo)) * length(Dolo.nodes(disg.grid_exo))
     
     end
 
-    function ergodic_distribution(DISG::disG)
+    function ergodic_distribution(sol, disg::DisG)
 
-        sol = time_iteration(DISG.model)
         dr = sol.dr
 
-        return Dolo.ergodic_distribution(DISG.model, dr, DISG.grid_exo, DISG.grid_endo, DISG.dprocess)[2]
+        return Dolo.ergodic_distribution(disg.model, dr, disg.grid_exo, disg.grid_endo, disg.dprocess)[2]
     
     end
 
-    function G(μ0,x0, DISG::disG; exo = nothing)
 
-        sol = time_iteration(DISG.model)
+    function (G::DisG)(μ0,x0; exo = nothing)
 
-        ∂G_∂μ = Dolo.new_transition(DISG.model, sol, x0, DISG.grid_exo, DISG.grid_endo; exo=exo)
+        ∂G_∂μ = Dolo.new_transition(G.model, G.dprocess, x0, G.grid_exo, G.grid_endo; exo=exo)
         
         μ1 = Dolo.new_distribution(∂G_∂μ, μ0)
 
-        ∂G_∂x = (x) -> (ForwardDiff.gradient(new_transition, x).*μ0)[3]
+        ∂G_∂x = (x) -> μ0'* (ForwardDiff.gradient(new_transition, x))[3]
 
         return μ1, ∂G_∂μ, ∂G_∂x
     end
@@ -78,13 +76,14 @@ x0 = F.x0
 μ0 = zeros(40)
 
 
-disg_struct = Main.Temp.disG(model)
+G = Main.Temp.DisG(model)
 
-Main.Temp.ergodic_distribution(disg_struct)
+Main.Temp.ergodic_distribution(sol, G)
 
-Main.Temp.size_mu(disg_struct)
+Main.Temp.size_mu(G)
 
 
-μ1, ∂G_∂μ, ∂G_∂x = Main.Temp.G(μ0,x0, disg_struct)
+μ1, ∂G_∂μ, ∂G_∂x = G(μ0,x0)
 ∂G_∂μ
 ∂G_∂x
+

@@ -162,9 +162,8 @@ function trembling_hand!(A::AbstractArray{Float64,3}, x, w)
 end
 
 
-function new_transition(model, sol, x0, exo_grid:: UnstructuredGrid, endo_grid:: UCGrid; exo=nothing)
+function new_transition(model, dp, x0, exo_grid:: UnstructuredGrid, endo_grid:: UCGrid; exo=nothing)
 
-    dp = sol.dprocess
     parms = SVector(model.calibration[:parameters]...)
 
     N_m = n_nodes(exo_grid)
@@ -196,9 +195,8 @@ function new_transition(model, sol, x0, exo_grid:: UnstructuredGrid, endo_grid::
     return Π0 
 end
 
-function new_transition(model, sol, x0, exo_grid:: UCGrid, endo_grid:: UCGrid; exo=nothing)
+function new_transition(model, dp, x0, exo_grid:: UCGrid, endo_grid:: UCGrid; exo=nothing)
 
-    dp = sol.dprocess
     parms = SVector(model.calibration[:parameters]...)
 
     N_m = n_nodes(exo_grid)
@@ -230,9 +228,8 @@ function new_transition(model, sol, x0, exo_grid:: UCGrid, endo_grid:: UCGrid; e
     return Π0 
 end
 
-function new_transition(model, sol, x0, exo_grid:: EmptyGrid, endo_grid:: UCGrid; exo=nothing)
+function new_transition(model, dp, x0, exo_grid:: EmptyGrid, endo_grid:: UCGrid; exo=nothing)
 
-    dp = sol.dprocess
     parms = SVector(model.calibration[:parameters]...)
 
     N_m = 1
@@ -265,6 +262,6 @@ function new_transition(model, sol, x0, exo_grid:: EmptyGrid, endo_grid:: UCGrid
     return Π0
 end
 
-function new_distribution(model, sol, μ0, x0, exo_grid, endo_grid; exo=nothing)
-    return new_transition(model, sol, x0, exo_grid, endo_grid; exo=exo)*μ0
+function new_distribution(P, μ0)
+    return μ0'*P
 end
