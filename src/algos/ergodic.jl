@@ -119,7 +119,7 @@ end
 
 
 
-function new_distribution(model, sol, μ0, x0, exo_grid:: UnstructuredGrid, endo_grid:: UCGrid)
+function new_distribution(model, sol, μ0, x0, exo_grid:: UnstructuredGrid, endo_grid:: UCGrid; exo=nothing)
 
     dp = sol.dprocess
     parms = SVector(model.calibration[:parameters]...)
@@ -134,8 +134,14 @@ function new_distribution(model, sol, μ0, x0, exo_grid:: UnstructuredGrid, endo
     for i_m in 1:n_nodes(exo_grid)
         x = x0.views[i_m]
         m = node(exo_grid, i_m)
+        if !(exo === nothing)
+            m = repsvec(exo[1], m)   # z0
+        end
         for i_M in 1:n_inodes(dp, i_m)
             M = inode(Point, dp, i_m, i_M)
+            if !(exo === nothing)
+                M = repsvec(exo[2], M)   # z1
+            end
             w = iweight(dp, i_m, i_M)
             S = transition(model, m, s, x, M, parms)
             S = [(S[n]-a)./(b-a) for n=1:length(S)]
@@ -147,7 +153,7 @@ function new_distribution(model, sol, μ0, x0, exo_grid:: UnstructuredGrid, endo
     return Π0 * μ0
 end
 
-function new_distribution(model, sol, μ0, x0, exo_grid:: UCGrid, endo_grid:: UCGrid)
+function new_distribution(model, sol, μ0, x0, exo_grid:: UCGrid, endo_grid:: UCGrid; exo=nothing)
 
     dp = sol.dprocess
     parms = SVector(model.calibration[:parameters]...)
@@ -162,8 +168,14 @@ function new_distribution(model, sol, μ0, x0, exo_grid:: UCGrid, endo_grid:: UC
     for i_m in 1:n_nodes(exo_grid)
         x = x0.views[i_m]
         m = node(exo_grid, i_m)
+        if !(exo === nothing)
+            m = repsvec(exo[1], m)   # z0
+        end
         for i_M in 1:n_inodes(dp, i_m)
             M = inode(Point, dp, i_m, i_M)
+            if !(exo === nothing)
+                M = repsvec(exo[2], M)   # z1
+            end
             w = iweight(dp, i_m, i_M)
             S = transition(model, m, s, x, M, parms)
             V = [(SVector(M..., el...)-a)./(b.-a) for el in S]
@@ -175,7 +187,7 @@ function new_distribution(model, sol, μ0, x0, exo_grid:: UCGrid, endo_grid:: UC
     return Π0 * μ0
 end
 
-function new_distribution(model, sol, μ0, x0, exo_grid:: EmptyGrid, endo_grid:: UCGrid)
+function new_distribution(model, sol, μ0, x0, exo_grid:: EmptyGrid, endo_grid:: UCGrid; exo=nothing)
 
     dp = sol.dprocess
     parms = SVector(model.calibration[:parameters]...)
@@ -191,8 +203,14 @@ function new_distribution(model, sol, μ0, x0, exo_grid:: EmptyGrid, endo_grid::
     i_m = 1
     x = x0.views[1]
     m = SVector(model.calibration[:exogenous]...)
+    if !(exo === nothing)
+        m = repsvec(exo[1], m)   # z0
+    end
     for i_M in 1:n_inodes(dp, i_m)
         M = inode(Point, dp, i_m, i_M)
+        if !(exo === nothing)
+            M = repsvec(exo[2], M)   # z1
+        end
         w = iweight(dp, i_m, i_M)
         S = transition(model, m, s, x, M, parms)
         S = [(S[n]-a)./(b-a) for n=1:length(S)]
