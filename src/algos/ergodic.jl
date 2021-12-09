@@ -160,3 +160,111 @@ function trembling_hand!(A::AbstractArray{Float64,3}, x, w)
         A[n, q0_+1, q1_+1] += λ0*λ1*w
     end
 end
+
+
+function new_transition(model, sol, x0, exo_grid:: UnstructuredGrid, endo_grid:: UCGrid; exo=nothing)
+
+    dp = sol.dprocess
+    parms = SVector(model.calibration[:parameters]...)
+
+    N_m = n_nodes(exo_grid)
+    N_s = n_nodes(endo_grid)
+    N = N_m*N_s
+    Π = zeros(N_m, N_s, N_m, endo_grid.n...)
+    s = nodes(endo_grid)
+    a = SVector(endo_grid.min...)
+    b = SVector(endo_grid.max...)
+    for i_m in 1:n_nodes(exo_grid)
+        x = x0.views[i_m]
+        m = node(exo_grid, i_m)
+        if !(exo === nothing)
+            m = Dolo.repsvec(exo[1], m)   # z0
+        end
+        for i_M in 1:n_inodes(dp, i_m)
+            M = inode(Point, dp, i_m, i_M)
+            if !(exo === nothing)
+                M = Dolo.repsvec(exo[2], M)   # z1
+            end
+            w = iweight(dp, i_m, i_M)
+            S = transition(model, m, s, x, M, parms)
+            S = [(S[n]-a)./(b-a) for n=1:length(S)]
+            trembling_hand!(view(Π,tuple(i_m,:,i_M,(Colon() for k in 1:(ndims(Π)-3))...)...), S, w)
+        end
+    end
+    Π0 = (reshape(Π,N,N))
+
+    return Π0 
+end
+
+function new_transition(model, sol, x0, exo_grid:: UCGrid, endo_grid:: UCGrid; exo=nothing)
+
+    dp = sol.dprocess
+    parms = SVector(model.calibration[:parameters]...)
+
+    N_m = n_nodes(exo_grid)
+    N_s = n_nodes(endo_grid)
+    N = N_m*N_s
+    Π = zeros(N_m, N_s, exo_grid.n..., endo_grid.n...)
+    s = nodes(endo_grid)
+    a = SVector(exo_grid.min..., endo_grid.min...)
+    b = SVector(exo_grid.max..., endo_grid.max...)
+    for i_m in 1:n_nodes(exo_grid)
+        x = x0.views[i_m]
+        m = node(exo_grid, i_m)
+        if !(exo === nothing)
+            m = Dolo.repsvec(exo[1], m)   # z0
+        end
+        for i_M in 1:n_inodes(dp, i_m)
+            M = inode(Point, dp, i_m, i_M)
+            if !(exo === nothing)
+                M = Dolo.repsvec(exo[2], M)   # z1
+            end
+            w = iweight(dp, i_m, i_M)
+            S = transition(model, m, s, x, M, parms)
+            V = [(SVector(M..., el...)-a)./(b.-a) for el in S]
+            trembling_hand!(view(Π,tuple(i_m,(Colon() for k in 1:(ndims(Π)-1))...)...), V, w)
+        end
+    end
+    Π0 = (reshape(Π,N,N))
+
+    return Π0 
+end
+
+function new_transition(model, sol, x0, exo_grid:: EmptyGrid, endo_grid:: UCGrid; exo=nothing)
+
+    dp = sol.dprocess
+    parms = SVector(model.calibration[:parameters]...)
+
+    N_m = 1
+    N_s = n_nodes(endo_grid)
+    N = N_m*N_s
+    Π = zeros(N_s, endo_grid.n...)
+    s = nodes(endo_grid)
+
+    a = SVector(endo_grid.min...)
+    b = SVector(endo_grid.max...)
+    i_m = 1
+    x = x0.views[1]
+    m = SVector(model.calibration[:exogenous]...)
+    if !(exo === nothing)
+        m = Dolo.repsvec(exo[1], m)   # z0
+    end
+    for i_M in 1:n_inodes(dp, i_m)
+        M = inode(Point, dp, i_m, i_M)
+        if !(exo === nothing)
+            M = Dolo.repsvec(exo[2], M)   # z1
+        end
+        w = iweight(dp, i_m, i_M)
+        S = transition(model, m, s, x, M, parms)
+        S = [(S[n]-a)./(b-a) for n=1:length(S)]
+        trembling_hand!(Π, S, w)
+    end
+
+    Π0 = (reshape(Π,N,N))
+
+    return Π0
+end
+
+function new_distribution(model, sol, μ0, x0, exo_grid, endo_grid; exo=nothing)
+    return new_transition(model, sol, x0, exo_grid, endo_grid; exo=exo)*μ0
+end
