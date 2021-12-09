@@ -135,12 +135,12 @@ function new_distribution(model, sol, μ0, x0, exo_grid:: UnstructuredGrid, endo
         x = x0.views[i_m]
         m = node(exo_grid, i_m)
         if !(exo === nothing)
-            m = repsvec(exo[1], m)   # z0
+            m = Dolo.repsvec(exo[1], m)   # z0
         end
         for i_M in 1:n_inodes(dp, i_m)
             M = inode(Point, dp, i_m, i_M)
             if !(exo === nothing)
-                M = repsvec(exo[2], M)   # z1
+                M = Dolo.repsvec(exo[2], M)   # z1
             end
             w = iweight(dp, i_m, i_M)
             S = transition(model, m, s, x, M, parms)
@@ -169,12 +169,12 @@ function new_distribution(model, sol, μ0, x0, exo_grid:: UCGrid, endo_grid:: UC
         x = x0.views[i_m]
         m = node(exo_grid, i_m)
         if !(exo === nothing)
-            m = repsvec(exo[1], m)   # z0
+            m = Dolo.repsvec(exo[1], m)   # z0
         end
         for i_M in 1:n_inodes(dp, i_m)
             M = inode(Point, dp, i_m, i_M)
             if !(exo === nothing)
-                M = repsvec(exo[2], M)   # z1
+                M = Dolo.repsvec(exo[2], M)   # z1
             end
             w = iweight(dp, i_m, i_M)
             S = transition(model, m, s, x, M, parms)
@@ -204,12 +204,12 @@ function new_distribution(model, sol, μ0, x0, exo_grid:: EmptyGrid, endo_grid::
     x = x0.views[1]
     m = SVector(model.calibration[:exogenous]...)
     if !(exo === nothing)
-        m = repsvec(exo[1], m)   # z0
+        m = Dolo.repsvec(exo[1], m)   # z0
     end
     for i_M in 1:n_inodes(dp, i_m)
         M = inode(Point, dp, i_m, i_M)
         if !(exo === nothing)
-            M = repsvec(exo[2], M)   # z1
+            M = Dolo.repsvec(exo[2], M)   # z1
         end
         w = iweight(dp, i_m, i_M)
         S = transition(model, m, s, x, M, parms)
