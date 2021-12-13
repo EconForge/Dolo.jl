@@ -118,11 +118,31 @@ function ergodic_distribution(model, dr, exo_grid:: EmptyGrid, endo_grid:: Carte
 end
 
 
+"""
+Computes the outer product.
 
+# Argument
+* `λn_weight_vector::Vararg{Point{2}}`: tuple of Point{2} to be multiplied by outer product
+
+# Returns
+* the outer product
+"""
 function outer(λn_weight_vector::Vararg{Point{2}})
     return [prod(e) for e in Iterators.product(λn_weight_vector...)]
 end
 
+
+"""
+Updates A.
+
+# Arguments
+* `A`: the transition matrix that will be updated.
+* `x::Vector{Point{d}}` : vector of controls.
+* `w::Float64` : vector of weights.
+
+# Modifies
+* `A` : the updated transition matrix 
+"""
 function trembling_hand!(A, x::Vector{Point{d}}, w::Float64) where d
     
     @assert ndims(A) == d+1
