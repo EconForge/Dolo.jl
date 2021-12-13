@@ -161,6 +161,20 @@ function trembling_hand!(A::AbstractArray{Float64,3}, x, w)
     end
 end
 
+"""
+Calculates the new transition matrix for a given model, a given discretized exogenous process, given control values (x0) and given grids (exogenous and endogenous).
+
+# Arguments
+* `model::NumericModel`: Model object that describes the current model environment.
+* `dprocess::`: Discretized exogenous process.
+* `x0::Dolo.MSM{SVector{2, Float64}}`: Initial control values.
+* `exo_grid`: Exogenous grid that can be of type either UnstructuredGrid or UCGrid or EmptyGrid (in the three following functions).
+* `endo_grid::UCGrid`: Endogenous grid.
+* `exo`: nothing or (z0, z1)
+
+# Returns
+* `Π0::`: New transition matrix.
+"""
 
 function new_transition(model, dp, x0, exo_grid:: UnstructuredGrid, endo_grid:: UCGrid; exo=nothing)
 
@@ -261,6 +275,17 @@ function new_transition(model, dp, x0, exo_grid:: EmptyGrid, endo_grid:: UCGrid;
 
     return Π0
 end
+
+"""
+Calculates the new distribution μ à τ = t+1 for a given initial distribution μ at τ = t and a given transition matrix.
+
+# Arguments
+* `P::Array{Int64, 2}`: Transition matrix.
+* `μ0 ::Vector{Float64}`: Initial distribution μ, of the state (exogenous and endogenous), on the grid at τ = t.
+
+# Returns
+* `μ0'*P`: New distribution at τ = t+1 .
+"""
 
 function new_distribution(P, μ0)
     return μ0'*P
