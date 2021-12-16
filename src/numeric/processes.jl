@@ -264,7 +264,7 @@ function VAR1(ρ::Float64, Σ::Array{Float64,2})
     return VAR1(R, Σ)
 end
 
-function discretize(var::VAR1; n::Union{Int, Vector{Int}}=5, n_i::Union{Int, Vector{Int}}=5,  n_std::Int=2)
+function discretize(::Type{GDP}, var::VAR1; n::Union{Int, Vector{Int}}=5, n_i::Union{Int, Vector{Int}}=5,  n_std::Int=2)
     R = var.R
     M = var.μ
     Σ = var.Σ
@@ -285,7 +285,7 @@ function discretize(var::VAR1; n::Union{Int, Vector{Int}}=5, n_i::Union{Int, Vec
     return GDP(grid, integration_nodes, integration_weights)
 end
 
-discretize(::Type{GDP}, var::VAR1; args...) = discretize(var; args...)
+discretize(var::VAR1; args...) = discretize(DiscreteMarkovProcess, var; args...)
 
 
 function discretize(::Type{DiscreteMarkovProcess}, var::VAR1; n::Union{Int, Vector{Int}}=3)

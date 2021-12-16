@@ -127,9 +127,13 @@ Computes the outer product.
 # Returns
 * the outer product
 """
-function outer(λn_weight_vector::Vararg{Point{2}})
+function outer(λn_weight_vector::Vararg{SVector{2}})
     return [prod(e) for e in Iterators.product(λn_weight_vector...)]
 end
+
+outer3(M, v) = [M[i]*v for i in CartesianIndices(M)]
+
+
 
 
 """
@@ -159,7 +163,7 @@ function trembling_hand!(A, x::Vector{Point{d}}, w::Float64) where d
         qn = max.(0, qn)
         qn = min.(qn, shape_A[2:d+1].-2)
         λn = (xn./δ.-qn) # ∈[0,1[ by construction
-        qn_ = round.(Int,qn) + 1
+        qn_ = round.(Int,qn) .+ 1
         
         λn_weight_vector = tuple( (SVector(w*(1-λn[i]),w*λn[i]) for i in 1:d)... )
 
@@ -306,7 +310,7 @@ end
 
 # dev
 
-function trembling_foot!(Π,dΠ, S::Vector{Point{d}}, S_x, w::Float64) where d
+function trembling_foot!(Π, dΠ, S::Vector{Point{d}}, S_x::Vector{SMatrix{d,n_x,Float64,_}}, w::Float64) where d where n_x where _
     
     @assert ndims(Π) == d+1
     shape_Π = size(Π)
@@ -317,25 +321,39 @@ function trembling_foot!(Π,dΠ, S::Vector{Point{d}}, S_x, w::Float64) where d
     for n in 1:N
 
         Sn = S[n]
+        S_x_n = S_x[n]
+
         Sn = min.(max.(Sn, 0.0),1.0)
         qn = div.(Sn, δ)
         qn = max.(0, qn)
         qn = min.(qn, shape_Π[2:d+1].-2)
         λn = (Sn./δ.-qn) # ∈[0,1[ by construction
-        qn_ = round.(Int,qn) + 1
+        qn_ = round.(Int,qn) .+ 1
         
-        λn_weight_vector_Π = tuple( (SVector(w.*(1-λn[i]),w.*λn[i]) for i in 1:d)... )
-        λn_weight_vector_dΠ = tuple( (SVector(-w .* S_x ./ (N-1), w .* S_x ./ (N-1)) for i in 1:d)... )
-
         indexes_to_be_modified = tuple(n, UnitRange.(qn_,qn_.+1)...)
 
-        # Filling transition matrix
-        rhs_Π = outer(λn_weight_vector_Π...)
-        rhs_dΠ = outer(λn_weight_vector_dΠ...)
+        λn_weight_vector_Π = tuple( (SVector(w.*(1-λn[i]),w.*λn[i]) for i in 1:d)... )
 
+        λn_weight_vector_dΠ = [ # TODO#change (-1,1)
+            tuple(
+                (( i==k ? SVector(-1.0./(shape_Π[1+i]-1),1.0./(shape_Π[1+i]-1)) : SVector(w.*(1-λn[i]),w.*λn[i]) ) for i in 1:d)...
+            )
+            for k=1:d
+        ]
+
+
+        # Filling transition matrix
+
+        rhs_Π = outer(λn_weight_vector_Π...)
         Π[indexes_to_be_modified...] .+= rhs_Π
-        dΠ[indexes_to_be_modified...] .+= rhs_dΠ
-        
+
+        for k=1:d
+            rhs_dΠ = outer(λn_weight_vector_dΠ[k]...)
+            M = rhs_dΠ
+            X = S_x_n[k,:]
+            rhs = outer3( M, X)
+            dΠ[indexes_to_be_modified...] .+= w*rhs
+        end
     end
 
 end
@@ -343,7 +361,7 @@ end
 
 
 
-function new_transition_dev(model, dp, x0, exo_grid:: UnstructuredGrid, endo_grid:: UCGrid; exo=nothing)
+function new_transition_dev(model, dp, x0::MSM{SVector{n_x, Float64}}, exo_grid:: UnstructuredGrid, endo_grid:: UCGrid; exo=nothing, diff=false) where n_x
 
     parms = SVector(model.calibration[:parameters]...)
 
@@ -351,10 +369,13 @@ function new_transition_dev(model, dp, x0, exo_grid:: UnstructuredGrid, endo_gri
     N_s = n_nodes(endo_grid)
     N = N_m*N_s
     Π = zeros(N_m, N_s, N_m, endo_grid.n...)
-    dΠ = zeros(N_m, N_s, N_m, endo_grid.n...)
+    if diff
+        dΠ = zeros(SVector{n_x, Float64}, N_m, N_s, N_m, endo_grid.n...)
+    end
     s = nodes(endo_grid)
     a = SVector(endo_grid.min...)
     b = SVector(endo_grid.max...)
+    d = length(a)
     for i_m in 1:n_nodes(exo_grid)
         x = x0.views[i_m]
         m = node(exo_grid, i_m)
@@ -368,9 +389,17 @@ function new_transition_dev(model, dp, x0, exo_grid:: UnstructuredGrid, endo_gri
             end
             w = iweight(dp, i_m, i_M)
             S, S_x = transition(model, Val{(0,3)}, m, s, x, M, parms)
-            S = [(S[n]-a)./(b-a) for n=1:length(S)]
-            S_x = [(SMatrix{N,N}(1I)./(b-a)) * S_x[n] for n=1:length(S)]
-            trembling_foot!(view(Π,tuple(i_m,:,i_M,(Colon() for k in 1:(ndims(Π)-3))...)...), view(dΠ,tuple(i_m,:,i_M,(Colon() for k in 1:(ndims(dΠ)-3))...)...), S, S_x, w)
+            S = [(S[n]-a)./(b-a) for n=1:N_s]
+            S_x = [(1 ./(b-a)) .* S_x[n] for n=1:N_s]
+
+            new_dims = tuple(i_m,:,i_M,(Colon() for k in 1:d)...)
+            Π_view  = view( Π,new_dims...)
+            if !diff
+                trembling_hand!(Π_view, S, w)
+            else
+                dΠ_view = view(dΠ,tuple(i_m,:,i_M,(Colon() for k in 1:d)...)...)
+                trembling_foot!(Π_view, dΠ_view, S, S_x, w)
+            end
         end
     end
     Π0 = (reshape(Π,N,N))
