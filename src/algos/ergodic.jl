@@ -117,46 +117,60 @@ function ergodic_distribution(model, dr, exo_grid:: EmptyGrid, endo_grid:: UCGri
     return reshape(Π, N, N), μ
 end
 
-function trembling_hand!(A::AbstractArray{Float64,2}, x, w)
-    N,n0 = size(A)
-    δ0 = 1.0./(n0-1.0)
-    for n in 1:N
-        x0 = x[n][1]
-        x0 = min.(max.(x0, 0.0),1.0)
-        q0 = div.(x0, δ0)
-        q0 = max.(0, q0)
-        q0 = min.(q0, n0-2)
-        λ0 = (x0./δ0-q0) # ∈[0,1[ by construction
-        q0_ = round.(Int,q0) + 1
-        A[n, q0_]   += (1-λ0)*w
-        A[n, q0_+1] += λ0*w
-    end
+
+"""
+Computes the outer product.
+
+# Argument
+* `λn_weight_vector::Vararg{Point{2}}`: tuple of Point{2} to be multiplied by outer product
+
+# Returns
+* the outer product
+"""
+function outer(λn_weight_vector::Vararg{Point{2}})
+    return [prod(e) for e in Iterators.product(λn_weight_vector...)]
 end
 
-function trembling_hand!(A::AbstractArray{Float64,3}, x, w)
-    N,n0,n1 = size(A)
-    δ0 = 1.0./(n0-1.0)
-    δ1 = 1.0./(n1-1.0)
-    for n in 1:N
-        x0 = x[n][1]
-        x0 = min.(max.(x0, 0.0),1.0)
-        q0 = div.(x0, δ0)
-        q0 = max.(0, q0)
-        q0 = min.(q0, n0-2)
-        λ0 = (x0./δ0-q0) # ∈[0,1[ by construction
-        q0_ = round.(Int,q0) + 1
 
-        x1 = x[n][2]
-        x1 = min.(max.(x1, 0.0),1.0)
-        q1 = div.(x1, δ1)
-        q1 = max.(0, q1)
-        q1 = min.(q1, n1-2)
-        λ1 = (x1./δ1-q1) # ∈[0,1[ by construction
-        q1_ = round.(Int,q1) + 1
+"""
+Updates A.
 
-        A[n, q0_ ,  q1_] += (1-λ0)*(1-λ1)*w
-        A[n, q0_+1, q1_] += λ0*(1-λ1)*w
-        A[n, q0_, q1_+1] += (1-λ0)*λ1*w
-        A[n, q0_+1, q1_+1] += λ0*λ1*w
+# Arguments
+* `A`: the transition matrix that will be updated.
+* `x::Vector{Point{d}}` : vector of controls.
+* `w::Float64` : vector of weights.
+
+# Modifies
+* `A` : the updated transition matrix 
+"""
+function trembling_hand!(A, x::Vector{Point{d}}, w::Float64) where d
+    
+    @assert ndims(A) == d+1
+    shape_A = size(A)
+    grid_dimension = d
+    δ =  SVector{d,Float64}(1.0./(shape_A[1+i]-1) for i in 1:d )
+    
+
+    for n in 1:shape_A[1]
+
+        xn = x[n]
+        xn = min.(max.(xn, 0.0),1.0)
+        qn = div.(xn, δ)
+        qn = max.(0, qn)
+        qn = min.(qn, shape_A[2:d+1].-2)
+        λn = (xn./δ.-qn) # ∈[0,1[ by construction
+        qn_ = round.(Int,qn) + 1
+        
+        λn_weight_vector = tuple( (SVector(1-λn[i],λn[i]) for i in 1:d)... )
+
+        indexes_to_be_modified = tuple(n, UnitRange.(qn_,qn_.+1)...)
+
+        # Filling transition matrix
+        rhs = outer(λn_weight_vector...)
+        A[indexes_to_be_modified...] .+= rhs
+        
     end
+
 end
+
+
