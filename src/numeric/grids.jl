@@ -83,7 +83,7 @@ Base.show(io::IO, g::EmptyGrid{d}) where d = print(io, "EmptyGrid{$d}")
 
 nodes(grid::EmptyGrid) = nothing
 n_nodes(grid::EmptyGrid) = 0 ##### Reconsider: ???
-function node( grid::EmptyGrid, i::Int) where d
+function node( grid::EmptyGrid{d}, i::Int) where d
     return fill(NaN, SVector{d, Float64})
 end
 

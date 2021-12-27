@@ -131,10 +131,14 @@ function outer(λn_weight_vector::Vararg{SVector{2}})
     return [prod(e) for e in Iterators.product(λn_weight_vector...)]
 end
 
+<<<<<<< HEAD
 outer3(M, v) = [M[i]*v for i in CartesianIndices(M)]
 
 
 
+=======
+outer2(A, x) = [A[i]*x for i in CartesianIndices(A)]
+>>>>>>> 50b7614380fba54843b8fa5830e3445421701fd2
 
 """
 Updates A.
@@ -321,7 +325,11 @@ function trembling_foot!(Π, dΠ, S::Vector{Point{d}}, S_x::Vector{SMatrix{d,n_x
     for n in 1:N
 
         Sn = S[n]
+<<<<<<< HEAD
         S_x_n = S_x[n]
+=======
+        Sn_x = S_x[n]
+>>>>>>> 50b7614380fba54843b8fa5830e3445421701fd2
 
         Sn = min.(max.(Sn, 0.0),1.0)
         qn = div.(Sn, δ)
@@ -330,9 +338,14 @@ function trembling_foot!(Π, dΠ, S::Vector{Point{d}}, S_x::Vector{SMatrix{d,n_x
         λn = (Sn./δ.-qn) # ∈[0,1[ by construction
         qn_ = round.(Int,qn) .+ 1
         
+<<<<<<< HEAD
         indexes_to_be_modified = tuple(n, UnitRange.(qn_,qn_.+1)...)
 
         λn_weight_vector_Π = tuple( (SVector(w.*(1-λn[i]),w.*λn[i]) for i in 1:d)... )
+=======
+        λn_weight_vector_Π = tuple( (SVector((1-λn[i]),λn[i]) for i in 1:d)... )
+        # λn_weight_vector_dΠ = tuple( (SVector(-w .* S_x ./ (N-1), w .* S_x ./ (N-1)) for i in 1:d)... )
+>>>>>>> 50b7614380fba54843b8fa5830e3445421701fd2
 
         λn_weight_vector_dΠ = [ # TODO#change (-1,1)
             tuple(
@@ -343,6 +356,7 @@ function trembling_foot!(Π, dΠ, S::Vector{Point{d}}, S_x::Vector{SMatrix{d,n_x
 
 
         # Filling transition matrix
+<<<<<<< HEAD
 
         rhs_Π = outer(λn_weight_vector_Π...)
         Π[indexes_to_be_modified...] .+= rhs_Π
@@ -354,6 +368,19 @@ function trembling_foot!(Π, dΠ, S::Vector{Point{d}}, S_x::Vector{SMatrix{d,n_x
             rhs = outer3( M, X)
             dΠ[indexes_to_be_modified...] .+= w*rhs
         end
+=======
+        rhs_Π = outer(λn_weight_vector_Π...)
+
+        Π[indexes_to_be_modified...] .+= w.*rhs_Π
+
+        for k=1:d
+            λ_vec =  tuple( (i==k ? SVector( -1. /(size(Π, k+1)-1), 1. /(size(Π, k+1)-1) ) : (SVector((1-λn[i]),λn[i])) for i in 1:d)... )
+            A = outer(λ_vec...)
+            rhs_dΠ = outer2(A, Sn_x[k,:])
+            dΠ[indexes_to_be_modified...] .+= w*rhs_dΠ
+        end
+        
+>>>>>>> 50b7614380fba54843b8fa5830e3445421701fd2
     end
 
 end
@@ -361,11 +388,17 @@ end
 
 
 
+<<<<<<< HEAD
 function new_transition_dev(model, dp, x0::MSM{SVector{n_x, Float64}}, exo_grid:: UnstructuredGrid, endo_grid:: UCGrid; exo=nothing, diff=false) where n_x
+=======
+function transition_matrix(model, dp, x0::MSM{<:SVector{n_x}}, exo_grid, endo_grid; exo=nothing, diff=true) where n_x
+
+    # the restriction here is that dp is a descrete_process
+>>>>>>> 50b7614380fba54843b8fa5830e3445421701fd2
 
     parms = SVector(model.calibration[:parameters]...)
 
-    N_m = n_nodes(exo_grid)
+    N_m = max(1, n_nodes(exo_grid))
     N_s = n_nodes(endo_grid)
     N = N_m*N_s
     Π = zeros(N_m, N_s, N_m, endo_grid.n...)
@@ -375,8 +408,12 @@ function new_transition_dev(model, dp, x0::MSM{SVector{n_x, Float64}}, exo_grid:
     s = nodes(endo_grid)
     a = SVector(endo_grid.min...)
     b = SVector(endo_grid.max...)
+<<<<<<< HEAD
     d = length(a)
     for i_m in 1:n_nodes(exo_grid)
+=======
+    for i_m in 1:max(1, n_nodes(exo_grid))
+>>>>>>> 50b7614380fba54843b8fa5830e3445421701fd2
         x = x0.views[i_m]
         m = node(exo_grid, i_m)
         if !(exo === nothing)
@@ -389,6 +426,7 @@ function new_transition_dev(model, dp, x0::MSM{SVector{n_x, Float64}}, exo_grid:
             end
             w = iweight(dp, i_m, i_M)
             S, S_x = transition(model, Val{(0,3)}, m, s, x, M, parms)
+<<<<<<< HEAD
             S = [(S[n]-a)./(b-a) for n=1:N_s]
             S_x = [(1 ./(b-a)) .* S_x[n] for n=1:N_s]
 
@@ -430,53 +468,31 @@ function new_transition_dev(model, dp, x0, exo_grid:: UCGrid, endo_grid:: UCGrid
             M = inode(Point, dp, i_m, i_M)
             if !(exo === nothing)
                 M = Dolo.repsvec(exo[2], M)   # z1
+=======
+            S = [(S[n]-a)./(b-a) for n=1:length(S)]
+            Π_view = view(Π,tuple(i_m,:,i_M,(Colon() for k in 1:(ndims(Π)-3))...)...)
+            if !diff
+                trembling_hand!(Π_view, S, w)
+            else
+                S_x = [( 1.0 ./(b-a)) .* S_x[n] for n=1:length(S)]
+                dΠ_view = view(dΠ,tuple(i_m,:,i_M,(Colon() for k in 1:(ndims(dΠ)-3))...)...)
+                trembling_foot!(Π_view, dΠ_view, S, S_x, w)
+>>>>>>> 50b7614380fba54843b8fa5830e3445421701fd2
             end
-            w = iweight(dp, i_m, i_M)
-            S, S_x = transition(model, Val{(0,3)}, m, s, x, M, parms)
-            V = [(SVector(M..., el...)-a)./(b.-a) for el in S]
-            S_x = [(SMatrix{N,N}(1I)./(b-a)) * S_x[n] for n=1:length(S)] ### NO
-            trembling_foot!(view(Π,tuple(i_m,(Colon() for k in 1:(ndims(Π)-1))...)...), view(dΠ,tuple(i_m,(Colon() for k in 1:(ndims(dΠ)-1))...)...), V, S_x, w)
         end
     end
-    Π0 = (reshape(Π,N,N))
-    dΠ0 = reshape(dΠ,N,N)
 
-    return Π0, dΠ0
+    Π0 = (reshape(Π,N,N))
+    if !diff
+        return Π0
+    else
+        dΠ0 = reshape(dΠ,N,N)
+        return Π0, dΠ0
+    end
+
 end
 
-function new_transition_dev(model, dp, x0, exo_grid:: EmptyGrid, endo_grid:: UCGrid; exo=nothing)
-
-    parms = SVector(model.calibration[:parameters]...)
-
-    N_m = 1
-    N_s = n_nodes(endo_grid)
-    N = N_m*N_s
-    Π = zeros(N_s, endo_grid.n...)
-    dΠ = zeros(N_s, endo_grid.n...)
-    s = nodes(endo_grid)
-
-    a = SVector(endo_grid.min...)
-    b = SVector(endo_grid.max...)
-    i_m = 1
-    x = x0.views[1]
-    m = SVector(model.calibration[:exogenous]...)
-    if !(exo === nothing)
-        m = Dolo.repsvec(exo[1], m)   # z0
-    end
-    for i_M in 1:n_inodes(dp, i_m)
-        M = inode(Point, dp, i_m, i_M)
-        if !(exo === nothing)
-            M = Dolo.repsvec(exo[2], M)   # z1
-        end
-        w = iweight(dp, i_m, i_M)
-        S, S_x = transition(model, Val{(0,3)}, m, s, x, M, parms)
-        S = [(S[n]-a)./(b-a) for n=1:length(S)]
-        S_x = [(SMatrix{N,N}(1I)./(b-a)) * S_x[n] for n=1:length(S)]
-        trembling_foot!(Π, dΠ, S, S_x, w)
-    end
-
-    Π0 = (reshape(Π,N,N))
-    dΠ0 = reshape(dΠ,N,N)
-
-    return Π0, dΠ0
+function transition_matrix(model, sol; diff=false)
+    x0 = Dolo.MSM([sol.dr(i, sol.dr.grid_endo.nodes) for i=1:max(1,Dolo.n_nodes(sol.dr.grid_exo))])
+    Dolo.transition_matrix(model, sol.dprocess, x0, sol.dr.grid_exo, sol.dr.grid_endo; diff=diff);
 end
