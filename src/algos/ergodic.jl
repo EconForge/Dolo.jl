@@ -239,8 +239,12 @@ function new_transition_dev(model, dp, x0, exo_grid, endo_grid:: UCGrid; exo=not
     for i_m in 1:max(1,n_nodes(exo_grid))
 
         x = x0.views[i_m]
-        
-        m = ifelse(typeof(exo_grid) == Dolo.EmptyGrid{ndims(exo_grid)}, SVector(model.calibration[:exogenous]...), node(exo_grid, i_m))
+
+        if typeof(exo_grid) == Dolo.EmptyGrid{ndims(exo_grid)}
+            m = SVector(model.calibration[:exogenous]...)
+        else
+            m =  node(exo_grid, i_m)
+        end
 
         if !(exo === nothing)
             m = Dolo.repsvec(exo[1], m)   # z0
