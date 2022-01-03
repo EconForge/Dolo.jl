@@ -187,10 +187,10 @@ Updates A.
 * `A` : the updated transition matrix 
 """
 function trembling_hand_rescaled!(A, x, w::Float64, exo_grid, a, b; M=0)
-    if exo_grid = UnstructuredGrid
+    if typeof(exo_grid) == Dolo.UnstructuredGrid{ndims(exo_grid)}
         x = [(x[n]-a)./(b-a) for n=1:length(x)]
         trembling_hand!(A, x, w)
-    elseif exo_grid = UCGrid
+    elseif typeof(exo_grid) == Dolo.UCGrid{ndims(exo_grid)}
         V = [(SVector(M..., el...)-a)./(b.-a) for el in x]
         trembling_hand!(A, V, w)
     else
@@ -211,6 +211,38 @@ Calculates the new transition matrix for a given model, a given discretized exog
 # Returns
 * `Π0::`: New transition matrix.
 """
+
+function new_transition_dev(model, dp, x0, exo_grid, endo_grid:: UCGrid; exo=nothing)
+
+    parms = SVector(model.calibration[:parameters]...)
+
+    N_m = max(1,n_nodes(exo_grid))
+    N_s = n_nodes(endo_grid)
+    N = N_m*N_s
+    Π = zeros(N_m, N_s, N_m, endo_grid.n...)
+    s = nodes(endo_grid)
+    a = SVector(endo_grid.min...)
+    b = SVector(endo_grid.max...)
+    for i_m in 1:n_nodes(exo_grid)
+        x = x0.views[i_m]
+        m = node(exo_grid, i_m)
+        if !(exo === nothing)
+            m = Dolo.repsvec(exo[1], m)   # z0
+        end
+        for i_M in 1:n_inodes(dp, i_m)
+            M = inode(Point, dp, i_m, i_M)
+            if !(exo === nothing)
+                M = Dolo.repsvec(exo[2], M)   # z1
+            end
+            w = iweight(dp, i_m, i_M)
+            S = transition(model, m, s, x, M, parms)
+            trembling_hand_rescaled!(view(Π,tuple(i_m,:,i_M,(Colon() for k in 1:(ndims(Π)-3))...)...), S, w, exo_grid, a, b)
+        end
+    end
+    Π0 = (reshape(Π,N,N))
+
+    return Π0 
+end
 
 function new_transition(model, dp, x0, exo_grid:: UnstructuredGrid, endo_grid:: UCGrid; exo=nothing)
 
