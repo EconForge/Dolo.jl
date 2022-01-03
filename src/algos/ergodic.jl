@@ -97,8 +97,37 @@ end
 
 
 """
-Calculates the new transition matrix for a given model, a given discretized exogenous process, given control values (x0) and given grids (exogenous and endogenous).
+Updates A.
+# Arguments
+* `A`: the transition matrix that will be updated.
+* `x` : vector of controls.
+* `w::Float64` : vector of weights.
+* `exo_grid` : exogenous grid that will be used to determine the type of rescaling to do.
+* `a` : SVector containing the minimum values on the UCGrids
+* `b` : SVector containing the maximum values on the UCGrids
 
+# Optional 
+* `M` : future node considered when the exogenous grid is a UCGrid to rescale x
+
+# Modifies
+* `A` : the updated transition matrix 
+"""
+function trembling_hand_rescaled!(A, x, w::Float64, exo_grid, a, b; M=0)
+    if typeof(exo_grid) == Dolo.UnstructuredGrid{ndims(exo_grid)}
+        x = [(x[n]-a)./(b-a) for n=1:length(x)]
+        trembling_hand!(A, x, w)
+    elseif typeof(exo_grid) == Dolo.UCGrid{ndims(exo_grid)}
+        V = [(SVector(M..., el...)-a)./(b.-a) for el in x]
+        trembling_hand!(A, V, w)
+    else
+
+        x = [(x[n]-a)./(b-a) for n=1:length(x)]
+        trembling_hand!(A, x, w)
+    end
+end
+
+"""
+Calculates the new transition matrix for a given model, a given discretized exogenous process, given control values (x0) and given grids (exogenous and endogenous).
 # Arguments
 * `model::NumericModel`: Model object that describes the current model environment.
 * `dprocess::`: Discretized exogenous process.
@@ -106,7 +135,6 @@ Calculates the new transition matrix for a given model, a given discretized exog
 * `exo_grid`: Exogenous grid that can be of type either UnstructuredGrid or UCGrid or EmptyGrid (in the three following functions).
 * `endo_grid::UCGrid`: Endogenous grid.
 * `exo`: nothing or (z0, z1)
-
 # Returns
 * `Π0::`: New transition matrix.
 """
