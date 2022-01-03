@@ -1,8 +1,10 @@
 struct CubicDR{S<:Grid, T<:UCGrid, nx, d} <: AbstractDecisionRule{S, T, nx}
+    grid::ProductGrid{S, T}
     grid_exo::S
     grid_endo::T
     itp::Vector{Array{Value{nx}, d}}
 end
+
 
 (dr::CubicDR)(args...) = evaluate(dr, args...)
 
@@ -10,18 +12,19 @@ end
 ##### 1-argument decision rule
 #####
 
-function CubicDR(exo_grid::EmptyGrid, endo_grid::UCGrid{d}, i::Union{Val{nx}, Type{Val{nx}}}) where d where nx
+function CubicDR(exo_grid::EmptyGrid{d1}, endo_grid::UCGrid{d2}, i::Union{Val{nx}, Type{Val{nx}}}) where d2 where d1 where nx
     dims = endo_grid.n .+ 2
     c = [zeros(Value{nx},dims...)]
-    CubicDR{EmptyGrid, UCGrid{d}, nx, d}(exo_grid, endo_grid, c)
+    grid = ProductGrid(exo_grid, endo_grid)
+    CubicDR{EmptyGrid{d1}, UCGrid{d2}, nx, d2}(grid, exo_grid, endo_grid, c)
 end
 
-function set_values!(dr::CubicDR{EmptyGrid,UCGrid{d},n_x,d},  V::MSM{Value{n_x}}) where n_x where d
+function set_values!(dr::CubicDR{EmptyGrid{d1},UCGrid{d},n_x,d},  V::MSM{Value{n_x}}) where n_x where d where d1
     set_values!(dr, V.views)
 end
 
 
-function set_values!(dr::CubicDR{EmptyGrid,UCGrid{d},n_x,d},  V::AbstractVector{<:AbstractVector{Value{n_x}}}) where n_x where d
+function set_values!(dr::CubicDR{EmptyGrid{d1},UCGrid{d},n_x,d},  V::AbstractVector{<:AbstractVector{Value{n_x}}}) where n_x where d where d1
     n = dr.grid_endo.n
     C = dr.itp[1]
     ind = [2:(n[i]+1) for i=1:length(n)]
@@ -31,7 +34,7 @@ function set_values!(dr::CubicDR{EmptyGrid,UCGrid{d},n_x,d},  V::AbstractVector{
     prefilter!(C)
 end
 
-function evaluate(dr::CubicDR{EmptyGrid,UCGrid{d}}, points::AbstractVector{Point{d}}) where d
+function evaluate(dr::CubicDR{EmptyGrid{d1},UCGrid{d}}, points::AbstractVector{Point{d}}) where d where d1
     a = SVector{d,Float64}(dr.grid_endo.min)
     b = SVector{d,Float64}(dr.grid_endo.max)
     n = SVector{d,Int64}(dr.grid_endo.n)
@@ -40,11 +43,11 @@ function evaluate(dr::CubicDR{EmptyGrid,UCGrid{d}}, points::AbstractVector{Point
 end
 
 #
-function evaluate(dr::CubicDR{EmptyGrid,UCGrid{d}}, y::Point{d}) where d
+function evaluate(dr::CubicDR{EmptyGrid{d1},UCGrid{d}}, y::Point{d}) where d where d1
     return evaluate(dr, [y])[1]
 end
 
-function evaluate(dr::CubicDR{EmptyGrid,UCGrid{d}}, y::Vector{Float64}) where d
+function evaluate(dr::CubicDR{EmptyGrid{d1},UCGrid{d}}, y::Vector{Float64}) where d where d1
     p = evaluate(dr, Point{d}(y...))
     return [p...]
 end
@@ -60,9 +63,10 @@ end
 # end
 
 function CubicDR(exo_grid::UCGrid{d1}, endo_grid::UCGrid{d2}, i::Union{Val{nx}, Type{Val{nx}}}) where d1 where d2 where nx
+    grid = ProductGrid(exo_grid, endo_grid)
     dims = cat(exo_grid.n .+ 2, endo_grid.n .+ 2; dims=1)
     c = [zeros(Value{nx},dims...)]
-    CubicDR{UCGrid{d1}, UCGrid{d2}, nx, d1+d2}(exo_grid, endo_grid, c)
+    CubicDR{UCGrid{d1}, UCGrid{d2}, nx, d1+d2}(grid, exo_grid, endo_grid, c)
 end
 #
 function set_values!(dr::CubicDR{UCGrid{d1},UCGrid{d2},n_x,d}, V::MSM{Value{n_x}}) where n_x where d where d1 where d2
@@ -123,7 +127,8 @@ end
 
 function CubicDR(exo_grid::UnstructuredGrid{d1}, endo_grid::UCGrid{d2}, i::Union{Val{nx}, Type{Val{nx}}}) where d1 where d2 where nx
     c = [zeros(Value{nx},(endo_grid.n.+2)...) for _=1:n_nodes(exo_grid)]
-    CubicDR{UnstructuredGrid{d1}, UCGrid{d2}, nx, d2}(exo_grid, endo_grid, c)
+    grid = ProductGrid(exo_grid, endo_grid)
+    CubicDR{UnstructuredGrid{d1}, UCGrid{d2}, nx, d2}(grid, exo_grid, endo_grid, c)
 end
 
 function set_values!(dr::CubicDR{UnstructuredGrid{d1},UCGrid{d2}, n_x, d2}, V::MSM{Value{n_x}}) where d1 where d2 where n_x

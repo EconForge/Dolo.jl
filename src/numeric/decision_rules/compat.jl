@@ -17,7 +17,7 @@ end
 
 # EmptyGrid x UCGrid
 
-function evaluate(dr::AbstractDecisionRule{EmptyGrid, UCGrid{d}, n_x}, z::AbstractMatrix{Float64}) where n_x where d
+function evaluate(dr::AbstractDecisionRule{EmptyGrid{d1}, UCGrid{d}, n_x}, z::AbstractMatrix{Float64}) where n_x where d
     N = size(z,1)
     @assert size(z,2)==d
     points = to_LOP(Point{d}, z)
@@ -25,11 +25,11 @@ function evaluate(dr::AbstractDecisionRule{EmptyGrid, UCGrid{d}, n_x}, z::Abstra
     return reshape(reinterpret(Float64, vec(out)), (n_x,N))'
 end
 
-evaluate(dr::AbstractDecisionRule{EmptyGrid, <:UCGrid}, z::Vector{Float64}) = vec(evaluate(dr,z'))
-evaluate(dr::AbstractDecisionRule{EmptyGrid, <:UCGrid}, i::Int, y::Union{Vector,AbstractMatrix}) = evaluate(dr,y) # kind of nonsensical
-evaluate(dr::AbstractDecisionRule{EmptyGrid, <:UCGrid}, x::Union{Vector,AbstractMatrix}, y::Union{Vector,AbstractMatrix}) = evaluate(dr,y)
+evaluate(dr::AbstractDecisionRule{EmptyGrid{d1}, <:UCGrid}, z::Vector{Float64})  where d1 = vec(evaluate(dr,z'))
+evaluate(dr::AbstractDecisionRule{EmptyGrid{d1}, <:UCGrid}, i::Int, y::Union{Vector,AbstractMatrix})  where d1 = evaluate(dr,y) # kind of nonsensical
+evaluate(dr::AbstractDecisionRule{EmptyGrid{d1}, <:UCGrid}, x::Union{Vector,AbstractMatrix}, y::Union{Vector,AbstractMatrix})  where d1 = evaluate(dr,y)
 UCGrid
-function set_values!(dr::AbstractDecisionRule{EmptyGrid, <:UCGrid, n_x}, vals::Vector{Matrix{Float64}}) where n_x
+function set_values!(dr::AbstractDecisionRule{EmptyGrid{d1}, <:UCGrid, n_x}, vals::Vector{Matrix{Float64}}) where n_x where d1
     N = size(vals[1],1)
     dims = tuple(dr.grid_endo.n...)
     V = [reshape(reinterpret(Value{n_x}, vec(vals[1]')), dims)]

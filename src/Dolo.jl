@@ -27,6 +27,8 @@ using Dolang
 using Dolang: _to_expr, inf_to_Inf, solution_order, solve_triangular_system, _get_oorders
 import Dolang: Language, add_language_elements!, ToGreek
 
+import LinearMaps: LinearMap
+
 # Numerical Tools
 using MacroTools  # used for eval_with
 import Distributions
@@ -156,6 +158,7 @@ include("numeric/decision_rules/constructor.jl")
 include("numeric/decision_rules/compat.jl")
 include("numeric/decision_rules/smolyak.jl")
 include("numeric/decision_rules/complete.jl")
+include("numeric/misc.jl")
 
 include("algos/steady_state.jl")
 include("algos/improved_time_iteration_helpers.jl")

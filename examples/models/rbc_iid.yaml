@@ -81,4 +81,4 @@ exogenous:
 options:
     discretization:
         endo:
-            n: [20, 20]
+            n: [15, 15]
