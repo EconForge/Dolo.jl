@@ -219,16 +219,33 @@ function new_transition_dev(model, dp, x0, exo_grid, endo_grid:: UCGrid; exo=not
     N_m = max(1,n_nodes(exo_grid))
     N_s = n_nodes(endo_grid)
     N = N_m*N_s
-    Π = zeros(N_m, N_s, N_m, endo_grid.n...)
+
+    if typeof(exo_grid) == Dolo.UnstructuredGrid{ndims(exo_grid)}
+        Π = zeros(N_m, N_s, N_m, endo_grid.n...)
+        a = SVector(endo_grid.min...)
+        b = SVector(endo_grid.max...)
+    elseif typeof(exo_grid) == Dolo.UCGrid{ndims(exo_grid)}
+        Π = zeros(N_m, N_s, exo_grid.n..., endo_grid.n...)
+        a = SVector(exo_grid.min..., endo_grid.min...)
+        b = SVector(exo_grid.max..., endo_grid.max...)
+    else
+        Π = zeros(N_s, endo_grid.n...)
+        a = SVector(endo_grid.min...)
+        b = SVector(endo_grid.max...)
+    end
+    
     s = nodes(endo_grid)
-    a = SVector(endo_grid.min...)
-    b = SVector(endo_grid.max...)
-    for i_m in 1:n_nodes(exo_grid)
+
+    for i_m in 1:max(1,n_nodes(exo_grid))
+
         x = x0.views[i_m]
-        m = node(exo_grid, i_m)
+        
+        m = ifelse(typeof(exo_grid) == Dolo.EmptyGrid{ndims(exo_grid)}, SVector(model.calibration[:exogenous]...), node(exo_grid, i_m))
+
         if !(exo === nothing)
             m = Dolo.repsvec(exo[1], m)   # z0
         end
+
         for i_M in 1:n_inodes(dp, i_m)
             M = inode(Point, dp, i_m, i_M)
             if !(exo === nothing)
@@ -236,7 +253,14 @@ function new_transition_dev(model, dp, x0, exo_grid, endo_grid:: UCGrid; exo=not
             end
             w = iweight(dp, i_m, i_M)
             S = transition(model, m, s, x, M, parms)
-            trembling_hand_rescaled!(view(Π,tuple(i_m,:,i_M,(Colon() for k in 1:(ndims(Π)-3))...)...), S, w, exo_grid, a, b)
+
+            if typeof(exo_grid) == Dolo.UnstructuredGrid{ndims(exo_grid)}
+                trembling_hand_rescaled!(view(Π,tuple(i_m,:,i_M,(Colon() for k in 1:(ndims(Π)-3))...)...), S, w, exo_grid, a, b)
+            elseif typeof(exo_grid) == Dolo.UCGrid{ndims(exo_grid)}
+                trembling_hand_rescaled!(view(Π,tuple(i_m,(Colon() for k in 1:(ndims(Π)-1))...)...), S, w, exo_grid, a, b; M)
+            else
+                trembling_hand_rescaled!(Π, S, w, exo_grid, a, b)
+            end
         end
     end
     Π0 = (reshape(Π,N,N))
