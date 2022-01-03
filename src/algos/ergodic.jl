@@ -175,6 +175,39 @@ function trembling_hand!(A, x::Vector{Point{d}}, w::Float64) where d
 end
 
 """
+Updates A.
+# Arguments
+* `A`: the transition matrix that will be updated.
+* `x` : vector of controls.
+* `w::Float64` : vector of weights.
+* `exo_grid` : exogenous grid that will be used to determine the type of rescaling to do.
+* `a` : SVector containing the minimum values on the UCGrids
+* `b` : SVector containing the maximum values on the UCGrids
+# Optional 
+* `M` : future node considered when the exogenous grid is a UCGrid to rescale x
+# Modifies
+* `A` : the updated transition matrix 
+"""
+function trembling_hand_rescaled!(A, x, w::Float64, endo_grid, exo_grid; M=0)
+    if typeof(exo_grid) == Dolo.UnstructuredGrid{ndims(exo_grid)}
+        a = SVector(endo_grid.min...)
+        b = SVector(endo_grid.max...)
+        x = [(x[n]-a)./(b-a) for n=1:length(x)]
+        trembling_hand!(A, x, w)
+    elseif typeof(exo_grid) == Dolo.UCGrid{ndims(exo_grid)}
+        a = SVector(exo_grid.min..., endo_grid.min...)
+        b = SVector(exo_grid.max..., endo_grid.max...)
+        V = [(SVector(M..., el...)-a)./(b.-a) for el in x]
+        trembling_hand!(A, V, w)
+    else
+        a = SVector(endo_grid.min...)
+        b = SVector(endo_grid.max...)
+        x = [(x[n]-a)./(b-a) for n=1:length(x)]
+        trembling_hand!(A, x, w)
+    end
+end
+
+"""
 Calculates the new transition matrix for a given model, a given discretized exogenous process, given control values (x0) and given grids (exogenous and endogenous).
 
 # Arguments
@@ -341,6 +374,8 @@ function trembling_foot!(Π, dΠ, S::Vector{Point{d}}, S_x::Vector{SMatrix{d,n_x
         # Filling transition matrix
         rhs_Π = outer(λn_weight_vector_Π...)
 
+        indexes_to_be_modified = tuple(n, UnitRange.(qn_,qn_.+1)...) # ???
+
         Π[indexes_to_be_modified...] .+= w.*rhs_Π
 
         for k=1:d
@@ -411,4 +446,91 @@ end
 function transition_matrix(model, sol; diff=false)
     x0 = Dolo.MSM([sol.dr(i, sol.dr.grid_endo.nodes) for i=1:max(1,Dolo.n_nodes(sol.dr.grid_exo))])
     Dolo.transition_matrix(model, sol.dprocess, x0, sol.dr.grid_exo, sol.dr.grid_endo; diff=diff);
+end
+
+
+
+
+
+
+
+
+
+# my dev
+
+function new_transition_dev(model, dp, x0::MSM{<:SVector{n_x}}, exo_grid, endo_grid:: UCGrid; exo=nothing, diff=true) where n_x
+    parms = SVector(model.calibration[:parameters]...)
+    N_m = max(1,n_nodes(exo_grid))
+    N_s = n_nodes(endo_grid)
+    N = N_m*N_s
+    if typeof(exo_grid) == Dolo.UnstructuredGrid{ndims(exo_grid)}
+        Π = zeros(N_m, N_s, N_m, endo_grid.n...)
+        if diff
+            dΠ = zeros(SVector{n_x, Float64}, N_m, N_s, N_m, endo_grid.n...)
+        end
+    elseif typeof(exo_grid) == Dolo.UCGrid{ndims(exo_grid)}
+        Π = zeros(N_m, N_s, exo_grid.n..., endo_grid.n...)
+        if diff
+            dΠ = zeros(SVector{n_x, Float64}, N_m, N_s, exo_grid.n..., endo_grid.n...)
+        end
+    else
+        Π = zeros(N_s, endo_grid.n...)
+        if diff
+            dΠ = zeros(SVector{n_x, Float64}, N_s, endo_grid.n...)
+        end
+    end
+    
+    s = nodes(endo_grid)
+    for i_m in 1:max(1,n_nodes(exo_grid))
+
+         x = x0.views[i_m]
+
+         m = node(exo_grid, i_m)
+
+        if !(exo === nothing)
+             m = Dolo.repsvec(exo[1], m)   # z0
+        end
+        for i_M in 1:n_inodes(dp, i_m)
+            M = inode(Point, dp, i_m, i_M)
+            if !(exo === nothing)
+                M = Dolo.repsvec(exo[2], M)   # z1
+            end
+            w = iweight(dp, i_m, i_M)
+            S, S_x = transition(model, Val{(0,3)}, m, s, x, M, parms)
+            if typeof(exo_grid) == Dolo.UnstructuredGrid{ndims(exo_grid)}
+                Π_view = view(Π,tuple(i_m,:,i_M,(Colon() for k in 1:(ndims(Π)-3))...)...)
+                trembling_hand_rescaled!(Π_view, S, w, endo_grid, exo_grid)
+            elseif typeof(exo_grid) == Dolo.UCGrid{ndims(exo_grid)}
+                Π_view = view(Π,tuple(i_m,(Colon() for k in 1:(ndims(Π)-1))...)...)
+                trembling_hand_rescaled!(Π_view, S, w, endo_grid, exo_grid; M)
+            else
+                Π_view = Π
+                trembling_hand_rescaled!(Π_view, S, w, endo_grid, exo_grid)
+            end
+
+            if diff
+                #S_x = [( 1.0 ./(b-a)) .* S_x[n] for n=1:length(S)]
+                if typeof(exo_grid) == Dolo.UnstructuredGrid{ndims(exo_grid)}
+                    dΠ_view = view(dΠ,tuple(i_m,:,i_M,(Colon() for k in 1:(ndims(dΠ)-3))...)...)
+                elseif typeof(exo_grid) == Dolo.UCGrid{ndims(exo_grid)}
+                    dΠ_view = view(dΠ,tuple(i_m,(Colon() for k in 1:(ndims(dΠ)-1))...)...)
+                else
+                    dΠ_view = dΠ
+                end
+                trembling_foot!(Π_view, dΠ_view, S, S_x, w)
+            end
+        end
+    end
+    Π0 = (reshape(Π,N,N))
+    if !diff
+        return Π0
+    else
+        dΠ0 = reshape(dΠ,N,N)
+        return Π0, dΠ0
+    end
+end
+
+function new_transition_dev(model, sol; diff=false)
+    x0 = Dolo.MSM([sol.dr(i, sol.dr.grid_endo.nodes) for i=1:max(1,Dolo.n_nodes(sol.dr.grid_exo))])
+    Dolo.new_transition_dev(model, sol.dprocess, x0, sol.dr.grid_exo, sol.dr.grid_endo; diff=diff);
 end
