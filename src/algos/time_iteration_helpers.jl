@@ -56,8 +56,9 @@ struct Euler{ID, n_m, n_s, n_x, Gx, Ge}
 
     model::AbstractModel
     p:: SVector  ## SVector
-    grid_endo
-    grid_exo
+    grid::ProductGrid{Gx, Ge}
+    grid_endo # obsolete
+    grid_exo # obsolete
     dprocess
     s0::ListOfPoints{n_s}
     x0::MSM{SVector{n_x, Float64}}
@@ -100,8 +101,10 @@ struct Euler{ID, n_m, n_s, n_x, Gx, Ge}
 
         m0 = SVector(model.calibration[:exogenous]...)
 
-        Gx = typeof(grid_exo)
-        Ge = typeof(grid_endo)
+        grid = ProductGrid(grid_exo, grid_endo)
+        Gx = typeof(grid.exo)
+        Ge = typeof(grid.endo)
+
 
         if (:controls_lb in keys(model.factories)) & !ignore_constraints
             if Dolo.n_nodes(grid_exo)>0
@@ -118,7 +121,7 @@ struct Euler{ID, n_m, n_s, n_x, Gx, Ge}
 
         ID = id(model)
 
-        new{ID, n_m, n_s, n_x, Gx, Ge}(model, p, grid_endo, grid_exo, dprocess, s0, x0, bounds, dr, cdr)
+        new{ID, n_m, n_s, n_x, Gx, Ge}(model, p, grid, grid_endo, grid_exo, dprocess, s0, x0, bounds, dr, cdr)
 
     end
 
@@ -221,14 +224,14 @@ function (F::Euler)(x0::MSM, x1::MSM; exo=nothing, set_future=true, ignore_const
 
 end
 
-function df_A(F, z0, z1; set_future=false, inplace=false, ret_res=false)
+function df_A(F, z0, z1; set_future=false, inplace=false, ret_res=false, exo=nothing)
 
     if set_future
         set_values!(F.dr, z1)
     end
 
     if !inplace
-        fun  = z->F(z, z1; set_future=false, ignore_constraints=true)
+        fun  = z->F(z, z1; set_future=false, ignore_constraints=true, exo=exo)
         f0,J = Dolo.DiffFun(fun, z0, 1e-8)
 
     else
@@ -268,7 +271,7 @@ function df_A(F, z0, z1; set_future=false, inplace=false, ret_res=false)
 end
 
 
-function df_B(F, x0, x1; set_future=false)
+function df_B(F, x0, x1; set_future=false, exo=nothing)
 
     ddr_filt = F.cdr
 
@@ -278,7 +281,7 @@ function df_B(F, x0, x1; set_future=false)
         set_values!(F.dr, x1)
     end
 
-    rr,J_ij,S_ij  = euler_residuals(F, F.s0, x0 , F.dr, F.dprocess, F.p; keep_J_S=true)
+    rr,J_ij,S_ij  = euler_residuals(F, F.s0, x0 , F.dr, F.dprocess, F.p; keep_J_S=true, exo=exo)
 
     if (F.bounds!==nothing)
         lb, ub = F.bounds
@@ -289,6 +292,52 @@ function df_B(F, x0, x1; set_future=false)
 
     return L
 
+end
+
+
+function DiffFun2(fun, e::SVector{n_p}, ε=1e-6) where n_p
+
+    # TODO: this could be done without allocation
+    r0 = fun(e)
+    n_x = length(r0.data[1])
+
+    diffs = []
+    for i=1:n_p
+        ei = SVector([(j==i) ? e[i]+ε : e[j] for j=1:n_p ]...)
+        d_i = (fun(ei)-r0)/ε
+        push!(diffs, d_i)
+    end
+
+    res = [
+        SMatrix{n_x, n_p, Float64, n_x*n_p}(cat([diffs[i].data[n] for i=1:n_p]...;dims=2))
+        for n=1:length(r0.data)
+    ]
+
+    return MSM(res, r0.sizes)
+
+end
+
+
+function df_e(F, x0, x1, e1, e2; set_future=false)
+
+    ε = 1e-8
+
+    # diff w.r.t. e1
+    # diff w.r.t. e2
+
+    tt = F(x0,x1; exo=(e1,e2), set_future=false)
+
+    # Awful hack
+    fun1 = e -> F(x0,x1; exo=(e,e2))
+
+    J1 = Dolo.DiffFun2(fun1, e1, 1e-8)
+    
+    fun2 = e -> F(x0,x1; exo=(e1,e))
+    J2 = Dolo.DiffFun2(fun2, e2, 1e-8)
+
+    return J1, J2
+
+    
 end
 
 

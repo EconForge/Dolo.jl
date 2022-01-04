@@ -48,6 +48,7 @@ end
 # generic constructors
 
 function DecisionRule(exo_grid::Grid, endo_grid::Grid, vals::Vector{ListOfPoints{n_x}}) where n_x
+    grid = ProductGrid(exo_grid, endo_grid)
     dr = DecisionRule(exo_grid, endo_grid, Val{n_x}, Cubic)
     set_values!(dr, vals)
     dr

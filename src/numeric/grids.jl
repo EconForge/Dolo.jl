@@ -2,7 +2,9 @@ abstract type AbstractGrid end
 
 abstract type Grid{d} end
 
-import Base: ndims
+import Base: ndims, length
+
+Base.length(g::Grid{d}) where d = max(1,n_nodes(g))  # we should deprecate n_nodes
 
 Base.ndims(grid::T) where T<:Grid{d} where d = d
 
@@ -33,6 +35,7 @@ end
 ⊗(grid1::Grid{d1}, grid2::Grid{d2}) where d1 where d2 = ProductGrid(grid1, grid2)
 
 Base.show(io::IO, pg::ProductGrid) = print(io, pg.exo, "⊗",  pg.endo)
+Base.length(g::ProductGrid{g1,g2}) where g1 where g2 = length(g.exo)*length(g.endo)
 
 struct PGrid{d, T<:Tuple} <: Grid{d}
     grids::T
@@ -83,7 +86,7 @@ Base.show(io::IO, g::EmptyGrid{d}) where d = print(io, "EmptyGrid{$d}")
 
 nodes(grid::EmptyGrid) = nothing
 n_nodes(grid::EmptyGrid) = 0 ##### Reconsider: ???
-function node( grid::EmptyGrid, i::Int) where d
+function node( grid::EmptyGrid{d}, i::Int) where d
     return fill(NaN, SVector{d, Float64})
 end
 

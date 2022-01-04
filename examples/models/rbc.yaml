@@ -83,7 +83,6 @@ options:
             n: [10]
         exo:
             n: 5
-            n_i: 5
     # interpolation: spline
 
 test: |

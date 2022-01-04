@@ -5,12 +5,12 @@ using Dolo
 # model = Model("examples/models/consumption_savings_iid.yaml")
 
 
-model = Model("experiments/ayiagari.yaml")
+model = Model("experiments/rbc.yaml")
 
 
 F = Dolo.Euler(model, ignore_constraints=false);
 
-improved_time_iteration(model)
+sol = improved_time_iteration(model)
 
 
 z0 = SVector(model.calibration[:exogenous][1:2]...)
