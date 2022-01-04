@@ -1,0 +1,54 @@
+symbols:
+    exogenous: [y]
+    states: [w]
+    controls: [c]
+    parameters: [β, γ, σ, ρ, r, cbar]
+
+
+equations:
+
+    transition: |
+        w[t] = exp(y[t]) + (w[t-1]-c[t-1])*r
+
+    arbitrage: |
+        β*( c[t+1]/c[t] )^(-γ)*r - 1  | 0<=c[t]<=w[t]
+
+    # half_transition: |
+    #     w[t] = exp(y[t]) + a[t-1]*r
+
+    # reverse_state: |
+    #     w[t] = a[t] + c[t]
+
+    # expectation: |
+    #     mr[t] = β*( c[t+1]/cbar )^(-γ)*r
+
+    # direct_response_egm: |
+    #     c[t] = cbar*(mr[t])^(-1/γ)
+
+calibration:
+    β: 0.96
+    γ: 4.0
+    σ: 0.1
+    ρ: 0.0
+    r: 1.02
+    cbar: c
+
+    w: 1.0
+    ξ: 0.0
+    c: 0.9*w
+    y: 0.0
+
+domain:
+    w: [0.5, 4.0]
+
+exogenous:
+    y: !UNormal
+        sigma: σ
+
+
+options:
+    discretization:
+        endo:
+            n: [100]
+        exo:
+            n: 7

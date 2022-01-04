@@ -1,8 +1,4 @@
-# ---------- #
-# Grid types #
-# ---------- #
 
-abstract type AbstractGrid end
 
 struct Cartesian <: AbstractGrid
     a::Vector{Float64}
@@ -10,18 +6,23 @@ struct Cartesian <: AbstractGrid
     orders::Vector{Int}
 end
 
-abstract type AbstractDomain end
 
 
-struct EmptyDomain <: AbstractDomain 
-    states::Vector{Symbol}
+# mutable struct CartesianDomain <: AbstractDomain
+#     states::Vector{Symbol}
+#     min::Vector{Float64}
+#     max::Vector{Float64}
+# end
+
+function discretize(domain::CartesianDomain{d}; n::Union{Int, <:AbstractVector{Int}}=20) where d
+    if n isa Int
+        N = SVector{d}(fill(n, d)...)
+    else
+        N = SVector(n...)
+    end
+    UCGrid{d}(SVector(domain.min...), SVector(domain.max...), N)
 end
 
-mutable struct Domain <: AbstractDomain
-    states::Vector{Symbol}
-    min::Vector{Float64}
-    max::Vector{Float64}
-end
 
 function Cartesian(stuff::AbstractDict, calib::ModelCalibration)
     kind = get(stuff, :tag, nothing)

@@ -12,20 +12,17 @@ symbols:
    parameters: [beta, sigma, eta, chi, delta, alpha, rho, zbar, sig_z]
    rewards: [u]
 
-definitions:
-    y: exp(z)*k^alpha*n^(1-alpha)
-    c: y - i
-    rk: alpha*y/k
-    w: (1-alpha)*y/n
-    # rk(1): alpha*y(1)/k(1)
-    # c(1)
+definitions: |
+    y[t] = exp(z[t])*k[t]^alpha*n[t]^(1-alpha)
+    c[t] = y[t] - i[t]
+    rk[t] = alpha*y[t]/k[t]
+    w[t] = (1-alpha)*y[t]/n[t]
+    
 equations:
 
-    arbitrage:
-        - chi*n^eta*c^sigma - w                      | 0 <= n <= inf
-        - 1 - beta*(c/c(1))^(sigma)*(1-delta+rk(1))  | 0 <= i <= inf
-        # - 1 - beta*(c/(exp(z(1))*k(1)^alpha*n(1)^(1-alpha) - i(1)))^(sigma)*(1-delta+alpha*y(1)/k(1))  | 0 <= i <= inf
-        # - V0 = c^(1-sigma)/(1-sigma) - chi*n^(1+eta)/(1+eta) + beta*V0(1) |  -100000<=V0<=100000
+    arbitrage: |
+        chi*n[t]^eta*c[t]^sigma = w[t]
+        1 = beta*(c[t]/c[t+1])^(sigma)*(1-delta+rk[t+1])
 
     transition:
         - k[t] = (1-delta)*k(-1) + i(-1)

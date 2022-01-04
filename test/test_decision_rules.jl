@@ -1,6 +1,6 @@
 @testset "DR types" begin
     grid_smol = Dolo.SmolyakGrid{2}([0.0, 0.0], [1.0, 1.0,], [3,3])
-    grid_exo = Dolo.EmptyGrid()
+    grid_exo = Dolo.EmptyGrid{2}()
     grid_exo2 = Dolo.UnstructuredGrid{2}(rand(1, 2))
     grid_rand = Dolo.RandomGrid{2}([0.0, 0.0], [1.0, 1.0,], 50)
     pts = rand(200, 2)

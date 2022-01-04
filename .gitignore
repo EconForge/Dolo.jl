@@ -7,3 +7,4 @@ docs/build/
 docs/site/
 julia*
 .ipynb_checkpoints/
+Manifest.toml

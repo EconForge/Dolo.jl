@@ -15,7 +15,7 @@ path = Dolo.pkg_path
     )
 
     Dolo.discretize(proc)
-    exo = Dolo.discretize(Dolo.DiscretizedProcess, proc)
+    exo = Dolo.discretize(Dolo.GDP, proc)
 
     @test true
 

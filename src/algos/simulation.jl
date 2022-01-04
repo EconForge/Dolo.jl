@@ -136,8 +136,13 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
     ll = [Symbol(i) for i in Ac]
 
     sim_aa = AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
-    sim_def= evaluate_definitions(model, sim_aa, model.calibration[:parameters])
-    return merge(sim_aa,sim_def)
+
+    if length(model.definitions)>0
+        sim_def= evaluate_definitions(model, sim_aa, model.calibration[:parameters])
+        return merge(sim_aa,sim_def)
+    else
+        return sim_aa
+    end
 
 end
 
@@ -204,8 +209,13 @@ function simulate(model::AbstractModel, dr::AbstractDecisionRule,
     Ac = cat(model_sym, model.symbols[:exogenous], model.symbols[:states], model.symbols[:controls], dims=1)
     ll = [Symbol(i) for i in Ac]
     sim_aa = AxisArray(sim, Axis{:N}(1:N), Axis{:V}(ll), Axis{:T}(1:T))
-    sim_def=evaluate_definitions(model, sim_aa, model.calibration[:parameters])
-    return merge(sim_aa,sim_def)
+
+    if length(model.definitions)>0
+        sim_def=evaluate_definitions(model, sim_aa, model.calibration[:parameters])
+        return merge(sim_aa,sim_def)
+    else
+        return sim_aa
+    end
 
 end
 
@@ -231,7 +241,7 @@ This function simulates a model given a decision rule.
 """
 function simulate(model::AbstractModel, dr::AbstractDecisionRule, dprocess::DiscreteMarkovProcess;
                   i0::Int=default_index(dprocess), s0::AbstractVector=model.calibration[:states], N::Int=1, T::Int=40)
-    driving_process = simulate(dprocess, N, T, i0)
+    driving_process = simulate(dprocess; N=N, T=T, i0=i0)
     return simulate(model, dr, driving_process, dprocess; s0=s0)
 end
 
@@ -239,7 +249,7 @@ end
 function simulate(model::AbstractModel, dr::AbstractDecisionRule, dprocess::ContinuousProcess;
                   m0::AbstractVector=model.calibration[:exogenous], s0::AbstractVector=model.calibration[:states],
                   N::Int=1, T::Int=40)
-    driving_process = simulate(dprocess, N, T, m0)
+    driving_process = simulate(dprocess, m0; N=N, T=T)
     return simulate(model, dr, driving_process; s0 = s0)
 end
 
@@ -258,8 +268,8 @@ simulate
 ## Impulse response functions
 
 
-function response(model::AbstractModel,  dr::AbstractDecisionRule,
-                  s0::AbstractVector, e1::AbstractVector; T::Int=40)
+function response(model::AbstractModel,  dr::AbstractDecisionRule;
+                  s0::AbstractVector, e1::AbstractVector, T::Int=40)
     m_sim = response(model.exogenous, e1; T=T)
     m_simul = reshape(m_sim, size(m_sim,1), 1, size(m_sim,2))
     sim = simulate(model, dr, m_simul; s0=s0)
@@ -267,20 +277,25 @@ function response(model::AbstractModel,  dr::AbstractDecisionRule,
 end
 
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
-                  e1::AbstractVector; T::Int=40)
-    s0 = model.calibration[:states]
-    response(model, dr, s0, e1; T=T)
+    s0::AbstractVector, e1::AbstractVector; T::Int=40)
+
+    response(model,  dr; s0=s0, e1=e1, T=T)
 end
 
+function response(model::AbstractModel,  dr::AbstractDecisionRule,
+                  e1::AbstractVector; T::Int=40)
+    s0 = model.calibration[:states]
+    response(model, dr; s0=s0, e1=e1, T=T)
+end
 
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
                   s0::AbstractVector, shock_name::Symbol; T::Int=40)
     index_s = something(findfirst(isequal(shock_name), model.symbols[:exogenous]), 0)
     # e1 = zeros(length(model.exogenous.mu))
     e1 = zeros(length(model.calibration[:exogenous]))
-    Impulse = sqrt(diag(model.exogenous.Sigma)[index_s])
+    Impulse = sqrt(diag(model.exogenous.Σ)[index_s])
     e1[index_s] = Impulse
-    response(model, dr, s0, e1; T=T)
+    response(model, dr; s0=s0, e1=e1, T=T)
 end
 
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
@@ -314,7 +329,7 @@ function response(model::AbstractModel,  dr::AbstractDecisionRule,
     e1 = zeros(length(model.calibration[:exogenous]))
     e1[index_s] = Impulse
     s0 = model.calibration[:states]
-    response(model, dr, s0, e1; T=T)
+    response(model, dr; s0=s0, e1=e1, T=T)
 end
 
 function response(model::AbstractModel,  dr::AbstractDecisionRule,
@@ -322,6 +337,7 @@ function response(model::AbstractModel,  dr::AbstractDecisionRule,
     s0 = model.calibration[:states]
     response(model, dr, s0, shock_name, Impulse; T=T)
 end
+
 
 
 """
@@ -332,11 +348,54 @@ function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
                   m0::Union{Int,AbstractVector}; n_steps::Int=100)
 
     index = findfirst(isequal(state), model.symbols[:states])
+    Svalues = range(bounds[1], stop=bounds[2]; length=n_steps)
+    svec = vcat([e' for e in fill(s0, n_steps)]...)
+    svec[:, index] = Svalues
+    s = copy(to_LOP(svec))
+
+    if isa(dr.grid_exo, UnstructuredGrid)
+                model_sym = cat([:mc_process], model.symbols[:exogenous]; dims=1)
+                xvec = dr(m0, s)
+                mv = node(dr.grid_exo, m0)
+                l1 = [SVector( m0, mv..., e..., f...) for (e,f) in zip(s,xvec)]
+    else
+                xvec = dr(m0, s)
+                # l1 = concat.(mm, svec, xvec)
+                l1 = [SVector( m0..., e..., f...) for (e,f) in zip(s,xvec)]
+                model_sym = model.symbols[:exogenous]
+    end
+    tb = copy(from_LOP(l1))
+    
+    l2 = cat(model_sym , model.symbols[:states], model.symbols[:controls]; dims=1)
+    tab_AA = AxisArray(reshape(tb,1,size(tb)...), Axis{:T}(1:1), Axis{:N}(1:n_steps), Axis{:V}(l2))
+
+    ## add definitions
+    tab_AAA = permutedims(tab_AA, [2,3,1])
+
+    if length(model.definitions)>0
+        tab_defs = evaluate_definitions(model, tab_AAA)
+        tab_ = merge(tab_AAA, tab_defs)[Axis{:T}(1)]
+    else
+        tab_ = tab_AAA[Axis{:T}(1)]
+    end
+    #change axis names
+    res = AxisArray(tab_.data, Axis{state}(tb[:, index+1]), tab_[Axis{:V}])
+    res' # so that we can index it directly
+end
+
+"""
+Function "tabulate" produces a 2-dimensional AxisArray{Float64,2,...}  with 2 axes : V (containing all the variables of the model) and the name of the state variable chosen in input. 
+"""
+function tabulate_old(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
+                  bounds::Array{Float64,1}, s0::AbstractVector,
+                  m0::Union{Int,AbstractVector}; n_steps::Int=100)
+
+    index = findfirst(isequal(state), model.symbols[:states])
     Svalues = range(bounds[1], stop=bounds[2], length=n_steps)
     svec = vcat([e' for e in fill(s0, n_steps)]...)
     svec[:, index] = Svalues
 
-    if isa(dr, AbstractDecisionRule{UnstructuredGrid,CartesianGrid})
+    if isa(dr.grid_exo, UnstructuredGrid)
         model_sym = :mc_process
     else
         xvec = dr(m0, svec)
@@ -351,8 +410,13 @@ function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
 
     ## add definitions
     tab_AAA = permutedims(tab_AA, [2,3,1])
-    tab_defs = evaluate_definitions(model, tab_AAA)
-    tab_ = merge(tab_AAA, tab_defs)[Axis{:T}(1)]
+
+    if length(model.definitions)>0
+        tab_defs = evaluate_definitions(model, tab_AAA)
+        tab_ = merge(tab_AAA, tab_defs)[Axis{:T}(1)]
+    else
+        tab_ = tab_AAA[Axis{:T}(1)]
+    end
     #change axis names
     res = AxisArray(tab_.data, Axis{state}(tb[:, index+1]), tab_[Axis{:V}])
     res' # so that we can index it directly
@@ -361,7 +425,7 @@ end
 function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
                   s0::AbstractVector, m0::Union{Int,AbstractVector};  n_steps=100)
     index = findfirst(isequal(state), model.symbols[:states])
-    bounds = [model.domain.min[index], model.domain.max[index]]
+    bounds = [model.domain.endo.min[index], model.domain.endo.max[index]]
     tabulate(model, dr, state, bounds, s0, m0;  n_steps=100)
 end
 
@@ -369,10 +433,10 @@ end
 function tabulate(model::AbstractModel, dr::AbstractDecisionRule, state::Symbol,
                   s0::AbstractVector; n_steps=100)
 
-    if isa(dr, AbstractDecisionRule{UnstructuredGrid,CartesianGrid})
+     if isa(dr.grid_exo, UnstructuredGrid)
         m0 = 1
     else
-        m0 = model.calibration[:exogenous]
+        m0 = SVector(model.calibration[:exogenous]...)
     end
     tabulate(model, dr, state, s0, m0;  n_steps=100)
 end
