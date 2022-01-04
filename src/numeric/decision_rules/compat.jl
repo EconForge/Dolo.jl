@@ -17,7 +17,7 @@ end
 
 # EmptyGrid x UCGrid
 
-function evaluate(dr::AbstractDecisionRule{EmptyGrid{d1}, UCGrid{d}, n_x}, z::AbstractMatrix{Float64}) where n_x where d
+function evaluate(dr::AbstractDecisionRule{EmptyGrid{d1}, UCGrid{d}, n_x}, z::AbstractMatrix{Float64}) where n_x where d where d1
     N = size(z,1)
     @assert size(z,2)==d
     points = to_LOP(Point{d}, z)
