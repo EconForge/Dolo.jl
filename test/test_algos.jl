@@ -98,30 +98,32 @@ path = Dolo.pkg_path
     # @assert maximum(abs, nvec_d-nvec)<1e-5
     # @assert maximum(abs, nvec_0-nvec)<1e-5 # not satisfied right now (see tol. of optimizer)
 
-    @testset "testing ar1 models" begin
 
-        # AR1 model: this one should be exactly equivalent to rbc_dtcc_ar1
-        import Dolo
-        fn = joinpath(Dolo.pkg_path, "examples", "models", "rbc.yaml")
-        model = Dolo.yaml_import(fn)
-        dp = Dolo.discretize(model.exogenous)
+    # #TODO : reactivate
+    # @testset "testing ar1 models" begin
 
-        @time dr = Dolo.perturb(model)
-        # @time tid_res = Dolo.time_iteration_direct(model; maxit=20, verbose=true)
-        @time ti_res = Dolo.time_iteration(model; maxit=20, verbose=false)
-        @time iti_res = Dolo.improved_time_iteration(model; maxit=20, verbose=false)
-        @test Dolo.converged(iti_res)
-        # @time sol_v = Dolo.value_iteration(model, ti_res.dr; maxit=3, verbose=true)
+    #     # AR1 model: this one should be exactly equivalent to rbc_dtcc_ar1
+    #     import Dolo
+    #     fn = joinpath(Dolo.pkg_path, "examples", "models", "rbc.yaml")
+    #     model = Dolo.yaml_import(fn)
+    #     dp = Dolo.discretize(model.exogenous)
 
-        model.symbols[:exogenous]
-        #
-        Dolo.simulate(model, ti_res.dr; m0=[0.015], N=10)
-        Dolo.response(model.exogenous, [0.01])
-        #
-        sim = Dolo.response(model, ti_res.dr, :z)
-        #
-        irf = Dolo.response(model, ti_res.dr, :z, -0.01)
-        @test true
-    end
+    #     @time dr = Dolo.perturb(model)
+    #     # @time tid_res = Dolo.time_iteration_direct(model; maxit=20, verbose=true)
+    #     @time ti_res = Dolo.time_iteration(model; maxit=20, verbose=false)
+    #     @time iti_res = Dolo.improved_time_iteration(model; maxit=20, verbose=false)
+    #     @test Dolo.converged(iti_res)
+    #     # @time sol_v = Dolo.value_iteration(model, ti_res.dr; maxit=3, verbose=true)
+
+    #     model.symbols[:exogenous]
+    #     #
+    #     Dolo.simulate(model, ti_res.dr; m0=[0.015], N=10)
+    #     Dolo.response(model.exogenous, [0.01])
+    #     #
+    #     sim = Dolo.response(model, ti_res.dr, :z)
+    #     #
+    #     irf = Dolo.response(model, ti_res.dr, :z, -0.01)
+    #     @test true
+    # end
 
 end

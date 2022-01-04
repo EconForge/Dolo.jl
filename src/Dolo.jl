@@ -158,7 +158,6 @@ include("numeric/decision_rules/constructor.jl")
 include("numeric/decision_rules/compat.jl")
 include("numeric/decision_rules/smolyak.jl")
 include("numeric/decision_rules/complete.jl")
-include("numeric/misc.jl")
 
 include("algos/steady_state.jl")
 include("algos/improved_time_iteration_helpers.jl")

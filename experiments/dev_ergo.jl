@@ -50,12 +50,12 @@ x0_flat = cat(G.x0.data...; dims=1)
 using FiniteDiff
 
 Jμ_num = FiniteDiff.finite_difference_jacobian(mu->G(mu, x0_flat), μ0)
-Jμ_exact = Dolo.compute_matrix(∂G_∂μ)
+Jμ_exact = convert(Matrix, ∂G_∂μ)
 maximum(abs, Jμ_num-Jμ_exact)
 @assert maximum(abs, Jμ_num-Jμ_exact)<1e-9  # This works
 
 @time Jx_num = FiniteDiff.finite_difference_jacobian(x->G(μ0, x), x0_flat)
-@time Jx_exact = Dolo.compute_matrix(∂G_∂x)
+@time Jx_exact = convert(Matrix,∂G_∂x)
 maximum(abs, Jx_num-Jx_exact)
 
 @assert maximum(abs, Jx_num-Jx_exact)<1e-9
