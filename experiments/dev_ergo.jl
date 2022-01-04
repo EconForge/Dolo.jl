@@ -7,9 +7,13 @@ model = yaml_import("examples/models/rbc.yaml")
 
 sol = Dolo.improved_time_iteration(model)
 
-sol.dr.grid
-
 G = Dolo.distG(model, sol)
+
+Π, dΠ = Dolo.transition_matrix(G; diff=true)
+
+
+DΠ = Π .!= 0.0
+DdΠ = [ maximum(abs,DΠ[c]) for c in CartesianIndices(dΠ)]
 
 Π = Dolo.transition_matrix(G)
 sum(Π; dims=2) # should be only ones
@@ -42,6 +46,9 @@ x0_flat = cat(G.x0.data...; dims=1)
 ∂G_∂μ(μ0*0.01)
 ∂G_∂μ*(μ0*0.01) # equivalent
 
+∂G_∂x*(x0_flat*0.01)
+
+
 [∂G_∂μ ∂G_∂μ]
 [∂G_∂μ ∂G_∂x]([μ0; x0_flat]) # yes, it is kind of beautiful!
 
@@ -63,6 +70,18 @@ maximum(abs, Jx_num-Jx_exact)
 
 using Plots
 
+
+pl1 = spy(abs.(Jx_num).>1e-8, title="Numerical")
+pl2 = spy(abs.(Jx_exact).>1e-8, title="Exact")
+pl3 = spy(abs.(Jx_exact - Jx_num).>1e-8, title="Diff")
+plot(pl1,pl2,pl3)
+
+
+
+
+
+# M = reshape(Jx_exact, 5, 10, 5, 20)
+# MM = reshape(permutedims(M, [1, 2, 4, 3]), 50, 100)
 
 pl1 = spy(abs.(Jx_num).>1e-8, title="Numerical")
 pl2 = spy(abs.(Jx_exact).>1e-8, title="Exact")

@@ -70,15 +70,20 @@ function (G::distG)(μ0::AbstractVector{Float64}, x0::MSM{Point{n_x}}; diff=fals
 
     P, P_x = transition_matrix(G.model, G.dprocess, x0, G.grid; exo=nothing, diff=true)
 
-    μ1 = P'*μ0
+    μ1 = P'μ0
     
     M = length(μ0)
     N = length(x0.data)*length(x0.data[1])
 
     function fun_x(dx::AbstractVector{Float64})
         d_x = MSM(copy(reinterpret(SVector{n_x, Float64}, dx)), x0.sizes)
+        N = size(P,2)
+        d_μ = [ sum([μ0[k]*(P_x[k,i]'*d_x.data[k]) for k=1:N]) for i=1:N ]
+        # alternate calculation
         P_dx = [(P_x[i,j]'*d_x.data[i])  for i=1:size(P,1), j=1:size(P,2)]
-        return P_dx'*μ0
+        d_μμ = P_dx'*μ0
+        @assert (maximum(abs, d_μ-d_μμ)<1e-10)
+        return d_μ
     end
 
     ∂G_∂μ = LinearMap( μ -> P'*μ, M, M)
@@ -176,7 +181,6 @@ function transition_matrix(model, dp, x0::MSM{<:SVector{n_x}}, grid; exo=nothing
                 M = Dolo.repsvec(exo[2], M)   # z1
             end
             w = iweight(dp, i_m, i_M)
-            println(i_m, " ; " ,i_M, " ; " , i_MM, " ; " , w)
             if diff
                 S, S_x = transition(model, Val{(0,3)}, m, s, x, M, parms)
             else
@@ -287,12 +291,20 @@ function trembling_foot!(Π, dΠ, S::Vector{Point{d}}, S_x::Vector{SMatrix{d,n_x
 
         Π[indexes_to_be_modified...] .+= w.*rhs_Π
 
-        for k=1:d
-            λ_vec =  tuple( (i==k ? SVector( -1. /(size(Π, k+1)-1), 1. /(size(Π, k+1)-1) ) : (SVector((1-λn[i]),λn[i])) for i in 1:d)... )
-            A = outer(λ_vec...)
-            rhs_dΠ = outer2(A, Sn_x[k,:])
-            dΠ[indexes_to_be_modified...] .+= w*rhs_dΠ
-        end
+        # for k=1:d
+        #     λ_vec =  tuple( (i==k ? SVector( -1. /δ[k], 1. / δ[k]) : (SVector((1-λn[i]),λn[i])) for i in 1:d)... )
+        #     A = outer(λ_vec...)
+        #     rhs_dΠ = outer2(A, Sn_x[k,:])
+        #     dΠ[indexes_to_be_modified...] .+= w*rhs_dΠ
+        # end
+        
+        @assert d==1
+        
+        λ_vec =  (SVector( -1. /δ[1], 1. / δ[1]), )
+        A = outer(λ_vec...)
+        rhs_dΠ = outer2(A, Sn_x[1,:])
+        rhs_dΠ = [ -1. /δ[1].*Sn_x[1,:] , 1. / δ[1].*Sn_x[1,:]]
+        dΠ[indexes_to_be_modified...] .+= w*rhs_dΠ
         
     end
 
