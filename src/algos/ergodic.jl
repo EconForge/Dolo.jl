@@ -156,9 +156,9 @@ function transition_matrix(model, dp, x0::MSM{<:SVector{n_x}}, grid; exo=nothing
     N_m = max(1, n_nodes(exo_grid))
     N_s = n_nodes(endo_grid)
     N = N_m*N_s
-    Π = zeros(N_m, N_s, N_m, endo_grid.n...)
+    Π = zeros(N_s, N_m, endo_grid.n..., N_m)
     if diff
-        dΠ = zeros(SVector{n_x, Float64}, N_m, N_s, N_m, endo_grid.n...)
+        dΠ = zeros(SVector{n_x, Float64}, N_s, N_m, endo_grid.n..., N_m)
     end
     s = nodes(endo_grid)
     a = SVector(endo_grid.min...)
@@ -187,12 +187,13 @@ function transition_matrix(model, dp, x0::MSM{<:SVector{n_x}}, grid; exo=nothing
                 S = transition(model, m, s, x, M, parms)
             end
             S = [(S[n]-a)./(b-a) for n=1:length(S)]
-            Π_view = view(Π,tuple(i_m,:,i_MM,(Colon() for k in 1:(ndims(Π)-3))...)...)
+            ind_s = tuple((Colon() for k in 1:(ndims(Π)-3))...)
+            Π_view = view(Π,:,i_m,ind_s..., i_MM)
             if !diff
                 trembling_hand!(Π_view, S, w)
             else
                 S_x = [( 1.0 ./(b-a)) .* S_x[n] for n=1:length(S)]
-                dΠ_view = view(dΠ,tuple(i_m,:,i_MM,(Colon() for k in 1:(ndims(dΠ)-3))...)...)
+                dΠ_view = view(dΠ,:,i_m,ind_s...,i_MM)
                 trembling_foot!(Π_view, dΠ_view, S, S_x, w)
             end
         end
