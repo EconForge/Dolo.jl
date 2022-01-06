@@ -18,6 +18,7 @@ using Dolo
         x = @SMatrix randn(4,4)
         @test Dolo.outer2(SVector(-1.,0,1.),x) == SVector(-1*x, 0*x, 1*X)
     end
-end
 
 end
+
+
