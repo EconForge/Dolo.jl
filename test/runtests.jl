@@ -5,6 +5,7 @@ using Dolo, DataStructures
 
 tests = length(ARGS) > 0 ? ARGS : [
                                    "model_types",
+                                    "outer",
                                   # #  "model_import",
                                    "test_calibration",
                                    "test_algos",
