@@ -1,7 +1,7 @@
 using FiniteDiff
 using Dolo
 
-@testset "Test the G derivative w.r.t. x" begin
+@testset "Test the G derivative w.r.t. x and μ" begin
 
     model_rbc_mc = yaml_import("examples/models/rbc_mc.yaml")
     model_rbc = yaml_import("examples/models/rbc.yaml")
@@ -31,7 +31,7 @@ using Dolo
 
             @assert maximum(abs, Jx_num - Jx_exact) < 1e-8
         end
-        
+
     end
 
 end
