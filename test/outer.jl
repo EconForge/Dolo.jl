@@ -14,7 +14,10 @@ using Dolo
 
     end
 
-    # @testset "testing the function outer2 of ergodic.jl" begin
-        
-    # end
+    @testset "testing the function outer2 of ergodic.jl" begin
+        x = @SMatrix randn(4,4)
+        @test Dolo.outer2(SVector(-1.,0,1.),x) == SVector(-1*x, 0*x, 1*X)
+    end
 end
+
+
