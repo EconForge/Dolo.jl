@@ -28,12 +28,14 @@ function (G::distG)(μ0::AbstractVector{Float64}, x0::MSM{Point{n_x}}; exo =noth
     end
 
     function fun_z1(dz1::Point{n}) where n
-        d_μ = (P_z1'*dz1)'*μ0
+        P_dz1 = [(P_z1[i,j]'*dz1)  for i=1:size(P,1), j=1:size(P,2)]
+        d_μ = P_dz1'*μ0
         return d_μ
     end
 
     function fun_z2(dz2::Point{n}) where n
-        d_μ = (P_z2'*dz2)'*μ0
+        P_dz2 = [(P_z2[i,j]'*dz2)  for i=1:size(P,1), j=1:size(P,2)]
+        d_μ = P_dz2'*μ0
         return d_μ
     end
 
