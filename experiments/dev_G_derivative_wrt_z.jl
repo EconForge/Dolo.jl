@@ -1,3 +1,6 @@
+using Dolo
+import Dolo 
+
 function (G::distG)(μ0::AbstractVector{Float64}, x0::MSM{Point{n_x}}; exo =nothing, diff=false) where n_x
 
 
@@ -91,7 +94,7 @@ function transition_matrix(model, dp, x0::MSM{<:SVector{n_x}}, grid; exo=nothing
             M = inode(Point, dp, i_m, i_M)
             if !(exo === nothing)
                 M = Dolo.repsvec(exo[2], M)   # z1
-                dM_dz = Dolo.repsvec((@SVector ones(n_2)),M*0)
+                dM_dz = Dolo.repsvec((@SVector ones(n_z2)),M*0)
             end
             w = iweight(dp, i_m, i_M)
             if diff
