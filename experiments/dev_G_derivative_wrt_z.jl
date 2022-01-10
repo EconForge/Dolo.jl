@@ -129,18 +129,6 @@ function transition_matrix(model, dp, x0::MSM{<:SVector{n_x}}, grid; exo=nothing
 end
 
 
-function transition_matrix(model, sol; diff=false)
-    x0 = Dolo.MSM([sol.dr(i, sol.dr.grid_endo.nodes) for i=1:max(1,Dolo.n_nodes(sol.dr.grid_exo))])
-    grid = ProductGrid(sol.dr.grid_exo, sol.dr.grid_endo)
-    Dolo.transition_matrix(model, sol.dprocess, x0, grid; diff=diff);
-end
-
-function transition_matrix(G::distG; dp=G.dprocess, x0=G.x0, grid=G.grid, exo=nothing, diff=false)
-
-    return transition_matrix(G.model, dp, x0, grid; exo=exo, diff=diff)
-end
-
-
 function trembling_foot!(Π, dΠ_x, dΠ_z1, dΠ_z2, S::Vector{Point{d}}, S_x::Vector{SMatrix{d,n_x,Float64,_}}, S_z1, S_z2, w::Float64) where d where n_x where _
     
     @assert ndims(Π) == d+1
