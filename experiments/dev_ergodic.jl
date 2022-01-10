@@ -3,6 +3,8 @@ using BenchmarkTools
 using StaticArrays
 using FiniteDiff
 
+
+model_rbc_mc = yaml_import("examples/models/rbc_mc.yaml")
 model = model_rbc_mc
 sol = Dolo.improved_time_iteration(model)
 
