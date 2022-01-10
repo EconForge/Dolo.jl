@@ -7,12 +7,14 @@ function (G::distG)(μ0::AbstractVector{Float64}, x0::MSM{Point{n_x}}; exo =noth
         return μ1
     end
 
-    P, P_x = transition_matrix(G.model, G.dprocess, x0, G.grid; exo=exo, diff=true)
+    P, P_x, P_z1, P_z2 = transition_matrix(G.model, G.dprocess, x0, G.grid; exo=exo, diff=true)
 
     μ1 = P'μ0
     
     M = length(μ0)
     N = length(x0.data)*length(x0.data[1])
+    N_z1 = length(exo[1])
+    N_z2 = length(exo[2])
 
     function fun_x(dx::AbstractVector{Float64})
         d_x = MSM(copy(reinterpret(SVector{n_x, Float64}, dx)), x0.sizes)
@@ -25,9 +27,23 @@ function (G::distG)(μ0::AbstractVector{Float64}, x0::MSM{Point{n_x}}; exo =noth
         return d_μ
     end
 
+    function fun_z1(dz1::Point{n}) where n
+        d_μ = (P_z1'*dz1)'*μ0
+        return d_μ
+    end
+
+    function fun_z2(dz2::Point{n}) where n
+        d_μ = (P_z2'*dz2)'*μ0
+        return d_μ
+    end
+
+
     ∂G_∂μ = LinearMap( μ -> P'*μ, M, M)
     ∂G_∂x = LinearMap(fun_x, M, N)
-    return μ1, ∂G_∂μ, ∂G_∂x
+    ∂G_∂z1 = LinearMap(fun_z1, M, N_z1)
+    ∂G_∂z2 = LinearMap(fun_z2, M, N_z2)
+
+    return μ1, ∂G_∂μ, ∂G_∂x, ∂G_∂z1, ∂G_∂z2
 
 end
 
