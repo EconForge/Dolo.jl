@@ -1,6 +1,7 @@
 using Dolo
 import Dolo 
 
+
 function (G::distG)(μ0::AbstractVector{Float64}, x0::MSM{Point{n_x}}; exo =nothing, diff=false) where n_x
 
 
@@ -30,13 +31,13 @@ function (G::distG)(μ0::AbstractVector{Float64}, x0::MSM{Point{n_x}}; exo =noth
         return d_μ
     end
 
-    function fun_z1(dz1::Point{n}) where n
+    function fun_z1(dz1) 
         P_dz1 = [(P_z1[i,j]'*dz1)  for i=1:size(P,1), j=1:size(P,2)]
         d_μ = P_dz1'*μ0
         return d_μ
     end
 
-    function fun_z2(dz2::Point{n}) where n
+    function fun_z2(dz2)
         P_dz2 = [(P_z2[i,j]'*dz2)  for i=1:size(P,1), j=1:size(P,2)]
         d_μ = P_dz2'*μ0
         return d_μ
@@ -82,7 +83,7 @@ function transition_matrix(model, dp, x0::MSM{<:SVector{n_x}}, grid; exo=nothing
         m = node(exo_grid, i_m)
         if !(exo === nothing)
             m = Dolo.repsvec(exo[1], m)   # z0
-            dm_dz = Dolo.repsvec((@SVector ones(n_z1)),m*0)
+            dm_dz = Dolo.repsvec((@SVector ones(length(exo[1]))),m*0)
         end
         for i_M in 1:n_inodes(dp, i_m)
             
@@ -94,7 +95,7 @@ function transition_matrix(model, dp, x0::MSM{<:SVector{n_x}}, grid; exo=nothing
             M = inode(Point, dp, i_m, i_M)
             if !(exo === nothing)
                 M = Dolo.repsvec(exo[2], M)   # z1
-                dM_dz = Dolo.repsvec((@SVector ones(n_z2)),M*0)
+                dM_dz = Dolo.repsvec((@SVector ones(length(exo[2]))),M*0)
             end
             w = iweight(dp, i_m, i_M)
             if diff
@@ -109,8 +110,8 @@ function transition_matrix(model, dp, x0::MSM{<:SVector{n_x}}, grid; exo=nothing
                 trembling_hand!(Π_view, S, w)
             else
                 S_x = [( 1.0 ./(b-a)) .* S_x[n] for n=1:length(S)]
-                S_z1 = [( 1.0 ./(b-a)) .* S_z1[n] .* dm_dz for n=1:length(S)]
-                S_z2 = [( 1.0 ./(b-a)) .* S_z2[n] .* dM_dz for n=1:length(S)]
+                S_z1 = [( 1.0 ./(b-a)) .* S_z1[n].* dm_dz for n=1:length(S)] 
+                S_z2 = [( 1.0 ./(b-a)) .* S_z2[n].* dM_dz for n=1:length(S)] 
 
                 dΠ_view_x = view(dΠ_x,:,i_m,ind_s...,i_MM)
                 dΠ_view_z1 = view(dΠ_z1,:,i_m,ind_s...,i_MM)
@@ -165,7 +166,7 @@ function trembling_foot!(Π, dΠ_x, dΠ_z1, dΠ_z2, S::Vector{Point{d}}, S_x::Ve
 
         Π[indexes_to_be_modified...] .+= w.*rhs_Π
         
-        @assert d==1
+        #@assert d==1
         
         λ_vec =  (SVector( -1. /δ[1], 1. / δ[1]), )
         A = outer(λ_vec...)
