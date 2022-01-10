@@ -109,8 +109,8 @@ function transition_matrix(model, dp, x0::MSM{<:SVector{n_x}}, grid; exo=nothing
                 trembling_hand!(Π_view, S, w)
             else
                 S_x = [( 1.0 ./(b-a)) .* S_x[n] for n=1:length(S)]
-                S_z1 = [( 1.0 ./(b-a)) .* S_z1[n] for n=1:length(S)] .* dm_dz
-                S_z2 = [( 1.0 ./(b-a)) .* S_z2[n] for n=1:length(S)] .* dM_dz
+                S_z1 = [( 1.0 ./(b-a)) .* S_z1[n] .* dm_dz for n=1:length(S)]
+                S_z2 = [( 1.0 ./(b-a)) .* S_z2[n] .* dM_dz for n=1:length(S)]
 
                 dΠ_view_x = view(dΠ_x,:,i_m,ind_s...,i_MM)
                 dΠ_view_z1 = view(dΠ_z1,:,i_m,ind_s...,i_MM)
