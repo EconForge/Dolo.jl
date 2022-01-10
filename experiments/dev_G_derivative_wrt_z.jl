@@ -123,3 +123,56 @@ function transition_matrix(G::distG; dp=G.dprocess, x0=G.x0, grid=G.grid, exo=no
 
     return transition_matrix(G.model, dp, x0, grid; exo=exo, diff=diff)
 end
+
+
+function trembling_foot!(Π, dΠ_x, dΠ_z1, dΠ_z2, S::Vector{Point{d}}, S_x::Vector{SMatrix{d,n_x,Float64,_}}, S_z1, S_z2, w::Float64) where d where n_x where _
+    
+    @assert ndims(Π) == d+1
+    shape_Π = size(Π)
+    grid_dimension = d
+    δ =  SVector{d,Float64}(1.0./(shape_Π[1+i]-1) for i in 1:d )
+    N = shape_Π[1]
+
+    for n in 1:N
+
+        Sn = S[n]
+        Sn_x = S_x[n]
+        Sn_z1 = S_z1[n]
+        Sn_z2 = S_z2[n]
+
+        Sn = min.(max.(Sn, 0.0),1.0)
+        qn = div.(Sn, δ)
+        qn = max.(0, qn)
+        qn = min.(qn, shape_Π[2:d+1].-2)
+        λn = (Sn./δ.-qn) # ∈[0,1[ by construction
+        qn_ = round.(Int,qn) .+ 1
+        
+        λn_weight_vector_Π = tuple( (SVector((1-λn[i]),λn[i]) for i in 1:d)... )
+
+        # # # Filling transition matrix
+        rhs_Π = outer(λn_weight_vector_Π...)
+
+        indexes_to_be_modified = tuple(n, UnitRange.(qn_,qn_.+1)...)
+
+        Π[indexes_to_be_modified...] .+= w.*rhs_Π
+        
+        @assert d==1
+        
+        λ_vec =  (SVector( -1. /δ[1], 1. / δ[1]), )
+        A = outer(λ_vec...)
+
+        rhs_dΠ_x = outer2(A, Sn_x[1,:])
+        rhs_dΠ_x = [ -1. /δ[1].*Sn_x[1,:] , 1. / δ[1].*Sn_x[1,:]]
+        dΠ_x[indexes_to_be_modified...] .+= w*rhs_dΠ_x
+
+        rhs_dΠ_z1 = outer2(A, Sn_z1[1,:])
+        rhs_dΠ_z1 = [ -1. /δ[1].*Sn_z1[1,:] , 1. / δ[1].*Sn_z1[1,:]]
+        dΠ_z1[indexes_to_be_modified...] .+= w*rhs_dΠ_z1
+
+        rhs_dΠ_z2 = outer2(A, Sn_z2[1,:])
+        rhs_dΠ_z2 = [ -1. /δ[1].*Sn_z2[1,:] , 1. / δ[1].*Sn_z2[1,:]]
+        dΠ_z2[indexes_to_be_modified...] .+= w*rhs_dΠ_z2
+        
+    end
+
+end
