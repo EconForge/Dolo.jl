@@ -210,10 +210,10 @@ function transition_matrix(model, dp, x0::MSM{<:SVector{n_x}}, grid; exo=nothing
 end
 
 
-function transition_matrix(model, sol; diff=false)
+function transition_matrix(model, sol; diff=false, exo=nothing)
     x0 = Dolo.MSM([sol.dr(i, sol.dr.grid_endo.nodes) for i=1:max(1,Dolo.n_nodes(sol.dr.grid_exo))])
     grid = ProductGrid(sol.dr.grid_exo, sol.dr.grid_endo)
-    Dolo.transition_matrix(model, sol.dprocess, x0, grid; diff=diff);
+    Dolo.transition_matrix(model, sol.dprocess, x0, grid; diff=diff, exo=nothing);
 end
 
 function transition_matrix(G::distG; dp=G.dprocess, x0=G.x0, grid=G.grid, exo=nothing, diff=false)

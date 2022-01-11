@@ -262,20 +262,39 @@ end
 function set_calibration!(model::Model, key::Symbol, value)
     # TODO: set proper type for ScalarNode
     # this will fail is parameter wasn't defined before
+    data = model.data
     model.data[:calibration][key].value = string(value)
-    model.calibration = get_calibration(model)
-    model.exogenous = get_exogenous(model)
-    model.domain = get_domain(model);
+    calibration = get_calibration(model)
+    symbols = get_symbols(data)
+
+    exogenous = get_exogenous(data, symbols[:exogenous], calibration.flat)
+
+    endo_domain = get_domain(data, symbols[:states], calibration.flat)
+    exo_domain = get_domain(exogenous)
+
+    domain = ProductDomain(exo_domain, endo_domain)
+
+    model.calibration = calibration
+    model.exogenous = exogenous
+    model.domain = domain
+
 end
 
 function set_calibration!(model::Model; values...)
     calib = model.data[:calibration]
+    data = model.data
     for (k,v) in values
         calib[k].value = string(v)
     end
-    model.calibration = get_calibration(model)
-    model.exogenous = get_exogenous(model)
-    model.domain = get_domain(model);
+    calibration = get_calibration(model)
+    exogenous = get_exogenous(model)
+    symbols = get_symbols(data)
+    endo_domain = get_domain(data, symbols[:states], calibration.flat)
+    exo_domain = get_domain(model.exogenous)
+    domain = ProductDomain(exo_domain, endo_domain)
+    model.calibration = calibration
+    model.exogenous = exogenous
+    model.domain = domain;
 end
 
 
