@@ -316,8 +316,6 @@ end
 """
 Computes the outer product.
 
-TODO: define the outer product
-
 # Argument
 * `λn_weight_vector::Vararg{Point{2}}`: tuple of Point{2} to be multiplied by outer product
 
@@ -329,5 +327,16 @@ function outer(λn_weight_vector::Vararg{SVector{2}})
 end
 
 # TODO: define and document
+
+"""
+Computes an outer product between a vector and a matrix and returns a vector of matrices.
+
+# Arguments
+* `A` : SVector of any size
+* `x`: matrix of any size
+
+# Returns
+* a sized vector obtained by making the outer product of A and x and dividing the matrix obtained in a vector of matrices for which the value of the A[i] term changes
+"""
 outer2(A, x) = [A[i]*x for i in CartesianIndices(A)]
 
