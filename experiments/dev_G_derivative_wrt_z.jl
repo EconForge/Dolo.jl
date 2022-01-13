@@ -83,7 +83,6 @@ function transition_matrix(model, dp, x0::MSM{<:SVector{n_x}}, grid; exo=nothing
         m = node(exo_grid, i_m)
         if !(exo === nothing)
             m = Dolo.repsvec(exo[1], m)   # z0
-            dm_dz = Dolo.repsvec((@SVector ones(length(exo[1]))),m*0)
         end
         for i_M in 1:n_inodes(dp, i_m)
             
@@ -95,7 +94,6 @@ function transition_matrix(model, dp, x0::MSM{<:SVector{n_x}}, grid; exo=nothing
             M = inode(Point, dp, i_m, i_M)
             if !(exo === nothing)
                 M = Dolo.repsvec(exo[2], M)   # z1
-                dM_dz = Dolo.repsvec((@SVector ones(length(exo[2]))),M*0)
             end
             w = iweight(dp, i_m, i_M)
             if diff
@@ -110,8 +108,11 @@ function transition_matrix(model, dp, x0::MSM{<:SVector{n_x}}, grid; exo=nothing
                 trembling_hand!(Π_view, S, w)
             else
                 S_x = [( 1.0 ./(b-a)) .* S_x[n] for n=1:length(S)]
-                S_z1 = [( 1.0 ./(b-a)) .* S_z1[n].* dm_dz for n=1:length(S)] 
-                S_z2 = [( 1.0 ./(b-a)) .* S_z2[n].* dM_dz for n=1:length(S)] 
+                S_z1 = [( 1.0 ./(b-a)) .* S_z1[n] for n=1:length(S)] 
+                S_z2 = [( 1.0 ./(b-a)) .* S_z2[n] for n=1:length(S)] 
+
+                S_z1 = S_z1[:,1:length(exo[1])]
+                S_z2 = S_z2[:,1:length(exo[2])]
 
                 dΠ_view_x = view(dΠ_x,:,i_m,ind_s...,i_MM)
                 dΠ_view_z1 = view(dΠ_z1,:,i_m,ind_s...,i_MM)
