@@ -188,7 +188,22 @@ function *(L::LinearThing,x::MSM{Point{n_x}}) where n_x
     L.counter += 1
     return xx
  end
+
+ function *(L::LinearThing,x::AbstractArray{Float64})
+    n_x, N, n_m = shape(L) 
+    sizes = [N for i=1:n_m]
+    data = copy(reinterpret( SVector{n_x, Float64}, x))
+    xx = MSM(data, sizes)
+    res = L*xx
+    return cat(res.data...; dims=1)
+ end
  
+ function *(J::Dolo.MSM{SMatrix{p,q,Float64,d}}, x::AbstractVector{Float64}) where p where q where d
+    xx = reinterpret(SVector{q,Float64},x)
+    prod = J.data .* xx
+    return cat(prod...;dims=1)
+end
+
 
 
 # function *(L::LinearThing,x::AbstractVector{<:AbstractVector{Point{n_x}}}) where n_x
