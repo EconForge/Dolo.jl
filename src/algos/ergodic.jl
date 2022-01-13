@@ -275,10 +275,13 @@ function trembling_foot!(Π, dΠ, S::Vector{Point{d}}, S_x::Vector{SMatrix{d,n_x
 
         Sn = S[n]
         Sn_x = S_x[n]
-
+        
+        inbound = (0. .<= Sn) .& ( Sn .<= 1.0)
+        
         Sn = min.(max.(Sn, 0.0),1.0)
         qn = div.(Sn, δ)
         qn = max.(0, qn)
+        # inbound = inbound .& (qn .<= shape_Π[2:d+1].-2)
         qn = min.(qn, shape_Π[2:d+1].-2)
         λn = (Sn./δ.-qn) # ∈[0,1[ by construction
         qn_ = round.(Int,qn) .+ 1
@@ -292,20 +295,12 @@ function trembling_foot!(Π, dΠ, S::Vector{Point{d}}, S_x::Vector{SMatrix{d,n_x
 
         Π[indexes_to_be_modified...] .+= w.*rhs_Π
 
-        # for k=1:d
-        #     λ_vec =  tuple( (i==k ? SVector( -1. /δ[k], 1. / δ[k]) : (SVector((1-λn[i]),λn[i])) for i in 1:d)... )
-        #     A = outer(λ_vec...)
-        #     rhs_dΠ = outer2(A, Sn_x[k,:])
-        #     dΠ[indexes_to_be_modified...] .+= w*rhs_dΠ
-        # end
-        
-        @assert d==1
-        
-        λ_vec =  (SVector( -1. /δ[1], 1. / δ[1]), )
-        A = outer(λ_vec...)
-        rhs_dΠ = outer2(A, Sn_x[1,:])
-        rhs_dΠ = [ -1. /δ[1].*Sn_x[1,:] , 1. / δ[1].*Sn_x[1,:]]
-        dΠ[indexes_to_be_modified...] .+= w*rhs_dΠ
+        for k=1:d
+            λ_vec =  tuple( (i==k ? SVector( -1. /δ[k] * inbound[k], 1. / δ[k] * inbound[k]) : (SVector((1-λn[i]),λn[i])) for i in 1:d)... )
+            A = outer(λ_vec...)
+            rhs_dΠ = outer2(A, Sn_x[k,:])
+            dΠ[indexes_to_be_modified...] .+= w*rhs_dΠ
+        end
         
     end
 
