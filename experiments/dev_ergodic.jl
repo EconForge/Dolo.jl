@@ -15,7 +15,6 @@ x0 = G.x0
 x0_flat = cat(G.x0.data...; dims=1)
 μ0 = G.μ0
 
-z10
 
 
 μ1, ∂G_∂μ, ∂G_∂x, ∂G_∂z1, ∂G_∂z2 = G(μ0, x0; exo = [z10,z20], diff = true)
@@ -41,9 +40,12 @@ print(maximum(abs, Jz1_num - Jz1_exact) < 1e-8)
 print(maximum(abs, Jz2_num - Jz2_exact))
 
 
+# using Plots
 
-maximum(Jz1_num*100000000)
+# spy((abs.(Jz2_exact-Jz2_num).>1e-8))
+# maximum(Jz1_num*100000000)
 
-print( (abs.(Jz2_exact-Jz2_num).>1e-8))
+# print( (abs.(Jz2_exact-Jz2_num).>1e-8))
 
-G(μ0, x0, exo = [z10,z20])
+# print(Jz2_num)
+# G(μ0, x0, exo = [z10,z20])

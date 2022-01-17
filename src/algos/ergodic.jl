@@ -59,21 +59,22 @@ end
 
 
 
-function (G::distG)(μ0::AbstractVector{Float64}, x0::MSM{Point{n_x}}; diff=false) where n_x
-
+function (G::distG)(μ0::AbstractVector{Float64}, x0::MSM{Point{n_x}}; exo =nothing, diff=false) where n_x
 
     if !diff
-        P = transition_matrix(G.model, G.dprocess, x0, G.grid; exo=nothing, diff=false)
+        P = transition_matrix(G.model, G.dprocess, x0, G.grid; exo=exo, diff=false)
         μ1 = P'*μ0
         return μ1
     end
 
-    P, P_x = transition_matrix(G.model, G.dprocess, x0, G.grid; exo=nothing, diff=true)
+    P, P_x, P_z1, P_z2 = transition_matrix(G.model, G.dprocess, x0, G.grid; exo=exo, diff=true)
 
     μ1 = P'μ0
     
     M = length(μ0)
     N = length(x0.data)*length(x0.data[1])
+    N_z1 = length(exo[1])
+    N_z2 = length(exo[2])
 
     function fun_x(dx::AbstractVector{Float64})
         d_x = MSM(copy(reinterpret(SVector{n_x, Float64}, dx)), x0.sizes)
@@ -86,17 +87,33 @@ function (G::distG)(μ0::AbstractVector{Float64}, x0::MSM{Point{n_x}}; diff=fals
         return d_μ
     end
 
+    function fun_z1(dz1) 
+        P_dz1 = [(P_z1[i,j]'*dz1)  for i=1:size(P,1), j=1:size(P,2)]
+        d_μ = P_dz1'*μ0
+        return d_μ
+    end
+
+    function fun_z2(dz2)
+        P_dz2 = [(P_z2[i,j]'*dz2)  for i=1:size(P,1), j=1:size(P,2)]
+        d_μ = P_dz2'*μ0
+        return d_μ
+    end
+
+
     ∂G_∂μ = LinearMap( μ -> P'*μ, M, M)
     ∂G_∂x = LinearMap(fun_x, M, N)
-    return μ1, ∂G_∂μ, ∂G_∂x
+    ∂G_∂z1 = LinearMap(fun_z1, M, N_z1)
+    ∂G_∂z2 = LinearMap(fun_z2, M, N_z2)
+
+    return μ1, ∂G_∂μ, ∂G_∂x, ∂G_∂z1, ∂G_∂z2
 
 end
 
-function (G::distG)(μ0::AbstractVector{Float64}, x0::AbstractVector{Float64}; diff=false)
+function (G::distG)(μ0::AbstractVector{Float64}, x0::AbstractVector{Float64}; exo=nothing, diff=false)
     
     n_x = length(G.x0.data[1])
     x = MSM(copy(reinterpret(SVector{n_x, Float64}, x0)), G.x0.sizes)
-    return G(μ0, x; diff=diff)
+    return G(μ0, x; exo=exo, diff=diff)
 
 end
 
@@ -156,7 +173,13 @@ function transition_matrix(model, dp, x0::MSM{<:SVector{n_x}}, grid; exo=nothing
     N = N_m*N_s
     Π = zeros(N_s, N_m, endo_grid.n..., N_m)
     if diff
-        dΠ = zeros(SVector{n_x, Float64}, N_s, N_m, endo_grid.n..., N_m)
+        dΠ_x = zeros(SVector{n_x, Float64}, N_s, N_m, endo_grid.n..., N_m)
+        if !(exo === nothing)
+            n_z1 = length(exo[1])
+            n_z2 = length(exo[2])
+            dΠ_z1 = zeros(SVector{n_z1, Float64}, N_s, N_m, endo_grid.n..., N_m)
+            dΠ_z2 = zeros(SVector{n_z2, Float64}, N_s, N_m, endo_grid.n..., N_m)
+        end
     end
     s = nodes(endo_grid)
     a = SVector(endo_grid.min...)
@@ -180,7 +203,7 @@ function transition_matrix(model, dp, x0::MSM{<:SVector{n_x}}, grid; exo=nothing
             end
             w = iweight(dp, i_m, i_M)
             if diff
-                S, S_x = transition(model, Val{(0,3)}, m, s, x, M, parms)
+                S, S_z1, S_x, S_z2 = transition(model, Val{(0,1,3,4)}, m, s, x, M, parms)
             else
                 S = transition(model, m, s, x, M, parms)
             end
@@ -191,8 +214,17 @@ function transition_matrix(model, dp, x0::MSM{<:SVector{n_x}}, grid; exo=nothing
                 trembling_hand!(Π_view, S, w)
             else
                 S_x = [( 1.0 ./(b-a)) .* S_x[n] for n=1:length(S)]
-                dΠ_view = view(dΠ,:,i_m,ind_s...,i_MM)
-                trembling_foot!(Π_view, dΠ_view, S, S_x, w)
+                S_z1 = [( 1.0 ./(b-a)) .* S_z1[n] for n=1:length(S)] 
+                S_z2 = [( 1.0 ./(b-a)) .* S_z2[n] for n=1:length(S)] 
+
+                S_z1 = [M[:,1:length(exo[1])] for M in S_z1]
+                S_z2 = [M[:,1:length(exo[2])] for M in S_z2]
+
+                dΠ_view_x = view(dΠ_x,:,i_m,ind_s...,i_MM)
+                dΠ_view_z1 = view(dΠ_z1,:,i_m,ind_s...,i_MM)
+                dΠ_view_z2 = view(dΠ_z2,:,i_m,ind_s...,i_MM)
+
+                trembling_foot!(Π_view, dΠ_view_x, dΠ_view_z1, dΠ_view_z2, S, S_x, S_z1, S_z2, w)
             end
         end
     end
@@ -201,8 +233,10 @@ function transition_matrix(model, dp, x0::MSM{<:SVector{n_x}}, grid; exo=nothing
     if !diff
         return Π0
     else
-        dΠ0 = reshape(dΠ,N,N)
-        return Π0, dΠ0
+        dΠ_0_x = reshape(dΠ_x,N,N)
+        dΠ_0_z1 = reshape(dΠ_z1,N,N)
+        dΠ_0_z2 = reshape(dΠ_z2,N,N)
+        return Π0, dΠ_0_x, dΠ_0_z1, dΠ_0_z2
     end
 
 end
@@ -259,7 +293,7 @@ function trembling_hand!(A, x::Vector{Point{d}}, w::Float64) where d
 end
 
 
-function trembling_foot!(Π, dΠ, S::Vector{Point{d}}, S_x::Vector{SMatrix{d,n_x,Float64,_}}, w::Float64) where d where n_x where _
+function trembling_foot!(Π, dΠ_x, dΠ_z1, dΠ_z2, S::Vector{Point{d}}, S_x::Vector{SMatrix{d,n_x,Float64,_}}, S_z1, S_z2, w::Float64) where d where n_x where _
     
     @assert ndims(Π) == d+1
     shape_Π = size(Π)
@@ -271,13 +305,14 @@ function trembling_foot!(Π, dΠ, S::Vector{Point{d}}, S_x::Vector{SMatrix{d,n_x
 
         Sn = S[n]
         Sn_x = S_x[n]
-        
+        Sn_z1 = S_z1[n]
+        Sn_z2 = S_z2[n]
+
         inbound = (0. .<= Sn) .& ( Sn .<= 1.0)
-        
+
         Sn = min.(max.(Sn, 0.0),1.0)
         qn = div.(Sn, δ)
         qn = max.(0, qn)
-        # inbound = inbound .& (qn .<= shape_Π[2:d+1].-2)
         qn = min.(qn, shape_Π[2:d+1].-2)
         λn = (Sn./δ.-qn) # ∈[0,1[ by construction
         qn_ = round.(Int,qn) .+ 1
@@ -290,14 +325,22 @@ function trembling_foot!(Π, dΠ, S::Vector{Point{d}}, S_x::Vector{SMatrix{d,n_x
         indexes_to_be_modified = tuple(n, UnitRange.(qn_,qn_.+1)...)
 
         Π[indexes_to_be_modified...] .+= w.*rhs_Π
+    
 
         for k=1:d
             λ_vec =  tuple( (i==k ? SVector( -1. /δ[k] * inbound[k], 1. / δ[k] * inbound[k]) : (SVector((1-λn[i]),λn[i])) for i in 1:d)... )
             A = outer(λ_vec...)
-            rhs_dΠ = outer2(A, Sn_x[k,:])
-            dΠ[indexes_to_be_modified...] .+= w*rhs_dΠ
+
+            rhs_dΠ_x = outer2(A, Sn_x[k,:])
+            dΠ_x[indexes_to_be_modified...] .+= w*rhs_dΠ_x
+
+            rhs_dΠ_z1 = outer2(A, Sn_z1[k,:])
+            dΠ_z1[indexes_to_be_modified...] .+= w*rhs_dΠ_z1
+
+            rhs_dΠ_z2 = outer2(A, Sn_z2[k,:])
+            dΠ_z2[indexes_to_be_modified...] .+= w*rhs_dΠ_z2
         end
-        
+
     end
 
 end
