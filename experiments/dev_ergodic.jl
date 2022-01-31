@@ -40,12 +40,24 @@ print(maximum(abs, Jz1_num - Jz1_exact) < 1e-8)
 print(maximum(abs, Jz2_num - Jz2_exact))
 
 
-# using Plots
+using Plots
 
-# spy((abs.(Jz2_exact-Jz2_num).>1e-8))
-# maximum(Jz1_num*100000000)
+pl1 = spy(abs.(Jx_num).>1e-10, title="Numerical")
+pl2 = spy(abs.(Jx_exact).>1e-10, title="Exact")
+pl3 = spy(abs.(Jx_exact - Jx_num).>1e-10, title="Diff")
+plot(pl1,pl2,pl3)
 
-# print( (abs.(Jz2_exact-Jz2_num).>1e-8))
+p1 = plot([Jz1_num,Jz1_exact], label=["Jz1_num" "Jz1_exact"])
+p2 = plot([Jz1_num[1:50],Jz1_exact[1:50]], label=["Jz1_num_zoom" "Jz1_exact_zoom"])
+p3 = plot((Jz1_num-Jz1_exact), label = "diff")
+p4 = scatter((Jz1_num-Jz1_exact)[abs.(Jz1_num-Jz1_exact).>1e-8], label = "diff>1E-8", linestyle = :dot)
+plot(p1,p2,p3,p4, layout = (4,1))
 
-# print(Jz2_num)
-# G(μ0, x0, exo = [z10,z20])
+
+p1 = plot([Jz2_num,Jz2_exact], label=["Jz2_num" "Jz2_exact"])
+p2 = plot([Jz2_num[31:60],Jz2_exact[31:60]], label=["num_zoom" "exact_zoom"])
+p3 = plot((Jz2_num-Jz2_exact), label = "diff")
+p4 = scatter((Jz2_num-Jz2_exact)[abs.(Jz2_num-Jz2_exact).>1e-8], label = "diff>1E-8", linestyle = :dot)
+plot(p1,p2,p3,p4, layout = (4,1))
+
+Jz2_num
