@@ -1,0 +1,39 @@
+name: Albert_Zevelev_model
+
+model_type: dtcc
+
+symbols:
+
+   states: [k]
+   controls: [i]
+
+definitions: |
+    D[t] =  z*k[t]-p*(i[t] + 0.5*i[t]^2)
+
+equations:
+
+    arbitrage:
+        -  z - p*(1+r)*(1+i[t-1])+p*(1-delta)*(1+i[t]) = 0
+
+
+    transition:
+        - k[t+1] = i[t] + (1 - delta)*k[t]
+
+
+
+calibration:
+
+    # parameters
+    r : 0.5
+    delta : 0.025
+    p : 1
+    z : 0.1
+
+    # endogenous variables
+    i: z/(p*(delta+r))-1
+    k: (z/(p*(delta+r))-1)/delta
+
+options:
+    discretization:
+        endo:
+            n: [15]
