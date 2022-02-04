@@ -4,8 +4,10 @@ model_type: dtcc
 
 symbols:
 
+   exogenous: [e_z]
    states: [k]
    controls: [i]
+   parameters: [r, delta, p, z, sig_z]
 
 definitions: |
     D[t] =  z*k[t]-p*(i[t] + 0.5*i[t]^2)
@@ -17,7 +19,7 @@ equations:
 
 
     transition:
-        - k[t+1] = i[t] + (1 - delta)*k[t]
+        - k[t] = i(-1) + (1 - delta)*k(-1)
 
 
 
@@ -26,12 +28,22 @@ calibration:
     # parameters
     r : 0.5
     delta : 0.025
-    p : 1
-    z : 0.1
+    p : 1.
+    z : 1.
+    e_z : 0.
+    sig_z: 0.016
 
     # endogenous variables
     i: z/(p*(delta+r))-1
     k: (z/(p*(delta+r))-1)/delta
+
+domain:
+    k: [k*0.9, k*1.1]
+
+
+exogenous: 
+    e_z: !Normal
+        Σ: sig_z^2
 
 options:
     discretization:
