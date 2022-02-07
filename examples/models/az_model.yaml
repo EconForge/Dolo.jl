@@ -15,7 +15,7 @@ definitions: |
 equations:
 
     arbitrage:
-        -  z - p*(1+r)*(1+i[t-1])+p*(1-delta)*(1+i[t]) = 0
+        -  z - p*(1+r)*(1+i(-1))+p*(1-delta)*(1+i[t]) = 0
 
 
     transition:
