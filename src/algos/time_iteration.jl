@@ -241,6 +241,7 @@ function time_iteration(model;
 
         err_ε= norm(r0)
         if err_ε<tol_ε
+            err_η = NaN
             break
         end
 

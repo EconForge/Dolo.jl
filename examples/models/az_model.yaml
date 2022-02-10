@@ -10,26 +10,24 @@ symbols:
    parameters: [r, delta, p, z, sig_z]
 
 definitions: |
-    D[t] =  z*k[t]-p*(i[t] + 0.5*i[t]^2)
+    d[t] =  z*k[t]-p*(i[t] + 0.5*i[t]^2)
 
 equations:
 
-    arbitrage:
-        -  z - p*(1+r)*(1+i(-1))+p*(1-delta)*(1+i[t]) = 0
+    arbitrage: |
+        z - p*(1+r)*(1+i[t])+ p*(1-delta)*(1+i[t+1])  | -inf <= i[t] <= -2 + (4 + 2.*z*k[t])^0.5
 
 
-    transition:
-        - k[t] = i(-1) + (1 - delta)*k(-1)
-
-
+    transition: |
+        k[t] = i[t-1] + (1 - delta)*k[t-1]
 
 calibration:
 
     # parameters
-    r : 0.5
+    r : 0.3
     delta : 0.025
     p : 1.
-    z : 1.
+    z : 0.45
     e_z : 0.
     sig_z: 0.016
 
@@ -38,7 +36,7 @@ calibration:
     k: (z/(p*(delta+r))-1)/delta
 
 domain:
-    k: [k*0.9, k*1.1]
+    k: [k*0.01, k*1.01]
 
 
 exogenous: 
@@ -48,4 +46,4 @@ exogenous:
 options:
     discretization:
         endo:
-            n: [15]
+            n: [200]
