@@ -7,36 +7,38 @@ symbols:
    exogenous: [e_z]
    states: [k]
    controls: [i]
-   parameters: [r, delta, p, z, sig_z]
+   parameters: [r, delta, p0, z, sig_z]
 
 definitions: |
-    d[t] =  z*k[t]-p*(i[t] + 0.5*i[t]^2)
+    d[t] =  z*k[t]-p0*(i[t] + 0.5*i[t]^2)
 
 equations:
 
     arbitrage: |
-        z - p*(1+r)*(1+i[t])+ p*(1-delta)*(1+i[t+1])  | -inf <= i[t] <= -2 + (4 + 2.*z*k[t])^0.5
-
+        -(z - p0*(1+r)*(1+i[t])+ p0*(1-delta)*(1+i[t+1]))  | -inf <= i[t] <= -2 + (4 + 2.*z*k[t])^(1/2)
 
     transition: |
         k[t] = i[t-1] + (1 - delta)*k[t-1]
+
+    # controls_lb:
+    #     i = 0.
 
 calibration:
 
     # parameters
     r : 0.3
     delta : 0.025
-    p : 1.
+    p0 : 1.
     z : 0.45
     e_z : 0.
     sig_z: 0.016
 
     # endogenous variables
-    i: z/(p*(delta+r))-1
-    k: (z/(p*(delta+r))-1)/delta
+    i: z/(p0*(delta+r))-1
+    k: (z/(p0*(delta+r))-1)/delta
 
 domain:
-    k: [k*0.01, k*1.01]
+    k: [k*0.025, k*1.01]
 
 
 exogenous: 
@@ -46,4 +48,4 @@ exogenous:
 options:
     discretization:
         endo:
-            n: [200]
+            n: [900]
