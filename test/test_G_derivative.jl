@@ -1,7 +1,7 @@
 using FiniteDiff
 using Dolo
 
-@testset "Test the G derivative w.r.t. x and μ" begin
+@testset "Test the G derivative w.r.t. x, μ, z1 and z2" begin
 
     model_rbc_mc = yaml_import("examples/models/rbc_mc.yaml")
     model_rbc = yaml_import("examples/models/rbc.yaml")
