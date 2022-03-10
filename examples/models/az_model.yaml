@@ -20,8 +20,6 @@ equations:
     transition: |
         k[t] = i[t-1] + (1 - delta)*k[t-1]
 
-    # controls_lb:
-    #     i = 0.
 
 calibration:
 
