@@ -337,15 +337,16 @@ of the transition function wrt x, z1 and z2.
 * `S_x` : Derivative of S wrt x
 * `S_z1` : Derivative of S wrt z1
 * `S_z2` : Derivative of S wrt z2
-* `w::Float64` : 
+* `w::Float64` : weight
 # Optional Argument
 * `smooth::boolean` : indicates whether the discretization is made with a smooth ponderation or a linear one
 # Modifies
 * `Π`: the transition matrix that will be updated.
-* `dΠ_x` : its derivative wrt x
-* `dΠ_z1` : its derivative wrt z1
-* `dΠ_z2` : its derivative wrt z2
+* `dΠ_x`: its derivative wrt x
+* `dΠ_z1`: its derivative wrt z1
+* `dΠ_z2`: its derivative wrt z2
 """
+
 function trembling_foot!(Π, dΠ_x, dΠ_z1, dΠ_z2, S::Vector{Point{d}}, S_x::Vector{SMatrix{d,n_x,Float64,_}}, S_z1, S_z2, w::Float64; smooth=true) where d where n_x where _
     
     @assert ndims(Π) == d+1
