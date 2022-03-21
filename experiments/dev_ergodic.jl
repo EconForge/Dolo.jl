@@ -170,9 +170,12 @@ fig
 
 
 ## Aiyagari model
-model = yaml_import("examples/models/consumption_savings_iid.yaml")
+model = yaml_import("examples/models/consumption_savings_mc.yaml")
 sol = Dolo.time_iteration(model)
 
+sim = Dolo.tabulate(model, sol.dr, :w)
+
+plot(sim[:w],sim[:c], ylabel="c", xlabel = "w",title = "Consumption")
 nodes = sol.dr.grid.endo.nodes
 
 w = [nodes[i][1] for i in 1:length(nodes)]
@@ -181,17 +184,91 @@ w = [nodes[i][1] for i in 1:length(nodes)]
 μ_smoothing = Dolo.ergodic_distribution(model, sol;  smooth=true)
 
 
-n = Int(length(μ_smoothing))
+n = Int(length(μ_smoothing)/2)
+df1 = DataFrame(w=vcat(w,w), μ=vcat(2*μ_smoothing[1:n], 2*μ_no_smoothing[1:n]), smooth=vcat(["smoothing" for i in 1:n], ["no smoothing" for i in 1:n]))
+df2 = DataFrame(w=vcat(w,w), μ=vcat(2*μ_smoothing[n+1:2*n], 2*μ_no_smoothing[n+1:2*n]), smooth=vcat(["smoothing" for i in 1:n], ["no smoothing" for i in 1:n]))
 
-df = DataFrame(w=vcat(w,w), μ=vcat(μ_smoothing[1:n], μ_no_smoothing[1:n]), smooth=vcat(["smoothing" for i in 1:n], ["no smoothing" for i in 1:n]))
 
-PlotlyJS.plot(
-    PlotlyJS.scatter(df, x=:w, y=:μ, group=:smooth),
-    Layout(
-        xaxis_title="w",
-        yaxis_title="μ"
-        )
-        )
+fig = PlotlyJS.make_subplots(
+    rows=2, cols=1,
+    column_widths=[1.],
+    row_heights=[0.5, 0.5]
+)
+
+PlotlyJS.add_trace!(
+    fig,
+    PlotlyJS.scatter(df1[1:n,:],  x=:w, y=:μ, name  = "smoothing"),
+    row=1, col = 1
+    )
+
+PlotlyJS.add_trace!(
+    fig,
+    PlotlyJS.scatter(df1[n+1:2*n,:],  x=:w, y=:μ, name = "no smoothing"),
+    row=1, col = 1
+    )
+
+PlotlyJS.add_trace!(
+    fig,
+    PlotlyJS.scatter(df2[1:n,:],  x=:w, y=:μ, name = "smoothing"),
+    row=2, col = 1
+    )
+
+PlotlyJS.add_trace!(
+    fig,
+    PlotlyJS.scatter(df2[n+1:2*n,:],  x=:w, y=:μ, name = "no smoothing"),
+    row=2, col = 1
+    )
+
+relayout!(
+    fig,
+    margin=attr(r=10, t=25, b=40, l=60),
+    annotations=[
+        attr(
+            text="w",
+            showarrow=false,
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=-0.05),
+        attr(
+            text="w",
+            showarrow=false,
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.55),
+        attr(
+            text="Exogeneous shock 2",
+            showarrow=false,
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.45),
+        attr(
+            text="Exogeneous shock 1",
+            showarrow=false,
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=1.05),
+        attr(
+            text="μ",
+            showarrow=false,
+            xref="paper",
+            yref="paper",
+            x=-0.05,
+            y=0.8),
+        attr(
+            text="μ",
+            showarrow=false,
+            xref="paper",
+            yref="paper",
+            x=-0.05,
+            y=0.2)
+    ]
+)
+
+fig
 
 
 
