@@ -100,6 +100,10 @@ set_values!(cdr::CachedDecisionRule, v) = set_values!(cdr.dr, v)
 (cdr::CachedDecisionRule{<:AbstractDecisionRule{<:UnstructuredGrid,<:Grid}, <:DiscreteMarkovProcess})(i::Int, s::Union{<:Point,<:ListOfPoints}) = evaluate(cdr.dr, i, s)
 (cdr::CachedDecisionRule{<:AbstractDecisionRule{<:UnstructuredGrid,<:Grid}, <:DiscreteMarkovProcess})(i::Int, j::Int, s::Union{<:Point,<:ListOfPoints}) = evaluate(cdr.dr, j, s)
 
+(cdr::CachedDecisionRule{<:AbstractDecisionRule{<:UnstructuredGrid,<:Grid}, <:DiscreteMarkovProcess})(::Val{(0,3)}, i::Int, s::Union{<:Point,<:ListOfPoints}) = evaluate(cdr.dr, Val((0,2)), i, s)
+(cdr::CachedDecisionRule{<:AbstractDecisionRule{<:UnstructuredGrid,<:Grid}, <:DiscreteMarkovProcess})(::Val{(0,3)}, i::Int, j::Int, s::Union{<:Point,<:ListOfPoints}) = evaluate(cdr.dr, Val((0,2)), j, s)
+
+
 #
 # # We don't do compat for CachedDR cuz it's a nigthmare.
 #

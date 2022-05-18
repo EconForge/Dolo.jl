@@ -7,17 +7,17 @@ symbols:
     rewards: [u]
     parameters: [beta, gamma, delta, theta, rho]
 
-definitions:
-    c: exp(z)*k^theta - i
-    r_I: exp(z)*theta*k^(theta-1) + (1-delta)
+definitions: |
+    c[t] = exp(z[t])*k[t]^theta - i[t]
+    r_I[t] = exp(z[t])*theta*k[t]^(theta-1) + (1-delta)
 
 equations:
     transition:
-        - k = (1-delta)*k(-1) + i(-1)
+        - k[t] = (1-delta)*k[t-1] + i[t-1]
     arbitrage:
-        - 1 - beta*( (c(1)/c)^(-gamma)*r_I(1) )
+        - 1 - beta*( (c[t+1]/c[t])^(-gamma)*r_I[t+1] )
     felicity:
-        - u = c^(1-gamma)/(1-gamma)
+        - u[t] = c[t]^(1-gamma)/(1-gamma)
 
 ############################
 calibration:

@@ -13,7 +13,6 @@ import YAML; using YAML: load_file, load
 import IterTools
 import HTTP
 using StaticArrays
-
 # solvers
 using NLsolve
 using Optim
@@ -30,6 +29,7 @@ import Dolang: Language, add_language_elements!, ToGreek
 import LinearMaps: LinearMap
 
 # Numerical Tools
+using ForwardDiff
 using MacroTools  # used for eval_with
 import Distributions
 import BasisMatrices

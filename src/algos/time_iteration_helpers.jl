@@ -195,6 +195,61 @@ function euler_residuals(F::Euler{id, n_m, n_s, n_x}, s::Vector{Point{n_s}}, x::
     end
 end
 
+function euler_residuals_diff(F::Euler{id, n_m, n_s, n_x}, s::Vector{Point{n_s}}, x::MSM{Point{n_x}}, dr, 
+    dprocess, parms::SVector; exo=nothing, out=nothing) where id where n_s where n_x where n_m #, jres=nothing, S_ij=nothing)
+    #
+    # if set_dr ==true
+    #   set_values!(dr,x)
+    # end
+
+    model = F.model
+
+    el = x.data[1]
+    tp = typeof(el*el')
+
+    if out === nothing
+        res = zeros_like(x)::MSM{Point{n_x}}
+        dres = MSM(zeros(tp, length(x.data)), x.sizes)
+    else
+        res, dres = out
+    end
+
+    res.data .*= 0.0 # just to be on the safe side...
+    
+    N_s = length(s) # Number of gris points for endo_var
+
+    n_ms = length(x.views)  # number of exo states today
+    n_mst = n_inodes(dprocess,1)  # number of exo states tomorrow
+    d = length(s[1])
+
+    # TODO: allocate properly...
+    
+    for i_ms in 1:n_ms
+        m = node(Point{n_m}, dprocess,i_ms)
+        if !(exo === nothing)
+            m = repsvec(exo[1], m)   # z0
+        end
+        xx = x.views[i_ms]
+        for I_ms in 1:n_mst
+            M = inode(Point{n_m}, dprocess, i_ms, I_ms)
+            if !(exo === nothing)
+                M = repsvec(exo[2], M)   # z1
+            end
+            w = iweight(dprocess, i_ms, I_ms)
+            S, S_x = transition(model, Val((0,3)), m, s, xx, M, parms)
+            X, X_S = dr(Val((0,3)), i_ms, I_ms, S)
+            X = dr(i_ms, I_ms, S)
+            rr, rr_x, rr_S, rr_X = arbitrage(model, Val((0,3,5,6)), m, s, xx, M, S, X, parms)
+            res.views[i_ms][:] .+= w*rr
+            dres.views[i_ms][:] .+= w*(rr_x + rr_S .* S_x + rr_X .* X_S .* S_x)
+            # dres.views[i_ms][:] .+= w*(rr_x) # + rr_S*S_x + rr_X * X_S * S_x)
+        end
+    end
+
+    return res, dres
+
+end
+
 function (F::Euler)(x0::MSM, x1::MSM, z0::Point{n_z}, z1::Point{n_z}; exo=nothing, kwargs...) where n_z
     F(x0, x1; exo=(z0,z1), kwargs...)
 end
@@ -224,16 +279,19 @@ function (F::Euler)(x0::MSM, x1::MSM; exo=nothing, set_future=true, ignore_const
 
 end
 
-function df_A(F, z0, z1; set_future=false, inplace=false, ret_res=false, exo=nothing)
+function df_A(F, z0, z1; set_future=false, inplace=false, ret_res=false, exo=nothing, numdiff=false)
 
     if set_future
         set_values!(F.dr, z1)
     end
 
     if !inplace
-        fun  = z->F(z, z1; set_future=false, ignore_constraints=true, exo=exo)
-        f0,J = Dolo.DiffFun(fun, z0, 1e-8)
-
+        if (F.grid_endo isa Dolo.UCGrid) && (F.grid_exo isa Dolo.UnstructuredGrid) && !numdiff
+            f0, J= euler_residuals_diff(F, F.s0, z0, F.dr, F.dprocess, F.p, exo=exo)
+        else
+            fun  = z->F(z, z1; set_future=false, ignore_constraints=true, exo=exo)
+            f0,J = Dolo.DiffFun(fun, z0, 1e-8)
+        end
     else
         n_x = length(z0.data[1])
 

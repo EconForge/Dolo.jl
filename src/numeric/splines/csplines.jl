@@ -33,3 +33,10 @@ end
     fun = (create_function(d,"natural"))
     return fun.args[2].args[2]
 end
+
+@generated function eval_UC_spline_(a, b, orders, C::Array{T, d}, S::SVector{d,U}) where d where T where U
+    fun = create_function(d,"natural"; vectorize=false)
+    return fun.args[2].args[2]
+end
+
+eval_UC_spline(a, b, orders, C::Array{T, d}, S::SVector{d,U}) where d where U where T = eval_UC_spline_(a, b, orders, C, S)

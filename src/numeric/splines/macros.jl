@@ -128,39 +128,74 @@ function create_parameters(d)
     return lines
 end
 
-function create_local_parameters(d)
+function create_local_parameters(d; vectorize=true)
     lines = []
-    for i=1:d
-        bl = quote
-            $(U("x",i)) = S[n][$i]
-            $(U("u",i)) = ($(U("x",i)) - $(U("start",i)))*$(U("dinv",i))
-            $(U("i",i)) = (floor(Int,$(U("u",i)) ))
-            $(U("i",i)) = max( min($(U("i",i)),$(U("M",i))-2), 0 )
-            $(U("t",i)) = $(U("u",i))-$(U("i",i))
-            $(U("tp",i,1)) = $(U("t",i))*$(U("t",i))*$(U("t",i))
-            $(U("tp",i,2)) = $(U("t",i))*$(U("t",i))
-            $(U("tp",i,3)) = $(U("t",i))
-            $(U("tp",i,4)) = 1.0;
+    if vectorize
+        for i=1:d
+            bl = quote
+                $(U("x",i)) = S[n][$i]
+                $(U("u",i)) = ($(U("x",i)) - $(U("start",i)))*$(U("dinv",i))
+                $(U("i",i)) = (floor(Int,$(U("u",i)) ))
+                $(U("i",i)) = max( min($(U("i",i)),$(U("M",i))-2), 0 )
+                $(U("t",i)) = $(U("u",i))-$(U("i",i))
+                $(U("tp",i,1)) = $(U("t",i))*$(U("t",i))*$(U("t",i))
+                $(U("tp",i,2)) = $(U("t",i))*$(U("t",i))
+                $(U("tp",i,3)) = $(U("t",i))
+                $(U("tp",i,4)) = 1.0;
+            end
+            for ll in bl.args
+                push!(lines, ll)
+            end
         end
-        for ll in bl.args
-            push!(lines, ll)
+    else
+        lines = []
+        for i=1:d
+            bl = quote
+                $(U("x",i)) = S[$i]
+                $(U("u",i)) = ($(U("x",i)) - $(U("start",i)))*$(U("dinv",i))
+                $(U("i",i)) = (floor(Int,$(U("u",i)) ))
+                $(U("i",i)) = max( min($(U("i",i)),$(U("M",i))-2), 0 )
+                $(U("t",i)) = $(U("u",i))-$(U("i",i))
+                $(U("tp",i,1)) = $(U("t",i))*$(U("t",i))*$(U("t",i))
+                $(U("tp",i,2)) = $(U("t",i))*$(U("t",i))
+                $(U("tp",i,3)) = $(U("t",i))
+                $(U("tp",i,4)) = 1.0;
+            end
+            for ll in bl.args
+                push!(lines, ll)
+            end
         end
     end
     return lines
 end
 
-function create_function(d,extrap="natural")
-    expr = quote
-        function $(Symbol(string("eval_UC_spline!")))( a, b, orders, C::Array{T,d}, S::Vector{SVector{d,Float64}}, V::Vector{T}) where d where T
-            $(create_parameters(d)...)
-            N = size(S,1)
-            # @fastmath @inbounds @simd( # doesn't seem to make any difference
-            for n=1:N
-                $(create_local_parameters(d)...)
-                $(create_Phi(d,extrap,false)...)
-                V[n] = $( tensor_prod([string("Phi_",i) for i=1:d], Int64[]) )
+function create_function(d,extrap="natural"; vectorize=true)
+    if vectorize
+        expr = quote
+            function $(Symbol(string("eval_UC_spline!")))( a, b, orders, C::Array{T,d}, S::Vector{SVector{d,Float64}}, V::Vector{T}) where d where T
+                $(create_parameters(d)...)
+                N = size(S,1)
+                # @fastmath @inbounds @simd( # doesn't seem to make any difference
+                for n=1:N
+                    $(create_local_parameters(d)...)
+                    $(create_Phi(d,extrap,false)...)
+                    V[n] = $( tensor_prod([string("Phi_",i) for i=1:d], Int64[]) )
+                end
+                # )
             end
-            # )
+        end
+    else
+        expr = quote
+            function $(Symbol(string("eval_UC_spline")))( a, b, orders, C::Array{T,d}, S::SVector{d,U}) where d where T where U
+                $(create_parameters(d)...)
+                N = size(S,1)
+                # @fastmath @inbounds @simd( # doesn't seem to make any difference
+                $(create_local_parameters(d; vectorize=false)...)
+                $(create_Phi(d,extrap,false)...)
+                V = $( tensor_prod([string("Phi_",i) for i=1:d], Int64[]) )
+                # )
+                return V
+            end
         end
     end
     return expr

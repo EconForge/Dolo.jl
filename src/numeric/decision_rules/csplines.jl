@@ -153,6 +153,35 @@ function evaluate(dr::CubicDR{<:UnstructuredGrid,<:UCGrid}, i::Int, z::AbstractV
 end
 
 # TODO replace by generic call?
-function evaluate(dr::CubicDR{<:UnstructuredGrid,<:UCGrid}, i::Int, z::Point{d}) where d
-    evaluate(dr, i, [z])[1]
+function evaluate(dr::CubicDR{<:UnstructuredGrid,<:UCGrid}, i::Int, z::SVector{d, U}) where d where U
+    a = dr.grid_endo.min
+    b = dr.grid_endo.max
+    n = dr.grid_endo.n
+    cc = dr.itp[i]
+    splines.eval_UC_spline(a, b, n, cc, z)
+end
+
+
+# Experimental
+
+function evaluate(dr::CubicDR{<:UnstructuredGrid,<:UCGrid}, ::Val{(0,2)}, i::Int, z::Vector{SVector{d, U}}) where d where U
+    it = [evaluate(dr, Val((0,2)), i, u) for u in z]
+    return (
+        [e[1] for e in it],
+        [e[2] for e in it]
+    )
+end
+
+
+function evaluate(dr::CubicDR{<:UnstructuredGrid,<:UCGrid}, ::Val{(0,2)}, i::Int, z::SVector{d, U}) where d where U
+    a = dr.grid_endo.min
+    b = dr.grid_endo.max
+    n = dr.grid_endo.n
+    cc = dr.itp[i]
+    f = u->splines.eval_UC_spline(a, b, n, cc, u)
+    return (
+        f(z),
+        ForwardDiff.jacobian(f, z)
+    )
+    
 end
