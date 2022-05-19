@@ -287,12 +287,13 @@ function set_calibration!(model::Model; values...)
         calib[k].value = string(v)
     end
     calibration = get_calibration(model)
+    model.calibration = calibration
+    
     exogenous = get_exogenous(model)
     symbols = get_symbols(data)
     endo_domain = get_domain(data, symbols[:states], calibration.flat)
     exo_domain = get_domain(model.exogenous)
     domain = ProductDomain(exo_domain, endo_domain)
-    model.calibration = calibration
     model.exogenous = exogenous
     model.domain = domain;
 end
