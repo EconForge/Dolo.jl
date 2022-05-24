@@ -279,6 +279,15 @@ function (F::Euler)(x0::MSM, x1::MSM; exo=nothing, set_future=true, ignore_const
 
 end
 
+function (F::Euler)(x0::AbstractVector{Float64}, x1::AbstractVector{Float64}; kwargs...)
+    
+    n_x = length(F.x0.data[1])
+    x0 = MSM(copy(reinterpret(SVector{n_x, Float64}, x0)), F.x0.sizes)
+    x1 = MSM(copy(reinterpret(SVector{n_x, Float64}, x1)), F.x0.sizes)
+    return F(x0, x1; kwargs...)
+    
+end
+
 function df_A(F, z0, z1; set_future=false, inplace=false, ret_res=false, exo=nothing, numdiff=false)
 
     if set_future
