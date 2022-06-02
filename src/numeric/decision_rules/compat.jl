@@ -49,9 +49,9 @@ end
 #
 evaluate(dr::AbstractDecisionRule{<:UCGrid, <:UCGrid}, x::Vector{Float64}, y::Matrix{Float64}) = evaluate(dr, repeat(x', size(y,1)), y)
 evaluate(dr::AbstractDecisionRule{<:UCGrid, <:UCGrid}, x::Vector{Float64}, y::Vector{Float64}) = evaluate(dr, vector_to_matrix(x), vector_to_matrix(y))
-evaluate(dr::AbstractDecisionRule{UCGrid{d1}, UCGrid{d2}}, z::AbstractMatrix) where d1 where d2 = evaluate(dr, [z[:,1:d1] z[:,1:(d1+1:end)]])
+# # evaluate(dr::AbstractDecisionRule{UCGrid{d1}, UCGrid{d2}}, z::AbstractMatrix) where d1 where d2 = evaluate(dr, [z[:,1:d1] z[:,1:(d1+1:end)]])
 evaluate(dr::AbstractDecisionRule{<:UCGrid, <:UCGrid}, z::Vector{Float64}) = vec(evaluate(dr,vector_to_matrix(z)))
-evaluate(dr::AbstractDecisionRule{UCGrid{d1}, UCGrid{d2}}, i::Int, y::Union{Vector{Float64},AbstractMatrix{Float64}}) where d1 where d2  = evaluate(dr,node(dr.grid_exo,i), y)
+# evaluate(dr::AbstractDecisionRule{UCGrid{d1}, UCGrid{d2}}, i::Int, y::Union{Vector{Float64},AbstractMatrix{Float64}}) where d1 where d2  = evaluate(dr,node(dr.grid_exo,i), y)
 
 
 function set_values!(dr::AbstractDecisionRule{<:UCGrid, <:UCGrid, n_x}, vals::Vector{Matrix{Float64}}) where n_x
