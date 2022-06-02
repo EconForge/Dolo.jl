@@ -52,6 +52,8 @@ function evaluate(dr::CubicDR{EmptyGrid{d1},UCGrid{d}}, y::Vector{Float64}) wher
     return [p...]
 end
 
+evaluate(dr::CubicDR{EmptyGrid{d1},UCGrid{d}}, i, y) where d where d1 = evaluate(dr, y)
+
 ####
 #### 2 CartesianGrid continous arguments d.r.
 ####
