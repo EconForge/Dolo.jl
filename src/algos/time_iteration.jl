@@ -1,5 +1,5 @@
 
-struct IterationLog
+struct Iterationlog
     header::Array{String, 1}
     keywords::Array{Symbol, 1}
     types::Vector
@@ -7,13 +7,13 @@ struct IterationLog
     fmt::String
 end
 
-# function IterationLog()
+# function Iterationlog()
 #     header = [ "It", "ϵₙ", "ηₙ=|xₙ-xₙ₋₁|", "λₙ=ηₙ/ηₙ₋₁", "Time", "Newton steps"]
 #     keywords = [:it, :err, :gain, :time, :nit]
-#     IterationLog(header, keywords, [])
+#     Iterationlog(header, keywords, [])
 # end
 
-function IterationLog(;kw...)
+function Iterationlog(;kw...)
     keywords = Symbol[]
     header = String[]
     elts = []
@@ -31,24 +31,24 @@ function IterationLog(;kw...)
         end
     end
     fmt = join(elts, " | ")
-    IterationLog(header, keywords, types, [], fmt)
+    Iterationlog(header, keywords, types, [], fmt)
 end
 
-function append!(log::IterationLog; verbose=true, entry...)
+function append!(log::Iterationlog; verbose=true, entry...)
     d = Dict(entry)
     push!(log.entries, d)
     verbose && show_entry(log, d)
 end
 
-function initialize(log::IterationLog; verbose=true, message=nothing)
+function initialize(log::Iterationlog; verbose=true, message=nothing)
     verbose && show_start(log; message=message)
 end
 
-function finalize(log::IterationLog; verbose=true)
+function finalize(log::Iterationlog; verbose=true)
     verbose && show_end(log)
 end
 
-function show(log::IterationLog)
+function show(log::Iterationlog)
     show_start(log)
     for entry in log.entries
         show_entry(log,entry)
@@ -56,7 +56,7 @@ function show(log::IterationLog)
     show_end(log)
 end
 
-function show_start(log::IterationLog; message=nothing)
+function show_start(log::Iterationlog; message=nothing)
     # println(repeat("-", 66))
     # @printf "%-6s%-16s%-16s%-16s%-16s%-5s\n" "It" "ϵₙ" "ηₙ=|xₙ-xₙ₋₁|" "λₙ=ηₙ/ηₙ₋₁" "Time" "Newton steps"
     # println(repeat("-", 66))
@@ -84,7 +84,7 @@ function show_start(log::IterationLog; message=nothing)
 end
 
 
-function show_entry(log::IterationLog, entry)
+function show_entry(log::Iterationlog, entry)
 
     vals = [entry[k] for k in log.keywords]
     printfmt(log.fmt, vals...)
@@ -92,39 +92,44 @@ function show_entry(log::IterationLog, entry)
 
 end
 
-function show_end(log::IterationLog)
+function show_end(log::Iterationlog)
     println(repeat("-", 66))
 end
 
 ###
 
-
 mutable struct IterationTrace
     trace::Array{Any,1}
 end
-
 
 mutable struct TimeIterationResult
     dr::AbstractDecisionRule
     iterations::Int
     complementarities::Bool
     dprocess::AbstractDiscretizedProcess
-    x_converged::Bool
-    x_tol::Float64
-    err::Float64
-    log::IterationLog
+    ϵ::Float64 
+    η::Float64
+    τ_ϵ::Float64 
+    τ_η::Float64
+    λ_bar::Float64 
+    p::Int 
+    log::Iterationlog
     trace::Union{Nothing,IterationTrace}
 end
 
-converged(r::TimeIterationResult) = r.x_converged
+
+solved(r::TimeIterationResult) = r.ϵ<r.τ_ϵ       
+eta_converged(r::TimeIterationResult) = r.η<r.τ_η        
+
+
 function Base.show(io::IO, r::TimeIterationResult)
     @printf io "Results of Time Iteration Algorithm\n"
     @printf io " * Complementarities: %s\n" string(r.complementarities)
     @printf io " * Discretized Process type: %s\n" string(typeof(r.dprocess))
     @printf io " * Decision Rule type: %s\n" string(typeof(r.dr))
     @printf io " * Number of iterations: %s\n" string(r.iterations)
-    @printf io " * Convergence: %s\n" converged(r)
-    @printf io "   * |x - x'| < %.1e: %s\n" r.x_tol r.x_converged
+    @printf io " * ϵₙ=|F(xₙ,xₙ)| < %.1e: %s\n" r.τ_ϵ solved(r)
+    @printf io " * ηₙ=|x - x'| < %.1e: %s\n" r.τ_η eta_converged(r)
 end
 
 
@@ -173,7 +178,6 @@ function newton2(fun, dfun, x0::MSM; maxit=50, dampen=1.0, verbose=false, bckste
 end
 
 
-
 """
 Computes a global solution for a model via backward time iteration. The time iteration is applied to the residuals of the arbitrage equations.
 
@@ -187,6 +191,8 @@ If the stochastic process for the model is not explicitly provided, the process 
 # Returns
 * `dr`: Solved decision rule.
 """
+
+
 function time_iteration(model;
     dr0=Dolo.ConstantDecisionRule(model),
     discretization=Dict(),
@@ -197,6 +203,7 @@ function time_iteration(model;
     trace = false,
     tol_η = 1e-8,
     tol_ε = 1e-8,
+    λbar = 8.0466e-01,   
     maxit=500
 )
     
@@ -204,28 +211,30 @@ function time_iteration(model;
 
     complementarities = false
 
-
     if interpolation != :cubic
         error("Interpolation option ($interpolation) is currently not recognized.")
     end
 
-    ti_trace = trace ? IterationTrace([x0]) : nothing
-
-
     z0 = deepcopy(F.x0)
     z1 = deepcopy(z0)
 
-    log = IterationLog(
+    ti_trace = trace ? IterationTrace([deepcopy(F.dr.dr)]) : nothing
+
+    vector_time = rand(maxit) 
+
+    local err_ε, err_η, z0, z1, p, it 
+
+    log = Iterationlog(
         it = ("n", Int),
-        err =  ("ϵₙ=|F(xₙ,xₙ)|", Float64),
+        err =  ("εₙ=|F(xₙ,xₙ)|", Float64),
         sa =  ("ηₙ=|xₙ-xₙ₋₁|", Float64),
-        lam = ("λₙ=ηₙ/ηₙ₋₁",Float64),
-        elapsed = ("Time", Float64)
+        lam = ("λₙ=ηₙ/ηₙ₋₁", Float64),
+        elapsed = ("Time (s)", Float64),
+        nb_it_before_convergence_of_x = ("N-n", Int), 
+        remaining_time = ("Remain (s)", Float64), 
     )
 
     initialize(log, verbose=verbose; message="Time Iteration")
-
-    local err_η, z0, z1
 
     err_η_0 = NaN
 
@@ -239,10 +248,7 @@ function time_iteration(model;
 
         r0 = F(z0, z0; set_future=true)
 
-        err_ε= norm(r0)
-        if err_ε<tol_ε
-            break
-        end
+        err_ε=norm(r0)
 
         fun = u->F(u, z0; set_future=false)
         dfun = u->df_A(F,u, z0; set_future=false)
@@ -255,37 +261,84 @@ function time_iteration(model;
         z1 = sol
         δ = z1 - z0
 
-        trace && push!(ti_trace.trace, z1)
+        trace && push!(ti_trace.trace, deepcopy(F.dr.dr)) 
 
         err_η = norm(δ)
         gain = err_η / err_η_0
         err_η_0 = err_η
 
-        if err_η<tol_η
-            break 
-        end
-
         # z0.data[:] .= z1.data
         z0 = z1
+        
+        p = NaN
+
+        if gain>=1
+            p = NaN
+        elseif gain<1
+            p = Base.log(tol_η/err_η) / Base.log(λbar)
+        end
 
         elapsed = time_ns() - t1
 
         elapsed /= 1000000000
 
-        append!(log; verbose=verbose, it=it, err=err_ε, sa=err_η, lam=gain, elapsed=elapsed)
+        vector_time[it] = elapsed 
 
-    end
+        local avg_time
+        
+        avg_time = mean(vector_time[max(1,end-4):end])
 
-    finalize(log, verbose=verbose)
+        time_left = NaN
+        if gain>=1
+            time_left = NaN
+            p = NaN
+        elseif gain<1
+            time_left = avg_time*p
+            p = round(Int, p) 
+        end
 
+     append!(log; 
+        verbose=verbose, 
+        it=it, 
+        err=err_ε, 
+        sa=err_η, 
+        lam=gain, 
+        elapsed=elapsed,
+        nb_it_before_convergence_of_x=p, 
+        remaining_time=time_left,
+     )
 
-    res = TimeIterationResult(F.dr.dr, it, complementarities, F.dprocess, err_η<tol_η, tol_η, err_η, log, ti_trace)
+     if err_ε<tol_ε     
+         break
+     end
 
-    return res
+     if err_η<tol_η       
+         break 
+     end
 
 end
 
+ finalize(log, verbose=verbose)
 
+ res = TimeIterationResult(
+     F.dr.dr, 
+     it, 
+     complementarities, 
+     F.dprocess, 
+     err_ε, 
+     err_η, 
+     tol_ε, 
+     tol_η, 
+     λbar, 
+     p, 
+     log, 
+     ti_trace
+     )
+
+ return res
+
+end
+ 
 
 function improved_time_iteration(model;
     dr0=Dolo.ConstantDecisionRule(model),
