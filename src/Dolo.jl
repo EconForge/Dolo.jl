@@ -141,6 +141,7 @@ add_language_elements!(minilang, Dict(
     "!DeathProcess"=>DeathProcess,
     "!AgingProcess"=>AgingProcess,
     "!VAR1"=>VAR1,
+    "!Cartesian"=>Cartesian,
 ))
 
 # include("linter.jl")
