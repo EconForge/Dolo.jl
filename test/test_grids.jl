@@ -1,4 +1,6 @@
 using Dolo
+using Dolang
+using StaticArrays
 
 model_rbc_mc = yaml_import("examples/models/rbc_mc.yaml")
 model_rbc = yaml_import("examples/models/rbc.yaml")
@@ -24,7 +26,5 @@ length(F.grid.endo) == multiply_tuple_elements(Dolo.get_options(model_rbc)[:disc
 length(F_iid.grid.endo) == multiply_tuple_elements(Dolo.get_options(model_rbc_iid)[:discretization][:endo][:n])
 
 # test the endo grid of the model rbc mc ("...")
-length(F_mc.grid.exo) == Dolo.get_options(model_rbc_mc)[:discretization][:exo][:n]
-length(F_mc.grid.endo) == multiply_tuple_elements(Dolo.get_options(model_rbc_mc)[:discretization][:endo][:n])
-# Problem : apparently, !Cartesian is not recognized by Dolang.
-# But, by checking the yaml file, we can still observe that the size of the grid in F is not correct.
+length(F_mc.grid.endo) == multiply_tuple_elements(Dolo.get_options(model_rbc_mc)[:grid].orders)
+
