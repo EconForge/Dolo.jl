@@ -607,7 +607,7 @@ function get_discretization_options(model::AModel)
         end
         return d
     elseif ("options" in keys(model.data)) && ( "grid" in keys(model.data["options"]) )
-        return Dict{Any,Any}(:exo => Dict{Any, Any}(), :endo => Dict{Any, Any}(:n=>Dolo.get_options(model_rbc_mc)[:grid].orders))
+        return Dict{Any,Any}(:exo => Dict{Any, Any}(), :endo => Dict{Any, Any}(:n=>Dolo.get_options(model)[:grid].orders))
     else
         return Dict(
             :endo=>Dict(),
