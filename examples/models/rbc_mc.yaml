@@ -79,7 +79,6 @@ exogenous:
 
 options:
 
-
-    grid: !Cartesian
-        # mu: 3
-        orders: [20]
+    discretization:
+        endo:
+            n: [200]
