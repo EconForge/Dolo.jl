@@ -477,7 +477,7 @@ mutable struct ProductProcess{T<:Tuple{Vararg{AbstractProcess}}}
     processes::T
 end
 
-ProductProcess(p) = p
+ProductProcess(args...) = ProductProcess(args)
 
 
 function discretize(pp::ProductProcess{<:Tuple{ConstantProcess, IIDExogenous}}; opt=Dict())
