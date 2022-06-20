@@ -149,6 +149,11 @@ include("minilang.jl")
 include("model.jl")
 # include("printing.jl")
 
+add_language_elements!(minilang, Dict(
+    "!Mixture"=>Mixture,
+    "!Bernouilli"=>Bernouilli,
+))
+
 include("numeric/msm.jl")
 
 
