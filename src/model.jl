@@ -629,8 +629,8 @@ function discretize(model::Model; kwargs...)
     opts_exo = merge(opts[:exo], get(kwargs, :exo, Dict()) )
 
     endo_domain = model.domain.endo
-    grid_endo = Dolo.discretize(endo_domain;  opts_endo...) 
-    dprocess = Dolo.discretize(model.exogenous;  opts_exo...) 
+    grid_endo = discretize(endo_domain;  opts_endo...) 
+    dprocess = discretize(model.exogenous;  opts_exo...) 
 
     grid_exo = dprocess.grid
     grid = ProductGrid(grid_exo, grid_endo)

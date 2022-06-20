@@ -455,12 +455,12 @@ function discretize(self::Mixture)
     nodes = []
     weights = []
     for i in 1:(n_inodes(inddist, 0))
-        wind =  Dolo.iweight(inddist, 0, i)
+        wind =  iweight(inddist, 0, i)
         # xind = inddist.inode(0, i)
         dist = discretize(self.distributions[i])
         for j in 1:(n_inodes(dist, 0))
-                w = Dolo.iweight(dist, 0, j)
-                x = Dolo.inode(dist, 0, j)
+                w = iweight(dist, 0, j)
+                x = inode(dist, 0, j)
                 Base.append!(nodes, x)
                 Base.append!(weights, wind * w)
         end
@@ -478,6 +478,10 @@ mutable struct ProductProcess{T<:Tuple{Vararg{AbstractProcess}}}
 end
 
 ProductProcess(p) = p
+
+function discretize(pp::ProductProcess{<:Tuple{AbstractProcess}})
+    return discretize(pp.processes[1])
+end
 
 function discretize(pp::ProductProcess{Tuple{ConstantProcess, <:IIDExogenous}}; opt=Dict())
     diidp = discretize(pp.processes[2])
@@ -558,9 +562,9 @@ function AgingProcess(μ::Float64, K::Int)
 end
 
 
-get_integration_nodes(dprocess::Dolo.AbstractDiscretizedProcess, i::Int)= [(iweight(dprocess,i,j), inode(dprocess,i,j), j) for j in 1:n_inodes(dprocess,i) if iweight(dprocess,i,j)!=0]
+get_integration_nodes(dprocess::AbstractDiscretizedProcess, i::Int)= [(iweight(dprocess,i,j), inode(dprocess,i,j), j) for j in 1:n_inodes(dprocess,i) if iweight(dprocess,i,j)!=0]
 
-get_integration_nodes(::typeof(Point), dprocess::Dolo.AbstractDiscretizedProcess, i::Int)=[(iweight(dprocess,i,j), inode(Point,dprocess,i,j), j) for j in 1:n_inodes(dprocess,i) if iweight(dprocess,i,j)!=0]
+get_integration_nodes(::typeof(Point), dprocess::AbstractDiscretizedProcess, i::Int)=[(iweight(dprocess,i,j), inode(Point,dprocess,i,j), j) for j in 1:n_inodes(dprocess,i) if iweight(dprocess,i,j)!=0]
 
 
 # type unstable
@@ -605,6 +609,10 @@ end
 function get_domain(var::VAR1)
     d = length(var.μ)
     return CartesianDomain(fill(-Inf, d), fill(Inf, d))
+end
+
+function get_domain(pp::ProductProcess{<:Tuple{AbstractProcess}})
+    return get_domain(pp.processes[1])
 end
 
 function get_domain(pp::ProductProcess{<:Tuple{AbstractProcess, AbstractProcess}})
