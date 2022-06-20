@@ -230,7 +230,11 @@ function get_exogenous(data, exosyms, fcalib)
         p = Dolang.eval_node(v, calibration, minilang, ToGreek())
         push!(processes, p)
     end
-    return ProductProcess(Tuple(processes))
+    if length(processes) > 1
+        return ProductProcess(Tuple(processes))
+    else 
+        return processes[1]
+    end
 
 end
 

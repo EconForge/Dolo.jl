@@ -479,9 +479,6 @@ end
 
 ProductProcess(p) = p
 
-function discretize(pp::ProductProcess{<:Tuple{AbstractProcess}})
-    return discretize(pp.processes[1])
-end
 
 function discretize(pp::ProductProcess{Tuple{ConstantProcess, <:IIDExogenous}}; opt=Dict())
     diidp = discretize(pp.processes[2])
@@ -607,10 +604,6 @@ end
 function get_domain(var::VAR1)
     d = length(var.μ)
     return CartesianDomain(fill(-Inf, d), fill(Inf, d))
-end
-
-function get_domain(pp::ProductProcess{<:Tuple{AbstractProcess}})
-    return get_domain(pp.processes[1])
 end
 
 function get_domain(pp::ProductProcess{<:Tuple{AbstractProcess, AbstractProcess}})
