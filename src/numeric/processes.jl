@@ -480,7 +480,7 @@ end
 ProductProcess(p) = p
 
 
-function discretize(pp::ProductProcess{Tuple{ConstantProcess, <:IIDExogenous}}; opt=Dict())
+function discretize(pp::ProductProcess{<:Tuple{ConstantProcess, IIDExogenous}}; opt=Dict())
     diidp = discretize(pp.processes[2])
     inodes = diidp.integration_nodes
     iit = hcat(
@@ -490,21 +490,21 @@ function discretize(pp::ProductProcess{Tuple{ConstantProcess, <:IIDExogenous}}; 
     return DiscretizedIIDProcess(diidp.grid, iit, diidp.integration_weights)
 end
 
-function discretize(::Type{DiscreteMarkovProcess}, pp::ProductProcess{Tuple{<:AbstractProcess, <:AbstractProcess}}; opt1=Dict(), opt2=Dict())
+function discretize(::Type{DiscreteMarkovProcess}, pp::ProductProcess{<:Tuple{AbstractProcess, AbstractProcess}}; opt1=Dict(), opt2=Dict())
     p1 = discretize(DiscreteMarkovProcess, pp.processes[1]; opt1...)
     p2 = discretize(DiscreteMarkovProcess, pp.processes[2]; opt2...)
     return MarkovProduct(p1,p2)
 end
 
 
-function discretize(::Type{GDP}, pp::ProductProcess{Tuple{<:AbstractProcess, <:AbstractProcess}}; opt1=Dict(), opt2=Dict())
+function discretize(::Type{GDP}, pp::ProductProcess{<:Tuple{AbstractProcess, AbstractProcess}}; opt1=Dict(), opt2=Dict())
   p1 = discretize(GDP, pp.processes[1]; opt1...)
   p2 = discretize(GDP, pp.processes[2]; opt2...)
   return Product(p1,p2)
 end
 
 
-function discretize(pp::ProductProcess{Tuple{<:AbstractProcess, <:AbstractProcess}}; kwargs...)
+function discretize(pp::ProductProcess{<:Tuple{AbstractProcess, AbstractProcess}}; kwargs...)
     return discretize(DiscreteMarkovProcess, pp; kwargs...)
 end
 
