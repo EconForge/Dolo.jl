@@ -512,8 +512,6 @@ function discretize(pp::ProductProcess{Tuple{<:AbstractProcess, <:AbstractProces
 end
 
 function discretize(pp::ProductProcess{<:Tuple{ConstantProcess, IIDExogenous, Mixture}}; opt=Dict())
-    print(pp.processes[1])
-    print(pp.processes[3])
     diidp2 = discretize(pp.processes[2])
     inodes2 = diidp2.integration_nodes
     diidp3 = discretize(pp.processes[3])
