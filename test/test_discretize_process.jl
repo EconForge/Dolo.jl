@@ -9,9 +9,9 @@ path = Dolo.pkg_path
     sig_z = 0.001
     sig_b = 0.001
 
-    proc = Dolo.ProductProcess(
+    proc = Dolo.ProductProcess(tuple(
         Dolo.VAR1(rho_z, ones(1,1)*sig_z^2),
-        Dolo.VAR1(rho_b, ones(1,1)*sig_b^2)
+        Dolo.VAR1(rho_b, ones(1,1)*sig_b^2))
     )
 
     Dolo.discretize(proc)

@@ -148,7 +148,8 @@ MvNormal(σ::Float64) = MvNormal(reshape([σ^2], 1, 1))
 
 Normal(;Σ=zeros(1,1)) = MvNormal(Σ)
 
-UNormal(;σ=0.0) = MvNormal(reshape([σ^2], 1, 1))
+UNormal(;μ=0.0, σ=0.0) = MvNormal([μ], reshape([σ^2], 1, 1))
+# UNormal(;σ=0.0) = MvNormal(reshape([σ^2], 1, 1))
 
 
 function discretize(mvn::MvNormal; n=5::Union{Int, Vector{Int}})
@@ -439,42 +440,86 @@ function ErgodDist(var::VAR1, N::Int, T::Int)
     return Mean_sim, Σ_sim, R_sim
 end
 
-#### ProductProcess
 
-
-mutable struct ProductProcess{P1<:AbstractProcess,P2<:AbstractProcess} <: AbstractProcess
-    process_1::P1
-    process_2::P2
+## Mixtures
+mutable struct Mixture <: ContinuousProcess
+    index::DiscreteProcess
+    distributions :: Tuple{<: ContinuousProcess, <: ContinuousProcess}
 end
 
-ProductProcess(p) = p
+Mixture(;index=Bernouilli(), distributions = Dict(Symbol("1") => ConstantProcess(), Symbol("0") => UNormal())) = Mixture(index, tuple(distributions[Symbol("0")], distributions[Symbol("1")]))
 
-function discretize(pp::ProductProcess{ConstantProcess, <:IIDExogenous}; opt=Dict())
-    diidp = discretize(pp.process_2)
+
+function discretize(self::Mixture)
+    inddist = discretize(self.index)
+    nodes = []
+    weights = []
+    for i in 1:(n_inodes(inddist, 0))
+        wind =  iweight(inddist, 0, i)
+        # xind = inddist.inode(0, i)
+        dist = discretize(self.distributions[i])
+        for j in 1:(n_inodes(dist, 0))
+                w = iweight(dist, 0, j)
+                x = inode(dist, 0, j)
+                Base.append!(nodes, x)
+                Base.append!(weights, wind * w)
+        end
+    end
+    nodes = reshape(nodes, length(nodes), 1)
+    return DiscretizedIIDProcess(nodes, weights)
+end
+
+
+
+#### ProductProcess
+
+mutable struct ProductProcess{T<:Tuple{Vararg{AbstractProcess}}}
+    processes::T
+end
+
+ProductProcess(args...) = ProductProcess(args)
+
+
+function discretize(pp::ProductProcess{<:Tuple{ConstantProcess, IIDExogenous}}; opt=Dict())
+    diidp = discretize(pp.processes[2])
     inodes = diidp.integration_nodes
     iit = hcat(
-        vcat([pp.process_1.μ' for i=1:size(inodes,1)]...), 
+        vcat([pp.processes[1].μ' for i=1:size(inodes,1)]...), 
         inodes
     )
     return DiscretizedIIDProcess(diidp.grid, iit, diidp.integration_weights)
 end
 
-function discretize(::Type{DiscreteMarkovProcess}, pp::ProductProcess; opt1=Dict(), opt2=Dict())
-    p1 = discretize(DiscreteMarkovProcess, pp.process_1; opt1...)
-    p2 = discretize(DiscreteMarkovProcess, pp.process_2; opt2...)
+function discretize(::Type{DiscreteMarkovProcess}, pp::ProductProcess{<:Tuple{AbstractProcess, AbstractProcess}}; opt1=Dict(), opt2=Dict())
+    p1 = discretize(DiscreteMarkovProcess, pp.processes[1]; opt1...)
+    p2 = discretize(DiscreteMarkovProcess, pp.processes[2]; opt2...)
     return MarkovProduct(p1,p2)
 end
 
 
-function discretize(::Type{GDP}, pp::ProductProcess; opt1=Dict(), opt2=Dict())
-  p1 = discretize(GDP, pp.process_1; opt1...)
-  p2 = discretize(GDP, pp.process_2; opt2...)
+function discretize(::Type{GDP}, pp::ProductProcess{<:Tuple{AbstractProcess, AbstractProcess}}; opt1=Dict(), opt2=Dict())
+  p1 = discretize(GDP, pp.processes[1]; opt1...)
+  p2 = discretize(GDP, pp.processes[2]; opt2...)
   return Product(p1,p2)
 end
 
 
-function discretize(pp::ProductProcess; kwargs...)
+function discretize(pp::ProductProcess{<:Tuple{AbstractProcess, AbstractProcess}}; kwargs...)
     return discretize(DiscreteMarkovProcess, pp; kwargs...)
+end
+
+function discretize(pp::ProductProcess{<:Tuple{ConstantProcess, IIDExogenous, Mixture}}; opt=Dict())
+    diidp2 = discretize(pp.processes[2])
+    inodes2 = diidp2.integration_nodes
+    diidp3 = discretize(pp.processes[3])
+    inodes3 = diidp3.integration_nodes
+    iit = hcat(
+        vcat([pp.processes[1].μ' for i=1:size(inodes2,1)*size(inodes3,1)]...), 
+        vcat([inodes2[i,1] for j=1:size(inodes3,1) for i=1:size(inodes2,1)]...),
+        vcat([inodes3 for i=1:size(inodes2,1)]...)
+    )
+    weights = vcat([diidp2.integration_weights[i]*diidp3.integration_weights[j] for j=1:size(inodes3,1) for i=1:size(inodes2,1)]...)
+    return DiscretizedIIDProcess(diidp2.grid, iit, weights)
 end
 
 
@@ -512,9 +557,9 @@ function AgingProcess(μ::Float64, K::Int)
 end
 
 
-get_integration_nodes(dprocess::Dolo.AbstractDiscretizedProcess, i::Int)= [(iweight(dprocess,i,j), inode(dprocess,i,j), j) for j in 1:n_inodes(dprocess,i) if iweight(dprocess,i,j)!=0]
+get_integration_nodes(dprocess::AbstractDiscretizedProcess, i::Int)= [(iweight(dprocess,i,j), inode(dprocess,i,j), j) for j in 1:n_inodes(dprocess,i) if iweight(dprocess,i,j)!=0]
 
-get_integration_nodes(::typeof(Point), dprocess::Dolo.AbstractDiscretizedProcess, i::Int)=[(iweight(dprocess,i,j), inode(Point,dprocess,i,j), j) for j in 1:n_inodes(dprocess,i) if iweight(dprocess,i,j)!=0]
+get_integration_nodes(::typeof(Point), dprocess::AbstractDiscretizedProcess, i::Int)=[(iweight(dprocess,i,j), inode(Point,dprocess,i,j), j) for j in 1:n_inodes(dprocess,i) if iweight(dprocess,i,j)!=0]
 
 
 # type unstable
@@ -561,10 +606,20 @@ function get_domain(var::VAR1)
     return CartesianDomain(fill(-Inf, d), fill(Inf, d))
 end
 
-function get_domain(pp::ProductProcess)
-    dom1 = get_domain(pp.process_1)
-    dom2 = get_domain(pp.process_2)
+function get_domain(pp::ProductProcess{<:Tuple{AbstractProcess, AbstractProcess}})
+    dom1 = get_domain(pp.processes[1])
+    dom2 = get_domain(pp.processes[2])
     return ProductDomain(dom1, dom2)
+end
+
+get_domain(mixture::Mixture) = get_domain(mixture.distributions[1])
+
+
+function get_domain(pp::ProductProcess{<:Tuple{AbstractProcess, AbstractProcess, AbstractProcess}})
+    dom1 = get_domain(pp.processes[1])
+    dom2 = get_domain(pp.processes[2])
+    dom3 = get_domain(pp.processes[3])
+    return ProductDomain(ProductDomain(dom1, dom2),dom3)
 end
 
 
@@ -578,9 +633,9 @@ end
 
 # end
 
-function discretize(::Type{DiscreteMarkovProcess},pp::ProductProcess{ConstantProcess, VAR1}; opts...)
-    mc = discretize(DiscreteMarkovProcess, pp.process_2; opts...)
-    cp = pp.process_1
+function discretize(::Type{DiscreteMarkovProcess},pp::ProductProcess{Tuple{ConstantProcess, VAR1}}; opts...)
+    mc = discretize(DiscreteMarkovProcess, pp.processes[2]; opts...)
+    cp = pp.processes[1]
     d1 = length(cp.μ)
     d2 = length(node(mc.grid,1))
     v = SVector(cp.μ...)
@@ -601,4 +656,33 @@ function discretize(::Type{GDP}, p::ConstantProcess)
     integration_weights = [[1.0]]
     return GDP(grid, integration_nodes, integration_weights)
 end
+
+
+# Bernouilli
+struct Bernouilli <: DiscreteProcess
+    π::Float64
+end
+
+Bernouilli(;π=0.5) = Bernouilli(π)
+
+function discretize(bernouilli::Bernouilli)
+    x = reshape([0., 1.], 2, 1)
+    w = [1 - bernouilli.π, bernouilli.π]
+    return DiscretizedIIDProcess(x, w)
+end
+
+## ConstantProcess
+
+function discretize(constantprocess::ConstantProcess)
+    μ = constantprocess.μ
+    return DiscretizedIIDProcess(reshape(μ,length(μ),1),[1. for i=1:length(μ)])
+end
+
+
+
+
+
+
+
+
 
