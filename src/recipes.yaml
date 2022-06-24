@@ -73,9 +73,45 @@ dtcc:
 
                 - ['parameters',0,'p']
 
-        direct_response:
+        half_transition:
             optional: True
+            target: ['states', 0, 'S']
+            recursive: False
+            eqs:
+                - ['exogenous', -1, 'm']
+                - ['poststates', -1, 'a']
+                - ['exogenous', 0, 'M']
+                - ['parameters', 0, 'p']
+
+        direct_response_egm:
+
+            optional: True
+            recursive: True
             target: ['controls', 0,'x']
+
+            eqs:
+                - ['exogenous',0,'m']
+                - ['poststates',0,'a']
+                - ['expectations', 0, 'z']
+                - ['parameters',0,'p']
+
+        reverse_state:
+
+            optional: True
+            recursive: True
+            target: ['states', 0, 's']
+            eqs:
+                - ['exogenous', 0, 'm']
+                - ['poststates', 0, 'a']
+                - ['controls', 0, 'x']
+                - ['parameters',0,'p']
+
+        direct_response:
+
+            optional: True
+            recursive: True
+            target: ['controls', 0,'x']
+
             eqs:
                 - ['exogenous',0,'m']
                 - ['states',0,'s']
@@ -83,21 +119,27 @@ dtcc:
                 - ['parameters',0,'p']
 
         felicity:
+
             optional: True
+            recursive: True
+
             target: ['rewards', 0,'r']
+
             eqs:
                 - ['exogenous',0,'m']
                 - ['states',0,'s']
                 - ['controls',0,'x']
                 - ['parameters', 0, 'p']
 
+
         arbitrage_exp:
+
             optional: True
+
             eqs:
                 - ['states',0,'s']
                 - ['controls',0,'x']
                 - ['parameters', 0, 'p']
-
 
 dtcscc:
 
