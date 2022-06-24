@@ -15,10 +15,10 @@ If the stochastic process for the model is not explicitly provided, the process 
 function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
                                grid, init_dr::AbstractDecisionRule;
                                verbose::Bool=true, maxit::Int=100, trace::Bool=false,
-                               tol_η::Float64=1e-7)
+                               tol_η::Float64=1e-9)
 
     # Grid
-    endo_nodes = nodes(ListOfPoints,grid)
+    endo_nodes = nodes(ListOfPoints,grid.endo)
     N = length(endo_nodes)
 
     # Discretized exogenous process
@@ -47,7 +47,7 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
     end
 
     # create decision rule (which interpolates x0)
-    dr = CachedDecisionRule(dprocess, grid, x0)
+    dr = CachedDecisionRule(dprocess, grid.endo, x0)
 
     # Define controls of tomorrow
     x1 = deepcopy(x0)
@@ -60,9 +60,15 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
     err_0 = NaN
     err = 1.0
 
-    log = TimeIterationLog()
+    log = IterationLog(
+        it = ("n", Int),
+        err =  ("ϵₙ=|F(xₙ,xₙ)|", Float64),
+        sa =  ("ηₙ=|xₙ-xₙ₋₁|", Float64),
+        lam = ("λₙ=ηₙ/ηₙ₋₁",Float64),
+        elapsed = ("Time", Float64)
+    )
     initialize(log, verbose=verbose)
-    append!(log; verbose=verbose, it=0, err=NaN, gain=NaN, epsilon=NaN, time=0.0, nit=NaN)
+    append!(log; verbose=verbose, it=0, sa=NaN, lam=NaN, err=NaN, elapsed=0.0)
 
 
     ###############################   Iteration loop
@@ -113,7 +119,9 @@ function time_iteration_direct(model, dprocess::AbstractDiscretizedProcess,
 
         elapsed = time_ns()-t1
 
-        append!(log; verbose=verbose, it=it, err=err, gain=gain, time=elapsed, epsilon=NaN, nit=NaN)
+        append!(log;
+         verbose=verbose, it=it, sa=err, lam=gain, elapsed=elapsed, err=NaN, nit=NaN
+         )
 
     end
 
@@ -127,7 +135,8 @@ end
 
 # get grid for endogenous
 function time_iteration_direct(model, dprocess, init_dr::AbstractDecisionRule; grid=Dict(), kwargs...)
-    grid = get_grid(model, options=grid)
+    # grid = get_grid(model, options=grid)
+    grid, dp  = discretize(model)
     return time_iteration_direct(model, dprocess, grid, init_dr;  kwargs...)
 end
 

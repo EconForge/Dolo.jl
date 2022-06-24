@@ -230,7 +230,11 @@ function get_exogenous(data, exosyms, fcalib)
         p = Dolang.eval_node(v, calibration, minilang, ToGreek())
         push!(processes, p)
     end
-    return ProductProcess(processes...)
+    if length(processes) > 1
+        return ProductProcess(Tuple(processes))
+    else 
+        return processes[1]
+    end
 
 end
 
@@ -494,8 +498,8 @@ import Dolang: stringify
 function get_factories(model::Model)
 
     facts = Dict()
-    for eq_type in ["transition", "arbitrage"]
-        if eq_type == "transition"
+    for eq_type in keys(model.data["equations"])
+        if eq_type != "arbitrage"
             factories = (get_factory(model, eq_type), )
         else
             factories = get_factory(model, eq_type)
@@ -510,6 +514,7 @@ function get_factories(model::Model)
 end
 
 function get_factory(model::Model, eq_type::String)
+
     if eq_type == "arbitrage"
         defs_0 = get_definitions(model; stringify=true)
         defs_1 = get_definitions(model; tshift=1, stringify=true)
@@ -558,23 +563,46 @@ function get_factory(model::Model, eq_type::String)
 
         return (ff, ff_lb, ff_ub)
            
+    # elseif eq_type=="transition"
+    #     # defs_0  = get_definitions(model; stringify=true)
+    #     defs_m1 = get_definitions(model; tshift=-1, stringify=true)
+
+    #     definitions = OrderedDict{Symbol, SymExpr}([ (Dolang.stringify(k), v) for (k,v) in  defs_m1 ])
+
+    #     equations = get_assignment_block(model, eq_type)
+    #     symbols = get_symbols(model)
+    #     arguments = OrderedDict(
+    #         :m => [stringify(e,-1) for e in symbols[:exogenous]],
+    #         :s => [stringify(e,-1) for e in symbols[:states]],
+    #         :x => [stringify(e,-1) for e in symbols[:controls]],
+    #         :M => [stringify(e,0) for e in symbols[:exogenous]],
+    #         
+    #     )
+    #     ff = FunctionFactory(equations, arguments, definitions, Symbol(eq_type))
+    #     return ff
     else
-        # defs_0  = get_definitions(model; stringify=true)
-        defs_m1 = get_definitions(model; tshift=-1, stringify=true)
-
-        definitions = OrderedDict{Symbol, SymExpr}([ (Dolang.stringify(k), v) for (k,v) in  defs_m1 ])
-
+        specs = RECIPES[:dtcc][:specs]
+        if !(Symbol(eq_type) in keys(specs))
+            error("No spec for equation type '$eq_type'")
+        end
+        recipe = specs[Symbol(eq_type)]
+        if !(:target in keys(recipe))
+            error("Not implemented")
+        end
         equations = get_assignment_block(model, eq_type)
         symbols = get_symbols(model)
-        arguments = OrderedDict(
-            :m => [stringify(e,-1) for e in symbols[:exogenous]],
-            :s => [stringify(e,-1) for e in symbols[:states]],
-            :x => [stringify(e,-1) for e in symbols[:controls]],
-            :M => [stringify(e,0) for e in symbols[:exogenous]],
-            :p => [stringify(e) for e in symbols[:parameters]]
+        times = unique([e[2] for e in recipe[:eqs]])
+        defs = [get_definitions(model; tshift=t, stringify=true) for t in times]
+        definitions = OrderedDict{Symbol, SymExpr}(
+            [ (Dolang.stringify(k), v) for (k,v) in merge(defs...)]
         )
+        arguments = OrderedDict(
+            Symbol(l[3]) => [stringify(e,l[2]) for e in symbols[Symbol(l[1])]]
+            for l in recipe[:eqs] if !(l[1]=="parameters")
+        )
+        arguments[:p] = [stringify(e) for e in symbols[:parameters]]
+
         ff = FunctionFactory(equations, arguments, definitions, Symbol(eq_type))
-        return ff
     end
 
 end
@@ -605,10 +633,9 @@ function get_discretization_options(model::AModel)
         if !(:exo in keys(d))
             d[:exo] = Dict()
         end
-        if !(:exo in keys(d))
-            d[:exo] = Dict()
-        end
         return d
+    elseif ("options" in keys(model.data)) && ( "grid" in keys(model.data["options"]) )
+        return Dict{Any,Any}(:exo => Dict{Any, Any}(), :endo => Dict{Any, Any}(:n=>Dolo.get_options(model)[:grid].orders))
     else
         return Dict(
             :endo=>Dict(),
@@ -629,8 +656,8 @@ function discretize(model::Model; kwargs...)
     opts_exo = merge(opts[:exo], get(kwargs, :exo, Dict()) )
 
     endo_domain = model.domain.endo
-    grid_endo = Dolo.discretize(endo_domain;  opts_endo...) 
-    dprocess = Dolo.discretize(model.exogenous;  opts_exo...) 
+    grid_endo = discretize(endo_domain;  opts_endo...) 
+    dprocess = discretize(model.exogenous;  opts_exo...) 
 
     grid_exo = dprocess.grid
     grid = ProductGrid(grid_exo, grid_endo)

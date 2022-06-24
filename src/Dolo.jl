@@ -129,7 +129,6 @@ include("numeric/grids.jl")
 include("numeric/domains.jl")
 include("numeric/processes.jl")
 
-
 minilang = Language(Dict())
 add_language_elements!(minilang, Dict(
     "!Normal"=>Normal,
@@ -147,7 +146,16 @@ add_language_elements!(minilang, Dict(
 include("calibration.jl")
 include("minilang.jl")
 include("model.jl")
+
+add_language_elements!(minilang, Dict(
+    "!Cartesian"=>Cartesian,
+))
 # include("printing.jl")
+
+add_language_elements!(minilang, Dict(
+    "!Mixture"=>Mixture,
+    "!Bernouilli"=>Bernouilli,
+))
 
 include("numeric/msm.jl")
 
