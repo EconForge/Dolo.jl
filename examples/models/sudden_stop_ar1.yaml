@@ -11,17 +11,17 @@ symbols:
     parameters: [beta, R, sigma, mu, lam_inf]
 
 
-definitions:
-    y: exp(ly)
-    c: 1 + y + l*R - b
+definitions: |
+    y[t] = exp(ly[t])
+    c[t] = 1 + y[t] + l[t]*R - b[t]
 
 equations:
-    transition:
-        - l = b(-1)
+    transition: |
+        l[t] = b[t-1]
 
     arbitrage:
-        - lam = b/c
-        - 1 - beta*(c(1)/c)^(-sigma)*R    |  lam_inf <= lam <= inf
+        lam[t] = b[t]/c[t]
+        1 - beta*(c[t+1]/c[t])^(-sigma)*R    |  lam_inf <= lam[t] <= inf
 
 calibration:
     beta: 0.95
@@ -39,12 +39,15 @@ calibration:
 exogenous: 
     ly: !VAR1
         ρ: 0.01
-        Σ: 0.065^2
-        N: 2
+        Σ: [[0.065^2]]
 
 domain:
     l: [-1.0, 1.0]
 
 options:
-    grid: !Cartesian
-        orders: [100]
+
+    discretization:
+        endo:
+            n: [200]
+        exo:
+            n: 3

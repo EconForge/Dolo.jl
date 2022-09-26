@@ -28,7 +28,7 @@ end
 evaluate(dr::AbstractDecisionRule{EmptyGrid{d1}, <:UCGrid}, z::Vector{Float64})  where d1 = vec(evaluate(dr,z'))
 evaluate(dr::AbstractDecisionRule{EmptyGrid{d1}, <:UCGrid}, i::Int, y::Union{AbstractVector,AbstractMatrix})  where d1 = evaluate(dr,y) # kind of nonsensical
 evaluate(dr::AbstractDecisionRule{EmptyGrid{d1}, <:UCGrid}, x::Union{Vector,AbstractMatrix}, y::Union{Vector,AbstractMatrix})  where d1 = evaluate(dr,y)
-evaluate(dr::AbstractDecisionRule{EmptyGrid{d1}, <:UCGrid}, i, y::Vector{<:SVector})  where d1 = evaluate(dr,y)
+evaluate(dr::AbstractDecisionRule{EmptyGrid{d1}, <:UCGrid}, i::Int, y::Vector{<:SVector})  where d1 = evaluate(dr,y)
 function set_values!(dr::AbstractDecisionRule{EmptyGrid{d1}, <:UCGrid, n_x}, vals::Vector{Matrix{Float64}}) where n_x where d1
     N = size(vals[1],1)
     dims = tuple(dr.grid_endo.n...)
