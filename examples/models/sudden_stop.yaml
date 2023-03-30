@@ -23,7 +23,7 @@ equations:
 
     arbitrage: |
         lam[t] = b[t]/c[t]
-        1 - beta*(c[t+1]/c[t])^(-sigma)*R    |  lam_inf <= lam[t] <= inf
+        1 - beta*(c[t+1]/c[t])^(-sigma)*R   |  lam_inf <= lam[t] <= inf
 
     value: |
         V[t] = c[t]^(1.0-sigma)/(1.0-sigma) + beta*V[t+1]
