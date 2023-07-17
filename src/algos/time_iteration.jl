@@ -1,425 +1,722 @@
-
-struct IterationLog
-    header::Array{String, 1}
-    keywords::Array{Symbol, 1}
-    types::Vector
-    entries::Array{Any, 1}
-    fmt::String
-end
-
-# function IterationLog()
-#     header = [ "It", "ϵₙ", "ηₙ=|xₙ-xₙ₋₁|", "λₙ=ηₙ/ηₙ₋₁", "Time", "Newton steps"]
-#     keywords = [:it, :err, :gain, :time, :nit]
-#     IterationLog(header, keywords, [])
+# function F(model, s, x::SVector, φ::Policy)
+#     tot = 0.0
+#     for (w,S) in τ(model, s, x)
+#         X = φ(S)
+#        tot +=  w*arbitrage(model,s,x,S,X) 
+#     end
+#     tot
 # end
 
-function IterationLog(;kw...)
-    keywords = Symbol[]
-    header = String[]
-    elts = []
-    types= []
-    for (k,(v,t)) in kw
-        push!(types, t)
-        push!(keywords, k)
-        push!(header, v)
-        if t<:Int
-            push!(elts, "{:>8}")
-        elseif t<:Real
-            push!(elts, "{:>12.4e}")
-        else
-            error("Don't know how to format type $t")
-        end
+F(model, s, x::SVector, φ::Policy) = let
+    r = sum(
+         w*arbitrage(model,s,x,S,φ(S)) 
+         for (w,S) in τ(model, s, x)
+    )
+    # r
+    r = complementarities(model.model, s,x,r)
+    r
+end
+
+
+
+F(model, s, x::SVector, φ::Union{GArray, DFun}) = let
+    r = sum(
+         w*arbitrage(model,s,x,S,φ(S)) 
+         for (w,S) in τ(model, s, x)
+    )
+    # r
+    r = complementarities(model.model, s,x,r)
+    r
+end
+
+
+F(model, controls::GArray, φ::Union{GArray, DFun}) =
+    GArray(
+        model.grid,
+        [
+            F(model,s,x,φ)
+            for (s,x) in zip(enum(model.grid), controls)
+        ],
+    )
+
+function F!(out, model, controls::GArray, φ::Union{GArray, DFun})
+    for n in 1:length(model.grid)
+        ind = Dolo.from_linear(model.grid, n)
+
+        s_ = model.grid[n]
+        s = QP(ind, s_)
+        x = controls[n]
+        out[n] = F(model,s,x,φ)
     end
-    fmt = join(elts, " | ")
-    IterationLog(header, keywords, types, [], fmt)
 end
 
-function append!(log::IterationLog; verbose=true, entry...)
-    d = Dict(entry)
-    push!(log.entries, d)
-    verbose && show_entry(log, d)
-end
+# function F!(out, model, controls::GArray, φ::GArray)
+#     @floop for (n, (s,x)) in enumerate(zip(enum(model.grid), controls))
+#         out[n] = F(model,s,x,φ)
+#     end
+# end   #### no alloc
 
-function initialize(log::IterationLog; verbose=true, message=nothing)
-    verbose && show_start(log; message=message)
-end
+## no alloc
+dF_1(model, s, x, φ) = ForwardDiff.jacobian(u->F(model, s, u, φ), x)
 
-function finalize(log::IterationLog; verbose=true)
-    verbose && show_end(log)
-end
+dF_1(model, controls::GArray, φ::Union{GArray, DFun}) =
+    GArray(    # this shouldn't be needed
+        model.grid,
+        [
+            dF_1(model, s, x, φ)
+            for (s,x) in zip(enum(model.grid), controls) 
+        ]
+    )
 
-function show(log::IterationLog)
-    show_start(log)
-    for entry in log.entries
-        show_entry(log,entry)
+function dF_1!(out, model, controls::GArray, φ::Union{GArray, DFun})
+    for (n, (s,x)) in enumerate(zip(enum(model.grid), controls))
+        out[n] = ForwardDiff.jacobian(u->F(model, s, u, φ), x)
     end
-    show_end(log)
-end
-
-function show_start(log::IterationLog; message=nothing)
-    # println(repeat("-", 66))
-    # @printf "%-6s%-16s%-16s%-16s%-16s%-5s\n" "It" "ϵₙ" "ηₙ=|xₙ-xₙ₋₁|" "λₙ=ηₙ/ηₙ₋₁" "Time" "Newton steps"
-    # println(repeat("-", 66))
-
-    l = []
-    for t in log.types
-        if t<:Int
-            push!(l, "{:>8}")
-        elseif t<:Real
-            push!(l, "{:>12}")
-        end
-    end
-
-    a = join(l, " | ")
-    s = format(a, log.header...)
-
-    if message !== nothing
-        println(repeat("-", length(s)))
-        println(message)
-    end
-    println(repeat("-", length(s)))
-
-    println(s)
-    println(repeat("-", length(s)))
-end
-
-
-function show_entry(log::IterationLog, entry)
-
-    vals = [entry[k] for k in log.keywords]
-    printfmt(log.fmt, vals...)
-    print("\n")
-
-end
-
-function show_end(log::IterationLog)
-    println(repeat("-", 66))
-end
-
-###
-
-
-mutable struct IterationTrace
-    trace::Array{Any,1}
-end
-
-
-mutable struct TimeIterationResult
-    dr::AbstractDecisionRule
-    iterations::Int
-    complementarities::Bool
-    dprocess::AbstractDiscretizedProcess
-    x_converged::Bool
-    x_tol::Float64
-    err::Float64
-    log::IterationLog
-    trace::Union{Nothing,IterationTrace}
-end
-
-converged(r::TimeIterationResult) = r.x_converged
-function Base.show(io::IO, r::TimeIterationResult)
-    @printf io "Results of Time Iteration Algorithm\n"
-    @printf io " * Complementarities: %s\n" string(r.complementarities)
-    @printf io " * Discretized Process type: %s\n" string(typeof(r.dprocess))
-    @printf io " * Decision Rule type: %s\n" string(typeof(r.dr))
-    @printf io " * Number of iterations: %s\n" string(r.iterations)
-    @printf io " * Convergence: %s\n" converged(r)
-    @printf io "   * |x - x'| < %.1e: %s\n" r.x_tol r.x_converged
-end
-
-
-function newton2(fun, dfun, x0::MSM; maxit=50, dampen=1.0, verbose=false, bcksteps = 5)
-
-    r0 = fun(x0)
-
-    err = norm(r0)
-
-    local x1
-
-    x1data = deepcopy(x0.data)
-    x1 = MSM(x1data, x0.sizes)
-
-
-    for n=1:maxit
-
-        r0 = fun(x0)
-        err_0 = norm(r0)
-
-        j = dfun(x0)
-        δ = (j\r0)
-        for i=0:(bcksteps-1)
-            u = 0.5^i
-            x1.data[:] .= x0.data - δ.data*u
-            r1 = fun(x1)
-            err_1 = norm(r1)
-            if verbose
-                println( "-    $i: ", err_1)
-            end
-            if err_1<err_0
-                break
-            end
-        end
-
-        if verbose
-            println(n, " | ", norm(r0), " | ",  norm(δ))
-        end
-
-        x0 = x1
-
-    end
-
-    return x0
-
-end
-
-
-
-"""
-Computes a global solution for a model via backward time iteration. The time iteration is applied to the residuals of the arbitrage equations.
-
-If the initial guess for the decision rule is not explicitly provided, the initial guess is provided by `ConstantDecisionRule`.
-If the stochastic process for the model is not explicitly provided, the process is taken from the default provided by the model object, `model.exogenous`
-
-# Arguments
-* `model::NumericModel`: Model object that describes the current model environment.
-* `process`: The stochastic process associated with the exogenous variables in the model.
-* `init_dr`: Initial guess for the decision rule.
-# Returns
-* `dr`: Solved decision rule.
-"""
-function time_iteration(model;
-    dr0=Dolo.ConstantDecisionRule(model),
-    discretization=Dict(),
-    interpolation=:cubic,
-    verbose=true,
-    details=true,
-    ignore_constraints=false,
-    trace = false,
-    tol_η = 1e-8,
-    tol_ε = 1e-8,
-    maxit=500
-)
+end    #### no alloc
     
-    F = Euler(model; discretization=discretization, interpolation=interpolation, dr0=dr0,  ignore_constraints=ignore_constraints)
-
-    complementarities = false
 
 
-    if interpolation != :cubic
-        error("Interpolation option ($interpolation) is currently not recognized.")
+
+
+dF_2(model, s, x::SVector, φ::GArray, dφ::GArray) = 
+    sum(
+            w*ForwardDiff.jacobian(u->arbitrage(model,s,x,S,u), φ(S))* dφ(S)
+            for (w, S) in τ(model, s, x)
+    )   ### no alloc
+
+
+dF_2(model, controls::GArray, φ::GArray, dφ::GArray) =
+    GArray(
+        model.grid,
+        [(dF_2(model,s,x,φ,dφ)) for (s,x) in zip(enum(model.grid), controls) ],
+    )
+
+function dF_2!(out::GArray, model, controls::GArray, φ::GArray, dφ::GArray)
+    for (n, (s,x)) in enumerate(zip(enum(model.grid), controls))
+        out[n] = dF_2(model, s, x, φ, dφ)
     end
+end   
 
-    ti_trace = trace ? IterationTrace([x0]) : nothing
+
+using LinearMaps
 
 
-    z0 = deepcopy(F.x0)
-    z1 = deepcopy(z0)
+function time_iteration_workspace(dmodel; interp_mode=:linear)
+
+    x0 = (Dolo.initial_guess(dmodel))
+    x1 = deepcopy(x0)
+    x2 = deepcopy(x0)
+    r0 = deepcopy(x0)
+    dx = deepcopy(x0)
+    N = length(dx)
+    n = length(dx.data[1])
+    J = GArray(
+        dmodel.grid,
+        zeros(SMatrix{n,n,Float64,n*n}, N)
+    )
+    vars = variables(dmodel.model.controls)
+    φ = DFun(dmodel.model.states, x0, vars; interp_mode=interp_mode)
+    return (;x0, x1, x2, r0, dx, J, φ)
+
+end
+
+function newton_workspace(model; interp_mode=:linear)
+
+    
+    res = time_iteration_workspace(model; interp_mode=interp_mode)
+    T =  Dolo.dF_2(model, res.x0, res.φ)
+    res = merge(res, (;T=T,memn=(;du=deepcopy(res.x0), dv=deepcopy(res.x0))))
+    return res
+end
+
+function time_iteration(model::YModel; kwargs...)
+    discr_options = get(kwargs, :discretization, Dict())
+    interp_mode = get(kwargs, :interpolation, :cubic)
+    dmodel = discretize(model, discr_options...)
+    wksp = time_iteration_workspace(dmodel; interp_mode=interp_mode)
+    kwargs2 = pairs(NamedTuple( k=>v for (k,v) in kwargs if !(k in (:discretization, :interpolation))))
+    time_iteration(dmodel, wksp; kwargs2...)
+end
+
+function time_iteration(model::DYModel,
+    workspace=time_iteration_workspace(model);
+    T=500,
+    improve_K=1000,
+    improve_wait=10,
+    tol_ε=1e-8,
+    tol_η=1e-6,
+    max_bsteps=10,
+    verbose=true,
+    trace=false,
+    improve=false,
+    engine=:none
+)
 
     log = IterationLog(
-        it = ("n", Int),
-        err =  ("ϵₙ=|F(xₙ,xₙ)|", Float64),
-        sa =  ("ηₙ=|xₙ-xₙ₋₁|", Float64),
-        lam = ("λₙ=ηₙ/ηₙ₋₁",Float64),
-        elapsed = ("Time", Float64)
-    )
-
+            it = ("n", Int),
+            err =  ("ϵₙ=|F(xₙ,xₙ)|", Float64),
+            sa =  ("ηₙ=|xₙ-xₙ₋₁|", Float64),
+            lam = ("λₙ=ηₙ/ηₙ₋₁",Float64),
+            elapsed = ("Time", Float64)
+        )    
     initialize(log, verbose=verbose; message="Time Iteration")
 
-    local err_η, z0, z1
+    # mem = typeof(workspace) <: Nothing ? time_iteration_workspace(model) : workspace
+    mbsteps = 5
+    lam = 0.5
+    
+    local η_0 = NaN
+    convergence = false
+    iterations = T
+    
+    (;x0, x1, x2, dx, r0, J, φ) = workspace
+    ti_trace = trace ? IterationTrace(typeof(φ)[]) : nothing
 
-    err_η_0 = NaN
 
-    it = 0
-
-    while it<=maxit
-
-        it += 1
-
+    for t=1:T
+        
         t1 = time_ns()
 
-        r0 = F(z0, z0; set_future=true)
+        Dolo.fit!(φ, x0)
 
-        err_ε= norm(r0)
-        if err_ε<tol_ε
+        trace && push!(ti_trace.data, deepcopy(φ))
+
+        if engine==:cpu
+            F!(r0, model, x0, φ, CPU())
+        else
+            F!(r0, model, x0, φ)
+        end
+        # r0 = F(model, x0, φ)
+
+        ε = norm(r0)
+
+        if ε<tol_ε
+            convergence = true
+            iterations = t
             break
         end
 
-        fun = u->F(u, z0; set_future=false)
-        dfun = u->df_A(F,u, z0; set_future=false)
+        # solve u->F(u,x0) 
+        # result in x1
+        # J and r0 are modified
 
-        sol = newton2(
-            fun, dfun,
-            z0, verbose=false
-        )
+        x1.data .= x0.data
 
-        z1 = sol
-        δ = z1 - z0
+        for k=1:max_bsteps
 
-        trace && push!(ti_trace.trace, z1)
+            if engine==:cpu
+                F!(r0, model, x1,  φ, CPU())
+            else
+                F!(r0, model, x1,  φ)
+            end
 
-        err_η = norm(δ)
-        gain = err_η / err_η_0
-        err_η_0 = err_η
-
-        if err_η<tol_η
-            break 
-        end
-
-        # z0.data[:] .= z1.data
-        z0 = z1
-
-        elapsed = time_ns() - t1
-
-        elapsed /= 1000000000
-
-        append!(log; verbose=verbose, it=it, err=err_ε, sa=err_η, lam=gain, elapsed=elapsed)
-
-    end
-
-    finalize(log, verbose=verbose)
-
-
-    res = TimeIterationResult(F.dr.dr, it, complementarities, F.dprocess, err_η<tol_η, tol_η, err_η, log, ti_trace)
-
-    return res
-
-end
-
-
-
-function improved_time_iteration(model;
-    dr0=Dolo.ConstantDecisionRule(model),
-    discretization=Dict(),
-    interpolation=:cubic,
-    verbose=true,
-    details=true,
-    ignore_constraints=false,
-    trace = false,
-    tol_η = 1e-8,
-    tol_ε = 1e-8,
-    tol_ν = 1e-10,
-    maxit=500,
-    smaxit=500
-)
-
-
-    F = Euler(model; discretization=discretization, interpolation=interpolation, dr0=dr0, ignore_constraints=ignore_constraints)
-
-    complementarities = false
-
-
-    if interpolation != :cubic
-        error("Interpolation option ($interpolation) is currently not recognized.")
-    end
-
-    ti_trace = trace ? IterationTrace([x0]) : nothing
-
-
-    z0 = deepcopy(F.x0)
-
-    local err_η, err_ε
-
-    log = IterationLog(;
-        it=("It",Int),
-        err= ("ϵₙ=|F(xₙ,xₙ)|",Float64),
-        sa= ("ηₙ=|xₙ-xₙ₋₁|", Float64),
-        time=("Time", Float64)
-    )
-    initialize(log; verbose=verbose, message="Improved Time Iteration")
-
- 
-    it = 0
-    while it<=maxit
-
-        t1 = time_ns()
-
-        it += 1
-
-        r = F(z0, z0; set_future=true)
-
-        err_ε = norm(r)
-
-        J = df_A(F, z0, z0 ; set_future=false)
-        L = df_B(F, z0, z0 ; set_future=false)
-
-        mult!(L, -1.0)
-        prediv!(L, J) # J\L
-
-        π = -J\r
-
-        count = 0
-
-        u = π
-        δ = π
-        for i=1:smaxit
-            count +=1
-            u = L*u
-            δ += u
-            if norm(u)<tol_ν
+            ε_n = norm(r0)
+            if ε_n<tol_ε
                 break
             end
+
+            if engine==:cpu
+                dF_1!(J, model, x1,  φ, CPU())
+            else
+                dF_1!(J, model, x1,  φ)
+            end
+
+            dx.data .= J.data .\ r0.data
+
+
+            for k=0:mbsteps
+                x2.data .= x1.data .- dx.data .* lam^k
+                if engine==:cpu
+                    F!(r0, model, x2,  φ, CPU())
+                else
+                    F!(r0, model, x2,  φ)
+                end
+                ε_b = norm(r0)
+                if ε_b<ε_n
+                    break
+                end
+            end
+
+            x1.data .= x2.data
+
         end
-        
 
-        z0 = z0 + δ
 
-        err_η = norm(δ)
+        η = distance(x0, x1)
+        gain = η/η_0
+
+        # verbose ? println("$t: $ε : $η: ") : nothing
 
         elapsed = time_ns() - t1
+        elapsed /= 1000000000
 
-        append!(log; verbose=verbose,
-            it = it, 
-            err = err_ε,
-            sa = err_η,
-            time = elapsed
-        )
+        verbose ? append!(log; verbose=verbose, it=t-1, err=ε, sa=η_0, lam=gain, elapsed=elapsed) : nothing
 
-        if err_η<tol_η
-            break 
+        η_0 = η
+
+
+        if improve && t>improve_wait
+            # x = T(x)
+            # x1 = T(x0)
+            # x - x1 = -T'(x) (x - x0)
+            # x = x1 - T' (x - x0)
+            # x = (I-T')\(x1 - T' x0)
+
+            J_1 = Dolo.dF_1(model, x1, φ)
+            J_2 =  Dolo.dF_2(model, x1, φ)
+            mul!(J_2, -1.0)
+            # J_2.M_ij[:] *= -1.0
+            Tp = J_1 \ J_2
+            r = x1 - Tp * x0
+
+            x0 = neumann(Tp, r; K=improve_K)
+            x1.data .= x0.data
+        else
+            x0.data .= x1.data
         end
 
     end
 
-    finalize(log, verbose=verbose)
+    verbose ?  finalize(log, verbose=verbose) : nothing
 
-    res = ImprovedTimeIterationResult(
-        F.dr.dr,
-        it,
-        err_ε,
-        err_η,
-        err_η<tol_η,
-        complementarities,
-        F.dprocess,
-        tol_ν,
-        NaN,
-        0,
-        0,
-        0,
+    TimeIterationResult(
+        φ,
+        iterations,
+        tol_η,
+        η_0,
+        log,
         ti_trace
     )
+end
+
+
+function newton(model, workspace=newton_workspace(model);
+    K=10, tol_ε=1e-8, tol_η=1e-6, verbose=false, improve=false, interp_mode=:cubic
+    )
+
+    # mem = typeof(workspace) <: Nothing ? time_iteration_workspace(model) : workspace
+
+    (;x0, x1, x2, dx, r0, J, φ, T, memn) = workspace
+
+
+    for t=1:K
         
-    res
-end
+        Dolo.fit!(φ, x0)
 
+        F!(r0, model, x0, φ)
 
+        ε = norm(r0)
+        verbose ? println("$t: $ε") : nothing
 
-function update_guess(F, x0, p0, dp, tol=1e-8, maxit=1000)
-    df = dFdp(F, x0, x0, p0, dp)
-    J = Dolo.df_A(F, x0, x0)
-    L = Dolo.df_B(F, x0, x0)
-    Dolo.prediv!(L, J) 
-    Dolo.mult!(L, -1.0)
-    dπ = -J\df
-    dx = dπ
-    i = 0
-    while i<=maxit
-        i += 1
-        err = Dolo.norm(dπ)
-        if err<tol
-            break
+        if ε<tol_ε
+            return (;message="Solution found", solution=x0, n_iterations=t-1, dr=φ)
         end
-        dπ = L*dπ
-        dx += dπ
+
+        x1.data .= x0.data
+
+
+        dF_1!(J, model, x0, φ)
+        dF_2!(T, model, x0, φ)
+
+        
+        T.M_ij .*= -1.0
+        T.M_ij .= J.data .\ T.M_ij 
+        
+        r0.data .= J.data .\ r0.data
+        
+        neumann!(dx, T, r0, memn; K=1000)
+
+        x0.data .= x1.data .- dx.data
+        x1.data .= x0.data
+
+
+        # end
+
+
     end
-    return dx, i
+
+    return (;solution=x0, message="No Convergence") # The only allocation when workspace is preallocated
+
 end
+
+
+
+# function time_iteration_1(model;
+#     T=500,
+#     K=10,
+#     tol_ε=1e-8,
+#     tol_η=1e-6,
+#     verbose=false,
+# )
+
+#     N = length(model.grid)
+#     x0 = GArray(model.grid, [SVector(model.calibration.x) for n=1:N])
+#     x1 = deepcopy(x0)
+
+#     local x0
+#     local x1
+#     local t
+
+
+#     for t=1:T
+
+#         r0 = F(model, x0, x0)
+
+#         ε = norm(r0)
+
+#         if ε<tol_ε
+#             return (;message="Solution found", solution=x0, n_iterations=t)
+#         end
+#         # println("Iteration $t: $ε")
+#         if verbose
+#             println("ϵ=$(ε)")
+#         end
+
+#         x1.data .= x0.data
+        
+#         for k=1:K
+
+#             r1 = F(model, x1, x0)
+#             J = dF_1(model, x1, x0)
+#             # dF!(J, model, x1, x0)
+
+#             dx = GArray(model.grid, J.data .\ r1.data)
+
+#             η = norm(dx)
+            
+#             x1.data .-= dx.data
+
+#             verbose ? println(" - $k: $η") : nothing
+
+#             if η<tol_η
+#                 break
+#             end
+
+#         end
+
+#         x0 = x1
+
+#     end
+
+#     return (;solution=x0, message="No Convergence", n_iterations=t)
+
+# end
+
+# using NLsolve
+
+# function time_iteration_2(model;
+#     T=500,
+#     K=10,
+#     tol_ε=1e-8,
+#     tol_η=1e-6,
+#     verbose=false
+# )
+
+#     N = length(model.grid)
+#     x0 = GArray(model.grid, [SVector(model.calibration.x) for n=1:N])
+#     x1 = deepcopy(x0)
+
+#     local x0
+#     local x1
+#     local t
+
+
+#     for t=1:T
+
+#         function fun(u::AbstractVector{Float64})
+#             x = unravel(x0, u)
+#             r = F(model, x, x0)
+#             return ravel(r)
+#         end
+
+#         function dfun(u::AbstractVector{Float64})
+#             x = unravel(x0, u)
+#             dr = dF_1(model, x, x0)
+#             J = convert(Matrix,dr)
+#             return J
+#         end
+
+#         u0 = ravel(x0)
+#         sol = nlsolve(fun, dfun, u0)
+#         u1 = sol.zero
+
+#         η = maximum(u->abs(u[1]-u[2]), zip(u0,u1))
+        
+#         verbose ? println("Iteration $t: $η") : nothing
+        
+#         x0 = unravel(x0, u1)
+
+#         if η<tol_η
+#             return (;solution=x0, message="Convergence", n_iterations=t)
+#         end
+
+#     end
+
+#     return (;message="No Convergence", n_iterations=T)
+
+# end
+
+# using LinearAlgebra
+
+# function time_iteration_3(model;
+#     T=500,
+#     K=10,
+#     tol_ε=1e-8,
+#     tol_η=1e-8,
+#     verbose=false,
+#     improve=true,
+#     x0=nothing,
+#     interp_mode=:linear
+# )
+
+#     N = length(model.grid)
+#     if x0===nothing
+#         x0 = initial_guess(model)
+#     else
+#         x0 = deepcopy(x0)
+#     end
+#     # x0 = GArray(model.grid, [SVector(model.calibration.x) for n=1:N])
+
+#     x1 = deepcopy(x0)
+
+#     # local x0
+#     local x1
+#     local t
+
+
+#     for t=1:T
+
+#         φ = DFun(model, x0; interp_mode=interp_mode)
+
+#         r0 = F(model, x0, φ)
+#         ε = norm(r0)
+
+#         if ε<tol_ε
+#             return (;message="Solution found", solution=x0, n_iterations=t)
+#         end
+
+#         # φ = x0
+#         x1.data .= x0.data
+        
+#         for k=1:K
+
+#             r1 = F(model, x1, φ)
+#             J = dF_1(model, x1, φ)
+#             # dF!(J, model, x1, x0)
+
+#             dx = GArray(model.grid, J.data .\ r1.data)
+
+#             η = norm(dx)
+            
+#             x1.data .-= dx.data
+
+#             verbose ? println(" - $k: $η") : nothing
+
+#             if η<tol_η
+#                 break
+#             end
+
+#         end
+
+#         # ε = norm(F(model, x1, φ))
+#         η = distance(x1,x0)
+
+#         if !(improve)
+#             x0.data[:] = x1.data[:]
+#         else
+#             # x = T(x)
+#             # xnn = T(xn)
+#             # x - xnn = -T'(x) (x - xn)
+#             # x = xnn - T' (x - xn)
+#             # x = (I-T')\(xnn - T' xn)
+
+#             # # this version assumes same number of shocks
+
+#             J_1 = Dolo.dF_1(model, x1, φ)
+#             J_2 =  Dolo.dF_2(model, x1, x0)
+#             J_2.M_ij[:] *= -1.0
+#             Tp = J_1 \ J_2
+#             r = x1 - Tp * x0
+#             x0 = invert(r, Tp; K=500)
+
+#         end
+        
+#         ε = maximum(abs, ravel(F(model, x0, x0)))
+
+#         verbose ? println("Iteration $t : $η : $ε") : nothing
+
+#         if η<tol_η
+#             return (;solution=x0, dr=φ, message="Convergence", n_iterations=t)
+#         end
+
+#     end
+
+#     return (;solution=x0, message="No Convergence", n_iterations=T)
+
+# end
+
+
+
+# # function time_iteration(model;
+# #     T=500,
+# #     K=10,
+# #     tol_ε=1e-8,
+# #     tol_η=1e-6,
+# #     verbose=false
+# # )
+
+
+# #     N = length(model.grid)
+
+# #     x0 = GArray(model.grid, [SVector(model.x) for n=1:N])
+# #     x1 = deepcopy(x0)
+# #     dx = deepcopy(x0)
+
+# #     r0 = x0*0
+    
+# #     J = dF0(model, x0, x0)[2]
+
+# #     local x0
+# #     local x1
+
+# #     for t=1:T
+# #         # r0 = F(model, x0, x0)
+# #         F!(r0, model, x0, x0)
+# #         ε = norm(r0)
+# #         if ε<tol_ε
+# #             break
+# #         end
+# #         if verbose
+# #             println("ϵ=$(ε)")
+# #         end
+# #         x1.data .= x0.data
+# #         for k=1:K
+# #             # r = F(model, x1, x0)
+# #             F!(r0, model, x1, x0)
+# #             # J = dF(model, x1, x0)
+# #             dF!(J, model, x1, x0)
+# #             # dx = J\r0
+# #             for n=1:length(r0)
+# #                 dx.data[n] = J.data[n]\r0.data[n]
+# #             end
+# #             e = norm(dx)
+# #             # println("e=$(e)")
+# #             x1.data .-= dx.data
+# #             if e<tol_η
+# #                 break
+# #             end
+# #         end
+# #         x0 = x1
+
+# #     end
+# #     return x0
+# # end
+
+
+
+# # # Alternative implementations
+
+# # function F0(model, s, x::SVector, xfut::GArray)
+# #     tot = SVector((x*0)...)
+# #     for (w, S) in τ(model, s, x)
+# #         ind = (S[1], S[3])
+# #         X = xfut(ind...)
+# #         tot += w*arbitrage(model,s,x,S,X)
+# #     end
+# #     return tot
+# # end
+
+
+# # F(model, controls::GArray, φ::GArray) =
+# #     GArray(
+# #         model.grid,
+# #         [F(model,s,x,φ) for (s,x) in zip(iti(model.grid), controls) ],
+# #     )
+
+# # function F!(out, model, controls, φ) 
+# #     # for (n,(s,x)) in enumerate(zip(iti(model.grid), controls))
+# #     n=0
+# #     for s in iti(model.grid)
+# #         n += 1
+# #         x = controls.data[n]
+# #         out.data[n] = F(model,s,x,φ)
+# #     end
+# #     # end
+# # end
+
+# # dF(model, controls::GArray, φ::GArray) =
+# #     GArray(    # this shouldn't be needed
+# #         model.grid,
+# #         [
+# #             ForwardDiff.jacobian(u->F(model, s, u, φ), x)
+# #             for (s,x) in zip(iti(model.grid), controls) 
+# #         ]
+# #     )
+
+# # function dF!(out, model, controls, φ) 
+# #     # for (n,(s,x)) in enumerate(zip(iti(model.grid), controls))
+# #     n=0
+# #     for s in iti(model.grid)
+# #         n += 1
+# #         x = controls.data[n]
+# #         out.data[n] = ForwardDiff.jacobian(u->F(model, s, u, φ), x)
+# #     end
+# #     # end
+# # end
+
+# # # function dF2!(out, model, controls, φ) 
+# # #     # for (n,(s,x)) in enumerate(zip(iti(model.grid), controls))
+# # #     n=0
+# # #     for s in iti(model.grid)
+# # #         n += 1
+# # #         x = controls.data[n]
+# # #         out.data[n] = ForwardDiff.jacobian(u->F(model, s, x, φ), φ)
+# # #     end
+# # #     # end
+# # # end
+
+
+# # FdF(model, controls::GArray, φ::GArray) =
+# #     GArray(
+# #         model.grid,
+# #         [
+# #             (F(model,s,x,φ), ForwardDiff.jacobian(u->F(model, s, u, φ), x))
+# #             for (s,x) in zip(iti(model.grid), controls) 
+# #         ]
+# #     )
+
+
+# # function F0(model, controls::GArray, xfut::GArray)
+
+# #     N = length(controls)
+# #     res = GArray(
+# #         model.grid,
+# #         zeros(typeof(controls[1]), N)
+# #     )
+# #     for (i,(s,x)) in enumerate(zip(iti(model.grid), controls))
+# #         res[i] = F(model,s,x,xfut)
+# #     end
+# #     return res
+# # end
+
+
+
+# # function dF0(model, controls::GArray, xfut::GArray)
+
+# #     N = length(controls)
+# #     res = deepcopy(controls)
+# #     dres = GArray(
+# #         model.grid,
+# #         zeros(typeof(res[1]*res[1]'), N)
+# #     )
+# #     for (i,(s,x)) in enumerate(zip(iti(model.grid), controls))
+# #         res[i] = F(model,s,x,xfut)
+# #         dres[i] = ForwardDiff.jacobian(u->F(model, s, u, xfut), x)
+# #     end
+# #     return res, dres
+# # end
+
+
+
+
+
