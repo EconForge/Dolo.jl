@@ -7,9 +7,9 @@ using Test
     include("test_grids.jl")
 end
 
-# @testset "General" begin
-#     include("general.jl")
-# end
+@testset "General" begin
+    include("general.jl")
+end
 
 # @testset "Special" begin
 #     include("test_dev.jl")
