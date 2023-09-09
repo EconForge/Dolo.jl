@@ -170,8 +170,8 @@ function time_iteration(model::DYModel,
     iterations = T
     
     (;x0, x1, x2, dx, r0, J, φ) = workspace
-    ti_trace = trace ? IterationTrace(typeof(φ)[]) : nothing
 
+    ti_trace = trace ? IterationTrace(typeof(φ)[]) : nothing
 
     for t=1:T
         
@@ -245,7 +245,7 @@ function time_iteration(model::DYModel,
         η = distance(x0, x1)
         gain = η/η_0
 
-        # verbose ? println("$t: $ε : $η: ") : nothing
+        verbose ? println("$t: $ε : $η: ") : nothing
 
         elapsed = time_ns() - t1
         elapsed /= 1000000000

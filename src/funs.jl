@@ -144,6 +144,10 @@ function (f::DFun{A,B,I,vars})(x::QP)  where A where B<:GArray{G,V} where V wher
     return f.itp(x.loc)
 end
 
+function (f::DFun{A,B,I,vars})(x::SVector)  where A where B<:GArray{G,V} where V where I where G<:CGrid where vars
+    return f.itp(x)
+end
+
 # function (f::DFun{A,B,I,vars})(x::Tuple)  where A where B<:GArray{G,V} where V where I where G<:CGrid where vars
 #     return f.itp(x)
 # end

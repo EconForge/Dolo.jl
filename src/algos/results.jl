@@ -100,12 +100,12 @@ end
 length(t::IterationTrace) = length(t.data)
 
 
-mutable struct TimeIterationResult
+struct TimeIterationResult
     dr
     iterations::Int
     tol_η::Float64
     η::Float64
-    log::IterationLog
+    log::Union{Nothing, IterationLog}
     trace::Union{Nothing,IterationTrace}
 end
 
