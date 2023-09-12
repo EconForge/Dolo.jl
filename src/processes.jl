@@ -318,6 +318,11 @@ function MarkovChain(names, P::Matrix, Q::Matrix)
 end
 
 MarkovChain(names, P::SMatrix, Q::SVector{d,SVector{k,Float64}}) where d where k = MarkovChain{names, size(P,1), length(P), length(Q[1])}(P, Q) # TODO: specify type arguments
+function MarkovChain(P::SMatrix, Q::SVector{d,SVector{k,Float64}}) where d where k
+    names = tuple((Symbol(string("e", i)) for i=1:k)...)
+    MarkovChain(names, P, Q)
+end
+   
 
 MarkovProduct(mc::MarkovChain) = mc
 
