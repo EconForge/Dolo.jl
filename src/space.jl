@@ -11,12 +11,15 @@ const CSpace = CartesianSpace
 CartesianSpace(a::Tuple{Float64}, b::Tuple{Float64}) = CartesianSpace{length(a), (:x,)}(a,b)
 CartesianSpace(a::Tuple{Float64, Float64}, b::Tuple{Float64, Float64}) = CartesianSpace{length(a), (:x_1, :x_2)}(a,b)
 
-function CartesianSpace(;kwargs...)
-    names = tuple(keys(kwargs)...)
-    a = tuple((v[1] for v in values(kwargs))...)
-    b = tuple((v[2] for v in values(kwargs))...)
+function CartesianSpace(kwargs::Pair{Symbol, Tuple{Float64, Float64}}...)
+    
+    names = tuple( (e[1] for e in kwargs)... )
+    a = tuple( (v[2][1] for v in values(kwargs))... )
+    b = tuple( (v[2][2] for v in values(kwargs))... )
     d = length(names)
+
     return CartesianSpace{d, names}(a,b)
+
 end
 
 getindex(cs::CartesianSpace{d}, ind::SVector{d, Float64}) where d = ind

@@ -241,6 +241,7 @@ function rand(var::VAR1{N,V,B}, m::SVector{d,Float64}) where N where V where B<:
 end
 
 function rand(var::VAR1, m0::SVector{d,Float64}) where d
+    ρ = var.ρ
     dis = Distributions.MvNormal(Matrix(var.Σ))
     m = ρ*m0 + rand(dis)
     SVector(m...)
@@ -263,7 +264,7 @@ function discretize(var::VAR1, n::Int=3)
     # it would be good to have a special type of VAR1 process
     # which has a scalar autoregressive term
     ρ = var.ρ
-    d = size(var.Σ[1])
+    d = size(var.Σ, 1)
     # d = size(ρ, 1)
     # ρ = ρ[1, 1]
     # @assert maximum(abs, ρ.-Matrix(ρ*I,d,d))<1e-16
@@ -289,12 +290,13 @@ function discretize(var::VAR1, n::Int=3)
     # mc_prod = MarkovProduct(mc_components...)
 
     P = kronecker( (mc.P for mc in components)... )
-    V = cat( (mc.V for mc in components)...; dims=1)
+    # V = cat( (mc.V' for mc in components)...; dims=1)
 
-    return (V, C) # TODO
-    V = V*C.L'
-
-    return  MarkovChain(names, P, V)
+    # return V, C, components
+    # return P, V
+    n = size(P,1)
+    V = SVector( (C.L * SVector(x...) for x in Iterators.product( (e.V for e in components)... ))... )
+    return  MarkovChain(names, SMatrix{n,n}(P), V)
 
 end
 

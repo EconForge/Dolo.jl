@@ -1,11 +1,3 @@
-
-
-
-# abstract type Function{d} end
-
-# abstract type Policy{From, To} end
-
-
 struct Policy{From, To, Fun}
     from::From
     to::To
@@ -103,8 +95,9 @@ function fit!(φ::DFun, x::GVector{G}) where G<:PGrid{<:SGrid, <:CGrid}
     n_m = length(x.grid.g1)
     sz = tuple(n_m, (e[3] for e in x.grid.g2.ranges)...)    
     xx = reshape( view(x.data, :), sz...)
+    rr = tuple( (Colon() for i=1:(Base.ndims(xx)-1))... )
     for i=1:length( φ.itp)
-        vv = view( xx, i, :)
+        vv = view( xx, i, rr...)
         splines.fit!(φ.itp[i], vv)
     end
 

@@ -34,10 +34,7 @@ model = let
 
     # P = @SMatrix [1.0;]
     # Q = SVector( (SVector(0.0),) )
-    
-    # @show Q
-    
-    
+        
     process = Dolo.MarkovChain( (:z,), P, Q )
 
     states = Dolo.ProductSpace(

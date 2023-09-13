@@ -64,11 +64,14 @@ function discretize(model::YModel{<:VAR1}, d=Dict())
     endo = get(d, :endo, Dict())
     dvar = discretize(model.exogenous, exo)
     d = size(model.exogenous.Σ,1)
+    n_s = length(Dolo.variables(model.states)) - d
+    
     exo_grid = SGrid(dvar.Q)
-    endo_space = CartesianSpace(
+    endo_space = CartesianSpace{n_s, Dolo.variables(model.states)[d+1:end]}(
         model.states.min[d+1:end],
         model.states.max[d+1:end]
     )
+    # return endo_space
     endo_grid = discretize(endo_space, endo)
     grid = exo_grid × endo_grid
     return DYModel(model, grid, dvar)

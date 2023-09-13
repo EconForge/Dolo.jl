@@ -245,7 +245,7 @@ function time_iteration(model::DYModel,
         η = distance(x0, x1)
         gain = η/η_0
 
-        verbose ? println("$t: $ε : $η: ") : nothing
+        # verbose ? println("$t: $ε : $η: ") : nothing
 
         elapsed = time_ns() - t1
         elapsed /= 1000000000
