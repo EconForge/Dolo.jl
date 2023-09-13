@@ -5,8 +5,9 @@ end
 
 ### transition function
 
-function τ(dmodel::Dolo.DYModel{M}, ss::T, a::SVector) where M<:Union{Dolo.YModel{<:Dolo.VAR1},Dolo.YModel{<:Dolo.MarkovChain}}  where T<:QP
 
+# TODO We should differentiate here whether dproc has a markov chain or something else
+function τ(dmodel::Dolo.DYModel{M}, ss::T, a::SVector) where M<:Union{Dolo.YModel{<:Dolo.VAR1},Dolo.YModel{<:Dolo.MarkovChain}}  where T<:QP
 
     (i,_) = ss.loc
     s_ = ss.val
@@ -21,7 +22,9 @@ function τ(dmodel::Dolo.DYModel{M}, ss::T, a::SVector) where M<:Union{Dolo.YMod
             P[i,j],
             let 
                 S_exo = Q[j]
-                S_endo = SVector(transition(dmodel.model, s_, a, Q[j])...)
+                S_endo = SVector(
+                    transition(dmodel.model, s_, a, Q[j])...
+                )
                 S = SVector(S_exo..., S_endo...)
                 QP((j,S_endo),S)
                 # (loc=(j,S_endo),val=S)

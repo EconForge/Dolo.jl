@@ -99,9 +99,10 @@ function calibrated(model::YModel, group)
     elseif group==:exogenous
         vars = variables(model.exogenous)
     elseif group==:parameters
-       return SVector(
-            (v for (k,v) in model.calibration if 
-                !(k in union(variables(model.states), variables(model.controls), variables(model.exogenous)))
+        vars = union(variables(model.states), variables(model.controls), variables(model.exogenous))
+        return SVector(
+            (v for (k,v) in pairs(model.calibration) if 
+                !(k in vars)
             )...
        )
     else
