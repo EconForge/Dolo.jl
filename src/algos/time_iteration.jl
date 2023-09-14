@@ -69,9 +69,18 @@ dF_1(model, controls::GArray, φ::Union{GArray, DFun}) =
     )
 
 function dF_1!(out, model, controls::GArray, φ::Union{GArray, DFun})
-    for (n, (s,x)) in enumerate(zip(enum(model.grid), controls))
+    for n in 1:length(model.grid)
+        ind = Dolo.from_linear(model.grid, n)
+
+        s_ = model.grid[n]
+        s = QP(ind, s_)
+        x = controls[n]
         out[n] = ForwardDiff.jacobian(u->F(model, s, u, φ), x)
+        # out[n] = F(model,s,x,φ)
     end
+    # for (n, (s,x)) in enumerate(zip(enum(model.grid), controls))
+    #     out[n] = ForwardDiff.jacobian(u->F(model, s, u, φ), x)
+    # end
 end    #### no alloc
     
 
