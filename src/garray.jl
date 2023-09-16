@@ -34,7 +34,10 @@ getindex(a::GArray{PGrid{G1, G2, d}, T}, ::Colon) where G1 where G2 where d wher
 
 
 # TODO: check
-setindex!(a::GArray{PGrid{G1, G2, d}, T}, v, i::Int, j::Int) where G1 where G2 where d where T = (a.data[ i + length(a.grid.g1)*(j-1)] = v)
+function setindex!(a::GArray{PGrid{G1, G2, d}, T}, v, i::Int, j::Int) where G1 where G2 where d where T 
+    (a.data[ i + length(a.grid.g1)*(j-1)] = v)
+    nothing
+end
 
 
 

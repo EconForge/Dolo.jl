@@ -7,24 +7,31 @@
 #     tot
 # end
 
-F(model, s, x::SVector, φ::Policy) = let
-    r = sum(
-         w*arbitrage(model,s,x,S,φ(S)) 
-         for (w,S) in τ(model, s, x)
-    )
-    # r
-    r = complementarities(model.model, s,x,r)
+# F(model, s, x::SVector, φ::Policy) = let
+#     r = sum(
+#          w*arbitrage(model,s,x,S,φ(S)) 
+#          for (w,S) in τ(model, s, x)
+#     )
+#     # r
+#     r = complementarities(model.model, s,x,r)
+#     r
+# end
+
+
+
+function F(model::M, s::QP, x::SVector{d,T}, φ::Union{Policy, GArray, DFun}) where M where d where T
+    r = zero(SVector{d,T})
+    for (w,S) in τ(model, s, x)
+        r += w*arbitrage(model,s,x,S,φ(S)) 
+    end
+    # TODO: why does the following allocate ?
+    # strange: if reloaded it doesn't allocate anymore
+    # r += sum(
+    #      w*arbitrage(model,s,x,S,φ(S)) 
+    #      for (w,S) in τ(model, s, x)
+    # )
     r
-end
-
-
-
-F(model, s, x::SVector, φ::Union{GArray, DFun}) = let
-    r = sum(
-         w*arbitrage(model,s,x,S,φ(S)) 
-         for (w,S) in τ(model, s, x)
-    )
-    # r
+    # r::SVector{d,T}
     r = complementarities(model.model, s,x,r)
     r
 end
@@ -39,25 +46,19 @@ F(model, controls::GArray, φ::Union{GArray, DFun}) =
         ],
     )
 
-function F!(out, model, controls::GArray, φ::Union{GArray, DFun})
-    for n in 1:length(model.grid)
-        ind = Dolo.from_linear(model.grid, n)
-
-        s_ = model.grid[n]
-        s = QP(ind, s_)
-        x = controls[n]
-        out[n] = F(model,s,x,φ)
+function F!(out, model::M, controls::XT, φ::Union{GArray, DFun}) where M where XT<:GArray{PG, Vector{SVector{d,T}}} where PG where d where T
+    
+    for s in enum(model.grid)
+        x = controls[s.loc...]
+        out[s.loc...] = F(model,s,x,φ)
     end
+
+    return nothing
 end
 
-# function F!(out, model, controls::GArray, φ::GArray)
-#     @floop for (n, (s,x)) in enumerate(zip(enum(model.grid), controls))
-#         out[n] = F(model,s,x,φ)
-#     end
-# end   #### no alloc
 
 ## no alloc
-dF_1(model, s, x, φ) = ForwardDiff.jacobian(u->F(model, s, u, φ), x)
+dF_1(model, s, x::SVector, φ) = ForwardDiff.jacobian(u->F(model, s, u, φ), x)
 
 dF_1(model, controls::GArray, φ::Union{GArray, DFun}) =
     GArray(    # this shouldn't be needed
@@ -69,18 +70,16 @@ dF_1(model, controls::GArray, φ::Union{GArray, DFun}) =
     )
 
 function dF_1!(out, model, controls::GArray, φ::Union{GArray, DFun})
-    for n in 1:length(model.grid)
-        ind = Dolo.from_linear(model.grid, n)
 
-        s_ = model.grid[n]
-        s = QP(ind, s_)
-        x = controls[n]
-        out[n] = ForwardDiff.jacobian(u->F(model, s, u, φ), x)
-        # out[n] = F(model,s,x,φ)
+    i = 0
+    for s in enum(model.grid)
+        i+=1
+        x = controls[i]
+        # x = controls[s.loc...]
+        # out[s.loc...] = dF_1(model, s, x, φ)
+        out.data[i] = dF_1(model, s, x, φ)
     end
-    # for (n, (s,x)) in enumerate(zip(enum(model.grid), controls))
-    #     out[n] = ForwardDiff.jacobian(u->F(model, s, u, φ), x)
-    # end
+    return nothing
 end    #### no alloc
     
 
@@ -276,10 +275,11 @@ function time_iteration(model::DYModel,
             mul!(J_2, -1.0)
             # J_2.M_ij[:] *= -1.0
             Tp = J_1 \ J_2
-            r = x1 - Tp * x0
+            
+           
+            d = (x1-x0)
+            x0.data .= x0.data .+ neumann(Tp, d; K=improve_K)
 
-            x0 = neumann(Tp, r; K=improve_K)
-            x1.data .= x0.data
         else
             x0.data .= x1.data
         end

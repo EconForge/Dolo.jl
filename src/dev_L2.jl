@@ -22,6 +22,9 @@ function mul!(L::LL, x::Number)
     end
 end
 
+
+using LoopVectorization
+
 function mul!(dr, L2::LL, x)
     
     D = L2.D
@@ -30,7 +33,8 @@ function mul!(dr, L2::LL, x)
 
     fit!(dφ, x)
     for n=1:length(D)
-        t0 = dr[n]*0.0
+    # Threads.@threads for n=1:length(D)
+        t0 = zero(eltype(dr))
         for k=1:length(D[n])
             (;F_x, S) = D[n][k]
             t0 += F_x*dφ(S) # TODO : add back complementarity
