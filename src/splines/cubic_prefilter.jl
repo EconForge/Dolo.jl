@@ -144,6 +144,7 @@ function prefilter!(data::Array{T,3}) where T
     I,J,K = size(data)
 
     M = K-2
+    # for i=1:I
     for i=1:I
         for j=1:J
             dat = view(data, i,j, :)
@@ -151,6 +152,7 @@ function prefilter!(data::Array{T,3}) where T
         end
     end
     M = J-2
+    # Threads.@threads for i=1:I
     for i=1:I
         for k=1:K
             dat = view(data, i,:, k)
@@ -158,6 +160,7 @@ function prefilter!(data::Array{T,3}) where T
         end
     end
     M = I-2
+    # Threads.@threads for j=1:J
     for j=1:J
         for k=1:K
             dat = view(data, : ,j, k)

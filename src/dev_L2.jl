@@ -23,8 +23,6 @@ function mul!(L::LL, x::Number)
 end
 
 
-using LoopVectorization
-
 function mul!(dr, L2::LL, x)
     
     D = L2.D
