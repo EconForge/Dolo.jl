@@ -1,30 +1,59 @@
-using Dolo
-using Dolang
-using StaticArrays
+using Test
 
-model_rbc_mc = yaml_import("examples/models/rbc_mc.yaml")
-model_rbc = yaml_import("examples/models/rbc.yaml")
-model_rbc_iid = yaml_import("examples/models/rbc_iid.yaml")
+@testset verbose=true "Cartesian Grids" begin
 
-F_mc = Dolo.Euler(model_rbc_mc)
-F = Dolo.Euler(model_rbc)
-F_iid = Dolo.Euler(model_rbc_iid)
+@testset verbose=true "Construction" begin
 
-function multiply_tuple_elements(some_tuple)
-    tuple_product = 1
-    for k in 1:length(some_tuple)
-        tuple_product *= some_tuple[k]
-    end
-    return tuple_product
+for d in 1:3 
+
+    @testset "Dimension $d" begin
+
+        NN = 20
+
+        vars =  tuple( (Symbol("d$i") for i in 1:d)... )
+        sizes = tuple( (NN+i+1 for i in 1:d)...)
+        args = tuple( ( (0.0, 1.0*i, sizes[i]) for i in 1:d)... )
+        cg = Dolo.CGrid( args )
+
+        @test isbits(cg)
+
+        @test Dolo.size(cg) == sizes
+
+
+        # check that iterator for is non-allocating
+
+
+        # check that 'iterate' is non-allocating
+        function fun1(cg::Dolo.CGrid{d}) where d
+            if sum( sum( e for e in cg) ) < -Inf
+                print("This should never be ran.")
+            end
+        end
+        fun1(cg)
+        @test 0==(@allocated fun1(cg))
+
+        # Dolo.enum
+        # returns QP object
+        # ...
+
+        # check that 'enum' for is non-allocating
+        function fun(cg::Dolo.CGrid{d}) where d
+            if sum( sum(cg[q.loc...].*q.val) for q in Dolo.enum(cg) ) < 0.0
+                print("")
+            end
+        end
+
+
+        fun(cg)
+        @test 0==(@allocated fun(cg))
+
+
+
 end
 
-# test the endo and exo grids of the model rbc
-length(F.grid.exo) == Dolo.get_options(model_rbc)[:discretization][:exo][:n]
-length(F.grid.endo) == multiply_tuple_elements(Dolo.get_options(model_rbc)[:discretization][:endo][:n])
+end
 
-# test the endo grid of the model rbc idd (no exogenous grid is specified in the options)
-length(F_iid.grid.endo) == multiply_tuple_elements(Dolo.get_options(model_rbc_iid)[:discretization][:endo][:n])
 
-# test the endo grid of the model rbc mc ("...")
-length(F_mc.grid.endo) == multiply_tuple_elements(Dolo.get_options(model_rbc_mc)[:grid].orders)
+end
 
+end

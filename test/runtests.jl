@@ -1,23 +1,22 @@
-module DoloTests
-
+# test/runtests.jl
+using Dolo
 using Test
-using Dolo, DataStructures
 
-tests = length(ARGS) > 0 ? ARGS : [
-                                   "model_types",
-                                  # #  "model_import",
-                                   "test_calibration",
-                                   "test_algos",
-                                   "test_perfect_foresight",
-                                  # #  "test_features",
-                                  # #  "test_linter",
-                                  # #  "test_minilang",
-                                   "test_decision_rules",
-                                   "test_discretize_process"
-                                 ]
-
-for t in tests
-    include("$(t).jl")
+@testset verbose=true "Elements" begin
+#     include("test_spaces.jl")
+    include("test_grids.jl")
+    include("test_interpolation.jl")
 end
 
-end  # module
+@testset verbose=true "Models" begin
+    
+    include("time_iteration.jl")
+end
+
+# @testset "General" begin
+#     include("general.jl")
+# end
+
+# @testset "Special" begin
+#     include("test_dev.jl")
+# end
