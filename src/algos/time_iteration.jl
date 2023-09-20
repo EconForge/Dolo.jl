@@ -20,6 +20,7 @@
 
 
 function F(model::M, s::QP, x::SVector{d,T}, φ::Union{Policy, GArray, DFun}) where M where d where T
+
     r = zero(SVector{d,T})
     for (w,S) in τ(model, s, x)
         r += w*arbitrage(model,s,x,S,φ(S)) 
@@ -57,6 +58,17 @@ function F!(out, model::M, controls::XT, φ::Union{GArray, DFun}) where M where 
 end
 
 
+function F!(out, model::M, controls::XT, φ::Union{GArray, DFun}, ::Nothing) where M where XT<:GArray{PG, Vector{SVector{d,T}}} where PG where d where T
+    
+    for s in enum(model.grid)
+        x = controls[s.loc...]
+        out[s.loc...] = F(model,s,x,φ)
+    end
+
+    return nothing
+end
+
+
 ## no alloc
 dF_1(model, s, x::SVector, φ) = ForwardDiff.jacobian(u->F(model, s, u, φ), x)
 
@@ -68,6 +80,10 @@ dF_1(model, controls::GArray, φ::Union{GArray, DFun}) =
             for (s,x) in zip(enum(model.grid), controls) 
         ]
     )
+
+function dF_1!(out, model, controls::GArray, φ::Union{GArray, DFun}, ::Nothing)
+    dF_1!(out, model, controls::GArray, φ::Union{GArray, DFun})
+end
 
 function dF_1!(out, model, controls::GArray, φ::Union{GArray, DFun})
 
@@ -177,9 +193,19 @@ function time_iteration(model::DYModel,
     convergence = false
     iterations = T
     
+    if engine==:cpu
+        t_engine = CPU()
+    else
+        t_engine = nothing
+    end
+
     (;x0, x1, x2, dx, r0, J, φ) = workspace
 
     ti_trace = trace ? IterationTrace(typeof(φ)[]) : nothing
+
+    if improve
+        J_2 = Dolo.dF_2(model, x1, φ)
+    end
 
     for t=1:T
         
@@ -189,11 +215,8 @@ function time_iteration(model::DYModel,
 
         trace && push!(ti_trace.data, deepcopy(φ))
 
-        if engine==:cpu
-            F!(r0, model, x0, φ, CPU())
-        else
-            F!(r0, model, x0, φ)
-        end
+        F!(r0, model, x0, φ, t_engine)
+    
         # r0 = F(model, x0, φ)
 
         ε = norm(r0)
@@ -212,33 +235,23 @@ function time_iteration(model::DYModel,
 
         for k=1:max_bsteps
 
-            if engine==:cpu
-                F!(r0, model, x1,  φ, CPU())
-            else
-                F!(r0, model, x1,  φ)
-            end
-
+            F!(r0, model, x1,  φ, t_engine)
+            
             ε_n = norm(r0)
             if ε_n<tol_ε
                 break
             end
 
-            if engine==:cpu
-                dF_1!(J, model, x1,  φ, CPU())
-            else
-                dF_1!(J, model, x1,  φ)
-            end
-
+            dF_1!(J, model, x1,  φ, t_engine)
+            
             dx.data .= J.data .\ r0.data
 
 
             for k=0:mbsteps
                 x2.data .= x1.data .- dx.data .* lam^k
-                if engine==:cpu
-                    F!(r0, model, x2,  φ, CPU())
-                else
-                    F!(r0, model, x2,  φ)
-                end
+
+                F!(r0, model, x2,  φ, t_engine)
+
                 ε_b = norm(r0)
                 if ε_b<ε_n
                     break
@@ -270,15 +283,17 @@ function time_iteration(model::DYModel,
             # x = x1 - T' (x - x0)
             # x = (I-T')\(x1 - T' x0)
 
-            J_1 = Dolo.dF_1(model, x1, φ)
-            J_2 =  Dolo.dF_2(model, x1, φ)
+            J_1 = J
+
+            Dolo.dF_1!(J_1, model, x1, φ, t_engine)
+            Dolo.dF_2!(J_2, model, x1, φ, t_engine)
+
             mul!(J_2, -1.0)
             # J_2.M_ij[:] *= -1.0
             Tp = J_1 \ J_2
             
-           
             d = (x1-x0)
-            x0.data .= x0.data .+ neumann(Tp, d; K=improve_K)
+            x0.data .+= neumann(Tp, d; K=improve_K)
 
         else
             x0.data .= x1.data

@@ -66,7 +66,7 @@ function F!(r, model, x, φ, ::CPU)
     # p,q = size(x)
 
     res = fun_cpu(r, model, x, φ; ndrange=(p,q))
-    # wait(res)
+    wait(res)
 
 end
 
@@ -97,7 +97,63 @@ function dF_1!(out, model, controls::GArray, φ::Union{GArray, DFun}, ::CPU)
     # p,q = size(out)
 
     res = fun_cpu(out, model, controls, φ; ndrange=(p,q))
-    # wait(res)
+    wait(res)
 
 end    #### no alloc
     
+
+function dF_2!(L, dmodel, xx::GArray, φ::DFun, ::CPU)
+
+    # for (n,(s,x)) in enumerate(zip(Dolo.enum(dmodel.grid), xx))
+    Threads.@threads for n=1:length(dmodel.grid)
+
+        i,j = Dolo.from_linear(dmodel.grid, n)
+            
+        s_ = dmodel.grid[i,j]
+        s = QP((i,j), s_)
+        x = xx[n]
+
+        L.D[n] = tuple(
+                (
+                    (;
+                        F_x=w*ForwardDiff.jacobian(u->Dolo.arbitrage(dmodel,s,x,S,u), φ(S)),
+                        S=S
+                    )
+                for (w,S) in Dolo.τ(dmodel, s, x)
+                )
+        ...)
+
+    end
+    nothing
+
+
+end
+
+using KernelAbstractions
+import KernelAbstractions.Extras: @unroll
+
+function mul!(dr, L2::Dolo.LL, x, ::CPU)
+ 
+    D = L2.D
+    dφ = L2.φ
+
+    fit!(dφ, x)
+
+
+    @kernel function tm_(dr, @Const(L2), @Const(x))
+        n = @index(Global)
+        t0 = zero(eltype(dr))
+        @unroll for k=1:length(D[n])    # @unroll provides  a 20% gain
+            (;F_x, S) = D[n][k]      # profile: slow ?
+            t0 += F_x*dφ(S) # TODO : add back complementarity
+        end
+        dr[n] = t0
+    end
+
+    fun = tm_(CPU())
+
+    K = length(D)
+    res = fun(dr, L2, x; ndrange=K)
+    wait(res)
+
+end

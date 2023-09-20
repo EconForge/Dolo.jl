@@ -75,17 +75,56 @@ end
 
 # TODO: there are certainly some cases where we don't want MVectors there
 
-function prefilter!(data::AbstractVector{T}) where T
+# function prefilter!(data::AbstractVector{T}) where T
 
-    N = length(data)
+#     N = length(data)
 
-    bands = zero(MMatrix{N, 3, Float64, N*3})
-    bb = zero(MVector{N, T})
+#     bands = zero(MMatrix{N, 3, Float64, N*3})
+#     bb = zero(MVector{N, T})
 
-    fill_bands!(N-2, bands, bb, data)
-    solve_coefficients!(bands, bb, data)
+#     fill_bands!(N-2, bands, bb, data)
+#     solve_coefficients!(bands, bb, data)
+
+# end
+
+const zq = sqrt(3.0)-2.0
+const λ = 6.0
+
+
+
+function prefilter!(c::AbstractVector{T}) where T
+    
+    N = length(c)
+    Horizon = (min(20, N-2))
+
+    f1 = c[2]
+    ff = c[N-1]
+
+    t1 = zero(eltype(c)) #0.0
+    zn = 1.0
+    for n in 0:Horizon
+        t1 += λ*(2*f1-c[2+n])*zn
+        zn *= zq 
+    end
+
+    c[2] = t1
+    c[1] = (c[2]-λ*f1)/zq
+
+    for k in 3:N
+        c[k] = λ*c[k] + zq*c[k-1]
+    end
+
+    c[N-1] = ff
+    for kk in 1:(N-2)
+        k = N-1-kk
+        c[k] = zq*(c[k+1] - c[k])
+    end
+    c[N] = 2*ff-c[N-2]
+
+    return c
 
 end
+
 
 
 # function prefilter!(data::AbstractVector{T}) where T
@@ -144,24 +183,24 @@ function prefilter!(data::Array{T,3}) where T
     I,J,K = size(data)
 
     M = K-2
+    Threads.@threads for i=1:I
     # for i=1:I
-    for i=1:I
         for j=1:J
             dat = view(data, i,j, :)
             prefilter!(dat)
         end
     end
     M = J-2
-    # Threads.@threads for i=1:I
-    for i=1:I
+    Threads.@threads for i=1:I
+    # for i=1:I
         for k=1:K
             dat = view(data, i,:, k)
             prefilter!(dat)
         end
     end
     M = I-2
-    # Threads.@threads for j=1:J
-    for j=1:J
+    Threads.@threads for j=1:J
+    # for j=1:J
         for k=1:K
             dat = view(data, : ,j, k)
             prefilter!(dat)
