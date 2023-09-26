@@ -5,6 +5,13 @@ abstract type AbstractDModel end
 const AModel = AbstractModel
 const ADModel = AbstractDModel
 
+macro akin(model)
+    typ = typeof(eval(model))
+    ntyp = Meta.parse(repr(typ))
+    ntyp.args = ntyp.args[1:end-1]
+    return ntyp
+end
+
 # abstract type AModel{A,B,C,N} end
 # abstract type ADModel{A,B,C,D,N} end
 

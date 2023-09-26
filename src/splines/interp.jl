@@ -14,6 +14,18 @@ getindex(A::Vector{Float64}, i::VectorizationBase.Vec{4,Int64}) = VectorizationB
     return sum( xx .* v[:])
 end
 
+matextract(v::AbstractArray{T,3}, i,j,k) where T = SArray{Tuple{2, 2, 2}, T, 3, 8}(
+    v[i,  j  ,k],
+    v[i+1,j  ,k],
+    v[i  ,j+1,k],
+    v[i+1,j+1,k],
+    v[i  ,j  ,k+1],
+    v[i+1,j  ,k+1],
+    v[i  ,j+1,k+1],
+    v[i+1,j+1,k+1]
+
+)
+
 function interp(ranges::NTuple{d, Tuple{Float64, Float64, Int64}}, values::AbstractArray{T,d}, x::SVector{d, U}) where d where T where U
     
     a = SVector( (e[1] for e in ranges)... )
@@ -30,9 +42,10 @@ function interp(ranges::NTuple{d, Tuple{Float64, Float64, Int64}}, values::Abstr
 
     i_ = floor.(Int, i) .+ 1
 
-    inds = (SVector(e,e+1) for e in i_)
+    # inds = tuple( (SVector(e,e+1) for e in i_)...)
+    # return reduce_tensors( λ, values[inds...] )
 
-    return reduce_tensors( λ, values[inds...] )
+    return reduce_tensors( λ, matextract(values, i_...) )
 
 end
 

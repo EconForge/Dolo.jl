@@ -32,7 +32,6 @@ function τ(dmodel::Dolo.DYModel{M}, ss::T, a::SVector) where M<:Union{Dolo.YMod
         )
         for j in 1:size(P, 2)
     )
-
     it
 
 end

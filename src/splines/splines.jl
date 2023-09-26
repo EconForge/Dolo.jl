@@ -104,6 +104,7 @@ end
 
     function SplineInterpolator(ranges::Tuple; values=nothing, k=3)
 
+
         n = [e[3] for e in ranges]
         dims = tuple((i+k-1 for i in n)...)
         θ_ = zeros(eltype(values), dims...)
@@ -121,7 +122,14 @@ end
 
     end
 
-    function (spl::SplineInterpolator{G,C,3})(x) where G where C
+    function (spl::CubicInterpolator{G,C})(x::SVector) where G where C
+        a = tuple( (e[1] for e in spl.grid)...)
+        b = tuple( (e[2] for e in spl.grid)...)
+        n = tuple( (e[3] for e in spl.grid)...)
+        splines.eval_UC_spline(a,b,n, spl.θ, x)
+    end
+
+    function (spl::SplineInterpolator{G,C,3})(x::SVector) where G where C
         a = tuple( (e[1] for e in spl.grid)...)
         b = tuple( (e[2] for e in spl.grid)...)
         n = tuple( (e[3] for e in spl.grid)...)
