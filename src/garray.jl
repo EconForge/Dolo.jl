@@ -59,6 +59,14 @@ length(g::GArray) = length(g.data)
 getindex(g::GArray{G,T}, i::Int64) where G where T = g.data[i]
 setindex!(g::GArray, x, i) = (g.data[i] = x)
 
+function setindex!(
+        g::GArray{Dolo.CGrid{2},Vector{T}},
+        v::T,
+        i::Int64, 
+        j::Int64) where T
+    setindex!(g.data, v, to__linear_index(g.grid, i, j))
+end
+
 getindex(g::GArray{G,T}, inds::Vararg{Int64, d}) where G<:AGrid{d} where d where T = g.data[to__linear_index(g.grid, inds)]
 getindex(g::GArray{G,T}, inds::Int64) where G<:AGrid{d} where d where T = g.data[inds]
 

@@ -37,17 +37,19 @@ using KernelAbstractions
 # end
 
 # This is for a PGrid model only 
-function F!(r, model, x, φ, ::CPU)
+function F!(r, model, x, φ, engine::Union{CPU, GPU})
 
     @kernel function FF_(r, @Const(model), @Const(x), @Const(φ))
 
-        c = @index(Global, Cartesian)
+        # c = @index(Global, Cartesian)
+        # c = @index(Global, Cartesian)
+        n = @index(Global, Linear)
+        # i,j = c.I
+        (i,j) = Dolo.from_linear(model.grid, n)
 
-        i,j = c.I
-
-        s_ = model.grid[i,j]
+        s_ = model.grid[n]
         s = QP((i,j), s_)
-        xx = x[i,j]
+        xx = x[n]
         
         rr = sum(
             w*Dolo.arbitrage(model,s,xx,S,φ(S)) 
@@ -58,15 +60,22 @@ function F!(r, model, x, φ, ::CPU)
 
     end
 
-    fun_cpu = FF_(CPU())
+    fun_cpu = FF_(engine)
 
 
-    p = length(model.grid.g1)
-    q = length(model.grid.g2)
+    # p = length(model.grid.g1)
+    # q = length(model.grid.g2)
     # p,q = size(x)
-
+    if typeof(model.grid)<:CGrid
+        p = model.grid.ranges[1][3]
+        q = model.grid.ranges[2][3]
+    else
+        p = length(model.grid.g1)
+        q = length(model.grid.g2)
+    end
+    
     res = fun_cpu(r, model, x, φ; ndrange=(p,q))
-    wait(res)
+    # wait(res)
 
 end
 
@@ -76,11 +85,14 @@ function dF_1!(out, model, controls::GArray, φ::Union{GArray, DFun}, ::CPU)
 
     @kernel function FF_(r,@Const(model), @Const(x),@Const(φ) )
 
-        c = @index(Global, Cartesian)
+        # c = @index(Global, Cartesian)
+        # i,j = c.I
 
-        i,j = c.I
+        n = @index(Global, Linear)
+        # i,j = c.I
+        (i,j) = Dolo.from_linear(model.grid, n)
 
-        s_ = model.grid[i,j]
+        s_ = model.grid[n]
         s = QP((i,j), s_)
         xx = x[i,j]
         
@@ -92,12 +104,17 @@ function dF_1!(out, model, controls::GArray, φ::Union{GArray, DFun}, ::CPU)
 
     fun_cpu = FF_(CPU())
 
-    p = length(model.grid.g1)
-    q = length(model.grid.g2)
+    if typeof(model.grid)<:CGrid
+        p = model.grid.ranges[1][3]
+        q = model.grid.ranges[2][3]
+    else
+        p = length(model.grid.g1)
+        q = length(model.grid.g2)
+    end
     # p,q = size(out)
 
     res = fun_cpu(out, model, controls, φ; ndrange=(p,q))
-    wait(res)
+    # wait(res)
 
 end    #### no alloc
     
@@ -124,6 +141,7 @@ function dF_2!(L, dmodel, xx::GArray, φ::DFun, ::CPU)
         ...)
 
     end
+
     nothing
 
 
@@ -154,6 +172,7 @@ function mul!(dr, L2::Dolo.LL, x, ::CPU)
 
     K = length(D)
     res = fun(dr, L2, x; ndrange=K)
-    wait(res)
+    # wait(res)
+    res
 
 end

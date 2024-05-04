@@ -92,7 +92,12 @@ end
 getindex(g::PGrid{G1, G2, d}, i::Int64, ::Colon) where G1 where G2 where d = g.g2[:] # TODO: should error if i out of bounds
 getindex(g::PGrid{G1, G2, d}, ::Colon, i::Int64) where G1 where G2 where d = g.g1[:]
 
-
+@inline to__linear_index(g::CGrid{2}, ind::Tuple{Int64, Int64}) = let 
+    i,j = ind
+    p = g.ranges[1][3]
+    return i + p*(j-1)
+end
+   
 @inline to__linear_index(g::PGrid, ind::Tuple{Int64, Int64}) =  ind[1] + length(g.g1)*(ind[2]-1)
 
 

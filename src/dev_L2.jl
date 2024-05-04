@@ -103,8 +103,8 @@ end
 function dF_2!(L, dmodel, xx::GArray, φ::DFun, ::Nothing)
 
     for (n,(s,x)) in enumerate(zip(Dolo.enum(dmodel.grid), xx))
-        
-        s_ = model.grid[i,j]
+        (i,j) = Dolo.from_linear(dmodel.grid, n)
+        s_ = dmodel.grid[i,j]
         s = QP((i,j), s_)
         L.D[n] = tuple(
                 (

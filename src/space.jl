@@ -22,6 +22,9 @@ function CartesianSpace(kwargs::Pair{Symbol, Tuple{Float64, Float64}}...)
 
 end
 
+CartesianSpace(;kwargs...) = CartesianSpace(kwargs...)
+
+
 getindex(cs::CartesianSpace{d}, ind::SVector{d, Float64}) where d = ind
 
 import Base: in
