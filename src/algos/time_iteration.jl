@@ -81,6 +81,9 @@ dF_1(model, controls::GArray, φ::Union{GArray, DFun}) =
         ]
     )
 
+
+## no alloc
+
 function dF_1!(out, model, controls::GArray, φ::Union{GArray, DFun}, ::Nothing)
     dF_1!(out, model, controls::GArray, φ::Union{GArray, DFun})
 end
@@ -156,7 +159,7 @@ end
 function time_iteration(model::YModel; kwargs...)
     discr_options = get(kwargs, :discretization, Dict())
     interp_mode = get(kwargs, :interpolation, :cubic)
-    dmodel = discretize(model, discr_options...)
+    dmodel = discretize(model, discr_options)
     wksp = time_iteration_workspace(dmodel; interp_mode=interp_mode)
     kwargs2 = pairs(NamedTuple( k=>v for (k,v) in kwargs if !(k in (:discretization, :interpolation))))
     time_iteration(dmodel, wksp; kwargs2...)
