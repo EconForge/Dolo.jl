@@ -54,13 +54,18 @@ end
 
 
 struct ProductGrid{G1, G2, d} <: AGrid{d}
-    g1::G1
-    g2::G2
-    # points::Vector{SVector{d, Float64}}
+    grids::Tuple{G1, G2}
 end
 
 const PGrid = ProductGrid
 
+function ProductGrid(A::AGrid{d1},B::AGrid{d2}) where d1 where d2 
+    println(d1)
+    println(d2)
+    ProductGrid{typeof(A), typeof(B), d1+d2}( (A,B) )
+end
+
+# functionProductGrid(A,B) = ProductGrid{typeof(A), typeof(B), ndims(A)+ndims(B)}((A,B))
 
 getindex(g::SGrid{d}, ::Colon) where d = g.points
 getindex(g::SGrid{d}, i::Int) where d = g.points[i]
@@ -72,25 +77,25 @@ cover(m,v::SVector{d,T}) where d where T = SVector{d,T}(
     (v[i] for i=length(m)+1:length(v))...
 )
 
-PGrid(g1::SGrid{n, d1}, g2::CGrid{d2}) where n where d1 where d2 = PGrid{typeof(g1), CGrid{d2}, d1+d2}(g1, g2)
+# PGrid(g1::SGrid{n, d1}, g2::CGrid{d2}) where n where d1 where d2 = PGrid{typeof(g1), CGrid{d2}, d1+d2}((g1, g2))
 cross(g1::SGrid{d1}, g2::CGrid{d2}) where d1 where d2 = PGrid(g1,g2)
 
 # another way to define multi-dimension cartesian grids
-PGrid(g1::CGrid{d1}, g2::CGrid{d2}) where d1 where d2 = PGrid{typeof(g1), CGrid{d2}, d1+d2}(g1, g2)
+# PGrid(g1::CGrid{d1}, g2::CGrid{d2}) where d1 where d2 = PGrid{typeof(g1), CGrid{d2}, d1+d2}(g1, g2)
 
 import Base: getindex
 
-from_linear(g::PGrid{G1, G2, d}, n) where G1 where G2 where d = let x=divrem(n-1, length(g.g1)); (x[2]+1, x[1]+1) end
+from_linear(g::PGrid{G1, G2, d}, n) where G1 where G2 where d = let x=divrem(n-1, length(g.grids[1])); (x[2]+1, x[1]+1) end
 
 getindex(g::PGrid{G1, G2, d}, n::Int) where G1 where G2 where d = getindex(g, from_linear(g, n)...)
 
 function getindex(g::PGrid{G1, G2, d}, i::Int64, j::Int64) where G1<:SGrid{d1} where G2<:CGrid{d2} where d where d1 where d2
-    SVector{d,Float64}(g.g1[i]..., g.g2[j]...)
+    SVector{d,Float64}(g.grids[1][i]..., g.grids[2][j]...)
 end
 
 
-getindex(g::PGrid{G1, G2, d}, i::Int64, ::Colon) where G1 where G2 where d = g.g2[:] # TODO: should error if i out of bounds
-getindex(g::PGrid{G1, G2, d}, ::Colon, i::Int64) where G1 where G2 where d = g.g1[:]
+getindex(g::PGrid{G1, G2, d}, i::Int64, ::Colon) where G1 where G2 where d = g.grids[2][:] # TODO: should error if i out of bounds
+getindex(g::PGrid{G1, G2, d}, ::Colon, i::Int64) where G1 where G2 where d = g.grids[1][:]
 
 @inline to__linear_index(g::CGrid{2}, ind::Tuple{Int64, Int64}) = let 
     i,j = ind
@@ -98,7 +103,7 @@ getindex(g::PGrid{G1, G2, d}, ::Colon, i::Int64) where G1 where G2 where d = g.g
     return i + p*(j-1)
 end
    
-@inline to__linear_index(g::PGrid, ind::Tuple{Int64, Int64}) =  ind[1] + length(g.g1)*(ind[2]-1)
+@inline to__linear_index(g::PGrid, ind::Tuple{Int64, Int64}) =  ind[1] + length(g.grids[1])*(ind[2]-1)
 
 
 show(io::IO, g::SGrid{d1, d2}) where d1 where d2 = print(io, "SGrid{$(d1)}")
@@ -109,7 +114,7 @@ show(io::IO, g::CGrid{d}) where d = let
 end
 
 
-show(io::IO, g::PGrid) = println(io, "$(g.g1)×$(g.g2)")
+show(io::IO, g::PGrid) = println(io, "$(g.grids[1])×$(g.grids[2])")
 
 import Base: iterate
 import Base: length
@@ -117,7 +122,7 @@ import Base: getindex
 import Base: setindex!
 
 
-length(pg::PGrid{G1, G2, d}) where G1 where G2 where d = length(pg.g1)*length(pg.g2)
+length(pg::PGrid{G1, G2, d}) where G1 where G2 where d = length(pg.grids[1])*length(pg.grids[2])
 length(sg::SGrid{d}) where d = length(sg.points)
 length(cg::CGrid{d}) where d = prod(e[3] for e in cg.ranges)
 
@@ -172,31 +177,31 @@ end
 
 
 function Base.iterate(g::PGrid{G1, G2, d}) where G1 where G2 where d
-    x = g.g1[1]
-    y = g.g2[1]
+    x = g.grids[1][1]
+    y = g.grids[2][1]
     return (SVector{d, Float64}(x...,y...),(y,1,1))
 end
 
 function Base.iterate(g::PGrid{G1,G2,d},state) where G1 where G2 where d
     y,i,j=state
-    if i<length(g.g1)
+    if i<length(g.grids[1])
         i += 1
-        x = g.g1[i]
+        x = g.grids[1][i]
         return (SVector{d,Float64}(x..., y...), (y,i,j))
     else
-        if j==length(g.g2)
+        if j==length(g.grids[2])
             return nothing
         else
             j += 1
             i = 1
-            x = g.g1[i]
-            y = g.g2[j]
+            x = g.grids[1][i]
+            y = g.grids[2][j]
             return (SVector{d,Float64}(x..., y...), (y,i,j))
         end
     end
 end
 
 enum(grid::PGrid) = (
-    QP((c[1],c[2]), grid[c...]) for c in Iterators.product(1:length(grid.g1), 1:length(grid.g2))
+    QP((c[1],c[2]), grid[c...]) for c in Iterators.product(1:length(grid.grids[1]), 1:length(grid.grids[2]))
 )
 

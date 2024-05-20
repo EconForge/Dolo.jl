@@ -63,15 +63,15 @@ function F!(r, model, x, φ, engine::Union{CPU, GPU})
     fun_cpu = FF_(engine)
 
 
-    # p = length(model.grid.g1)
-    # q = length(model.grid.g2)
+    # p = length(model.grid.grids[1])
+    # q = length(model.grid.grids[2])
     # p,q = size(x)
     if typeof(model.grid)<:CGrid
         p = model.grid.ranges[1][3]
         q = model.grid.ranges[2][3]
     else
-        p = length(model.grid.g1)
-        q = length(model.grid.g2)
+        p = length(model.grid.grids[1])
+        q = length(model.grid.grids[2])
     end
     
     res = fun_cpu(r, model, x, φ; ndrange=(p,q))
@@ -108,8 +108,8 @@ function dF_1!(out, model, controls::GArray, φ::Union{GArray, DFun}, ::CPU)
         p = model.grid.ranges[1][3]
         q = model.grid.ranges[2][3]
     else
-        p = length(model.grid.g1)
-        q = length(model.grid.g2)
+        p = length(model.grid.grids[1])
+        q = length(model.grid.grids[2])
     end
     # p,q = size(out)
 

@@ -55,35 +55,23 @@ model = let
 
 end
 
-function convert_model(T, model)
-
-    calibration = NamedTuple( ((a,T(b)) for (a,b) in pairs(model.calibration) ) )
-
-    fun = u->T(u)
-    P = fun.(model.exogenous.P)
-    Q = SVector((fun.(e) for e in model.exogenous.Q)...)
-
-    vars = Dolo.variables(model.exogenous)
-    exogenous = Dolo.MarkovChain(vars, P, Q)
-
-    Dolo.YModel(
-        names,
-        model.states,
-        model.controls,
-        exogenous, 
-        calibration
-    )
-end
-
-model32 = convert_model(Float32,model)
 
 dmodel = Dolo.discretize(model)
 
 
+model32 = Dolo.convert_precision(Float32,model)
 dmodel32 = Dolo.discretize(model32)
 
 wksp = Dolo.time_iteration_workspace(dmodel32)
 
-(;x0,φ)  = wksp
+itps = wksp.φ.itp
+
+(;x0,r0, φ)  = wksp
+
+Dolo.F(dmodel32, x0, φ)
+
+
+
+
 
 Dolo.time_iteration(model)

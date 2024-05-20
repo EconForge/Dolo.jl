@@ -130,6 +130,8 @@ using LinearMaps
 
 function time_iteration_workspace(dmodel; interp_mode=:linear)
 
+    T = eltype(dmodel)
+
     x0 = (Dolo.initial_guess(dmodel))
     x1 = deepcopy(x0)
     x2 = deepcopy(x0)
@@ -139,7 +141,7 @@ function time_iteration_workspace(dmodel; interp_mode=:linear)
     n = length(dx.data[1])
     J = GArray(
         dmodel.grid,
-        zeros(SMatrix{n,n,Float64,n*n}, N)
+        zeros(SMatrix{n,n,T,n*n}, N)
     )
     vars = variables(dmodel.model.controls)
     φ = DFun(dmodel.model.states, x0, vars; interp_mode=interp_mode)

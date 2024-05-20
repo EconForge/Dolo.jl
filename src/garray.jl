@@ -22,20 +22,20 @@ distance(u::SVector, v::SVector) = maximum(abs, u-v)
 distance(u::GVector, v::GVector) = maximum( t->distance(t[1],t[2]), zip(u.data, v.data))
 
 import Base: size
-size(a::GArray{PGrid{G1, G2, d}, T}) where G1 where G2 where d where T = (length(a.grid.g1), length(a.grid.g2))
+size(a::GArray{PGrid{G1, G2, d}, T}) where G1 where G2 where d where T = (length(a.grid.grids[1]), length(a.grid.grids[2]))
 
 
 # TODO: check
-getindex(a::GArray{PGrid{G1, G2, d}, T}, i::Int, j::Int) where G1 where G2 where d where T = a.data[ i + length(a.grid.g1)*(j-1)]
-getindex(a::GArray{PGrid{G1, G2, d}, T}, i::Int, ::Colon) where G1 where G2 where d where T = [a[i,j] for j=1:length(a.grid.g2)]
-getindex(a::GArray{PGrid{G1, G2, d}, T}, ::Colon, j::Int) where G1 where G2 where d where T = [a[i,j] for i=1:length(a.grid.g1)]
+getindex(a::GArray{PGrid{G1, G2, d}, T}, i::Int, j::Int) where G1 where G2 where d where T = a.data[ i + length(a.grid.grids[1])*(j-1)]
+getindex(a::GArray{PGrid{G1, G2, d}, T}, i::Int, ::Colon) where G1 where G2 where d where T = [a[i,j] for j=1:length(a.grid.grids[2])]
+getindex(a::GArray{PGrid{G1, G2, d}, T}, ::Colon, j::Int) where G1 where G2 where d where T = [a[i,j] for i=1:length(a.grid.grids[1])]
 
 getindex(a::GArray{PGrid{G1, G2, d}, T}, ::Colon) where G1 where G2 where d where T = a.data
 
 
 # TODO: check
 function setindex!(a::GArray{PGrid{G1, G2, d}, T}, v, i::Int, j::Int) where G1 where G2 where d where T 
-    (a.data[ i + length(a.grid.g1)*(j-1)] = v)
+    (a.data[ i + length(a.grid.grids[1])*(j-1)] = v)
     nothing
 end
 
@@ -72,8 +72,8 @@ getindex(g::GArray{G,T}, inds::Int64) where G<:AGrid{d} where d where T = g.data
 
 # interpolating indexing
 function (xa::GArray{PGrid{G1, G2, d}, T})(i::Int64, p::SVector{d2, U}) where G1<:SGrid where G2<:CGrid{d2} where d where d2 where T where U
-    g1 = xa.grid.g1
-    g2 = xa.grid.g2
+    g1 = xa.grid.grids[1]
+    g2 = xa.grid.grids[2]
     dims = tuple(length(g1), (e[3] for e in g2.ranges)... )
     # ranges = tuple( (range(e...) for e in g2.ranges)... )
     # v = view(reshape(xa.data, dims),i,:)
@@ -90,7 +90,7 @@ end
 
 function (xa::GArray{PGrid{G1, G2, d}, T})(S::Tuple{Tuple{Int64}, U}) where G1 where G2 where U<:SVector where d where T
     #### TODO: replace
-    n_x =  ndims(xa.grid.g2)
+    n_x =  ndims(xa.grid.grids[2])
     V = S[2]
     n = length(V)
     s = SVector((V[i] for i=n-n_x+1:n)...)

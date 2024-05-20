@@ -55,6 +55,10 @@ struct DYModel{M, G, D} <: ADModel
     dproc::D
 end
 
+# TODO: check whether true
+eltype(dm::DYModel) = eltype(dm.model)
+
+
 name(dm::DYModel) = name(dm.model)
 
 bounds(dmodel::DYModel, s) = bounds(dmodel.model, s)

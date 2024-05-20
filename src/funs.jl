@@ -71,8 +71,8 @@ function DFun(states, values::GVector{G,V}, vars=nothing; interp_mode=:linear) w
     end
 
     # TODO: check values.data[i,:]
-    sz = (e[3] for e in values.grid.g2.ranges)
-    itps = tuple( (SplineInterpolator(values.grid.g2.ranges;  values=reshape(values[i,:], sz...),k=k)  for i=1:length(values.grid.g1)  )...)
+    sz = (e[3] for e in values.grid.grids[2].ranges)
+    itps = tuple( (SplineInterpolator(values.grid.grids[2].ranges;  values=reshape(values[i,:], sz...),k=k)  for i=1:length(values.grid.grids[1])  )...)
 
     if typeof(vars) <: Nothing
         if eltype(values) <: Number
@@ -92,8 +92,8 @@ function fit!(φ::DFun, x::GVector{G}) where G<:PGrid{<:SGrid, <:CGrid}
 
     # This is only for SGrid x CGrid
 
-    n_m = length(x.grid.g1)
-    sz = tuple(n_m, (e[3] for e in x.grid.g2.ranges)...)    
+    n_m = length(x.grid.grids[1])
+    sz = tuple(n_m, (e[3] for e in x.grid.grids[2].ranges)...)    
     xx = reshape( view(x.data, :), sz...)
     rr = tuple( (Colon() for i=1:(Base.ndims(xx)-1))... )
     for i=1:length( φ.itp)
@@ -125,8 +125,8 @@ end
 function (f::DFun{A,B,I,vars})(loc::Tuple{Tuple{Int64}, SVector{d2, U}})  where A where B<:GArray{G,V} where V where I where G<:PGrid{G1,G2} where G1<:SGrid where G2<:CGrid where vars where d2 where U
     # TODO: not beautiful
     x_ = loc[2]
-    dd1 = ndims(f.values.grid.g1)
-    dd2 = ndims(f.values.grid.g2)
+    dd1 = ndims(f.values.grid.grids[1])
+    dd2 = ndims(f.values.grid.grids[2])
     x = SVector((x_[i] for i=(dd1+1):(dd1+dd2))...)
     f.itp[loc[1][1]](x)
 end

@@ -64,10 +64,10 @@ dmodel = Dolo.discretize(model, Dict(:endo=>10000000))
 
 function FF!(r0, dm, x0,  φ)
 
-    MM = length(dm.grid.g1)
-    a,b,NN = dm.grid.g2.ranges[1]
-    g1 = dm.grid.g1
-    g2 = dm.grid.g2
+    MM = length(dm.grid.grids[1])
+    a,b,NN = dm.grid.grids[2].ranges[1]
+    g1 = dm.grid.grids[1]
+    g2 = dm.grid.grids[2]
 
     p = dm.model.calibration
     

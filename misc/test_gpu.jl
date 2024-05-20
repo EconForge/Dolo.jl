@@ -233,8 +233,8 @@ function F_cpu(dmodel, x0, φ, K=1000)
     kernel! = ker_F!(backend)
 
     # N = length(dmodel.grid)
-    N1 = length(dmodel.grid.g1)
-    N2 = length(dmodel.grid.g2)
+    N1 = length(dmodel.grid.grids[1])
+    N2 = length(dmodel.grid.grids[2])
     for k=1:K
         kernel!(r0, dmodel, x0, φ; ndrange=(N1,N2))
     end
@@ -262,8 +262,8 @@ function F_gpu(dmodel, x0, φ, K=1000)
     kernel! = ker_F!(backend)
 
     # N = length(dmodel.grid)
-    N1 = length(dmodel.grid.g1)
-    N2 = length(dmodel.grid.g2)
+    N1 = length(dmodel.grid.grids[1])
+    N2 = length(dmodel.grid.grids[2])
 
     for k=1:K
         kernel!(r0_gpu, dmodel, x0_gpu, φ_gpu, ndrange=(N1,N2))
