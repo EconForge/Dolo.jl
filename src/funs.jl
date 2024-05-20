@@ -148,9 +148,9 @@ end
 
 # Compatibility calls
 
-(f::DFun)(x::Float64) = f(SVector(x))
-(f::DFun)(x::Float64, y::Float64) = f(SVector(x,y))
-(f::DFun)(x::Vector{SVector{d,Float64}}) where d = [f(e) for e in x]
+(f::DFun)(x::Real) = f(SVector(x))
+(f::DFun)(x::Real, y::Real) = f(SVector(x,y))
+(f::DFun)(x::Vector{SVector{d,<:Real}}) where d = [f(e) for e in x]
 
 
 ndims(df::DFun) = ndims(df.domain)

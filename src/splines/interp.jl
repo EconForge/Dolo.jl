@@ -2,7 +2,7 @@ using StaticArrays
 import LoopVectorization: VectorizationBase
 import Base: getindex
 
-getindex(A::Vector{Float64}, i::VectorizationBase.Vec{4,Int64}) = VectorizationBase.Vec{4, Float64}(A[i(1)], A[i(2)], A[i(3)], A[i(4)])
+getindex(A::Vector{Tf}, i::VectorizationBase.Vec{4,Int64}) where Tf = VectorizationBase.Vec{4, Tf}(A[i(1)], A[i(2)], A[i(3)], A[i(4)])
 
 
 # ## TODO : rewrite the following
@@ -44,7 +44,7 @@ matextract(v::AbstractArray{T,1}, i) where T = SArray{Tuple{2}, T, 1, 2}(
     v[i+1]
 )
 
-function interp(ranges::NTuple{d, Tuple{Float64, Float64, Int64}}, values::AbstractArray{T,d}, x::SVector{d, U}) where d where T where U
+function interp(ranges::NTuple{d, Tuple{Tf, Tf, Int64}}, values::AbstractArray{T,d}, x::SVector{d, U}) where d where T where U where Tf
     
     a = SVector( (e[1] for e in ranges)... )
     b = SVector( (e[2] for e in ranges)... )
@@ -67,7 +67,7 @@ function interp(ranges::NTuple{d, Tuple{Float64, Float64, Int64}}, values::Abstr
 
 end
 
-function interp(ranges::NTuple{d, Tuple{Float64, Float64, Int64}}, values::AbstractArray{T,d}, x::Vararg{U}) where d where T where U
+function interp(ranges::NTuple{d, Tuple{Tf, Tf, Int64}}, values::AbstractArray{T,d}, x::Vararg{U}) where d where T where U where Tf
     xx = SVector(x...)
     interp(ranges, values, xx)
 end

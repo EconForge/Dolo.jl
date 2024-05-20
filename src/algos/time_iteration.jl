@@ -195,6 +195,7 @@ function time_iteration(model::DYModel,
     lam = 0.5
     
     local η_0 = NaN
+    local η
     convergence = false
     iterations = T
     
@@ -246,6 +247,7 @@ function time_iteration(model::DYModel,
             
             ε_n = norm(r0)
             if ε_n<tol_ε
+                iterations = t
                 break
             end
 
@@ -261,6 +263,7 @@ function time_iteration(model::DYModel,
 
                 ε_b = norm(r0)
                 if ε_b<ε_n
+                    iterations = t
                     break
                 end
             end
@@ -280,6 +283,10 @@ function time_iteration(model::DYModel,
 
         verbose ? append!(log; verbose=verbose, it=t-1, err=ε, sa=η_0, lam=gain, elapsed=elapsed) : nothing
 
+        if η < tol_η
+            iterations = t
+            break
+        end
         η_0 = η
 
 
@@ -314,7 +321,7 @@ function time_iteration(model::DYModel,
         φ,
         iterations,
         tol_η,
-        η_0,
+        η,
         log,
         ti_trace
     )
@@ -328,7 +335,6 @@ function newton(model, workspace=newton_workspace(model);
     # mem = typeof(workspace) <: Nothing ? time_iteration_workspace(model) : workspace
 
     (;x0, x1, x2, dx, r0, J, φ, T, memn) = workspace
-
 
     for t=1:K
         

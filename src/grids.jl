@@ -3,7 +3,7 @@ abstract type ASGrid{d} <: AGrid{d} end
 
 import Base: eltype, iterate, size
 
-eltype(cg::AGrid{d}) where d = SVector{d, Float64}
+# eltype(cg::AGrid{d}) where d = SVector{d, Float64}
 ndims(cg::AGrid{d}) where d = d
 
 struct CGrid{d,Tf} <: AGrid{d}
@@ -90,7 +90,8 @@ from_linear(g::PGrid{G1, G2, d}, n) where G1 where G2 where d = let x=divrem(n-1
 getindex(g::PGrid{G1, G2, d}, n::Int) where G1 where G2 where d = getindex(g, from_linear(g, n)...)
 
 function getindex(g::PGrid{G1, G2, d}, i::Int64, j::Int64) where G1<:SGrid{d1} where G2<:CGrid{d2} where d where d1 where d2
-    SVector{d,Float64}(g.grids[1][i]..., g.grids[2][j]...)
+    Tf = eltype(g)
+    SVector{d,Tf}(g.grids[1][i]..., g.grids[2][j]...)
 end
 
 
@@ -177,17 +178,21 @@ end
 
 
 function Base.iterate(g::PGrid{G1, G2, d}) where G1 where G2 where d
+    T = eltype(g)
     x = g.grids[1][1]
     y = g.grids[2][1]
-    return (SVector{d, Float64}(x...,y...),(y,1,1))
+    return (SVector{d, T}(x...,y...),(y,1,1))
 end
 
 function Base.iterate(g::PGrid{G1,G2,d},state) where G1 where G2 where d
+
+    T = eltype(g)
+
     y,i,j=state
     if i<length(g.grids[1])
         i += 1
         x = g.grids[1][i]
-        return (SVector{d,Float64}(x..., y...), (y,i,j))
+        return (SVector{d,T}(x..., y...), (y,i,j))
     else
         if j==length(g.grids[2])
             return nothing
@@ -196,7 +201,7 @@ function Base.iterate(g::PGrid{G1,G2,d},state) where G1 where G2 where d
             i = 1
             x = g.grids[1][i]
             y = g.grids[2][j]
-            return (SVector{d,Float64}(x..., y...), (y,i,j))
+            return (SVector{d,T}(x..., y...), (y,i,j))
         end
     end
 end

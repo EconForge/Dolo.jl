@@ -56,22 +56,47 @@ model = let
 end
 
 
-dmodel = Dolo.discretize(model)
-
-
+# now these are orphans
 model32 = Dolo.convert_precision(Float32,model)
-dmodel32 = Dolo.discretize(model32)
-
-wksp = Dolo.time_iteration_workspace(dmodel32)
-
-itps = wksp.φ.itp
-
-(;x0,r0, φ)  = wksp
-
-Dolo.F(dmodel32, x0, φ)
 
 
+function Dolo.transition(model::typeof(model32), s::NamedTuple, x::NamedTuple, M::NamedTuple)
+    
+    (;δ, ρ) = model.calibration
+    
+    # Z = e.Z
+    K = s.k * (1-δ) + x.i
+
+    (;k=K,)  ## This is only the endogenous state
+
+end
 
 
 
-Dolo.time_iteration(model)
+function intermediate(model::typeof(model32),s::NamedTuple, x::NamedTuple)
+    
+    p = model.calibration
+
+	y = exp(s.z)*(s.k^p.α)*(x.n^(1-p.α))
+	w = (1-p.α)*y/x.n
+	rk = p.α*y/s.k
+	c = y - x.i
+	return ( (; y, c, rk, w))
+
+end
+
+
+function arbitrage(model::typeof(model32), s::NamedTuple, x::NamedTuple, S::NamedTuple, X::NamedTuple)
+
+    p = model.calibration
+
+	y = intermediate(model, s, x)
+	Y = intermediate(model, S, X)
+	res_1 = p.χ*(x.n^p.η)*(y.c^p.σ) - y.w
+	res_2 = (p.β*(y.c/Y.c)^p.σ)*(1 - p.δ + Y.rk) - 1
+    
+    return ( (;res_1, res_2) )
+
+end
+
+model32
