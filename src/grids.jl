@@ -6,8 +6,8 @@ import Base: eltype, iterate, size
 eltype(cg::AGrid{d}) where d = SVector{d, Float64}
 ndims(cg::AGrid{d}) where d = d
 
-struct CGrid{d} <: AGrid{d}
-    ranges::NTuple{d, Tuple{Float64, Float64, Int64}}
+struct CGrid{d,Tf} <: AGrid{d}
+    ranges::NTuple{d, Tuple{Tf, Tf, Int64}}
 end
 
 size(cg::CGrid{d}) where d = tuple((e[3] for e in cg.ranges)... )
@@ -39,8 +39,8 @@ getindex(g::CGrid{1}, ::Colon) = [SVector(i) for i in range(g.ranges[1]...)]
 
 
 
-struct SGrid{n,d} <: ASGrid{d}
-    points::SVector{n,SVector{d, Float64}}
+struct SGrid{n,d,T} <: ASGrid{d}
+    points::SVector{n,SVector{d, T}}
 end
 
 function SGrid(Q::Matrix)
@@ -134,7 +134,7 @@ end
 iterate(s::SGrid) = (s.points[1], 2)
 iterate(s::SGrid, state) = state<=length(s) ? (s.points[state], state+1) : nothing
 
-eltype(cg::CGrid{d}) where d = SVector{d, Float64}
+eltype(cg::CGrid{d,Tf}) where d where Tf = SVector{d, Tf}
 
 function iterate(cg::CGrid{d}) where d
     

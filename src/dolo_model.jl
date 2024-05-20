@@ -15,6 +15,13 @@ name(::YModel{C,A,B,D,N}) where C where A where B where D where N = N
 
 bounds(model::YModel, s) = model.controls
 
+
+# TODO: check somewhere that the type of
+#  states/controls/exogenous
+# is the same as calibration
+
+eltype(model::YModel) = eltype(model.calibration)
+
 function recalibrate(model::YModel; kwargs...)
     calib = merge(model.calibration, kwargs)
     YModel(model.states, model.controls, model.exogenous, calib, model.source)

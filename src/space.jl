@@ -1,31 +1,31 @@
 abstract type Space{d} end
 
-struct CartesianSpace{d,dims}
+struct CartesianSpace{d,dims,Tf}
     # names::NTuple{d, Symbol}
-    min::NTuple{d, Float64}
-    max::NTuple{d, Float64}
+    min::NTuple{d, Tf}
+    max::NTuple{d, Tf}
 end
 
 const CSpace = CartesianSpace
 
-CartesianSpace(a::Tuple{Float64}, b::Tuple{Float64}) = CartesianSpace{length(a), (:x,)}(a,b)
-CartesianSpace(a::Tuple{Float64, Float64}, b::Tuple{Float64, Float64}) = CartesianSpace{length(a), (:x_1, :x_2)}(a,b)
+CartesianSpace(a::Tuple{Tf}, b::Tuple{Tf}) where Tf = CartesianSpace{length(a), (:x,), Tf}(a,b)
+CartesianSpace(a::Tuple{Tf, Tf}, b::Tuple{Tf, Tf}) where Tf = CartesianSpace{length(a), (:x_1, :x_2), Tf}(a,b)
 
-function CartesianSpace(kwargs::Pair{Symbol, Tuple{Float64, Float64}}...)
+function CartesianSpace(kwargs::Pair{Symbol, Tuple{Tf, Tf}}...) where Tf
     
     names = tuple( (e[1] for e in kwargs)... )
     a = tuple( (v[2][1] for v in values(kwargs))... )
     b = tuple( (v[2][2] for v in values(kwargs))... )
     d = length(names)
 
-    return CartesianSpace{d, names}(a,b)
+    return CartesianSpace{d, names, Tf}(a,b)
 
 end
 
 CartesianSpace(;kwargs...) = CartesianSpace(kwargs...)
 
 
-getindex(cs::CartesianSpace{d}, ind::SVector{d, Float64}) where d = ind
+getindex(cs::CartesianSpace{d}, ind::SVector{d, Tf}) where d where Tf= ind
 
 import Base: in
 
@@ -46,15 +46,15 @@ ndims(dom::CartesianSpace{d, dims}) where d where dims = d
 variables(dom::CartesianSpace{d,t}) where d where t = t
 dims(dom::CartesianSpace) = variables(dom)
 
-struct GridSpace{N,d,dims}
-    points::SVector{N,SVector{d,Float64}}
+struct GridSpace{N,d,dims,Tf}
+    points::SVector{N,SVector{d,Tf}}
 end
 
 const GSpace = GridSpace
 
-GridSpace(v::SVector{N, SVector{d, Float64}}) where d where N = GridSpace{length(v), d, (:i_,)}(SVector(v...))
-GridSpace(v::Vector{SVector{d, Float64}}) where d = GridSpace{length(v), d, (:i_,)}(SVector(v...))
-GridSpace(names, v::SVector{k, SVector{d, Float64}}) where k where d = GridSpace{length(v), d, names}(v)
+GridSpace(v::SVector{N, SVector{d, Tf}}) where d where N where Tf = GridSpace{length(v), d, (:i_,), Tf}(SVector(v...))
+GridSpace(v::Vector{SVector{d, Tf}}) where d where Tf = GridSpace{length(v), d, (:i_,), Tf}(SVector(v...))
+GridSpace(names, v::SVector{k, SVector{d, Tf}}) where k where d where Tf = GridSpace{length(v), d, names, Tf}(v)
 
 getindex(gs::GridSpace, i::Int64) = gs.points[i]
 
@@ -111,8 +111,8 @@ function dropnames(namedtuple::NamedTuple, names::Tuple{Vararg{Symbol}})
 end
 
 
-QP(space::CartesianSpace{d}; values...) where d = let
-    s_ =zero(SVector{d,Float64})*NaN
+QP(space::CartesianSpace{d, Tf}; values...) where d where Tf = let
+    s_ =zero(SVector{d,Tf})*NaN
     s0 = QP(s_,s_)
     QP(space, s0; values...)
 end
@@ -136,10 +136,10 @@ QP(space::GridSpace{d}; i_=1) where d = QP(i_,space[i_])
 
 
 
-function QP(space::ProductSpace{<:GridSpace{d1},<:CartesianSpace{d2}}; values...) where d1 where d2
+function QP(space::ProductSpace{<:GridSpace{d1},<:CartesianSpace{d2, Tf}}; values...) where d1 where d2 where Tf
     i0 = get(values, :i_, 1)
     m_ = space.spaces[1][i0]
-    s_ =zero(SVector{d2,Float64})*NaN
+    s_ =zero(SVector{d2,Tf})*NaN
     s0 = QP((i0,s_),SVector(m_...,s_...))
     QP(space, s0; values...)
 end
