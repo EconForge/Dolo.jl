@@ -65,7 +65,7 @@ function Dolo.transition(model::typeof(model32), s::NamedTuple, x::NamedTuple, M
     (;δ, ρ) = model.calibration
     
     # Z = e.Z
-    K = s.k * (1-δ) + x.i
+    K = s.k * (1f0-δ) + x.i
 
     (;k=K,)  ## This is only the endogenous state
 
@@ -77,8 +77,8 @@ function intermediate(model::typeof(model32),s::NamedTuple, x::NamedTuple)
     
     p = model.calibration
 
-	y = exp(s.z)*(s.k^p.α)*(x.n^(1-p.α))
-	w = (1-p.α)*y/x.n
+	y = exp(s.z)*(s.k^p.α)*(x.n^(1f0-p.α))
+	w = (1f0-p.α)*y/x.n
 	rk = p.α*y/s.k
 	c = y - x.i
 	return ( (; y, c, rk, w))
@@ -93,7 +93,7 @@ function arbitrage(model::typeof(model32), s::NamedTuple, x::NamedTuple, S::Name
 	y = intermediate(model, s, x)
 	Y = intermediate(model, S, X)
 	res_1 = p.χ*(x.n^p.η)*(y.c^p.σ) - y.w
-	res_2 = (p.β*(y.c/Y.c)^p.σ)*(1 - p.δ + Y.rk) - 1
+	res_2 = (p.β*(y.c/Y.c)^p.σ)*(1f0 - p.δ + Y.rk) - 1f0
     
     return ( (;res_1, res_2) )
 

@@ -148,7 +148,11 @@ function time_iteration_workspace(dmodel; interp_mode=:linear, dest=Array)
 
     tt = (;x0, x1, x2, r0, dx, J, φ)
 
-    return adapt(dest, tt)
+    res = NamedTuple(
+        ( (k=>adapt(dest, v)) for (k,v) in zip(keys(tt),values(tt)) )
+    )
+    return res
+    # return adapt(dest, tt)
 
 end
 

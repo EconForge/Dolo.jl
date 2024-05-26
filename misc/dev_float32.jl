@@ -6,20 +6,24 @@ model_32 = include("$(root_dir)/misc/rbc_float32.jl")
 
 model32 = Dolo.convert_precision(Float32, model_32)
 
-dm32 = Dolo.discretize(model32, Dict(:endo=>[100]) )
+dm32 = Dolo.discretize(model32, Dict(:endo=>[1000]) )
 
 
 typeof(dm32)
 
 using Adapt
 
+import oneAPI: oneArray
+import Adapt: adapt_structure
+import CUDA: CuArray
+
 
 wk0 = Dolo.time_iteration_workspace(dm32)
 
-import oneAPI: oneArray
-import Adapt: adapt_structure
+wk = Dolo.time_iteration_workspace(dm32, dest=CuArray)
 
-wk = adapt(oneArray, wk0)
+# wk = adapt(oneArray, wk0)
+wk = adapt(CuArray, wk0)
 using KernelAbstractions: get_backend
 
 if typeof(dm32.grid)<:Dolo.CGrid
@@ -64,14 +68,21 @@ using StaticArrays
 
 end
 
-
+using BenchmarkTools
 
 fun_ = ggg(t_e)
+
 @time fun_(wk.r0, dm32, wk.x0, wk.φ; ndrange=(p,q))
 
 
+@benchmark fun_(wk.r0, dm32, wk.x0, wk.φ; ndrange=(p,q))
 
-@time Dolo.F!(wk0.r0, dm32, wk0.x0, wk0.φ)
+
+@benchmark Dolo.F!(wk0.r0, dm32, wk0.x0, wk0.φ)
+
+
+Dolo.distance(wk0.r0, adapt(Array,wk.r0))
+
 
 # try
 
@@ -82,7 +93,7 @@ fun_ = ggg(t_e)
 
 
 
-# Dolo.time_iteration(dm32, wk; engine=:gpu)
+Dolo.time_iteration(dm32, wk; engine=:gpu)
 
 
 s_0 = dm32.grid[10]
