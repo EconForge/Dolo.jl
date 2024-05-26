@@ -37,14 +37,12 @@ using KernelAbstractions
 # end
 
 # This is for a PGrid model only 
-function F!(r, model, x, φ, engine::Union{CPU, GPU})
+function F!(r, model, x, φ, engine)
 
     @kernel function FF_(r, @Const(model), @Const(x), @Const(φ))
 
-        # c = @index(Global, Cartesian)
-        # c = @index(Global, Cartesian)
+
         n = @index(Global, Linear)
-        # i,j = c.I
         (i,j) = Dolo.from_linear(model.grid, n)
 
         s_ = model.grid[n]

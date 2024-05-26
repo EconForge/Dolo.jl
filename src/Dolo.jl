@@ -83,6 +83,7 @@ module Dolo
     include("algos/vfi.jl")
 
 
+    include("adapt.jl")
     include("utils.jl")
 
     # function yaml_import(filename)

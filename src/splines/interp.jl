@@ -58,7 +58,8 @@ function interp(ranges::NTuple{d, Tuple{Tf, Tf, Int64}}, values::AbstractArray{T
 
     λ = (x.-(a .+ δ.*i))./δ
 
-    i_ = floor.(Int, i) .+ 1
+    # i_ = floor.(Int, i) .+ 1
+    i_ = unsafe_trunc.(Int, i) .+ 1
 
     M = matextract(values, i_...)
     

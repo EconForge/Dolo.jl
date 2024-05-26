@@ -15,7 +15,7 @@ size(cg::CGrid{d}) where d = tuple((e[3] for e in cg.ranges)... )
 
 getindex(g::CGrid{d}, inds::Vararg{Int64,d}) where d = SVector{d}(
     ( 
-        ( g.ranges[i][1] + (g.ranges[i][2]-g.ranges[i][1])*( (inds[i]-1)/(g.ranges[i][3]-1)) )
+        ( g.ranges[i][1] + (g.ranges[i][2]-g.ranges[i][1])*( (inds[i]-1)/(g.ranges[i][3]-convert(eltype(eltype(g)),1))) )
         for i=1:d
     )
 )
@@ -85,13 +85,17 @@ cross(g1::SGrid{d1}, g2::CGrid{d2}) where d1 where d2 = PGrid(g1,g2)
 
 import Base: getindex
 
-from_linear(g::PGrid{G1, G2, d}, n) where G1 where G2 where d = let x=divrem(n-1, length(g.grids[1])); (x[2]+1, x[1]+1) end
+@inline from_linear(g::PGrid{G1, G2, d}, n::Int) where G1 where G2 where d = let x=divrem(n-1, length(g.grids[1])); (x[2]+1, x[1]+1) end
 
-getindex(g::PGrid{G1, G2, d}, n::Int) where G1 where G2 where d = getindex(g, from_linear(g, n)...)
+@inline getindex(g::PGrid{G1, G2, d}, n::Int) where G1 where G2 where d = getindex(g, from_linear(g, n)...)
 
-function getindex(g::PGrid{G1, G2, d}, i::Int64, j::Int64) where G1<:SGrid{d1} where G2<:CGrid{d2} where d where d1 where d2
-    Tf = eltype(g)
-    SVector{d,Tf}(g.grids[1][i]..., g.grids[2][j]...)
+# eltype(cg::CGrid{d,Tf}) where d where Tf = SVector{d, Tf}
+
+
+@inline function getindex(g::PGrid{G1, G2, d}, i::Int64, j::Int64) where G1<:SGrid{d1} where G2<:CGrid{d2} where d where d1 where d2
+    # Tf = eltype(g)
+    # SVector{d,Tf}(g.grids[1][i]..., g.grids[2][j]...)
+    SVector(g.grids[1][i]..., g.grids[2][j]...)
 end
 
 

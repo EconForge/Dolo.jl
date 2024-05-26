@@ -21,31 +21,59 @@ using StaticArrays
 #     0.0 0.0  1.0  0.0
 #  ]
 
-const Ad = [
+const Ad64 = [
    [-1.0/6.0  3.0/6.0 -3.0/6.0 1.0/6.0];
    [ 3.0/6.0 -6.0/6.0  0.0/6.0 4.0/6.0];
    [-3.0/6.0  3.0/6.0  3.0/6.0 1.0/6.0];
    [ 1.0/6.0  0.0/6.0  0.0/6.0 0.0/6.0]
 ]
 
-const dAd = [
+const dAd64 = [
    [ 0.0 -0.5  1.0 -0.5];
    [ 0.0  1.5 -2.0  0.0];
    [ 0.0 -1.5  1.0  0.5];
    [ 0.0  0.5  0.0  0.0]
 ]
 
-const d2Ad = [
+const d2Ad64 = [
    [ 0.0 0.0 -1.0  1.0];
    [ 0.0 0.0  3.0 -2.0];
    [ 0.0 0.0 -3.0  1.0];
    [ 0.0 0.0  1.0  0.0]
 ]
 
+const Ad32 = [
+   [-1.0f0/6.0f0  3.0f0/6.0f0 -3.0f0/6.0f0 1.0f0/6.0f0];
+   [ 3.0f0/6.0f0 -6.0f0/6.0f0  0.0f0/6.0f0 4.0f0/6.0f0];
+   [-3.0f0/6.0f0  3.0f0/6.0f0  3.0f0/6.0f0 1.0f0/6.0f0];
+   [ 1.0f0/6.0f0  0.0f0/6.0f0  0.0f0/6.0f0 0.0f0/6.0f0]
+]
+
+const dAd32 = [
+   [ 0.0f0 -0.5f0  1.0f0 -0.5f0];
+   [ 0.0f0  1.5f0 -2.0f0  0.0f0];
+   [ 0.0f0 -1.5f0  1.0f0  0.5f0];
+   [ 0.0f0  0.5f0  0.0f0  0.0f0]
+]
+
+const d2Ad32 = [
+   [ 0.0f0 0.0f0 -1.0f0  1.0f0];
+   [ 0.0f0 0.0f0  3.0f0 -2.0f0];
+   [ 0.0f0 0.0f0 -3.0f0  1.0f0];
+   [ 0.0f0 0.0f0  1.0f0  0.0f0]
+]
+
 U(s,i) = Symbol(string(s,i))
 U(s,i,j) = Symbol(string(s,i,"_",j))
 
-function create_Phi(d, extrap, diff)
+function create_Phi(d, extrap, diff; Tf=Float64)
+    if Tf==Float64
+        Ad = Ad64
+        dAd = dAd64
+    elseif Tf==Float32
+        Ad = Ad32
+        dAd = dAd32
+    end
     lines = []
     for i=1:d
         block = []
@@ -113,13 +141,13 @@ tensor_prod(["Phi_1", "Phi_2"], Int64[])   # Phi_1_1 * (Phi_2_1 * C[i1 + 1,i2 + 
 tensor_prod(["Phi_1", "dPhi_2"], Int64[])  # Phi_1_1 * (dPhi_2_1 * C[i1 + 1,i2 + 1] + dPhi_2_2 * C[i1 + 1,i2 + 2] + dPhi_2_3 * C[i1 + 1,i2 + 3] + dPhi_2_4 * C[i1 + 1,i2 + 4]) + Phi_1_2 * (dPhi_2_1 * C[i1 + 2,i2 + 1] + dPhi_2_2 * C[i1 + 2,i2 + 2] + dPhi_2_3 * C[i1 + 2,i2 + 3] + dPhi_2_4 * C[i1 + 2,i2 + 4]) + Phi_1_3 * (dPhi_2_1 * C[i1 + 3,i2 + 1] + dPhi_2_2 * C[i1 + 3,i2 + 2] + dPhi_2_3 * C[i1 + 3,i2 + 3] + dPhi_2_4 * C[i1 + 3,i2 + 4]) + Phi_1_4 * (dPhi_2_1 * C[i1 + 4,i2 + 1] + dPhi_2_2 * C[i1 + 4,i2 + 2] + dPhi_2_3 * C[i1 + 4,i2 + 3] + dPhi_2_4 * C[i1 + 4,i2 + 4])
 
 
-function create_parameters(d)
+function create_parameters(d; Tf=Float64)
     lines = []
     for i=1:d
         block = quote
             $(U("M",i)) = orders[$i]
             $(U("start",i)) =  a[$i]
-            $(U("dinv",i)) = (orders[$i]-1.0)/(b[$i]-a[$i])
+            $(U("dinv",i)) = (orders[$i]-convert($Tf,1.0))/(b[$i]-a[$i])
         end
         for ll in block.args
             push!(lines, ll)
@@ -128,20 +156,21 @@ function create_parameters(d)
     return lines
 end
 
-function create_local_parameters(d; vectorize=true)
+function create_local_parameters(d; vectorize=true, Tf=Float64)
     lines = []
     if vectorize
         for i=1:d
             bl = quote
                 $(U("x",i)) = S[n][$i]
                 $(U("u",i)) = ($(U("x",i)) - $(U("start",i)))*$(U("dinv",i))
-                $(U("i",i)) = (floor(Int,$(U("u",i)) ))
+                # $(U("i",i)) = (floor(Int,$(U("u",i)) ))
+                $(U("i",i)) = unsafe_trunc(Int32, $(U("u",i)))
                 $(U("i",i)) = max( min($(U("i",i)),$(U("M",i))-2), 0 )
                 $(U("t",i)) = $(U("u",i))-$(U("i",i))
                 $(U("tp",i,1)) = $(U("t",i))*$(U("t",i))*$(U("t",i))
                 $(U("tp",i,2)) = $(U("t",i))*$(U("t",i))
                 $(U("tp",i,3)) = $(U("t",i))
-                $(U("tp",i,4)) = 1.0;
+                $(U("tp",i,4)) = convert($Tf,1.0);   #TODO
             end
             for ll in bl.args
                 push!(lines, ll)
@@ -153,13 +182,14 @@ function create_local_parameters(d; vectorize=true)
             bl = quote
                 $(U("x",i)) = S[$i]
                 $(U("u",i)) = ($(U("x",i)) - $(U("start",i)))*$(U("dinv",i))
-                $(U("i",i)) = (floor(Int,$(U("u",i)) ))
+                # $(U("i",i)) = (floor(Int,$(U("u",i)) ))
+                $(U("i",i)) = unsafe_trunc(Int32, $(U("u",i)) )
                 $(U("i",i)) = max( min($(U("i",i)),$(U("M",i))-2), 0 )
                 $(U("t",i)) = $(U("u",i))-$(U("i",i))
                 $(U("tp",i,1)) = $(U("t",i))*$(U("t",i))*$(U("t",i))
                 $(U("tp",i,2)) = $(U("t",i))*$(U("t",i))
                 $(U("tp",i,3)) = $(U("t",i))
-                $(U("tp",i,4)) = 1.0;
+                $(U("tp",i,4)) = convert($Tf,1.0);
             end
             for ll in bl.args
                 push!(lines, ll)
@@ -169,17 +199,17 @@ function create_local_parameters(d; vectorize=true)
     return lines
 end
 
-function create_function(d,extrap="natural"; vectorize=true)
+function create_function(d,extrap="natural"; vectorize=true, Tf=Float32)
     if vectorize
         expr = quote
-            function $(Symbol(string("eval_UC_spline!")))( a, b, orders, C::Array{T,d}, S::Vector{SVector{d,Float64}}, V::Vector{T}) where d where T
-                $(create_parameters(d)...)
+            function $(Symbol(string("eval_UC_spline!")))( a, b, orders, C::Array{T,d}, S::Vector{SVector{d,$Tf}}, V::Vector{T}) where d where T
+                $(create_parameters(d; Tf=Tf)...)
                 N = size(S,1)
                 # @fastmath @inbounds @simd( # doesn't seem to make any difference
                 for n=1:N
-                    $(create_local_parameters(d)...)
-                    $(create_Phi(d,extrap,false)...)
-                    V[n] = $( tensor_prod([string("Phi_",i) for i=1:d], Int64[]) )
+                    $(create_local_parameters(d;Tf=Tf)...)
+                    $(create_Phi(d,extrap,false;Tf=Tf)...)
+                    V[n] = $( tensor_prod([string("Phi_",i) for i=1:d], Int64[]; Tf=Tf) )
                 end
                 # )
             end
@@ -187,11 +217,11 @@ function create_function(d,extrap="natural"; vectorize=true)
     else
         expr = quote
             function $(Symbol(string("eval_UC_spline")))( a, b, orders, C::Array{T,d}, S::SVector{d,U}) where d where T where U
-                $(create_parameters(d)...)
+                $(create_parameters(d,Tf=Tf)...)
                 N = size(S,1)
                 # @fastmath @inbounds @simd( # doesn't seem to make any difference
-                $(create_local_parameters(d; vectorize=false)...)
-                $(create_Phi(d,extrap,false)...)
+                $(create_local_parameters(d; vectorize=false,Tf=Tf)...)
+                $(create_Phi(d,extrap,false; Tf=Tf)...)
                 V = $( tensor_prod([string("Phi_",i) for i=1:d], Int64[]) )
                 # )
                 return V

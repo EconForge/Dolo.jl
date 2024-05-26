@@ -126,9 +126,9 @@ end
 
 
 using LinearMaps
+using Adapt
 
-
-function time_iteration_workspace(dmodel; interp_mode=:linear)
+function time_iteration_workspace(dmodel; interp_mode=:linear, dest=Array)
 
     T = eltype(dmodel)
 
@@ -145,7 +145,10 @@ function time_iteration_workspace(dmodel; interp_mode=:linear)
     )
     vars = variables(dmodel.model.controls)
     φ = DFun(dmodel.model.states, x0, vars; interp_mode=interp_mode)
-    return (;x0, x1, x2, r0, dx, J, φ)
+
+    tt = (;x0, x1, x2, r0, dx, J, φ)
+
+    return adapt(dest, tt)
 
 end
 
@@ -199,15 +202,13 @@ function time_iteration(model::DYModel,
     convergence = false
     iterations = T
     
-    if engine==:cpu
-        t_engine = CPU()
-    elseif engine==:gpu
-        t_engine = GPU()
+    (;x0, x1, x2, dx, r0, J, φ) = workspace
+
+    if engine in (:cpu, :gpu)
+        t_engine = get_backend(workspace.x0)
     else
         t_engine = nothing
     end
-
-    (;x0, x1, x2, dx, r0, J, φ) = workspace
 
     ti_trace = trace ? IterationTrace(typeof(φ)[]) : nothing
 
@@ -224,7 +225,6 @@ function time_iteration(model::DYModel,
         trace && push!(ti_trace.data, deepcopy(φ))
 
         F!(r0, model, x0, φ, t_engine)
-    
         # r0 = F(model, x0, φ)
 
         ε = norm(r0)

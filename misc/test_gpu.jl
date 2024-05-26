@@ -107,12 +107,6 @@ spl = Dolo.SplineInterpolator{typeof(grid), typeof(C), 3}(grid, C)
 # end
 
 
-adapt_structure(to, s::Dolo.SplineInterpolator{G,C,k}) where G where C where k = let
-    θθ = adapt(to, s.θ)
-    CC = typeof(θθ)
-    Dolo.SplineInterpolator{G,CC,k}(s.grid, θθ)
-end
-
 
 gspl = adapt(CuArray, spl)
 
@@ -169,6 +163,14 @@ Dolo.F(dmodel, x0, φ)
 Dolo.calibrated(model, :controls)
 
 import Adapt: adapt_storage
+
+
+
+adapt_structure(to, s::Dolo.SplineInterpolator{G,C,k}) where G where C where k = let
+    θθ = adapt(to, s.θ)
+    CC = typeof(θθ)
+    Dolo.SplineInterpolator{G,CC,k}(s.grid, θθ)
+end
 
 function adapt_structure(to, v::Dolo.GVector{G,V}) where G where V
     data = adapt(to, v.data)
