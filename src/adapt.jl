@@ -34,3 +34,6 @@ end
 import KernelAbstractions: get_backend
 
 get_backend(g::GArray) = get_backend(g.data)
+
+import CUDA: CuArray
+distance(x::GVector{G, A}, y::GVector{G,A}) where G where A<:CuArray = Base.mapreduce(u->maximum(u), max, x.data-y.data)

@@ -39,23 +39,30 @@ using KernelAbstractions
 # This is for a PGrid model only 
 function F!(r, model, x, φ, engine)
 
-    @kernel function FF_(r, @Const(model), @Const(x), @Const(φ))
-
+    @kernel function FF_(r, @Const(dm), @Const(x), @Const(φ))
 
         n = @index(Global, Linear)
-        (i,j) = Dolo.from_linear(model.grid, n)
-
-        s_ = model.grid[n]
-        s = QP((i,j), s_)
+        ind = @index(Global, Cartesian)
+        (i,j) = ind.I
+    
+        # k = length(dm.grid.grids[1])
+        # i_ = (n-1)÷k
+        # j_ = (n-1) - (i)*κ
+        # i = i_+1
+        # j = j_+1
+        
+        # TODO: special function here
+        s_ = dm.grid[n]
+        s = Dolo.QP((i,j), s_)
+    
         xx = x[n]
-        
-        rr = sum(
-            w*Dolo.arbitrage(model,s,xx,S,φ(S)) 
-            for (w,S) in Dolo.τ(model, s, xx)
-        )      
-        
-        r[i,j] = rr
-
+    
+        # (i,j) = @inline Dolo.from_linear(model.grid, n)    
+    
+        rr = Dolo.F(dm, s, xx, φ)
+    
+        r[n] = rr
+    
     end
 
     fun_cpu = FF_(engine)
@@ -79,28 +86,36 @@ end
 
 
 
-function dF_1!(out, model, controls::GArray, φ::Union{GArray, DFun}, ::CPU)
+function dF_1!(out, model, controls::GArray, φ::Union{GArray, DFun}, engine)
 
-    @kernel function FF_(r,@Const(model), @Const(x),@Const(φ) )
+    @kernel function FF_(r,@Const(dm), @Const(x),@Const(φ) )
 
-        # c = @index(Global, Cartesian)
-        # i,j = c.I
 
         n = @index(Global, Linear)
-        # i,j = c.I
-        (i,j) = Dolo.from_linear(model.grid, n)
-
-        s_ = model.grid[n]
-        s = QP((i,j), s_)
-        xx = x[i,j]
+        ind = @index(Global, Cartesian)
+        (i,j) = ind.I
+    
+        # k = length(dm.grid.grids[1])
+        # i_ = (n-1)÷k
+        # j_ = (n-1) - (i)*κ
+        # i = i_+1
+        # j = j_+1
         
+        # TODO: special function here
+        s_ = dm.grid[n]
+        s = Dolo.QP((i,j), s_)
+    
+        xx = x[n]
+    
+        # (i,j) = @inline Dolo.from_linear(model.grid, n)    
+    
         rr = ForwardDiff.jacobian(u->F(model, s, u, φ), xx)
-        
-        r[i,j] = rr
+    
+        r[n] = rr
 
     end
 
-    fun_cpu = FF_(CPU())
+    fun_cpu = FF_(engine)
 
     if typeof(model.grid)<:CGrid
         p = model.grid.ranges[1][3]
