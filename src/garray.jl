@@ -39,7 +39,7 @@ function setindex!(a::GArray{PGrid{G1, G2, d}, T}, v, i::Int, j::Int) where G1 w
     nothing
 end
 
-
+getprecision(g::GArray{G,T}) where G where T = eltype(g).types[1].types[1]
 
 
 eltype(g::GArray{G,T}) where G where T = eltype(T)
@@ -142,3 +142,9 @@ function Base.convert(::Type{Matrix}, A::GArray{G,Vector{T}}) where G where T <:
     end
     return M
 end
+
+
+
+### TODO
+
+duplicate(g::GArray{G,T}) where G where T = GArray(g.grid, deepcopy(g.data))

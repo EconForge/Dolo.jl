@@ -33,7 +33,7 @@ function F(dmodel::M, s::QP, x::SVector{d,T}, φ::Union{Policy, GArray, DFun}) w
     # )
     r
     # r::SVector{d,T}
-    r = complementarities(dmodel.model, s,x,r)
+    # r = complementarities(dmodel.model, s,x,r)
     r
 end
 
@@ -128,7 +128,7 @@ end
 using LinearMaps
 using Adapt
 
-function time_iteration_workspace(dmodel; interp_mode=:linear, dest=Array)
+function time_iteration_workspace(dmodel; interp_mode=:linear, improve=false, dest=Array)
 
     T = eltype(dmodel)
 
@@ -146,13 +146,14 @@ function time_iteration_workspace(dmodel; interp_mode=:linear, dest=Array)
     vars = variables(dmodel.model.controls)
     φ = DFun(dmodel.model.states, x0, vars; interp_mode=interp_mode)
 
-    tt = (;x0, x1, x2, r0, dx, J, φ)
+    # if improve
+        L = Dolo.dF_2(dmodel, x1, φ)
+        tt = (;x0, x1, x2, r0, dx, J, L, φ)
+    # else
+        # tt = (;x0, x1, x2, r0, dx, J, φ)
+    # end
 
-    res = NamedTuple(
-        ( (k=>adapt(dest, v)) for (k,v) in zip(keys(tt),values(tt)) )
-    )
-    return res
-    # return adapt(dest, tt)
+    return adapt(dest, tt)
 
 end
 
@@ -174,6 +175,7 @@ function time_iteration(model::YModel; kwargs...)
     time_iteration(dmodel, wksp; kwargs2...)
 end
 
+using oneAPI: oneArray
 function time_iteration(model::DYModel,
     workspace=time_iteration_workspace(model);
     T=500,
@@ -199,14 +201,18 @@ function time_iteration(model::DYModel,
 
     # mem = typeof(workspace) <: Nothing ? time_iteration_workspace(model) : workspace
     mbsteps = 5
-    lam = 0.5
+
+    (;x0, x1, x2, dx, r0, J, φ) = workspace
+
     
     local η_0 = NaN
     local η
     convergence = false
     iterations = T
     
-    (;x0, x1, x2, dx, r0, J, φ) = workspace
+    Tf = eltype(eltype(x0))
+
+    lam = convert(Tf, 0.5)
 
     if engine in (:cpu, :gpu)
         t_engine = get_backend(workspace.x0)
@@ -217,7 +223,7 @@ function time_iteration(model::DYModel,
     ti_trace = trace ? IterationTrace(typeof(φ)[]) : nothing
 
     if improve
-        J_2 = Dolo.dF_2(model, x1, φ)
+        J_2 = workspace.L
     end
 
     for t=1:T
@@ -306,12 +312,16 @@ function time_iteration(model::DYModel,
             Dolo.dF_1!(J_1, model, x1, φ, t_engine)
             Dolo.dF_2!(J_2, model, x1, φ, t_engine)
 
-            mul!(J_2, -1.0)
+            mul!(J_2, convert(Tf,-1.0))
+
             # J_2.M_ij[:] *= -1.0
             Tp = J_1 \ J_2
             
             d = (x1-x0)
-            x0.data .+= neumann(Tp, d; K=improve_K)
+
+            rhs =  neumann(Tp, d; K=improve_K)
+
+            x0.data .+= rhs.data
 
         else
             x0.data .= x1.data

@@ -31,9 +31,14 @@ function adapt_structure(to, f::DFun{Dom, Gar, Itp, vars}) where Dom where Gar w
     )
 end
 
-import KernelAbstractions: get_backend
+function adapt_structure(to, L::LL{G,D,F}) where G where D where F
+    LL(L.grid, adapt(to, L.D), adapt(to, L.φ))
+end
 
-get_backend(g::GArray) = get_backend(g.data)
 
-import CUDA: CuArray
-distance(x::GVector{G, A}, y::GVector{G,A}) where G where A<:CuArray = Base.mapreduce(u->maximum(u), max, x.data-y.data)
+# should it be merged with the general definition?
+# import CUDA: CuArray
+# distance(x::GVector{G, A}, y::GVector{G,A}) where G where A<:CuArray = Base.mapreduce(u->maximum(u), max, x.data-y.data)
+
+import oneAPI: oneArray
+distance(x::GVector{G, A}, y::GVector{G,A}) where G where A<:oneArray = Base.mapreduce(u->maximum(u), max, x.data-y.data)

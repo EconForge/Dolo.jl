@@ -111,6 +111,7 @@ end
 @inline to__linear_index(g::PGrid, ind::Tuple{Int64, Int64}) =  ind[1] + length(g.grids[1])*(ind[2]-1)
 
 
+size(g::PGrid) = tuple((length(g) for g in g.grids)...)
 show(io::IO, g::SGrid{d1, d2}) where d1 where d2 = print(io, "SGrid{$(d1)}")
 
 show(io::IO, g::CGrid{d}) where d = let 

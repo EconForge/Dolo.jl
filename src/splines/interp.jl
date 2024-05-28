@@ -1,8 +1,8 @@
 using StaticArrays
-import LoopVectorization: VectorizationBase
 import Base: getindex
 
-getindex(A::Vector{Tf}, i::VectorizationBase.Vec{4,Int64}) where Tf = VectorizationBase.Vec{4, Tf}(A[i(1)], A[i(2)], A[i(3)], A[i(4)])
+# import LoopVectorization: VectorizationBase
+# getindex(A::Vector{Tf}, i::VectorizationBase.Vec{4,Int64}) where Tf = VectorizationBase.Vec{4, Tf}(A[i(1)], A[i(2)], A[i(3)], A[i(4)])
 
 
 # ## TODO : rewrite the following
@@ -13,7 +13,7 @@ getindex(A::Vector{Tf}, i::VectorizationBase.Vec{4,Int64}) where Tf = Vectorizat
     return sum( xx .* v[:])
 end
 
-@inline function reduce_tensors(λ::SVector{2,U}, M::SArray{T,V,2,W}) where d1 where d2 where T where U where V where W
+@inline function reduce_tensors(λ::SVector{2,U}, M::SArray{T,V,2,W})  where T where U where V where W
     v1 = SVector(1-λ[1],λ[1])
     v2 = SVector(1-λ[2],λ[2])
     return M[1,1]*v1[1]*v2[1] + M[1,2]*v1[1]*v2[2] + M[2,1]*v1[2]*v2[1] + M[2,2]*v1[2]*v2[2]

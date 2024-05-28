@@ -1,6 +1,6 @@
 
 using StaticArrays
-import Dolo: transition, arbitrage
+import Dolo: transition, arbitrage, intermediate
 
 model = let 
 
@@ -87,6 +87,7 @@ function arbitrage(model::typeof(model), s::NamedTuple, x::NamedTuple, S::NamedT
 
 	y = intermediate(model, s, x)
 	Y = intermediate(model, S, X)
+
 	res_1 = p.χ*(x.n^p.η)*(y.c^p.σ) - y.w
 	res_2 = (p.β*(y.c/Y.c)^p.σ)*(1 - p.δ + Y.rk) - 1
     
