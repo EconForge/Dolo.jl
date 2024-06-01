@@ -87,12 +87,19 @@ end
 
 # end
 
-const zq = sqrt(3.0)-2.0
-const λ = 6.0
+const zq_0 = sqrt(3.0)-2.0
+const λ_0 = 6.0
 
+getprecision(g::AbstractArray{T}) where T<:Number = T
+getprecision(g::AbstractArray{T}) where T<:SVector = eltype(g).types[1].types[1]
 
 
 function prefilter!(c::AbstractVector{T}) where T
+
+
+    prec = getprecision(c)
+    λ = convert(prec, λ_0)
+    zq = convert(prec, zq_0)
     
     N = length(c)
     Horizon = (min(20, N-2))
@@ -101,7 +108,7 @@ function prefilter!(c::AbstractVector{T}) where T
     ff = c[N-1]
 
     t1 = zero(eltype(c)) #0.0
-    zn = 1.0
+    zn = convert(prec,1.0)
     for n in 0:Horizon
         t1 += λ*(2*f1-c[2+n])*zn
         zn *= zq 
@@ -126,42 +133,7 @@ function prefilter!(c::AbstractVector{T}) where T
 end
 
 
-
-# function prefilter!(data::AbstractVector{T}) where T
-
-#     # TODO: find a way to avoid allocation
-
-#     # data is 1d array of length M
-#     # data is 1d array of length M+2
-#     M = length(data) - 2
-#     bands = zeros(M+2, 3)
-    
-#     bb = zeros(T, M+2)
-
-#     # fill_bands!(M, bands, bb, data)
-#     prefilter!(data, bands, bb)
-
-# end
-
-# function prefilter!(data, bands, bb)
-
-#     M = length(data) - 2
-#     fill_bands!(M, bands, bb, data)
-#     solve_coefficients!(bands, bb, data)
-
-# end
-
-
-
-# function prefilter!(data::Array{T,1}) where T
-#     M = size(data,1)-2
-#     bands = zeros(M+2,3)
-#     bb = zeros(T,M+2)
-#     fill_bands!(M, bands, bb, data)
-#     prefilter!(data, bands, bb)
-# end
-
-function prefilter!(data::AbstractArray{T,2}) where T
+function prefilter!(data::AbstractArray{T,2}, ::Val{:CPU}) where T
 
     I,J = size(data)
 
@@ -178,7 +150,24 @@ function prefilter!(data::AbstractArray{T,2}) where T
     end
 end
 
-function prefilter!(data::Array{T,3}) where T
+function prefilter!(data::AbstractArray{T,2}, ::Val{:Threads}) where T
+
+    I,J = size(data)
+
+    M = J-2
+    Threads.@threads for i=1:I
+        dat = view(data, i, :)
+        prefilter!(dat)
+    end
+
+    M = I-2
+    Threads.@threads for j=1:J
+        dat = view(data, :, j)
+        prefilter!(dat)
+    end
+end
+
+function prefilter!(data::AbstractArray{T,3}) where T
 
     I,J,K = size(data)
 
@@ -209,7 +198,7 @@ function prefilter!(data::Array{T,3}) where T
 end
 
 
-function prefilter!(data::Array{T,4}) where T
+function prefilter!(data::AbstractArray{T,4}) where T
     I,J,K,L = size(data)
 
     M = L-2
@@ -250,3 +239,80 @@ function prefilter!(data::Array{T,4}) where T
         end
     end
 end
+
+#### 
+
+function prefilter!(data::AbstractArray{T,1}, ::Val{:CPU}) where T
+
+    prefilter!(data)
+
+end
+
+using KernelAbstractions: @kernel
+
+
+function prefilter!(data::AbstractArray{T,1}, ::Val{:KA}) where T
+
+    @kernel function ker(m)
+
+        prefilter!(m)
+
+    end
+
+    backend = get_backend(data)
+
+    fun = ker(backend)
+
+    fun(data, ndrange=(1,))
+
+end
+
+using KernelAbstractions
+
+
+using KernelAbstractions: CPU
+
+
+function prefilter!(data::AbstractArray{T,2}, ::Val{:KA}) where T
+
+
+    @kernel function ker_1(m)
+
+        i = @index(Global, Linear)
+
+        dat = view(m, i, :)
+        prefilter!(dat)
+
+    end
+
+    @kernel function ker_2(m)
+
+        j = @index(Global, Linear)
+        
+        dat = view(m, :, j)
+        prefilter!(dat)
+
+    end
+
+
+    backend = get_backend(data)
+
+    if backend==CPU()
+        # Not clear how to set number of threads here
+        fun_1 = ker_1(backend, 8)
+        fun_2 = ker_2(backend, 8)
+    else
+        fun_1 = ker_1(backend)
+        fun_2 = ker_2(backend)
+    end
+    
+    I,J = size(data)
+
+    fun_1(data, ndrange=(I,))
+    fun_2(data, ndrange=(J,))
+
+end
+
+using oneAPI: oneArray
+
+prefilter!(data::oneArray) = prefilter!(data, Val(:KA))

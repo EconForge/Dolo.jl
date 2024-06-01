@@ -95,7 +95,7 @@ end
             fill!(spl.θ, zero(eltype(spl.θ)))
             ind = tuple( (2:(e[3]+1) for e in spl.grid )...)
             spl.θ[ind...] .= rhs
-            splines.prefilter!(spl.θ)
+            prefilter!(spl.θ, Val(:KA))
         elseif k==1
             spl.θ .= rhs
         end
