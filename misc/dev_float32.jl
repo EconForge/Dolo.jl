@@ -6,26 +6,40 @@ model_32 = include("$(root_dir)/misc/rbc_float32.jl")
 
 model32 = Dolo.convert_precision(Float32, model_32)
 
-dm32 = Dolo.discretize(model32, Dict(:endo=>[1000]) )
+dm32 = Dolo.discretize(model32, Dict(:endo=>[100000]) )
 
 typeof(dm32)
 
 
 using Adapt
-import oneAPI: oneArray
+# import oneAPI: oneArray
+import CUDA: CuArray
+# import Cu
 import Adapt: adapt_structure
-# import CUDA: CuArray
 
 import Dolo
+gpuArray = CuArray
+interp_mode = :linear
 
-wk0 = Dolo.time_iteration_workspace(dm32);
+wk0 = Dolo.time_iteration_workspace(dm32; interp_mode=interp_mode);
+wk1 = Dolo.time_iteration_workspace(dm32; interp_mode=interp_mode);
+wk_gpu = Dolo.time_iteration_workspace(dm32, dest=gpuArray; interp_mode=interp_mode);
 
-# wk = Dolo.time_iteration_workspace(dm32, dest=CuArray)
-@time wk = Dolo.time_iteration_workspace(dm32, dest=oneArray; interp_mode=:cubic);
+@time sol1 = time_iteration(dm32, wk0; engine=:nothing, tol_η=1e-5, verbose=true, improve_wait=0, improve=false);
+@time sol3 = time_iteration(dm32, wk1; engine=:cpu, tol_η=1e-5, verbose=true, improve_wait=0, improve=false);
+@time sol2 = time_iteration(dm32, wk_gpu; engine=:gpu, tol_η=1e-5, verbose=true, improve_wait=0, improve=false);
 
 
-time_iteration(dm32, wk0; engine=:gpu, tol_η=1e-5, improve_wait=3, improve=true)
-time_iteration(dm32, wk; engine=:gpu, tol_η=1e-5, improve_wait=3, improve=true)
+
+
+wk0 = Dolo.time_iteration_workspace(dm32; interp_mode=:cubic);
+wk1 = Dolo.time_iteration_workspace(dm32; interp_mode=:cubic);
+wk_gpu = Dolo.time_iteration_workspace(dm32, dest=gpuArray; interp_mode=:cubic);
+
+@time sol1 = time_iteration(dm32, wk0; engine=:nothing, tol_η=1e-5, verbose=true, improve_wait=10, improve_K=100,improve=true);
+@time sol3 = time_iteration(dm32, wk1; engine=:cpu, tol_η=1e-5, verbose=true, improve_wait=10, improve_K=100, improve=true);
+# that one stops early
+@time sol2 = time_iteration(dm32, wk_gpu; engine=:gpu, tol_η=1e-5, verbose=true, improve_wait=10, improve_K=100, improve=true);
 
 
 
