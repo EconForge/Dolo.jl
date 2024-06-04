@@ -22,18 +22,19 @@
 function F(dmodel::M, s::QP, x::SVector{d,T}, φ::Union{Policy, GArray, DFun}) where M where d where T
 
     r = zero(SVector{d,T})
+
     for (w,S) in τ(dmodel, s, x)
         r += w*arbitrage(dmodel,s,x,S,φ(S)) 
     end
+
     # TODO: why does the following allocate ?
     # strange: if reloaded it doesn't allocate anymore
     # r += sum(
     #      w*arbitrage(model,s,x,S,φ(S)) 
     #      for (w,S) in τ(model, s, x)
     # )
-    r
-    # r::SVector{d,T}
-    # r = complementarities(dmodel.model, s,x,r)
+    r::SVector{d,T}
+    r = complementarities(dmodel.model, s,x,r)
     r
 end
 

@@ -11,7 +11,6 @@ function τ(dmodel::Dolo.DYModel{M}, ss::T, a::SVector) where M<:Union{Dolo.YMod
 
     (i,_) = ss.loc
     s_ = ss.val
-    
 
     # TODO: replace following block by one nonallocating function
     Q = dmodel.dproc.Q

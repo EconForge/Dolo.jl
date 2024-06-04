@@ -108,6 +108,14 @@ getindex(g::PGrid{G1, G2, d}, ::Colon, i::Int64) where G1 where G2 where d = g.g
     return i + p*(j-1)
 end
    
+@inline function getindex(g::PGrid{G1, G2, d}, z::Complex{Int64}) where G1<:SGrid{d1} where G2<:CGrid{d2} where d where d1 where d2
+    # Tf = eltype(g)
+    # SVector{d,Tf}(g.grids[1][i]..., g.grids[2][j]...)
+    i,j = from_linear(g, z.re)
+    Dolo.QP((i,j), SVector(g.grids[1][i]..., g.grids[2][j]...))
+end
+
+
 @inline to__linear_index(g::PGrid, ind::Tuple{Int64, Int64}) =  ind[1] + length(g.grids[1])*(ind[2]-1)
 
 

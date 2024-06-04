@@ -18,7 +18,7 @@ function convert_precision(T, model::Dolo.YModel)
 
 
     Dolo.YModel(
-        names,
+        Dolo.name(model),
         states,
         controls,
         exogenous, 
