@@ -109,7 +109,7 @@ function create_Phi(d, extrap, diff; Tf=Float64)
     return lines
 end
 
-function tensor_prod(symbs, inds, add_index=false)
+function tensor_prod(symbs, inds, add_index=false; Tf=Float64)
     if length(symbs)==0
         subscripts = [:($(U("i",i))+$(inds[i])) for i=1:length(inds)]
         if add_index
@@ -157,20 +157,23 @@ function create_parameters(d; Tf=Float64)
 end
 
 
+
 function create_local_parameters(d; vectorize=true, Tf=Float64)
     lines = []
     if vectorize
         for i=1:d
+
             bl = quote
                 $(U("x",i)) = S[n][$i]
                 $(U("u",i)) = ($(U("x",i)) - $(U("start",i)))*$(U("dinv",i))
-                $(U("i",i)) = (floor(Int,$(U("u",i)) ))
+                # $(U("i",i)) = (floor(Int,$(U("u",i)) ))
+                $(U("i",i)) = unsafe_trunc(Int, $(U("u",i)))
                 $(U("i",i)) = max( min($(U("i",i)),$(U("M",i))-2), 0 )
                 $(U("t",i)) = $(U("u",i))-$(U("i",i))
                 $(U("tp",i,1)) = $(U("t",i))*$(U("t",i))*$(U("t",i))
                 $(U("tp",i,2)) = $(U("t",i))*$(U("t",i))
                 $(U("tp",i,3)) = $(U("t",i))
-                $(U("tp",i,4)) = 1.0;
+                $(U("tp",i,4)) = convert($Tf,1.0);   #TODO
             end
             for ll in bl.args
                 push!(lines, ll)
@@ -178,17 +181,30 @@ function create_local_parameters(d; vectorize=true, Tf=Float64)
         end
     else
         lines = []
+        e = quote
+                x_ = SVector(S...)
+                a_ = SVector( a... )
+                b_ = SVector( b... )
+                n_ = SVector( orders... )
+                δ_ = (b_.-a_)./(n_.-1)
+                i_ = div.( (x_.-a_), δ_)
+                i_ = max.(min.(i_, n_.-2), 0)
+                λ_ = (x_.-(a_ .+ δ_.*i_))./δ_
+                ii_ = unsafe_trunc.(Int,i_)
+            end
+        for x in e.args
+            push!(lines, x)
+        end
         for i=1:d
             bl = quote
-                $(U("x",i)) = S[$i]
-                $(U("u",i)) = ($(U("x",i)) - $(U("start",i)))*$(U("dinv",i))
-                $(U("i",i)) = (floor(Int,$(U("u",i)) ))
-                $(U("i",i)) = max( min($(U("i",i)),$(U("M",i))-2), 0 )
-                $(U("t",i)) = $(U("u",i))-$(U("i",i))
+                # compat
+                $(U("i",i)) = ii_[$i]
+                $(U("t",i)) = λ_[$i]
+
                 $(U("tp",i,1)) = $(U("t",i))*$(U("t",i))*$(U("t",i))
                 $(U("tp",i,2)) = $(U("t",i))*$(U("t",i))
                 $(U("tp",i,3)) = $(U("t",i))
-                $(U("tp",i,4)) = 1.0;
+                $(U("tp",i,4)) = convert($Tf,1.0);
             end
             for ll in bl.args
                 push!(lines, ll)
@@ -198,67 +214,7 @@ function create_local_parameters(d; vectorize=true, Tf=Float64)
     return lines
 end
 
-# function create_local_parameters(d; vectorize=true, Tf=Float64)
-#     lines = []
-#     if vectorize
-#         for i=1:d
-
-#             bl = quote
-#                 $(U("x",i)) = S[n][$i]
-#                 $(U("u",i)) = ($(U("x",i)) - $(U("start",i)))*$(U("dinv",i))
-#                 # $(U("i",i)) = (floor(Int,$(U("u",i)) ))
-#                 $(U("i",i)) = unsafe_trunc(Int, $(U("u",i)))
-#                 $(U("i",i)) = max( min($(U("i",i)),$(U("M",i))-2), 0 )
-#                 $(U("t",i)) = $(U("u",i))-$(U("i",i))
-#                 $(U("tp",i,1)) = $(U("t",i))*$(U("t",i))*$(U("t",i))
-#                 $(U("tp",i,2)) = $(U("t",i))*$(U("t",i))
-#                 $(U("tp",i,3)) = $(U("t",i))
-#                 $(U("tp",i,4)) = convert($Tf,1.0);   #TODO
-#             end
-#             for ll in bl.args
-#                 push!(lines, ll)
-#             end
-#         end
-#     else
-#         lines = []
-#         e = quote
-#                 x_ = SVector(S...)
-#                 a_ = SVector( a... )
-#                 b_ = SVector( b... )
-#                 n_ = SVector( orders... )
-#                 δ_ = (b_.-a_)./(n_.-1)
-#                 # i_ = div.( (x_.-a_), δ_)
-#                 i_ = SVector( ()...)
-#                 i_ = max.(min.(i_, n_.-2), 0)
-#                 λ_ = (x_.-(a_ .+ δ_.*i_))./δ_
-#                 ii_ = unsafe_trunc.(Int,i_)
-
-#             end
-#         for x in e.args
-#             push!(lines, x)
-#         end
-#         for i=1:d
-#             bl = quote
-
-
-#                 # compat
-#                 $(U("i",i)) = ii_[$i]
-#                 $(U("t",i)) = λ_[$i]
-
-#                 $(U("tp",i,1)) = $(U("t",i))*$(U("t",i))*$(U("t",i))
-#                 $(U("tp",i,2)) = $(U("t",i))*$(U("t",i))
-#                 $(U("tp",i,3)) = $(U("t",i))
-#                 $(U("tp",i,4)) = convert($Tf,1.0);
-#             end
-#             for ll in bl.args
-#                 push!(lines, ll)
-#             end
-#         end
-#     end
-#     return lines
-# end
-
-function create_function(d,extrap="natural"; vectorize=true, Tf=Float32)
+function create_function(d,extrap="natural"; vectorize=true, Tf=Float64)
     if vectorize
         expr = quote
             function $(Symbol(string("eval_UC_spline!")))( a, b, orders, C::Array{T,d}, S::Vector{SVector{d,$Tf}}, V::Vector{T}) where d where T

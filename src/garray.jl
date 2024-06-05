@@ -63,7 +63,7 @@ getindex(g::GArray{G,T}, i::Int64) where G where T = g.data[i]
 setindex!(g::GArray, x, i) = (g.data[i] = x)
 
 function setindex!(
-        g::GArray{Dolo.CGrid{2},Vector{T}},
+        g::GArray{<:Dolo.CGrid{2},Vector{T}},
         v::T,
         i::Int64, 
         j::Int64) where T

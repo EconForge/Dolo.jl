@@ -80,7 +80,9 @@ function discretize(model::YModel{<:VAR1}, d=Dict())
     n_s = length(Dolo.variables(model.states)) - d
     
     exo_grid = SGrid(dvar.Q)
-    endo_space = CartesianSpace{n_s, Dolo.variables(model.states)[d+1:end]}(
+    # TODO: simplify that call
+    Tf = eltype(model)
+    endo_space = CartesianSpace{n_s, Dolo.variables(model.states)[d+1:end],Tf}(
         model.states.min[d+1:end],
         model.states.max[d+1:end]
     )

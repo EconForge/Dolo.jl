@@ -8,8 +8,7 @@ end
 
 const CSpace = CartesianSpace
 
-CartesianSpace(a::Tuple{Tf}, b::Tuple{Tf}) where Tf = CartesianSpace{length(a), (:x,), Tf}(a,b)
-CartesianSpace(a::Tuple{Tf, Tf}, b::Tuple{Tf, Tf}) where Tf = CartesianSpace{length(a), (:x_1, :x_2), Tf}(a,b)
+# CartesianSpace(a::NTuple{d,Tf}, b::NTuple{d, Tf}) where d where Tf = CartesianSpace{length(a), (:x,), Tf}(a,b)
 
 function CartesianSpace(kwargs::Pair{Symbol, Tuple{Tf, Tf}}...) where Tf
     
