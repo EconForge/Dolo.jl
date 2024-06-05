@@ -6,9 +6,9 @@ struct GArray{G,U}
 end
 
 const GVector{G,T} = GArray{G,T}
-const GDist{G} = GArray{G, Vector{Float64}}
+const GDist{G,Tf} = GArray{G, Vector{Tf}}
 
-GDist(g::G, v::Vector{Float64}) where G= GArray{G,Vector{Float64}}(g, v)
+GDist(g::G, v::Vector{Tf}) where G where Tf = GArray{G,Vector{Tf}}(g, v)
 
 
 norm(v::GArray) = maximum(u->maximum(abs, u), v.data)
@@ -22,30 +22,33 @@ distance(u::SVector, v::SVector) = maximum(abs, u-v)
 distance(u::GVector, v::GVector) = maximum( t->distance(t[1],t[2]), zip(u.data, v.data))
 
 import Base: size
-size(a::GArray{PGrid{G1, G2, d}, T}) where G1 where G2 where d where T = (length(a.grid.g1), length(a.grid.g2))
+size(a::GArray{PGrid{G1, G2, d}, T}) where G1 where G2 where d where T = (length(a.grid.grids[1]), length(a.grid.grids[2]))
 
 
 # TODO: check
-getindex(a::GArray{PGrid{G1, G2, d}, T}, i::Int, j::Int) where G1 where G2 where d where T = a.data[ i + length(a.grid.g1)*(j-1)]
-getindex(a::GArray{PGrid{G1, G2, d}, T}, i::Int, ::Colon) where G1 where G2 where d where T = [a[i,j] for j=1:length(a.grid.g2)]
-getindex(a::GArray{PGrid{G1, G2, d}, T}, ::Colon, j::Int) where G1 where G2 where d where T = [a[i,j] for i=1:length(a.grid.g1)]
+getindex(a::GArray{PGrid{G1, G2, d}, T}, i::Int, j::Int) where G1 where G2 where d where T = a.data[ i + length(a.grid.grids[1])*(j-1)]
+getindex(a::GArray{PGrid{G1, G2, d}, T}, i::Int, ::Colon) where G1 where G2 where d where T = [a[i,j] for j=1:length(a.grid.grids[2])]
+getindex(a::GArray{PGrid{G1, G2, d}, T}, ::Colon, j::Int) where G1 where G2 where d where T = [a[i,j] for i=1:length(a.grid.grids[1])]
 
 getindex(a::GArray{PGrid{G1, G2, d}, T}, ::Colon) where G1 where G2 where d where T = a.data
 
 
 # TODO: check
 function setindex!(a::GArray{PGrid{G1, G2, d}, T}, v, i::Int, j::Int) where G1 where G2 where d where T 
-    (a.data[ i + length(a.grid.g1)*(j-1)] = v)
+    (a.data[ i + length(a.grid.grids[1])*(j-1)] = v)
     nothing
 end
 
-
+getprecision(g::GArray{G,T}) where G where T = eltype(g).types[1].types[1]
 
 
 eltype(g::GArray{G,T}) where G where T = eltype(T)
 
 # warning: these functions don't copy any data
-ravel(g::GArray) = reinterpret(Float64, g.data)
+function ravel(g::GArray) 
+    Tf = eltype(g.data[1])
+    reinterpret(Tf, g.data)
+end
 unravel(g::GArray, x) = GArray(
     g.grid,
     reinterpret(eltype(g), x)
@@ -60,7 +63,7 @@ getindex(g::GArray{G,T}, i::Int64) where G where T = g.data[i]
 setindex!(g::GArray, x, i) = (g.data[i] = x)
 
 function setindex!(
-        g::GArray{Dolo.CGrid{2},Vector{T}},
+        g::GArray{<:Dolo.CGrid{2},Vector{T}},
         v::T,
         i::Int64, 
         j::Int64) where T
@@ -72,8 +75,8 @@ getindex(g::GArray{G,T}, inds::Int64) where G<:AGrid{d} where d where T = g.data
 
 # interpolating indexing
 function (xa::GArray{PGrid{G1, G2, d}, T})(i::Int64, p::SVector{d2, U}) where G1<:SGrid where G2<:CGrid{d2} where d where d2 where T where U
-    g1 = xa.grid.g1
-    g2 = xa.grid.g2
+    g1 = xa.grid.grids[1]
+    g2 = xa.grid.grids[2]
     dims = tuple(length(g1), (e[3] for e in g2.ranges)... )
     # ranges = tuple( (range(e...) for e in g2.ranges)... )
     # v = view(reshape(xa.data, dims),i,:)
@@ -90,7 +93,7 @@ end
 
 function (xa::GArray{PGrid{G1, G2, d}, T})(S::Tuple{Tuple{Int64}, U}) where G1 where G2 where U<:SVector where d where T
     #### TODO: replace
-    n_x =  ndims(xa.grid.g2)
+    n_x =  ndims(xa.grid.grids[2])
     V = S[2]
     n = length(V)
     s = SVector((V[i] for i=n-n_x+1:n)...)
@@ -113,22 +116,21 @@ import Base: *, \, +, -, /
 *(x::Number, A::GArray{G,T}) where G where T = GArray(A.grid, x .* A.data)
 
 
-*(A::GArray{G,Vector{T}}, x::SVector{q, Float64}) where G where T <:SMatrix{p, q, Float64, n}  where p where q where n = GArray(A.grid, [M*x for M in A.data])
-# *(A::GArray{G,Vector{T}}, x::SLArray{Tuple{q}, Float64, 1, q, names}) where G where T <:SMatrix{p, q, Float64, n}  where p where q where n where names = A*SVector(x...)
+*(A::GArray{G,Vector{T}}, x::SVector{q, Tf}) where G where T <:SMatrix{p, q, Tf, n}  where p where q where n where Tf = GArray(A.grid, [M*x for M in A.data])
 
 
-*(A::GArray{G,T}, B::AbstractArray{Float64}) where G where T <:SMatrix{p, q, Float64, n}  where p where q where n = 
+*(A::GArray{G,T}, B::AbstractArray{Tf}) where G where T <:SMatrix{p, q, Tf, n}  where p where q where n where Tf = 
     ravel(
         GArray(
             A.grid,
-            A.data .* reinterpret(SVector{q, Float64}, B)
+            A.data .* reinterpret(SVector{q, Tf}, B)
         )
     )
 
 
 import Base: convert
 
-function Base.convert(::Type{Matrix}, A::GArray{G,Vector{T}}) where G where T <:SMatrix{p, q, Float64, k}  where p where q where k
+function Base.convert(::Type{Matrix}, A::GArray{G,Vector{T}}) where G where T <:SMatrix{p, q, Tf, k}  where p where q where k where Tf
     N = length(A.data)
     n0 = N*p
     n1 = N*q
@@ -140,3 +142,9 @@ function Base.convert(::Type{Matrix}, A::GArray{G,Vector{T}}) where G where T <:
     end
     return M
 end
+
+
+
+### TODO
+
+duplicate(g::GArray{G,T}) where G where T = GArray(g.grid, deepcopy(g.data))

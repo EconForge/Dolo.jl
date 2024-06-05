@@ -15,6 +15,13 @@ name(::YModel{C,A,B,D,N}) where C where A where B where D where N = N
 
 bounds(model::YModel, s) = model.controls
 
+
+# TODO: check somewhere that the type of
+#  states/controls/exogenous
+# is the same as calibration
+
+eltype(model::YModel) = eltype(model.calibration)
+
 function recalibrate(model::YModel; kwargs...)
     calib = merge(model.calibration, kwargs)
     YModel(model.states, model.controls, model.exogenous, calib, model.source)
@@ -48,6 +55,10 @@ struct DYModel{M, G, D} <: ADModel
     dproc::D
 end
 
+# TODO: check whether true
+eltype(dm::DYModel) = eltype(dm.model)
+
+
 name(dm::DYModel) = name(dm.model)
 
 bounds(dmodel::DYModel, s) = bounds(dmodel.model, s)
@@ -69,7 +80,9 @@ function discretize(model::YModel{<:VAR1}, d=Dict())
     n_s = length(Dolo.variables(model.states)) - d
     
     exo_grid = SGrid(dvar.Q)
-    endo_space = CartesianSpace{n_s, Dolo.variables(model.states)[d+1:end]}(
+    # TODO: simplify that call
+    Tf = eltype(model)
+    endo_space = CartesianSpace{n_s, Dolo.variables(model.states)[d+1:end],Tf}(
         model.states.min[d+1:end],
         model.states.max[d+1:end]
     )

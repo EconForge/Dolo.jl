@@ -22,17 +22,18 @@
 function F(dmodel::M, s::QP, x::SVector{d,T}, φ::Union{Policy, GArray, DFun}) where M where d where T
 
     r = zero(SVector{d,T})
+
     for (w,S) in τ(dmodel, s, x)
         r += w*arbitrage(dmodel,s,x,S,φ(S)) 
     end
+
     # TODO: why does the following allocate ?
     # strange: if reloaded it doesn't allocate anymore
     # r += sum(
     #      w*arbitrage(model,s,x,S,φ(S)) 
     #      for (w,S) in τ(model, s, x)
     # )
-    r
-    # r::SVector{d,T}
+    r::SVector{d,T}
     r = complementarities(dmodel.model, s,x,r)
     r
 end
@@ -126,9 +127,11 @@ end
 
 
 using LinearMaps
+using Adapt
 
+function time_iteration_workspace(dmodel; interp_mode=:linear, improve=false, dest=Array)
 
-function time_iteration_workspace(dmodel; interp_mode=:linear)
+    T = eltype(dmodel)
 
     x0 = (Dolo.initial_guess(dmodel))
     x1 = deepcopy(x0)
@@ -139,11 +142,19 @@ function time_iteration_workspace(dmodel; interp_mode=:linear)
     n = length(dx.data[1])
     J = GArray(
         dmodel.grid,
-        zeros(SMatrix{n,n,Float64,n*n}, N)
+        zeros(SMatrix{n,n,T,n*n}, N)
     )
     vars = variables(dmodel.model.controls)
     φ = DFun(dmodel.model.states, x0, vars; interp_mode=interp_mode)
-    return (;x0, x1, x2, r0, dx, J, φ)
+
+    # if improve
+        L = Dolo.dF_2(dmodel, x1, φ)
+        tt = (;x0, x1, x2, r0, dx, J, L, φ)
+    # else
+        # tt = (;x0, x1, x2, r0, dx, J, φ)
+    # end
+
+    return adapt(dest, tt)
 
 end
 
@@ -190,26 +201,29 @@ function time_iteration(model::DYModel,
 
     # mem = typeof(workspace) <: Nothing ? time_iteration_workspace(model) : workspace
     mbsteps = 5
-    lam = 0.5
+
+    (;x0, x1, x2, dx, r0, J, φ) = workspace
+
     
     local η_0 = NaN
+    local η
     convergence = false
     iterations = T
     
-    if engine==:cpu
-        t_engine = CPU()
-    elseif engine==:gpu
-        t_engine = GPU()
+    Tf = eltype(eltype(x0))
+
+    lam = convert(Tf, 0.5)
+
+    if engine in (:cpu, :gpu)
+        t_engine = get_backend(workspace.x0)
     else
         t_engine = nothing
     end
 
-    (;x0, x1, x2, dx, r0, J, φ) = workspace
-
     ti_trace = trace ? IterationTrace(typeof(φ)[]) : nothing
 
     if improve
-        J_2 = Dolo.dF_2(model, x1, φ)
+        J_2 = workspace.L
     end
 
     for t=1:T
@@ -221,7 +235,6 @@ function time_iteration(model::DYModel,
         trace && push!(ti_trace.data, deepcopy(φ))
 
         F!(r0, model, x0, φ, t_engine)
-    
         # r0 = F(model, x0, φ)
 
         ε = norm(r0)
@@ -244,6 +257,7 @@ function time_iteration(model::DYModel,
             
             ε_n = norm(r0)
             if ε_n<tol_ε
+                iterations = t
                 break
             end
 
@@ -259,6 +273,7 @@ function time_iteration(model::DYModel,
 
                 ε_b = norm(r0)
                 if ε_b<ε_n
+                    iterations = t
                     break
                 end
             end
@@ -278,6 +293,10 @@ function time_iteration(model::DYModel,
 
         verbose ? append!(log; verbose=verbose, it=t-1, err=ε, sa=η_0, lam=gain, elapsed=elapsed) : nothing
 
+        if η < tol_η
+            iterations = t
+            break
+        end
         η_0 = η
 
 
@@ -293,12 +312,16 @@ function time_iteration(model::DYModel,
             Dolo.dF_1!(J_1, model, x1, φ, t_engine)
             Dolo.dF_2!(J_2, model, x1, φ, t_engine)
 
-            mul!(J_2, -1.0)
+            mul!(J_2, convert(Tf,-1.0))
+
             # J_2.M_ij[:] *= -1.0
             Tp = J_1 \ J_2
             
             d = (x1-x0)
-            x0.data .+= neumann(Tp, d; K=improve_K)
+
+            rhs =  neumann(Tp, d; K=improve_K)
+
+            x0.data .+= rhs.data
 
         else
             x0.data .= x1.data
@@ -312,7 +335,7 @@ function time_iteration(model::DYModel,
         φ,
         iterations,
         tol_η,
-        η_0,
+        η,
         log,
         ti_trace
     )
@@ -326,7 +349,6 @@ function newton(model, workspace=newton_workspace(model);
     # mem = typeof(workspace) <: Nothing ? time_iteration_workspace(model) : workspace
 
     (;x0, x1, x2, dx, r0, J, φ, T, memn) = workspace
-
 
     for t=1:K
         

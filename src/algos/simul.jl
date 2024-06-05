@@ -11,7 +11,6 @@ function τ(dmodel::Dolo.DYModel{M}, ss::T, a::SVector) where M<:Union{Dolo.YMod
 
     (i,_) = ss.loc
     s_ = ss.val
-    
 
     # TODO: replace following block by one nonallocating function
     Q = dmodel.dproc.Q
@@ -93,7 +92,7 @@ using ResumableFunctions
 
     p = model.calibration.p
     P = model.transition
-    Q = model.grid.g1.points
+    Q = model.grid.grids[1].points
 
     i = ss[1][1]
 
@@ -113,7 +112,7 @@ using ResumableFunctions
         M = Q[j]
         S = transition(model, m, s, a, M, p)
 
-        for (w, i_S) in trembling__hand(model.grid.g2, S)
+        for (w, i_S) in trembling__hand(model.grid.grids[2], S)
 
             res = (
                 P[i,j]*w,
@@ -121,7 +120,7 @@ using ResumableFunctions
                 (
                     (linear_index ? to__linear_index(model.grid, (j,i_S)) : (j,i_S)),
 
-                    SVector(M..., model.grid.g2[i_S]...)
+                    SVector(M..., model.grid.grids[2][i_S]...)
                 )
             )
             if linear_index

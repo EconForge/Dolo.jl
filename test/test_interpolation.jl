@@ -12,7 +12,7 @@ using StaticArrays
             NN = 20
 
             vars =  tuple( (Symbol("d$i") for i in 1:d)... )
-            pairs = (vars[i]=>[0.0, 1.0*i] for i in 1:d)
+            pairs = (vars[i]=>(0.0, 1.0*i) for i in 1:d)
             dvars = Dict( pairs )
             cs = Dolo.CSpace(;
                 pairs...

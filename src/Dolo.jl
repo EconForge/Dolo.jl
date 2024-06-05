@@ -73,12 +73,17 @@ module Dolo
     include("garray.jl")
     include("model.jl")
     include("funs.jl")
+    include("conversion.jl")
+
     include("dev_L2.jl")
     include("algos/simul.jl")
     include("algos/results.jl")
     include("algos/time_iteration.jl")
     include("algos/time_iteration_accelerated.jl")
     include("algos/vfi.jl")
+
+
+    include("adapt.jl")
     include("utils.jl")
 
     # function yaml_import(filename)

@@ -12,18 +12,37 @@ const LF = LL
 import Base: /,*
 import LinearAlgebra: mul!
 
+# function mul!(L::LL, x::Number)
+
+#     for n in 1:length(L.D)
+#         L.D[n]  =tuple((
+#             (;F_x=x*d.F_x, S=d.S) 
+#             for d in L.D[n]
+#         )...)
+#     end
+# end
+
 function mul!(L::LL, x::Number)
 
-    for n in 1:length(L.D)
-        L.D[n]  =tuple((
+    map!(
+        e->tuple((
             (;F_x=x*d.F_x, S=d.S) 
-            for d in L.D[n]
-        )...)
-    end
+            for d in e
+        )...),
+        L.D,
+        L.D
+    )
+    # for n in 1:length(L.D)
+    #     L.D[n]  =tuple((
+    #         (;F_x=x*d.F_x, S=d.S) 
+    #         for d in L.D[n]
+    #     )...)
+    # end
 end
 
 function mul!(dr, L2::LF, x)
-    mul!(dr, L2::LF, x, CPU())
+    engine=get_backend(L2.D)
+    mul!(dr, L2::LF, x, engine)
 end
 
 
@@ -45,10 +64,13 @@ end
 
 
 function *(L::LL, x0)
-    r = deepcopy(x0)
-    r.data .*= 0.0
+
+    # BUG: with deepcopy, doesn' t work
+    r = duplicate(x0) ###### BUG: this doesn't wokr on the GPU
+    Tf = getprecision(x0)
+    r.data .*= convert(Tf, 0.0)
     mul!(r, L, x0)
-    return r
+
 end
 
 # this takes 0.2 s !
@@ -127,9 +149,14 @@ end
 
 function neumann(L2::LF, r0; K=1000, τ_η=1e-10)
     
-    dx = deepcopy(r0)
-    du = deepcopy(r0)
-    dv = deepcopy(r0)
+    # TODO
+    # dx = deepcopy(r0)
+    # du = deepcopy(r0)
+    # dv = deepcopy(r0)
+
+    dx = duplicate(r0)
+    du = duplicate(r0)
+    dv = duplicate(r0)
 
     mem = (;du, dv)
 
@@ -139,7 +166,7 @@ function neumann(L2::LF, r0; K=1000, τ_η=1e-10)
 
 end
 
-function neumann!(dx, L2::LF, r0, mem=(;du=deepcopy(r0), dv=deepcopy(r0)); K=1000, τ_η=1e-10)
+function neumann!(dx, L2::LF, r0, mem=(;du=duplicate(r0), dv=duplicate(r0)); K=1000, τ_η=1e-10)
     
     (; du, dv) = mem
     

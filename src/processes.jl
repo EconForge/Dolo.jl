@@ -302,9 +302,9 @@ end
 
 discretize(var::VAR1, d::Dict) = length(d)>=1 ? discretize(var, d[:n]) : discretize(var)
 
-struct MarkovChain{names, d, d2, k}
-    P::SMatrix{d,d,Float64,d2}
-    Q::SVector{d, SVector{k, Float64}}
+struct MarkovChain{names, d, d2, k, Tf}
+    P::SMatrix{d,d,Tf,d2}
+    Q::SVector{d, SVector{k, Tf}}
 end
 
 variables(mc::MarkovChain{names}) where names = names
@@ -313,14 +313,15 @@ ndims(mc::MarkovChain{names}) where names = length(names)
 # MarkovChain(names, P, Q) = MarkovChain{names, typeof(P), typeof(Q)}(P,Q)
 
 function MarkovChain(names, P::Matrix, Q::Matrix) 
+    Tf = eltype(P)
     d = size(P,1)
-    sm = SMatrix{d,d,Float64,d*d}(P)
+    sm = SMatrix{d,d,Tf,d*d}(P)
     sv = SVector( tuple( ( SVector(Q[i,:]...) for i in 1:size(Q,1))...)  )
-    MarkovChain{names,d,d^2,length(sv[1])}(sm,sv)
+    MarkovChain{names,d,d^2,length(sv[1]),Tf}(sm,sv)
 end
 
-MarkovChain(names, P::SMatrix, Q::SVector{d,SVector{k,Float64}}) where d where k = MarkovChain{names, size(P,1), length(P), length(Q[1])}(P, Q) # TODO: specify type arguments
-function MarkovChain(P::SMatrix, Q::SVector{d,SVector{k,Float64}}) where d where k
+MarkovChain(names, P::SMatrix, Q::SVector{d,SVector{k,Tf}}) where d where k where Tf = MarkovChain{names, size(P,1), length(P), length(Q[1]),Tf}(P, Q) # TODO: specify type arguments
+function MarkovChain(P::SMatrix, Q::SVector{d,SVector{k,Tf}}) where d where k where Tf
     names = tuple((Symbol(string("e", i)) for i=1:k)...)
     MarkovChain(names, P, Q)
 end

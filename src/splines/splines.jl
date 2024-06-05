@@ -14,11 +14,11 @@ function interpolant_cspline(a, b, orders, V)
 
     coefs = filter_coeffs(a, b, orders, V)
 
-    function fun(s::Array{Float64,2})
+    function fun(s::Array{Tf,2}) where Tf
         return eval_UC_spline(a, b, orders, coefs, s)
     end
 
-    function fun(p::Float64...)
+    function fun(p::Tf...) where Tf
         return fun([p...]')
     end
 
@@ -45,7 +45,7 @@ end
 
 
 
-    function prefilter(ranges::NTuple{d,Tuple{Float64,Float64,i}}, V::AbstractArray{T, d}, ::Val{3}) where d where i<:Int where T
+    function prefilter(ranges::NTuple{d,Tuple{Tf,Tf,i}}, V::AbstractArray{T, d}, ::Val{3}) where d where i<:Int where T where Tf
         θ = zeros(eltype(V), ((e[3]+2) for e in ranges)...)
         ind = tuple( (2:(e[3]+1) for e in ranges )...)
         θ[ind...] = V
@@ -54,17 +54,17 @@ end
     end
 
 
-    function prefilter!(θ::AbstractArray{T, d}, grid::NTuple{d,Tuple{Float64,Float64,i}}, V::AbstractArray{T, d}, ::Val{3}) where d where i<:Int where T
+    function prefilter!(θ::AbstractArray{T, d}, grid::NTuple{d,Tuple{Tf,Tf,i}}, V::AbstractArray{T, d}, ::Val{3}) where d where i<:Int where T where Tf
         splines.prefilter!(θ)
     end
 
-    function prefilter(ranges::NTuple{d,Tuple{Float64,Float64,i}}, V::AbstractArray{T, d}, ::Val{1}) where d where i<:Int where T
+    function prefilter(ranges::NTuple{d,Tuple{Tf,Tf,i}}, V::AbstractArray{T, d}, ::Val{1}) where d where i<:Int where T where Tf
         θ = copy(V)
         return θ
     end
 
 
-    function prefilter!(θ::AbstractArray{T, d}, grid::NTuple{d,Tuple{Float64,Float64,i}}, V::AbstractArray{T, d}, ::Val{1}) where d where i<:Int where T
+    function prefilter!(θ::AbstractArray{T, d}, grid::NTuple{d,Tuple{Tf,Tf,i}}, V::AbstractArray{T, d}, ::Val{1}) where d where i<:Int where T where Tf
         θ .= V
     end
 
@@ -95,7 +95,7 @@ end
             fill!(spl.θ, zero(eltype(spl.θ)))
             ind = tuple( (2:(e[3]+1) for e in spl.grid )...)
             spl.θ[ind...] .= rhs
-            splines.prefilter!(spl.θ)
+            prefilter!(spl.θ, Val(:KA))
         elseif k==1
             spl.θ .= rhs
         end
