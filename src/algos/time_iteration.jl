@@ -176,7 +176,6 @@ function time_iteration(model::YModel; kwargs...)
     time_iteration(dmodel, wksp; kwargs2...)
 end
 
-using oneAPI: oneArray
 function time_iteration(model::DYModel,
     workspace=time_iteration_workspace(model);
     T=500,

@@ -36,9 +36,3 @@ function adapt_structure(to, L::LL{G,D,F}) where G where D where F
 end
 
 maxabs(u::Number, v::Number) = abs(max(u,v))
-# should it be merged with the general definition?
-import CUDA: CuArray
-distance(x::GVector{G, A}, y::GVector{G,A}) where G where A<:CuArray = Base.mapreduce(u->maximum(abs.(u)), max, x.data-y.data)
-
-import oneAPI: oneArray
-distance(x::GVector{G, A}, y::GVector{G,A}) where G where A<:oneArray = Base.mapreduce(u->maximum(abs.(u)), max, x.data-y.data)

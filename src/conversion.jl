@@ -37,3 +37,13 @@ end
 function convert_precision(Tnew, ps::Dolo.ProductSpace)
     Dolo.ProductSpace((convert_precision(Tnew, e) for e in ps.spaces)...)
 end
+
+
+function hypeof(model)
+    typ = typeof(model)
+    otyp = eltype(model)
+    ntyp = Float32
+    s = replace(string(typ),string(otyp)=>"Float32")
+    gtyp = ( Meta.parse(s) )
+    return Union{eval(gtyp), typ}
+end

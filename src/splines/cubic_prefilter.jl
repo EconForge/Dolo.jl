@@ -313,6 +313,3 @@ function prefilter!(data::AbstractArray{T,2}, ::Val{:KA}) where T
 
 end
 
-using oneAPI: oneArray
-
-prefilter!(data::oneArray) = prefilter!(data, Val(:KA))

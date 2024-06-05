@@ -3,19 +3,16 @@ uuid = "9d24351c-2990-5e1b-a277-04c4b809c898"
 version = "0.5.0-alpha"
 
 [deps]
-AbstractDifferentiation = "c29ec348-61ec-40c8-8164-b8c60e9d9f3d"
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 AxisArrays = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 BlockDiagonals = "0a1fb500-61f7-11e9-3c65-f5ef3456f9f0"
-CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 Continuables = "79afa230-ca09-11e8-120b-5decf7bf5e25"
 Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 Dolang = "e5c7262c-e9d2-5620-ad8e-1af14eb8a8e3"
-Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 FiniteDiff = "6a86dc24-6348-571c-b903-95158fe2bd41"
 FiniteDifferences = "26cc04aa-876d-5657-8c51-4c34ba976000"
 Formatting = "59287772-0a20-5a39-b81b-1366585eb4c0"
@@ -44,5 +41,11 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StringDistances = "88034a9c-02f8-509d-84a9-84ec65e18404"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
-Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
+
+[extensions]
+DolooneAPIExt = "oneAPI"
+DoloCUDAExt = "CUDA"
+
+[weakdeps]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
