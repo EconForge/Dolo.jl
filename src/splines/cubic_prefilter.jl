@@ -75,17 +75,29 @@ end
 
 # TODO: there are certainly some cases where we don't want MVectors there
 
-# function prefilter!(data::AbstractVector{T}) where T
+function prefilter!(data::AbstractVector{T}) where T
 
-#     N = length(data)
+    N = length(data)
 
-#     bands = zero(MMatrix{N, 3, Float64, N*3})
-#     bb = zero(MVector{N, T})
+    bands = zero(MMatrix{N, 3, Float64, N*3})
+    bb = zero(MVector{N, T})
 
-#     fill_bands!(N-2, bands, bb, data)
-#     solve_coefficients!(bands, bb, data)
+    fill_bands!(N-2, bands, bb, data)
+    solve_coefficients!(bands, bb, data)
 
-# end
+end
+
+function prefilter_1!(data::AbstractVector{T}) where T
+
+    N = length(data)
+
+    bands = zero(MMatrix{N, 3, Float64, N*3})
+    bb = zero(MVector{N, T})
+
+    fill_bands!(N-2, bands, bb, data)
+    solve_coefficients!(bands, bb, data)
+
+end
 
 const zq_0 = sqrt(3.0)-2.0
 const λ_0 = 6.0
@@ -94,10 +106,11 @@ getprecision(g::AbstractArray{T}) where T<:Number = T
 getprecision(g::AbstractArray{T}) where T<:SVector = eltype(g).types[1].types[1]
 
 
-function prefilter!(c::AbstractVector{T}) where T
+function prefilter_2!(c::AbstractVector{T}) where T
 
 
     prec = getprecision(c)
+
     λ = convert(prec, λ_0)
     zq = convert(prec, zq_0)
     
@@ -310,6 +323,66 @@ function prefilter!(data::AbstractArray{T,2}, ::Val{:KA}) where T
 
     fun_1(data, ndrange=(I,))
     fun_2(data, ndrange=(J,))
+
+end
+
+
+function prefilter!(data::AbstractArray{T,3}, ::Val{:KA}) where T
+
+
+    @kernel function ker_1(m)
+
+        c = @index(Global, Cartesian)
+        i = c.I[1]
+        j = c.I[2]
+
+        dat = view(m, i, j, :)
+        prefilter!(dat)
+
+    end
+
+    @kernel function ker_2(m)
+
+        c = @index(Global, Cartesian)
+        j = c.I[1]
+        k = c.I[2]
+        
+        dat = view(m, :, j, k)
+        prefilter!(dat)
+
+    end
+
+    @kernel function ker_3(m)
+
+
+        c = @index(Global, Cartesian)
+        i = c.I[1]
+        k = c.I[2]
+        
+        dat = view(m, i, :, k)
+        prefilter!(dat)
+
+    end
+
+
+    backend = get_backend(data)
+
+    if backend==CPU()
+        # Not clear how to set number of threads here
+        fun_1 = ker_1(backend, 8)
+        fun_2 = ker_2(backend, 8)
+        fun_3 = ker_3(backend, 8)
+    else
+        fun_1 = ker_1(backend)
+        fun_2 = ker_2(backend)
+        fun_3 = ker_3(backend)
+    end
+    
+    I,J,K = size(data)
+
+    fun_1(data, ndrange=(I,J))
+    fun_2(data, ndrange=(J,K))
+    fun_3(data, ndrange=(I,K))
 
 end
 
