@@ -114,8 +114,13 @@ function (f::DFun{A,B,I,vars})(i::Int, x::SVector{d2, U})  where A where B<:GArr
     f.itp[i](x)
 end
 
+function (f::DFun{A,B,I,vars})(i::Int64, j::Int64)  where A where B<:GArray{G,V} where V where I where G<:PGrid{G1,G2} where G1<:SGrid where G2<:CGrid where vars where d2 where U
+    f((i,j))
+end
+
 function (f::DFun{A,B,I,vars})(x::QP)  where A where B<:GArray{G,V} where V where I where G<:PGrid{G1,G2} where G1<:SGrid where G2<:CGrid where vars
     f(x.loc...)
+    # f(x.loc)
 end
 
 function (f::DFun{A,B,I,vars})(x::Tuple)  where A where B<:GArray{G,V} where V where I where G<:PGrid{G1,G2} where G1<:SGrid where G2<:CGrid where vars
@@ -128,6 +133,13 @@ function (f::DFun{A,B,I,vars})(loc::Tuple{Tuple{Int64}, SVector{d2, U}})  where 
     dd1 = ndims(f.values.grid.grids[1])
     dd2 = ndims(f.values.grid.grids[2])
     x = SVector((x_[i] for i=(dd1+1):(dd1+dd2))...)
+    f.itp[loc[1][1]](x)
+end
+
+function (f::DFun{A,B,I,vars})(loc::Tuple{Int64, Int64})  where A where B<:GArray{G,V} where V where I where G<:PGrid{G1,G2} where G1<:SGrid where G2<:CGrid where vars where d2 where U
+    # TODO: not beautiful
+    i,j = loc
+    x = f.values.grid.grids[2][j]
     f.itp[loc[1][1]](x)
 end
 
@@ -148,9 +160,9 @@ end
 
 # Compatibility calls
 
-(f::DFun)(x::Real) = f(SVector(x))
-(f::DFun)(x::Real, y::Real) = f(SVector(x,y))
-(f::DFun)(x::Vector{SVector{d,<:Real}}) where d = [f(e) for e in x]
+# (f::DFun)(x::Real) = f(SVector(x))
+# (f::DFun)(x::Real, y::Real) = f(SVector(x,y))
+# (f::DFun)(x::Vector{SVector{d,<:Real}}) where d = [f(e) for e in x]
 
 
 ndims(df::DFun) = ndims(df.domain)
