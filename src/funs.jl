@@ -109,13 +109,19 @@ function fit!(φ::DFun, x::GVector{G}) where G<:CGrid
 
 end
 
-## PGrid
+## PGrid ( SGrid × CGrid )
+
+
+function (f::DFun{A,B,I,vars})(x::QP)  where A where B<:GArray{G,V} where V where I where G<:PGrid{G1,G2} where G1<:SGrid where G2<:CGrid where vars
+    f(x.loc...)
+end
+
 function (f::DFun{A,B,I,vars})(i::Int, x::SVector{d2, U})  where A where B<:GArray{G,V} where V where I where G<:PGrid{G1,G2} where G1<:SGrid where G2<:CGrid where vars where d2 where U
     f.itp[i](x)
 end
 
-function (f::DFun{A,B,I,vars})(x::QP)  where A where B<:GArray{G,V} where V where I where G<:PGrid{G1,G2} where G1<:SGrid where G2<:CGrid where vars
-    f(x.loc...)
+function (f::DFun{A,B,I,vars})(i::Int, j::Int)  where A where B<:GArray{G,V} where V where I where G<:PGrid{G1,G2} where G1<:SGrid where G2<:CGrid where vars where d2 where U
+    f.values[i,j]
 end
 
 function (f::DFun{A,B,I,vars})(x::Tuple)  where A where B<:GArray{G,V} where V where I where G<:PGrid{G1,G2} where G1<:SGrid where G2<:CGrid where vars
@@ -148,9 +154,9 @@ end
 
 # Compatibility calls
 
-(f::DFun)(x::Real) = f(SVector(x))
-(f::DFun)(x::Real, y::Real) = f(SVector(x,y))
-(f::DFun)(x::Vector{SVector{d,<:Real}}) where d = [f(e) for e in x]
+# (f::DFun)(x::Real) = f(SVector(x))
+# (f::DFun)(x::Real, y::Real) = f(SVector(x,y))
+# (f::DFun)(x::Vector{SVector{d,<:Real}}) where d = [f(e) for e in x]
 
 
 ndims(df::DFun) = ndims(df.domain)

@@ -147,12 +147,12 @@ function time_iteration_workspace(dmodel; interp_mode=:linear, improve=false, de
     vars = variables(dmodel.model.controls)
     φ = DFun(dmodel.model.states, x0, vars; interp_mode=interp_mode)
 
-    # if improve
+    if improve
         L = Dolo.dF_2(dmodel, x1, φ)
         tt = (;x0, x1, x2, r0, dx, J, L, φ)
-    # else
-        # tt = (;x0, x1, x2, r0, dx, J, φ)
-    # end
+    else
+        tt = (;x0, x1, x2, r0, dx, J, φ)
+    end
 
     return adapt(dest, tt)
 
