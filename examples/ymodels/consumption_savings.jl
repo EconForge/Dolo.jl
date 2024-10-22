@@ -60,11 +60,11 @@ model = let
         (:w,:r,:e),
         SVector( [Q[i] for i=1:size(Q,1)]...  )
     )×CartesianSpace(;
-        y=[0.01, 100]
+        y=(0.01, 100.0)
     )
 
     controls = CartesianSpace(;
-        c=(0,Inf),
+        c=(0.0,Inf),
     )
     exogenous = Dolo.MarkovChain(
         (:w,:r,:e), P,Q

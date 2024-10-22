@@ -120,7 +120,7 @@ function (f::DFun{A,B,I,vars})(i::Int, x::SVector{d2, U})  where A where B<:GArr
     f.itp[i](x)
 end
 
-function (f::DFun{A,B,I,vars})(i::Int, j::Int)  where A where B<:GArray{G,V} where V where I where G<:PGrid{G1,G2} where G1<:SGrid where G2<:CGrid where vars where d2 where U
+function (f::DFun{A,B,I,vars})(i::Int, j::Int)  where A where B<:GArray{G,V} where V where I where G<:PGrid{G1,G2} where G1<:SGrid where G2<:CGrid where vars 
     f.values[i,j]
 end
 
@@ -142,7 +142,7 @@ function (f::DFun{A,B,I,vars})(loc::Tuple{Tuple{Int64}, SVector{d2, U}})  where 
     f.itp[loc[1][1]](x)
 end
 
-function (f::DFun{A,B,I,vars})(loc::Tuple{Int64, Int64})  where A where B<:GArray{G,V} where V where I where G<:PGrid{G1,G2} where G1<:SGrid where G2<:CGrid where vars where d2 where U
+function (f::DFun{A,B,I,vars})(loc::Tuple{Int64, Int64})  where A where B<:GArray{G,V} where V where I where G<:PGrid{G1,G2} where G1<:SGrid where G2<:CGrid where vars
     # TODO: not beautiful
     i,j = loc
     x = f.values.grid.grids[2][j]
