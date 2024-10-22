@@ -42,10 +42,14 @@ StringDistances = "88034a9c-02f8-509d-84a9-84ec65e18404"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 
-[extensions]
-DolooneAPIExt = "oneAPI"
-DoloCUDAExt = "CUDA"
-
 [weakdeps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
+
+[extensions]
+DoloCUDAExt = "CUDA"
+DolooneAPIExt = "oneAPI"
+
+[compat]
+Dolang = "3.3.0"
+LabelledArrays = "≥1.16.0"

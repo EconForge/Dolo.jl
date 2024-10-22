@@ -60,8 +60,6 @@ end
 const PGrid = ProductGrid
 
 function ProductGrid(A::AGrid{d1},B::AGrid{d2}) where d1 where d2 
-    println(d1)
-    println(d2)
     ProductGrid{typeof(A), typeof(B), d1+d2}( (A,B) )
 end
 
