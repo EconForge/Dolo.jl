@@ -30,7 +30,8 @@ function DFun(domain, values, itp)
     elseif eltype(values) <: SVector # && length(eltype(values)) == 1
         vars = (:y,)
     else
-        println(values)
+        # println(values)
+        nothing
     end
     return DFun(domain, values, itp, vars)
 end
@@ -53,7 +54,8 @@ function DFun(states, values::GVector{G,V}, vars=nothing; interp_mode=:linear) w
         elseif eltype(values) <: SVector # && length(eltype(values)) == 1
             vars = (:y,)
         else
-            println(values)
+            # println(values)
+            nothing
         end
     end
 
@@ -80,7 +82,8 @@ function DFun(states, values::GVector{G,V}, vars=nothing; interp_mode=:linear) w
         elseif eltype(values) <: SVector # && length(eltype(values)) == 1
             vars = (:y,)
         else
-            println(values)
+            # println(values)
+            nothing
         end
     end
 

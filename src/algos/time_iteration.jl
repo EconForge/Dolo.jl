@@ -170,8 +170,9 @@ end
 function time_iteration(model::YModel; kwargs...)
     discr_options = get(kwargs, :discretization, Dict())
     interp_mode = get(kwargs, :interpolation, :cubic)
+    improve = get(kwargs, :improve, false)
     dmodel = discretize(model, discr_options)
-    wksp = time_iteration_workspace(dmodel; interp_mode=interp_mode)
+    wksp = time_iteration_workspace(dmodel; interp_mode=interp_mode, improve=improve)
     kwargs2 = pairs(NamedTuple( k=>v for (k,v) in kwargs if !(k in (:discretization, :interpolation))))
     time_iteration(dmodel, wksp; kwargs2...)
 end
@@ -202,7 +203,7 @@ function time_iteration(model::DYModel,
     # mem = typeof(workspace) <: Nothing ? time_iteration_workspace(model) : workspace
     mbsteps = 5
 
-    (;x0, x1, x2, dx, r0, J, φ) = workspace
+    (;x0, x1, x2, r0, dx, J, φ) = workspace
 
     
     local η_0 = NaN
@@ -235,6 +236,7 @@ function time_iteration(model::DYModel,
         trace && push!(ti_trace.data, deepcopy(φ))
 
         F!(r0, model, x0, φ, t_engine)
+
         # r0 = F(model, x0, φ)
 
         ε = norm(r0)
@@ -254,7 +256,7 @@ function time_iteration(model::DYModel,
         for k=1:max_bsteps
 
             F!(r0, model, x1,  φ, t_engine)
-            
+
             ε_n = norm(r0)
             if ε_n<tol_ε
                 iterations = t
