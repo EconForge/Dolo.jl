@@ -79,8 +79,9 @@ function create_Phi(d, extrap, diff; Tf=Float64)
         block = []
         rhs_1 = U("tp", i,1)
         rhs_2 = U("tp", i,2)
-        rhs_4 = U("tp", i,4)
         rhs_3 = U("tp", i,3)
+        rhs_4 = U("tp", i,4)
+
         if extrap == "none"
             for j=1:4
                 eq = :($(U("Phi_",i,j)) = ($(Ad[j,1])*$rhs_1 + $(Ad[j,2])*$rhs_2 + $(Ad[j,3])*$rhs_3 + $(Ad[j,4])*$rhs_4) )
@@ -221,6 +222,7 @@ function create_function(d,extrap="natural"; vectorize=true, Tf=Float64)
                 $(create_parameters(d; Tf=Tf)...)
                 N = size(S,1)
                 # @fastmath @inbounds @simd( # doesn't seem to make any difference
+
                 for n=1:N
                     $(create_local_parameters(d;Tf=Tf)...)
                     $(create_Phi(d,extrap,false;Tf=Tf)...)
