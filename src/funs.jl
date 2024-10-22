@@ -122,6 +122,7 @@ end
 
 function (f::DFun{A,B,I,vars})(i::Int, j::Int)  where A where B<:GArray{G,V} where V where I where G<:PGrid{G1,G2} where G1<:SGrid where G2<:CGrid where vars where d2 where U
     f.values[i,j]
+end
 
 function (f::DFun{A,B,I,vars})(x::QP)  where A where B<:GArray{G,V} where V where I where G<:PGrid{G1,G2} where G1<:SGrid where G2<:CGrid where vars
     f(x.loc...)
