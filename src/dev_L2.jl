@@ -129,10 +129,16 @@ function dF_2!(L, dmodel, xx::GArray, φ::DFun, ::Nothing)
         (i,j) = Dolo.from_linear(dmodel.grid, n)
         s_ = dmodel.grid[i,j]
         s = QP((i,j), s_)
+
+        r_F = ForwardDiff.jacobian(
+            r->complementarities(dmodel.model, s,x,r),
+            sum( w*arbitrage(dmodel,s,x,S,φ(S)) for (w,S) in τ(dmodel, s, x) ),
+        )
+
         L.D[n] = tuple(
                 (
                     (;
-                        F_x=w*ForwardDiff.jacobian(u->Dolo.arbitrage(dmodel,s,x,S,u), φ(S)),
+                        F_x=w*r_F*ForwardDiff.jacobian(u->Dolo.arbitrage(dmodel,s,x,S,u), φ(S)),
                         S=S
                     )
                 for (w,S) in Dolo.τ(dmodel, s, x)

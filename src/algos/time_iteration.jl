@@ -104,7 +104,7 @@ end    #### no alloc
     
 
 
-
+# warning: the versions of dF_2 don't have complementarities
 
 dF_2(model, s, x::SVector, φ::GArray, dφ::GArray) = 
     sum(
@@ -265,7 +265,11 @@ function time_iteration(model::DYModel,
 
             dF_1!(J, model, x1,  φ, t_engine)
             
-            dx.data .= J.data .\ r0.data
+            # TODO: fix regression or revert to Julia 1.10
+            @inline dx.data .= J.data .\ r0.data
+            # for k =1:length(dx.data)
+            #     dx.data[k] = J.data[k][1,1] \ r0.data[k]
+            # end
 
 
             for k=0:mbsteps
@@ -313,14 +317,17 @@ function time_iteration(model::DYModel,
 
             Dolo.dF_1!(J_1, model, x1, φ, t_engine)
             Dolo.dF_2!(J_2, model, x1, φ, t_engine)
+            # J_2 = Dolo.dF_2(model, x1, φ)
 
+            
             mul!(J_2, convert(Tf,-1.0))
-
+            
             # J_2.M_ij[:] *= -1.0
             Tp = J_1 \ J_2
             
             d = (x1-x0)
-
+            
+            # return (J_1, J_2, d)
             rhs =  neumann(Tp, d; K=improve_K)
 
             x0.data .+= rhs.data
@@ -371,17 +378,20 @@ function newton(model, workspace=newton_workspace(model);
         dF_1!(J, model, x0, φ)
         dF_2!(T, model, x0, φ)
 
-        
-        T.M_ij .*= -1.0
-        T.M_ij .= J.data .\ T.M_ij 
+        mul!(T, -1.0)
+        T = J \ T
+
+        # T.M_ij .*= -1.0
+        # T.M_ij .= J.data .\ T.M_ij 
         
         r0.data .= J.data .\ r0.data
-        
-        neumann!(dx, T, r0, memn; K=1000)
+        # return (dx, T, r0)
+        neumann!(dx, T, r0, memn; K=K)
 
         x0.data .= x1.data .- dx.data
         x1.data .= x0.data
 
+        # return x0
 
         # end
 
