@@ -101,6 +101,8 @@ module Dolo
         using Dolo: YModel
         export SGrid, CGrid, CSpace, GSpace, CartesianSpace, GridSpace, transition, arbitrage, MvNormal, MarkovChain
         export YModel, bounds, reward
+        export rouwenhorst
+        export SMatrix, SVector
     end
 
 

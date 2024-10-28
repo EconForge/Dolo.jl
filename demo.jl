@@ -1,11 +1,14 @@
 using Dolo
 using DoloYAML
 
-# model = include("examples/ymodels/consumption_savings.jl")
-model = include("examples/ymodels/rbc_iid.yaml")
+model = include("examples/ymodels/consumption_savings_iid.jl")
+# model = include("examples/ymodels/rbc_iid.yaml")
+
 Dolo.time_iteration(model; improve=false)
 
 dmodel = Dolo.discretize(model)
+
+Dolo.time_iteration(dmodel)
 
 wk = Dolo.time_iteration_workspace(dmodel; improve=true)
 
