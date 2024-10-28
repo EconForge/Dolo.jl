@@ -15,23 +15,23 @@ equations:
     arbitrage: |
         β*( c[t+1]/c[t] )^(-γ)*r - 1  | 0<=c[t]<=w[t]
 
-    felicity: |
-        rew[t] = (c[t])^(1-γ)/(1-γ)
+    # felicity: |
+    #     rew[t] = (c[t])^(1-γ)/(1-γ)
 
-    half_transition: |
-        w[t] = exp(y[t]) + a[t-1]*r
+    # half_transition: |
+    #     w[t] = exp(y[t]) + a[t-1]*r
 
-    reverse_state: |
-        w[t] = a[t] + c[t]
+    # reverse_state: |
+    #     w[t] = a[t] + c[t]
 
-    expectation: |
-        mr[t] = β*( c[t+1]/cbar )^(-γ)*r
+    # expectation: |
+    #     mr[t] = β*( c[t+1]/cbar )^(-γ)*r
 
-    direct_response_egm: |
-        c[t] = cbar*(mr[t])^(-1/γ)
+    # direct_response_egm: |
+    #     c[t] = cbar*(mr[t])^(-1/γ)
 
-    direct_response: |
-        c[t] = cbar*(mr[t])^(-1/γ)
+    # direct_response: |
+    #     c[t] = cbar*(mr[t])^(-1/γ)
 
 calibration:
     β: 0.96
