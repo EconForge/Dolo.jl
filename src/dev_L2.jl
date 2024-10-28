@@ -70,7 +70,8 @@ function *(L::LL, x0)
     Tf = getprecision(x0)
     r.data .*= convert(Tf, 0.0)
     mul!(r, L, x0)
-
+    r
+    
 end
 
 # this takes 0.2 s !
