@@ -1,14 +1,60 @@
 using Dolo
 using DoloYAML
 
-model = include("examples/ymodels/consumption_savings_iid.jl")
-# model = include("examples/ymodels/rbc_iid.yaml")
+model = include("examples/ymodels/consumption_savings.jl")
+# model = include("examples/ymodels/rbc_iid.jl")
 
-Dolo.time_iteration(model; improve=false)
+# model = DoloYAML.yaml_import("examples/ymodels/rbc_iid.yaml")
 
 dmodel = Dolo.discretize(model)
 
-Dolo.time_iteration(dmodel)
+wk = Dolo.time_iteration_workspace(dmodel; interp_mode=:linear, improve=true)
+
+wk = Dolo.time_iteration_workspace(dmodel; interp_mode=:cubic, improve=false)
+@time sol = Dolo.time_iteration(dmodel, wk; improve=false, verbose=false)
+
+wk = Dolo.time_iteration_workspace(dmodel; interp_mode=:cubic, improve=true)
+@time sol = Dolo.time_iteration(dmodel, wk; improve=true, verbose=false, improve_K=1000, improve_wait=1)
+
+wk = Dolo.time_iteration_workspace(dmodel; interp_mode=:linear, improve=true)
+@time sol = Dolo.time_iteration(model; improve=true, verbose=false)
+@code_warntype sol = Dolo.time_iteration(model; improve=true, verbose=false)
+@profview sol = Dolo.time_iteration(model; improve=true, verbose=false)
+
+J = Dolo.dF_1(dmodel, wk.x0, wk.φ)
+dx = deepcopy(wk.x0)
+r0 = wk.r0
+
+@time dx.data .= J.data .\ r0.data
+
+
+Dolo.time_iteration(dmodel, wk; improve=true, improve_wait=5, T=50)
+
+
+(J_1, J_2, d) = Dolo.time_iteration(dmodel, wk; improve=true, improve_wait=5)
+T = J_1 \ J_2
+M = convert(Matrix, T)
+abs.(eigvals(M))
+
+
+
+L = Dolo.dF_2(dmodel, sol.dr.values, sol.dr )
+M = convert(Matrix, L)
+
+##
+
+dmodel = Dolo.discretize(model)
+
+wk = Dolo.newton_workspace(dmodel)
+
+res = Dolo.newton(dmodel, wk; verbose=true, K=10)
+dx, T, r0 = res
+
+# Dolo.neumann(T, r0)
+M = convert(Matrix, T)
+using LinearAlgebra
+
+eigvals(M)
 
 wk = Dolo.time_iteration_workspace(dmodel; improve=true)
 
@@ -16,7 +62,7 @@ using FiniteDiff
 
 function residual_1(dmodel,wk,v)
     x = Dolo.unravel(wk.x0, v)
-    r = Dolo.F(dmodel,x, wk.ψ)
+    r = Dolo.F(dmodel,x, wk.φ)
     Dolo.ravel(r)
 end
 
@@ -29,18 +75,16 @@ function residual_2(dmodel,wk,v)
     Dolo.ravel(r)
 end
 
-
-
 v = Dolo.ravel(wk.x0)
 
-residual(dmodel, wk, v, wk.φ)
+residual_1(dmodel, wk, v)
 
-Jdiff = FiniteDiff.finite_difference_jacobian(u->residual(dmodel, wk, u, ψ), v)
+Jdiff_1 = FiniteDiff.finite_difference_jacobian(u->residual_1(dmodel, wk, u), v)
 
-J = Dolo.dF_1(dmodel, wk.x0, wk.φ)
-Jmat = convert(Matrix, J)
+J_1 = Dolo.dF_1(dmodel, wk.x0, wk.φ)
+Jmat_1 = convert(Matrix, J_1)
 
-@assert maximum( abs.(Jdiff - Jmat)./(1 .+ abs.(Jdiff)) ) <1e-6
+@assert maximum( abs.(Jdiff_1 - Jmat_1)./(1 .+ abs.(Jdiff_1)) ) <1e-6
 
 
 Jdiff_2 = FiniteDiff.finite_difference_jacobian(u->residual_2(dmodel, wk, u), v)
@@ -53,9 +97,13 @@ using LinearMaps
 L_2 = convert(LinearMap, J_2)
 
 using Plots
-plot(xlims=(-10, 10), ylims=(-2,2))
+plot()
 
-spy(Jmat)
+spy(1:5000, 1:5000, Jmat)
+
+
+spy(Jmat, xlims=(1, 6000), ylims=(1,6000))
+
 spy(Jmat_2, xlims=(1,150), ylims=(1,150))
 
 spy(Jmat_2)

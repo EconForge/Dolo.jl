@@ -92,8 +92,8 @@ function arbitrage(mod::typeof(model), s::NamedTuple, x::NamedTuple, S::NamedTup
 end
 
 function complementarities(mod::typeof(model), s::NamedTuple, x::NamedTuple, Fv::SVector)
-    # eq = Fv[1] ⫫ s.y-x.c
-    eq = Fv[1] ⟂ s.y-x.c
+    eq = Fv[1] ⫫ s.y-x.c
+    # eq = Fv[1] ⟂ s.y-x.c
     (eq,)
 end
 
