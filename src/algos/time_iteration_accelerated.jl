@@ -106,8 +106,8 @@ function dF_2!(out, dmodel, controls::GArray, φ::DFun, engine)
     
 
         r_F = ForwardDiff.jacobian(
-            r->complementarities(dmodel.model, s,x,r),
-            sum( w*arbitrage(dmodel,s,x,S,φ(S)) for (w,S) in τ(dmodel, s, x) ),
+            r->complementarities(dmodel.model, s,xx,r),
+            sum( w*arbitrage(dmodel,s,xx,S,φ(S)) for (w,S) in τ(dmodel, s, xx) ),
         )
 
         tt = tuple(

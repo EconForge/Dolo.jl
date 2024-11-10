@@ -6,9 +6,47 @@ struct LL{G,D_,F}
     φ::F
 end
 
+struct I_L{_L}
+    L::_L
+end
+
+using LinearAlgebra: UniformScaling
+
+-(::UniformScaling, L::LL) = I_L(L)
+*(A::I_L, b) = b-A.L*b
+
+convert(::Type{LinearMap}, IL::I_L) = let
+    I - convert(LinearMap,IL.L)
+    # L = IL.L
+    # # elt = eltype(L.D[1][1].F_x)
+    # elt = typeof(L.D[1][1].F_x)
+    # p,q = size(elt)
+    # N = length(L.grid)
+    # typ = SVector{q, Float64}
+    # fun = u->u-(ravel(L*GArray(L.grid, reinterpret(typ, u))))
+    # LinearMap(
+    #     fun,
+    #     p*N,
+    #     q*N
+    # )
+end
+
+# function *(A::I_L, b::AbstractVector)
+#     x = GVector(
+#         A.L.grid,
+#         reinterpret(
+#             eltype(A.L.φ.values),
+#             b
+#         )
+#     )
+#     y = A*x
+#     return ravel(y)
+# end
+
 
 const LF = LL
 
+import Base: ldiv!
 import Base: /,*
 import LinearAlgebra: mul!
 
@@ -74,20 +112,25 @@ function *(L::LL, x0)
     
 end
 
-# this takes 0.2 s !
-function \(J, L::Dolo.LL) 
-    Dolo.LL(
-        L.grid,
-        [ tuple((
+
+
+
+function ldiv!(J, L::Dolo.LL)
+    for n in 1:length(L.D)
+        E = L.D[n]
+        L.D[n]=  tuple((
             (;F_x=J.data[n]\d.F_x, S=d.S) 
-            for d in L.D[n]
+            for d in E
         )...)
-        for n in 1:length(L.D) ],
-        deepcopy(L.φ)
-    )
+    end
 end
 
-
+# this takes 0.2 s !
+function \(J, L::Dolo.LL) 
+    R = deepcopy(L)
+    ldiv!(J, R)
+    return R
+end
 
    
 function dF_2(dmodel, xx, φ)
@@ -125,10 +168,11 @@ end
 
 function dF_2!(L, dmodel, xx::GArray, φ::DFun, ::Nothing)
 
-    for (n,(s,x)) in enumerate(zip(Dolo.enum(dmodel.grid), xx))
-        (i,j) = Dolo.from_linear(dmodel.grid, n)
-        s_ = dmodel.grid[i,j]
-        s = QP((i,j), s_)
+
+    for n=1:length(xx)
+
+        s = dmodel.grid[n+im]
+        x = xx[n]
 
         r_F = ForwardDiff.jacobian(
             r->complementarities(dmodel.model, s,x,r),
@@ -139,6 +183,9 @@ function dF_2!(L, dmodel, xx::GArray, φ::DFun, ::Nothing)
                 (
                     (;
                         F_x=w*r_F*ForwardDiff.jacobian(u->Dolo.arbitrage(dmodel,s,x,S,u), φ(S)),
+                        # F_x=w*ForwardDiff.jacobian(
+                        #     u->Dolo.arbitrage(dmodel,s,x,S,u), φ(S)
+                        #     ),
                         S=S
                     )
                 for (w,S) in Dolo.τ(dmodel, s, x)
@@ -154,7 +201,7 @@ end
 
 
 
-function neumann(L2::LF, r0; K=1000, τ_η=1e-10)
+function neumann(L2::LF, r0; K=1000, τ_η=1e-10, t_engine=nothing)
     
     # TODO
     # dx = deepcopy(r0)
@@ -167,13 +214,14 @@ function neumann(L2::LF, r0; K=1000, τ_η=1e-10)
 
     mem = (;du, dv)
 
-    neumann!(dx, L2, r0, mem; K=K, τ_η=τ_η)
+    neumann!(dx, L2, r0, mem;
+        K=K, τ_η=τ_η)
 
     return dx
 
 end
 
-function neumann!(dx, L2::LF, r0, mem=(;du=duplicate(r0), dv=duplicate(r0)); K=1000, τ_η=1e-10)
+function neumann!(dx, L2::LF, r0, t_engine=nothing; mem=(;du=duplicate(r0), dv=duplicate(r0)), K=1000, τ_η=1e-10)
     
     (; du, dv) = mem
     
@@ -182,7 +230,7 @@ function neumann!(dx, L2::LF, r0, mem=(;du=duplicate(r0), dv=duplicate(r0)); K=1
     dv.data .= r0.data
 
     for k=1:K
-        mul!(du, L2, dv)
+        mul!(du, L2, dv, t_engine)
         dx.data .+= du.data
         η = norm(du)
         if η<τ_η

@@ -1,6 +1,14 @@
 using Dolo.Build
 import Dolo.Build: *
 
+using Dolo: SGrid, CGrid, PGrid, GArray, YModel
+import Dolo: ×, ⟂, ⫫
+import Dolo: transition, arbitrage, recalibrate, initial_guess, projection, equilibrium, complementarities
+import Dolo: X, reward
+import Dolo: GridSpace, CartesianSpace
+
+using Dolo: rouwenhorst
+
 model = let 
 
     β = 0.96
@@ -30,38 +38,28 @@ model = let
     N = 200
 
 
-    m = (;w,r,e)
+    m = (;e)
     s = (;y)
     x = (;c, λ)
     y = (;K)
     z = (;z=0.0)
-    p = (;β, γ, σ, ρ, cbar, α, δ, N)
+    p = (;β, γ, σ, ρ, cbar, w,r, α, δ, N)
 
     calibration = merge(m,s,x,y,z,p)
 
 
-    n_m = 3
-    mc = rouwenhorst(3,ρ,σ)
-    
-    P = convert(SMatrix{n_m, n_m}, mc.P)
-    ## decide whether this should be matrix or smatrix
-    Q = SVector( (SVector(w,r,e) for e in mc.V)... )
-
-    states = GridSpace(
-        (:w,:r,:e),
-        SVector( [Q[i] for i=1:size(Q,1)]...  )
-    )×CartesianSpace(;
+    states = CartesianSpace(;
         y=(0.01, 100.0)
     )
 
     controls = CartesianSpace(;
         c=(0.0,Inf),
     )
-    exogenous = Dolo.MarkovChain(
-        (:w,:r,:e), P,Q
-    )
-    
-    name = :ayiagari
+
+    exogenous = MvNormal( (:e,), [0.0001;;])
+
+
+    name = :consumption_savings
 
     YModel(
         name,
@@ -78,14 +76,14 @@ end
 
 function transition(mod::typeof(model), s::NamedTuple, x::NamedTuple, M::NamedTuple)
     p = mod.calibration
-    y = exp(M.e)*M.w + (s.y-x.c)*(1+M.r)
+    y = exp(M.e)*p.w + (s.y-x.c)*(1+p.r)
     return ( (;y) )
 end
 
 
 function arbitrage(mod::typeof(model), s::NamedTuple, x::NamedTuple, S::NamedTuple, X::NamedTuple)
     p = mod.calibration
-    eq = 1 - p.β*( X.c/x.c )^(-p.γ)*(1+S.r) # - x.λ
+    eq = 1 - p.β*( X.c/x.c )^(-p.γ)*(1+p.r) # - x.λ
     # @warn "The euler equation is satisfied only if c<w. If c=w, it can be strictly positive."
     # eq2 = x.λ ⟂ s.y-x.c
     (eq,)

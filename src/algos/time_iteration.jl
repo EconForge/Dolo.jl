@@ -85,7 +85,7 @@ dF_1(model::ADModel, controls::GArray, φ::Union{GArray, DFun}) =
 
 ## no alloc
 
-function dF_1!(out::ADModel, model, controls::GArray, φ::Union{GArray, DFun}, ::Nothing)
+function dF_1!(out, model::ADModel, controls::GArray, φ::Union{GArray, DFun}, ::Nothing)
     dF_1!(out, model, controls::GArray, φ::Union{GArray, DFun})
 end
 
@@ -351,19 +351,27 @@ function time_iteration(model::DYModel,
 end
 
 
-function newton(model, workspace=newton_workspace(model);
-    K=10, tol_ε=1e-8, tol_η=1e-6, verbose=false, improve=false, interp_mode=:cubic
+function newton(model::ADModel, workspace=newton_workspace(model);
+    K=20, tol_ε=1e-8, tol_η=1e-6, verbose=false, improve=false, interp_mode=:cubic,
+    engine=:none
     )
 
     # mem = typeof(workspace) <: Nothing ? time_iteration_workspace(model) : workspace
 
     (;x0, x1, x2, dx, r0, J, φ, T, memn) = workspace
 
+    if engine in (:cpu, :gpu)
+        t_engine = get_backend(workspace.x0)
+    else
+        t_engine = nothing
+    end
+
+
     for t=1:K
         
         Dolo.fit!(φ, x0)
 
-        F!(r0, model, x0, φ)
+        F!(r0, model, x0, φ, t_engine)
 
         ε = norm(r0)
         verbose ? println("$t: $ε") : nothing
@@ -375,11 +383,13 @@ function newton(model, workspace=newton_workspace(model);
         x1.data .= x0.data
 
 
-        dF_1!(J, model, x0, φ)
-        dF_2!(T, model, x0, φ)
+        dF_1!(J, model, x0, φ, t_engine)
+        dF_2!(T, model, x0, φ, t_engine)
 
         mul!(T, -1.0)
-        T = J \ T
+
+        ldiv!(J, T)
+        # T = J \ T
 
         # T.M_ij .*= -1.0
         # T.M_ij .= J.data .\ T.M_ij 
@@ -402,6 +412,67 @@ function newton(model, workspace=newton_workspace(model);
 
 end
 
+
+function newton_clinic(model::ADModel, workspace, tmr;
+    K=20, tol_ε=1e-8, tol_η=1e-6, verbose=false, improve=false, interp_mode=:cubic,
+    engine=:none
+    )
+
+    # mem = typeof(workspace) <: Nothing ? time_iteration_workspace(model) : workspace
+
+    (;x0, x1, x2, dx, r0, J, φ, T, memn) = workspace
+
+    if engine in (:cpu, :gpu)
+        t_engine = get_backend(workspace.x0)
+    else
+        t_engine = nothing
+    end
+
+
+    for t=1:K
+        
+        Dolo.fit!(φ, x0)
+
+        F!(r0, model, x0, φ, t_engine)
+
+        ε = norm(r0)
+        verbose ? println("$t: $ε") : nothing
+
+        if ε<tol_ε
+            return (;message="Solution found", solution=x0, n_iterations=t-1, dr=φ)
+        end
+
+        x1.data .= x0.data
+
+
+        dF_1!(J, model, x0, φ, t_engine)
+        dF_2!(T, model, x0, φ, t_engine)
+
+        mul!(T, -1.0)
+
+        ldiv!(J, T)
+        # T = J \ T
+
+        # T.M_ij .*= -1.0
+        # T.M_ij .= J.data .\ T.M_ij 
+        
+        r0.data .= J.data .\ r0.data
+        # return (dx, T, r0)
+        neumann!(dx, T, r0, memn; K=K)
+
+        x0.data .= x1.data .- dx.data
+        x1.data .= x0.data
+
+        # return x0
+
+        # end
+
+
+    end
+
+    return (;solution=x0, message="No Convergence") # The only allocation when workspace is preallocated
+
+end
 
 
 # function time_iteration_1(model;

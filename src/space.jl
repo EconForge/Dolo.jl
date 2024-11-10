@@ -175,7 +175,7 @@ end
 
 
 
-const DEFAULT_GRID_NPOINTS = 200000
+const DEFAULT_GRID_NPOINTS = 50
 
 # discretize(space::CSpace; kwargs...)  = discretize(space, DEFAULT_GRID_NPOINTS)
 # discretize(space::CSpace{d}, n::Int) where d = discretize(space, tuple( (n for i=1:d)...))
