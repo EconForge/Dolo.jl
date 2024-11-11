@@ -8,7 +8,7 @@ module Dolo
     using StaticArrays
     using ForwardDiff
     using Printf
-    using Formatting
+    using Format 
     using Crayons.Box
 
     import LinearAlgebra: cross, norm, ×

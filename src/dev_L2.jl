@@ -10,6 +10,9 @@ struct I_L{_L}
     L::_L
 end
 
+
+using LinearMaps
+using BlockDiagonals
 using LinearAlgebra: UniformScaling
 
 -(::UniformScaling, L::LL) = I_L(L)
@@ -243,10 +246,6 @@ function neumann!(dx, L2::LF, r0, t_engine=nothing; mem=(;du=duplicate(r0), dv=d
 
 end
 
-
-
-using LinearMaps
-using BlockDiagonals
 convert(::Type{BlockDiagonal}, ga::GArray{G, Vector{T}}) where T where G = BlockDiagonal(ga.data)
 
 
