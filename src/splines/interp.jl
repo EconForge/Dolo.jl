@@ -72,7 +72,7 @@ function interp(ranges::NTuple{d, Tuple{Tf, Tf, Int64}}, values::AbstractArray{T
     b = SVector( (e[2] for e in ranges)... )
     n = SVector( (e[3] for e in ranges)... )
 
-    δ = (b.-a)./(n.-1)
+    δ = (b.-a)./(n.-convert(Tf,1))
 
     i = div.( (x.-a), δ)
 
@@ -80,7 +80,6 @@ function interp(ranges::NTuple{d, Tuple{Tf, Tf, Int64}}, values::AbstractArray{T
 
     λ = (x.-(a .+ δ.*i))./δ
 
-    # i_ = floor.(Int, i) .+ 1
     i_ = unsafe_trunc.(Int, i) .+ 1
 
     M = matextract(values, i_...)

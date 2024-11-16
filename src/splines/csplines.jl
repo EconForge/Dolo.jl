@@ -5,6 +5,7 @@ using StaticArrays
 
 # old style call
 function eval_UC_spline(a, b, orders, C::AbstractArray{Tf}, S::Matrix{Tf}) where Tf
+
     d,N = size(S)
 
     n_x = size(C,1)
@@ -26,45 +27,57 @@ function eval_UC_spline(a, b, orders, C::AbstractArray{T, d}, S::Vector{SVector
 end
 
 
-@generated function eval_UC_spline!(a, b, orders, C::AbstractArray{T, d}, S::AbstractVector{SVector{d,Tf}}, V::AbstractVector{T}) where d where T where Tf
+@generated function eval_UC_spline!(a, b, orders, C::AbstractArray{T, d}, S::AbstractVector{SVector{d}}, V::AbstractVector{T}) where d where T
     # d = C.parameters[2]-1 # first dimension of C indexes the splines
     # the speed penalty of extrapolating points when iterating over point
     # seems very small so this is the default
-    fun = (create_function(d,"natural"))
+    Tf = eltype(a)
+
+    fun = (create_function(d,"natural"; Tf=Tf))
     return fun.args[2].args[2]
 end
 
 
 @generated function eval_UC_spline_(a, b, orders, C::AbstractArray{T, d}, S::SVector{d,U}) where d where T where U
-    fun = create_function(d,"natural"; vectorize=false)
+    Tf = eltype(a)
+    fun = create_function(d,"natural"; Tf=Tf, vectorize=false)
     return fun.args[2].args[2]
 end
 
-eval_UC_spline(a, b, orders, C::AbstractArray{T, d}, S::SVector{d,U}) where d where U where T = eval_UC_spline_(a, b, orders, C, S)
+function eval_UC_spline(a, b, orders, C::AbstractArray{T, d}, S::SVector{d,U}) where d where U where T 
+    eval_UC_spline_(a, b, orders, C, S)
+end
 
 
 function cPhi(λ)
 
-    λ0 = 1
+    T = typeof(λ)
+
+    λ0 = convert(T,1)
     λ1 = λ
     λ2 = λ*λ1
     λ3 = λ*λ2
 
     if λ1<0
-        Phi_4 = -0.5 * λ1 + 0.16666666666666666
-        Phi_3 = 0.0 * λ1 + 0.6666666666666666
-        Phi_2 = 0.5 * λ1 + 0.16666666666666666
-        Phi_1 = 0.0 * λ1 + 0.0
+        Phi_4 = convert(T,-0.5) * λ1 + convert(T, 0.16666666666666666)
+        Phi_3 = convert(T, 0.0) * λ1 + convert(T, 0.6666666666666666)
+        Phi_2 = convert(T, 0.5) * λ1 + convert(T, 0.16666666666666666)
+        Phi_1 = convert(T, 0.0) * λ1 + convert(T, 0.0)
     elseif λ1>1
-        Phi_4 = (3 * -0.16666666666666666 + 2 * 0.5 + -0.5) * (1 - 1) + (-0.16666666666666666 + 0.5 + -0.5 + 0.16666666666666666)
-        Phi_3 = (3 * 0.5 + 2 * -1.0 + 0.0) * (λ1 - 1) + (0.5 + -1.0 + 0.0 + 0.6666666666666666)
-        Phi_2 = (3 * -0.5 + 2 * 0.5 + 0.5) * (λ1 - 1) + (-0.5 + 0.5 + 0.5 + 0.16666666666666666)
-        Phi_1 = (3 * 0.16666666666666666 + 2 * 0.0 + 0.0) * (λ1 - 1) + (0.16666666666666666 + 0.0 + 0.0 + 0.0)
+        # Phi_4 = (3 * -0.16666666666666666 + 2 * 0.5 + -0.5) * (1 - 1) + (-0.16666666666666666 + 0.5 + -0.5 + 0.16666666666666666)
+        # Phi_3 = (3 * 0.5 + 2 * -1.0 + 0.0) * (λ1 - 1) + (0.5 + -1.0 + 0.0 + 0.6666666666666666)
+        # Phi_2 = (3 * -0.5 + 2 * 0.5 + 0.5) * (λ1 - 1) + (-0.5 + 0.5 + 0.5 + 0.16666666666666666)
+        # Phi_1 = (3 * 0.16666666666666666 + 2 * 0.0 + 0.0) * (λ1 - 1) + (0.16666666666666666 + 0.0 + 0.0 + 0.0)
+        Phi_4 = convert(T,0.0)
+        Phi_3 = (-convert(T,0.5)) * (λ1 - convert(T,1)) + (-convert(T,0.5) + convert(T,0.6666666666666666))
+        Phi_2 = convert(T, (0.5 + 0.16666666666666666))
+        Phi_1 = 3 * convert(T,0.16666666666666666)  * (λ1 - 1) + convert(T,0.16666666666666666)
+
     else
-        Phi_1 = -0.16666666666666666 * λ3 + 0.5 * λ2 + -0.5 * λ1 + 0.16666666666666666 * λ0
-        Phi_2 = 0.5 * λ3 + -1.0 * λ2 + 0.0 * λ1 + 0.6666666666666666 * λ0
-        Phi_3 = -0.5 * λ3 + 0.5 * λ2 + 0.5 * λ1 + 0.16666666666666666 * λ0
-        Phi_4 = 0.16666666666666666 * λ3 + 0.0 * λ2 + 0.0 * λ1 + 0.0 * λ0
+        Phi_1 = convert(T,-0.16666666666666666) * λ3 + convert(T,0.5) * λ2 + convert(T,-0.5) * λ1 + convert(T,0.16666666666666666) * λ0
+        Phi_2 = convert(T, 0.5) * λ3 + convert(T,-1.0) * λ2 + convert(T,0.6666666666666666) * λ0
+        Phi_3 = convert(T,-0.5) * λ3 + convert(T,0.5) * λ2 + convert(T,0.5) * λ1 + convert(T,0.16666666666666666) * λ0
+        Phi_4 = convert(T,0.16666666666666666) * λ3
     end
 
     
@@ -176,11 +189,14 @@ end
 
 function eval_spline( ranges, C::AbstractArray{T,d}, x::SVector{d,U}) where d where U where T 
 
+    
     a = SVector( (e[1] for e in ranges)... )
     b = SVector( (e[2] for e in ranges)... )
     n = SVector( (e[3] for e in ranges)... )
+    
+    Tf = eltype(a)
 
-    δ = (b.-a)./(n.-1)
+    δ = (b.-a)./(n.-convert(Tf,1))
     i = div.( (x.-a), δ)
     i = max.(min.(i, n.-2), 0)
     λ = (x.-(a .+ δ.*i))./δ

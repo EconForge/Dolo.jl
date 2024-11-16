@@ -24,6 +24,7 @@ function F(dmodel::ADModel, s::QP, x::SVector{d,T}, φ::Union{Policy, GArray, DF
     r = zero(SVector{d,T})
 
     for (w,S) in τ(dmodel, s, x)
+        # return w,S
         r += w*arbitrage(dmodel,s,x,S,φ(S)) 
     end
 
@@ -33,6 +34,7 @@ function F(dmodel::ADModel, s::QP, x::SVector{d,T}, φ::Union{Policy, GArray, DF
     #      w*arbitrage(model,s,x,S,φ(S)) 
     #      for (w,S) in τ(model, s, x)
     # )
+
     r::SVector{d,T}
     r = complementarities(dmodel.model, s,x,r)
     r
@@ -191,12 +193,15 @@ function time_iteration(model::DYModel,
     engine=:none
 )
 
+
     log = IterationLog(
             it = ("n", Int),
             err =  ("ϵₙ=|F(xₙ,xₙ)|", Float64),
             sa =  ("ηₙ=|xₙ-xₙ₋₁|", Float64),
             lam = ("λₙ=ηₙ/ηₙ₋₁",Float64),
-            elapsed = ("Time", Float64)
+            elapsed = ("Time", Float64),
+            k_newton = ("Newton", Int64),
+            k = ("Backsteps", Int64)
         )    
     initialize(log, verbose=verbose; message="Time Iteration")
 
@@ -226,6 +231,8 @@ function time_iteration(model::DYModel,
     if improve
         J_2 = workspace.L
     end
+    local k_newton_ = 0
+    local k_ = 0
 
     for t=1:T
         
@@ -253,7 +260,10 @@ function time_iteration(model::DYModel,
 
         x1.data .= x0.data
 
-        for k=1:max_bsteps
+ 
+        for k_newton=1:max_bsteps
+            
+            #newton steaps
 
             F!(r0, model, x1,  φ, t_engine)
 
@@ -273,15 +283,18 @@ function time_iteration(model::DYModel,
 
 
             for k=0:mbsteps
-                x2.data .= x1.data .- dx.data .* lam^k
 
+                # fails on GPU
+                x2.data .= x1.data .- dx.data .* convert(Tf,lam^k)
                 F!(r0, model, x2,  φ, t_engine)
-
                 ε_b = norm(r0)
                 if ε_b<ε_n
                     iterations = t
+                    k_newton_ = k_newton
+                    k_ = k
                     break
                 end
+                
             end
 
             x1.data .= x2.data
@@ -297,7 +310,7 @@ function time_iteration(model::DYModel,
         elapsed = time_ns() - t1
         elapsed /= 1000000000
 
-        verbose ? append!(log; verbose=verbose, it=t-1, err=ε, sa=η_0, lam=gain, elapsed=elapsed) : nothing
+        verbose ? append!(log; verbose=verbose, it=t-1, err=ε, sa=η_0, lam=gain, elapsed=elapsed, k_newton=k_newton_, k=k_) : nothing
 
         if η < tol_η
             iterations = t
@@ -316,9 +329,9 @@ function time_iteration(model::DYModel,
             J_1 = J
 
             Dolo.dF_1!(J_1, model, x1, φ, t_engine)
+
             Dolo.dF_2!(J_2, model, x1, φ, t_engine)
             # J_2 = Dolo.dF_2(model, x1, φ)
-
             
             mul!(J_2, convert(Tf,-1.0))
             
@@ -328,7 +341,7 @@ function time_iteration(model::DYModel,
             d = (x1-x0)
             
             # return (J_1, J_2, d)
-            rhs =  neumann(Tp, d; K=improve_K)
+            rhs =  neumann(Tp, d; K=improve_K, t_engine=t_engine)
 
             x0.data .+= rhs.data
 

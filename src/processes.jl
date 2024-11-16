@@ -54,12 +54,14 @@ ckron(A::AbstractArray, B::AbstractArray) = kron(A, B)
 ckron(arrays::AbstractArray...) = reduce(kron, arrays)
 
 function rouwenhorst(N::Integer, ρ::Real, σ::Real, μ::Real=0.0)
+
     σ_y = σ / sqrt(1-ρ^2)
     p  = (1+ρ)/2
     ψ = sqrt(N-1) * σ_y
     m = μ / (1 - ρ)
 
     state_values, p = _rouwenhorst(p, p, m, ψ, N)
+    
     (;P=p, V=state_values)
 end
 
@@ -227,7 +229,7 @@ discretize(mv::MvNormal, d::Dict) = length(d)>=1 ? discretize(mv,d[:n]) : discre
 
 
 struct VAR1{names,V,B}
-    ρ::Float64
+    ρ::V
     Σ::B
 end
 
@@ -269,11 +271,18 @@ function discretize(var::VAR1, n::Int=3)
     # ρ = ρ[1, 1]
     # @assert maximum(abs, ρ.-Matrix(ρ*I,d,d))<1e-16
 
+    T = typeof(ρ)
 
     if size(var.Σ, 1) == 1
+
         (;P, V) = rouwenhorst(n, ρ, sqrt(var.Σ[1,1]))
         mat = Matrix( Matrix(V')' )
-        return MarkovChain(names, P,mat)
+
+        return MarkovChain(
+            names,
+            convert(Matrix{T},P),
+            convert(Matrix{T},mat)
+        )
     end
 
 
@@ -295,8 +304,16 @@ function discretize(var::VAR1, n::Int=3)
     # return V, C, components
     # return P, V
     n = size(P,1)
+
+    # TODO: rewrite
     V = SVector( (C.L * SVector(x...) for x in Iterators.product( (e.V for e in components)... ))... )
-    return  MarkovChain(names, SMatrix{n,n}(P), V)
+
+    T = typeof(var.ρ)
+
+    convert_precision(
+        T,
+        MarkovChain(names, SMatrix{n,n}(P), V)
+    )
 
 end
 

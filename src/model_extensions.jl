@@ -23,7 +23,7 @@ function transition(model::YModel, s::SVector, x::SVector, M::SVector)
     ss = NamedTuple{variables(model.states)}(s)
     xx = NamedTuple{variables(model.controls)}(x)
     MM = NamedTuple{variables(model.exogenous)}(M)
-
+    
     SS = transition(model,ss,xx,MM)
     
     return SVector(SS...)

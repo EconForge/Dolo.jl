@@ -217,8 +217,8 @@ function neumann(L2::LF, r0; K=1000, τ_η=1e-10, t_engine=nothing)
 
     mem = (;du, dv)
 
-    neumann!(dx, L2, r0, mem;
-        K=K, τ_η=τ_η)
+    neumann!(dx, L2, r0, t_engine;
+        mem = mem, K=K, τ_η=τ_η)
 
     return dx
 

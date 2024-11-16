@@ -1,3 +1,27 @@
+using StaticArrays: SMatrix
+
+function convert_precision(T, exogenous::Dolo.MarkovChain)
+
+    fun = u->T(u)
+    P = fun.(exogenous.P)
+    Q = SVector((fun.(e) for e in exogenous.Q)...)
+    vars = Dolo.variables(exogenous)
+    Dolo.MarkovChain(vars, P, Q)
+
+end
+
+function convert_precision(T, var::Dolo.VAR1)
+
+    d = size(var.Σ,1)
+
+    vars = Dolo.variables(var)
+
+    ρ = convert(T, var.ρ)
+    Σ = SMatrix{d,d,T,d*d}(var.Σ)
+    
+    Dolo.VAR1(vars,ρ,Σ)
+
+end
 
 function convert_precision(T, model::Dolo.YModel)
 
@@ -5,12 +29,8 @@ function convert_precision(T, model::Dolo.YModel)
     calibration = NamedTuple( ((a,T(b)) for (a,b) in pairs(model.calibration) ) )
 
     # convert exogenous shock
-    fun = u->T(u)
-    P = fun.(model.exogenous.P)
-    Q = SVector((fun.(e) for e in model.exogenous.Q)...)
 
-    vars = Dolo.variables(model.exogenous)
-    exogenous = Dolo.MarkovChain(vars, P, Q)
+    exogenous = convert_precision(T, model.exogenous)
 
     # convert states and controls spaces
     states = convert_precision(T, model.states)
@@ -47,3 +67,7 @@ function hypeof(model)
     gtyp = ( Meta.parse(s) )
     return Union{eval(gtyp), typ}
 end
+
+
+getprecision(model::Dolo.YModel) = typeof(model.calibration[1])
+getprecision(dmodel::Dolo.DYModel) = getprecision(dmodel.model)

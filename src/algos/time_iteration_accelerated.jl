@@ -7,44 +7,30 @@ import KernelAbstractions: get_backend
 
 get_backend(g::GArray) = get_backend(g.data)
 
-
-
-# This is for a PGrid model only 
 function F!(r, model, x, φ, engine)
 
     @kernel function FF_(r, @Const(dm), @Const(x), @Const(φ))
 
         n = @index(Global, Linear)
-
-        ind = @index(Global, Cartesian)
-        (i,j) = ind.I
     
-        # k = length(dm.grid.grids[1])
-        # i_ = (n-1)÷k
-        # j_ = (n-1) - (i)*κ
-        # i = i_+1
-        # j = j_+1
-        
         # TODO: special function here
-        s_ = dm.grid[n]
-        s = Dolo.QP((i,j), s_)
+        s = dm.grid[n+im]
     
         xx = x[n]
-    
-        # (i,j) = @inline Dolo.from_linear(model.grid, n)    
-    
+        
         rr = Dolo.F(dm, s, xx, φ)
     
         r[n] = rr
     
     end
 
-    fun_cpu = FF_(engine)
-
-
+    
     sz = size(model.grid)
+    
+    fun_cpu = FF_(engine, 1000)
 
-    res = fun_cpu(r, model, x, φ; ndrange=sz)
+    fun_cpu(r, model, x, φ; ndrange=sz)
+    synchronize(engine)
 
 
 end
@@ -57,23 +43,13 @@ function dF_1!(out, model, controls::GArray, φ::Union{GArray, DFun}, engine)
 
 
         n = @index(Global, Linear)
-        ind = @index(Global, Cartesian)
-        (i,j) = ind.I
     
-        # k = length(dm.grid.grids[1])
-        # i_ = (n-1)÷k
-        # j_ = (n-1) - (i)*κ
-        # i = i_+1
-        # j = j_+1
-        
         # TODO: special function here
-        s_ = dm.grid[n]
-        s = Dolo.QP((i,j), s_)
+        s = dm.grid[n+im]
     
         xx = x[n]
     
-        # (i,j) = @inline Dolo.from_linear(model.grid, n)    
-    
+   
         rr = ForwardDiff.jacobian(u->F(model, s, u, φ), xx)
     
         r[n] = rr
@@ -91,23 +67,20 @@ end    #### no alloc
     
 function dF_2!(out, dmodel, controls::GArray, φ::DFun, engine)
 
-    @kernel function FF_(L,@Const(dm), @Const(x),@Const(φ) )
+    @kernel function FF_(L, @Const(dm), @Const(x),@Const(φ) )
 
 
         n = @index(Global, Linear)
-        ind = @index(Global, Cartesian)
-        (i,j) = ind.I
     
-        # TODO: special function here
-        s_ = dm.grid[n]
-        s = Dolo.QP((i,j), s_)
+        s = dm.grid[n+im]
     
         xx = x[n]
-    
 
+        # r0 = sum( w*arbitrage(dmodel,s,xx,S,φ(S)) for (w,S) in τ(dmodel, s, xx) )
+        r0 = F(dmodel, s, xx, φ)
         r_F = ForwardDiff.jacobian(
             r->complementarities(dmodel.model, s,xx,r),
-            sum( w*arbitrage(dmodel,s,xx,S,φ(S)) for (w,S) in τ(dmodel, s, xx) ),
+            r0
         )
 
         tt = tuple(
@@ -124,10 +97,10 @@ function dF_2!(out, dmodel, controls::GArray, φ::DFun, engine)
 
     end
 
-    fun_cpu = FF_(engine)
+    fun = FF_(engine)
     sz = size(dmodel.grid)
 
-    res = fun_cpu(out, dmodel, controls, φ; ndrange=sz)
+    fun(out, dmodel, controls, φ; ndrange=sz)
 
     nothing
 

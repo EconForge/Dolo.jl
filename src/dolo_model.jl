@@ -1,4 +1,4 @@
-struct YModel{C,A,B,D,N,S} <: AModel
+struct YModel{N,C,A,B,D,S} <: AModel{C}
     states::A         # must be exo \times endo
     controls::B
     exogenous::C
@@ -7,11 +7,11 @@ struct YModel{C,A,B,D,N,S} <: AModel
 end 
 
 YModel(N,A,B,C,D) = let
-    YModel{typeof(C),typeof(A),typeof(B),typeof(D),N,Nothing}(A,B,C,D,nothing)
+    YModel{N,typeof(C),typeof(A),typeof(B),typeof(D),Nothing}(A,B,C,D,nothing)
 end
-YModel(N,A,B,C,D,S) = YModel{typeof(C),typeof(A),typeof(B),typeof(D),N,typeof(S)}(A,B,C,D,S)
+YModel(N,A,B,C,D,S) = YModel{N,typeof(C),typeof(A),typeof(B),typeof(D),typeof(S)}(A,B,C,D,S)
 
-name(::YModel{C,A,B,D,N}) where C where A where B where D where N = N
+name(::YModel{N,C,A,B,D}) where C where A where B where D where N = N
 
 bounds(model::YModel, s) = model.controls
 
@@ -63,7 +63,7 @@ name(dm::DYModel) = name(dm.model)
 
 bounds(dmodel::DYModel, s) = bounds(dmodel.model, s)
 
-function discretize(model::YModel{<:MvNormal}, d=Dict())
+function discretize(model::AModel{<:MvNormal}, d=Dict())
     exo = get(d, :exo, Dict())
     endo = get(d, :endo, Dict())
 
@@ -72,7 +72,8 @@ function discretize(model::YModel{<:MvNormal}, d=Dict())
     return DYModel(model, grid, dist)
 end
 
-function discretize(model::YModel{<:VAR1}, d=Dict())
+function discretize(model::AModel{<:VAR1}, d=Dict())
+
     exo = get(d, :exo, Dict())
     endo = get(d, :endo, Dict())
     dvar = discretize(model.exogenous, exo)
@@ -92,7 +93,7 @@ function discretize(model::YModel{<:VAR1}, d=Dict())
     return DYModel(model, grid, dvar)
 end
 
-function discretize(model::YModel{<:MarkovChain}, d=Dict())
+function discretize(model::AModel{<:MarkovChain}, d=Dict())
     # exo = get(d, :exo, Dict())
     endo = get(d, :endo, Dict())
     dvar = discretize(model.exogenous)

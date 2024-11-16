@@ -187,7 +187,7 @@ function create_local_parameters(d; vectorize=true, Tf=Float64)
                 a_ = SVector( a... )
                 b_ = SVector( b... )
                 n_ = SVector( orders... )
-                δ_ = (b_.-a_)./(n_.-1)
+                δ_ = (b_.-a_)./(n_.-convert($Tf,1.0))
                 i_ = div.( (x_.-a_), δ_)
                 i_ = max.(min.(i_, n_.-2), 0)
                 λ_ = (x_.-(a_ .+ δ_.*i_))./δ_

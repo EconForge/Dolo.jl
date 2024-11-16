@@ -1,5 +1,5 @@
 # abstract model
-abstract type AbstractModel end
+abstract type AbstractModel{Exo} end
 abstract type AbstractDModel end
 
 const AModel = AbstractModel

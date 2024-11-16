@@ -1,12 +1,13 @@
 module DoloCUDAExt
 
     using CUDA
-    using Dolo
+    # using Dolo
 # should it be merged with the general definition?
+    import Dolo: GVector, distance
+    # import CUDA: CuArray
     
-    import CUDA: CuArray
-    
-    Dolo.distance(x::GVector{G, A}, y::GVector{G,A}) where G where A<:CuArray = Base.mapreduce(u->maximum(abs.(u)), max, x.data-y.data)
+    distance(x::GVector{G, A}, y::GVector{G,A}) where G where A<:CuArray = Base.mapreduce(u->maximum(abs.(u)), max, x.data-y.data)
+    norm(x::GVector{G, A}) where G where A<:CuArray = Base.mapreduce(u->maximum(abs.(u)), max, x.data)
 
 
 end
