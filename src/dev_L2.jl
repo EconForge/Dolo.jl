@@ -254,9 +254,10 @@ convert(::Type{Matrix}, L::LF) = convert(Matrix, convert(LinearMap,L))
 convert(::Type{LinearMap}, L::LF) = let
     # elt = eltype(L.D[1][1].F_x)
     elt = typeof(L.D[1][1].F_x)
+    Tf = eltype(elt)
     p,q = size(elt)
     N = length(L.grid)
-    typ = SVector{q, Float64}
+    typ = SVector{q, Tf}
     fun = u->(ravel(L*GArray(L.grid, reinterpret(typ, u))))
     LinearMap(
         fun,

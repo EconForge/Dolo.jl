@@ -59,9 +59,9 @@ exogenous:
         ρ: 0.9
         Σ: [[.001]]
         
-options:
-    discretization:
-        endo:
-            n: [100]
-        exo:
-            n: 7
+# options:
+#     discretization:
+#         endo:
+#             n: [100]
+#         exo:
+#             n: 7

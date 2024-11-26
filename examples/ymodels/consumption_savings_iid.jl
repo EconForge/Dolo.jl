@@ -9,54 +9,46 @@ import Dolo: GridSpace, CartesianSpace
 
 using Dolo: rouwenhorst
 
+
+using StaticArrays
 model = let 
 
     β = 0.96
     γ = 4.0
     σ = 0.1
-    ρ = 0.8
-    # r = 1.025
-    # y = 1.0 # available income
-    
-    K = 40.0
-    α = 0.36
-    A = 1
-    δ = 0.025
-
-    r = α*(1/K)^(1-α) - δ
-    w = (1-α)*K^α
-
-    y = w
-
-    c = 0.9*y
-
-    λ = 0.1
-
-    e = 0
+    ρ = 0.0
+    r = 1.02
+    w = 1.0
+    c = 0.9*w
     cbar = c
 
-    N = 200
+    ξ = 0.0
+    y = 0.0
+
+    a = 0
+    mr = 0
+
+    rew = 0.0
 
 
-    m = (;e)
-    s = (;y)
-    x = (;c, λ)
-    y = (;K)
-    z = (;z=0.0)
-    p = (;β, γ, σ, ρ, cbar, w,r, α, δ, N)
+    m = (;y)
+    s = (;w)
+    x = (;c)
+    p = (;β, γ, σ, ρ, r, cbar)
 
-    calibration = merge(m,s,x,y,z,p)
+    calibration = merge(p,m,s,x)
 
 
     states = CartesianSpace(;
-        y=(0.01, 100.0)
+        w=(0.5, 20.0)
     )
 
     controls = CartesianSpace(;
         c=(0.0,Inf),
     )
 
-    exogenous = MvNormal( (:e,), [0.0001;;])
+    Σ = @SMatrix [0.0001;;]
+    exogenous = MvNormal( (:y,), Σ)
 
 
     name = :consumption_savings
@@ -76,21 +68,21 @@ end
 
 function transition(mod::typeof(model), s::NamedTuple, x::NamedTuple, M::NamedTuple)
     p = mod.calibration
-    y = exp(M.e)*p.w + (s.y-x.c)*(1+p.r)
-    return ( (;y) )
+    w = exp(M.y) + (s.w-x.c)*(p.r)
+    return ( (;w) )
 end
 
 
 function arbitrage(mod::typeof(model), s::NamedTuple, x::NamedTuple, S::NamedTuple, X::NamedTuple)
     p = mod.calibration
-    eq = 1 - p.β*( X.c/x.c )^(-p.γ)*(1+p.r) # - x.λ
+    eq = p.β*( X.c/x.c )^(-p.γ)*(p.r) - 1 # - x.λ
     # @warn "The euler equation is satisfied only if c<w. If c=w, it can be strictly positive."
     # eq2 = x.λ ⟂ s.y-x.c
     (eq,)
 end
 
 function complementarities(mod::typeof(model), s::NamedTuple, x::NamedTuple, Fv::SVector)
-    eq = Fv[1] ⫫ s.y-x.c
+    eq = Fv[1] ⫫ s.w-x.c
     # eq = Fv[1] ⟂ s.y-x.c
     (eq,)
 end

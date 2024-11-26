@@ -179,15 +179,22 @@ function qnwnorm(n::Vector{Int}, mu::Vector, sig2::Matrix = Matrix(I, length(n),
     return nodes, weights
 end
 
-struct MvNormal{names,n,n2}
-    μ::SVector{n,Float64}
-    Σ::SMatrix{n,n,Float64,n2}
+struct MvNormal{names,n,n2,Tf}
+    μ::SVector{n,Tf}
+    Σ::SMatrix{n,n,Tf,n2}
 end
 
-MvNormal(names, μ::SVector{n,Float64}, Σ::SMatrix{n,n, Float64,n2}) where n where n2 = MvNormal{names, n, n2}(μ,Σ)
+function convert_precision(T, var::Dolo.MvNormal{names,n,n2}) where n where n2 where names
+    MvNormal(
+        SVector{n, T}(var.μ),
+        SMatrix{n,n,T,n2}(var.Σ)
+    )
+end
+
+MvNormal(names, μ::SVector{n,T}, Σ::SMatrix{n,n, T,n2}) where n where n2 where T = MvNormal{names, n, n2,T}(μ,Σ) 
 variables(mv::MvNormal{n}) where n = n
 
-MvNormal(names, Σ::SMatrix{n,n, Float64,n2}) where n where n2 = MvNormal{names,n,n2}(zero(SVector{n,Float64}),Σ)
+MvNormal(names, Σ::SMatrix{n,n, T,n2}) where n where n2 where T = MvNormal{names,n,n2,T}(zero(SVector{n,T}),Σ)
 
 function MvNormal(names, μ::Vector, Σ::Matrix)
     p = size(Σ,1)
@@ -205,7 +212,7 @@ import Base: rand
 import Distributions
 
 
-function Base.rand(mv::MvNormal{names, n}) where names where n
+function Base.rand(mv::MvNormal{names, n, n2, T}) where names where n where n2 where T
 
     dis = Distributions.MvNormal(Matrix(mv.Σ))
     m = Distributions.rand(dis)
@@ -221,7 +228,15 @@ function discretize(mv::MvNormal, n::Int=5)
     μ = zeros(size(mv.Σ,1))
     x, w = qnwnorm(nn, μ, Matrix(mv.Σ))
     
+    
     xm = SVector((SVector(x[i,:]...) for i=1:n)...)
+    w=SVector(w...)
+    
+    Tf = eltype(mv.μ)
+    xm = SVector(
+        (SVector((convert(Tf, f) for f in e)...) for e in xm)...
+    )
+    w = SVector((convert(Tf, e) for e in w)...)
     (;x=xm,w=SVector(w...))
 end
 
@@ -236,13 +251,13 @@ end
 VAR1(names, ρ, Σ) = VAR1{names, typeof(ρ), typeof(Σ)}(ρ, Σ)
 
 
-function rand(var::VAR1{N,V,B}, m::SVector{d,Float64}) where N where V where B<:SMatrix{1,1,Float64,1} where d
+function rand(var::VAR1{N,V,B}, m::SVector{d,T}) where N where V where T where B<:SMatrix{1,1,Float64,1} where d
     
     return SVector( m[1]*var.ρ + randn()*sqrt(var.Σ[1,1]) )
 
 end
 
-function rand(var::VAR1, m0::SVector{d,Float64}) where d
+function rand(var::VAR1, m0::SVector{d,T}) where d where T
     ρ = var.ρ
     dis = Distributions.MvNormal(Matrix(var.Σ))
     m = ρ*m0 + rand(dis)

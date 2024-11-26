@@ -186,7 +186,8 @@ function time_iteration(model::DYModel,
     improve_wait=10,
     tol_ε=1e-8,
     tol_η=1e-6,
-    max_bsteps=10,
+    newton_steps=10,
+    mbsteps = 5,
     verbose=true,
     trace=false,
     improve=false,
@@ -206,7 +207,6 @@ function time_iteration(model::DYModel,
     initialize(log, verbose=verbose; message="Time Iteration")
 
     # mem = typeof(workspace) <: Nothing ? time_iteration_workspace(model) : workspace
-    mbsteps = 5
 
     (;x0, x1, x2, r0, dx, J, φ) = workspace
 
@@ -233,6 +233,7 @@ function time_iteration(model::DYModel,
     end
     local k_newton_ = 0
     local k_ = 0
+    local ε
 
     for t=1:T
         
@@ -261,7 +262,7 @@ function time_iteration(model::DYModel,
         x1.data .= x0.data
 
  
-        for k_newton=1:max_bsteps
+        for k_newton=1:newton_steps
             
             #newton steaps
 

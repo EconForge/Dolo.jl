@@ -37,7 +37,7 @@ model = let
         (:z,),
         SVector( [Q[i,:] for i=1:size(Q,1)]... )
     ) × CartesianSpace(
-        k=[0.1, 5.0]
+        k=(0.1, 5.0)
     )
 
     controls = CartesianSpace(

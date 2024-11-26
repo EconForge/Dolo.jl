@@ -7,7 +7,7 @@ end
 
 
 # TODO We should differentiate here whether dproc has a markov chain or something else
-function τ(dmodel::Dolo.DYModel{M}, ss::T, a::SVector) where M<:Union{Dolo.AModel{<:Dolo.VAR1},Dolo.AModel{<:Dolo.MarkovChain}}  where T<:QP
+function τ(dmodel::Dolo.DYModel{M}, ss::T, a::SVector) where M<:Union{AModel{<:Dolo.VAR1},Dolo.AModel{<:Dolo.MarkovChain}}  where T<:QP
 
     (i,_) = ss.loc
     s_ = ss.val
@@ -36,7 +36,7 @@ function τ(dmodel::Dolo.DYModel{M}, ss::T, a::SVector) where M<:Union{Dolo.AMod
 end
 
 
-function τ(dmodel::Dolo.DYModel{M}, ss::T, a::SVector)  where M<:Dolo.YModel{<:Dolo.MvNormal} where T<:QP
+function τ(dmodel::Dolo.DYModel{M}, ss::T, a::SVector)  where M<:AModel{<:MvNormal} where T<:QP
 
 
     # ind = ss.loc
