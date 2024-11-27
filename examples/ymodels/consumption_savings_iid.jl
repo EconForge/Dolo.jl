@@ -18,6 +18,7 @@ model = let
     σ = 0.1
     ρ = 0.0
     r = 1.02
+    
     w = 1.0
     c = 0.9*w
     cbar = c
@@ -40,14 +41,14 @@ model = let
 
 
     states = CartesianSpace(;
-        w=(0.5, 20.0)
+        w=(0.5, 5.0)
     )
 
     controls = CartesianSpace(;
         c=(0.0,Inf),
     )
 
-    Σ = @SMatrix [0.0001;;]
+    Σ = @SMatrix [0.01;;]
     exogenous = MvNormal( (:y,), Σ)
 
 
@@ -76,27 +77,21 @@ end
 function arbitrage(mod::typeof(model), s::NamedTuple, x::NamedTuple, S::NamedTuple, X::NamedTuple)
     p = mod.calibration
     eq = p.β*( X.c/x.c )^(-p.γ)*(p.r) - 1 # - x.λ
-    # @warn "The euler equation is satisfied only if c<w. If c=w, it can be strictly positive."
-    # eq2 = x.λ ⟂ s.y-x.c
     (eq,)
 end
 
 function complementarities(mod::typeof(model), s::NamedTuple, x::NamedTuple, Fv::SVector)
-    eq = Fv[1] ⫫ s.w-x.c
-    # eq = Fv[1] ⟂ s.y-x.c
+    eq = Fv[1] ⫫ x.c
+    eq = -eq ⫫ s.w-x.c
+    eq = -eq
     (eq,)
 end
 
-# function initial_guess(model, m::SLArray, s::SLArray, p)
-#     # c = min( 1.0 + 0.01*(s.y - 1.0), s.y)
-#     c = 0.8*s.y
-#     λ = 0.01 # max( 1.0 + 0.01*(s.y - 1.0), 0.01*(s.y-1))
-#     return SLVector(;c, λ)
-# end
-
 function initial_guess(mod::typeof(model), s::NamedTuple)
     p = mod.calibration
-    c = s.y*0.9
+    # c = p.c
+    c = s.w*0.95
+    # c = min(s.w, 1.0 + (s.w-1.0)*0.02)
     return (;c)
 end
 

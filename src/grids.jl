@@ -151,9 +151,9 @@ end
 @inline function getindex(s::CGrid{d}, z::Complex{Int64}) where d
     # Tf = eltype(g)
     # SVector{d,Tf}(g.grids[1][i]..., g.grids[2][j]...)
-    i,j = from_linear(s, z.re)
-    val = s[i,j]
-    Dolo.QP((i,j), val)
+    ind = from_linear(s, z.re)
+    val = s[ind...]
+    Dolo.QP(ind, val)
 end
 
 iterate(s::SGrid) = (s.points[1], 2)

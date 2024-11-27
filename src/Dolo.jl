@@ -10,6 +10,7 @@ module Dolo
     using Printf
     using Format 
     using Crayons.Box
+    using Term
 
     import LinearAlgebra: cross, norm, ×
 

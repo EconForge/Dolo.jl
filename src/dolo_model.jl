@@ -35,12 +35,26 @@ get_controls(model::YModel) = variables(model.controls)
 # discretize(cc::CartesianSpace; n=10) = CGrid( tuple(( (cc.min[i],cc.max[i], n) for i=1:length(cc.min))...) )
 
 
+import Term: Panel, tprint, tprintln
+
 function Base.show(io::IO, m::YModel) 
-    println("Model")
-    println("* name: ", name(m))
-    println("* states: ", join(get_states(m), ", "))
-    println("* controls: ", join(get_controls(m), ", "))
-    println("* exogenous: ", m.exogenous)
+    # println(Panel("this is {red}RED{/red}"; fit=true))
+    
+    exovars = [e for e in Dolo.variables(m.exogenous)]
+    exotype = typeof(m.exogenous).name.name
+    hcontrols = join(get_controls(m), ", ")
+    hstates = join([
+        (e in exovars ? "{red}$e{/red}" : e)
+        for e in get_states(m)
+    ], ", ")
+
+    txt = """
+    Model: {blue}$(name(m)){/blue}
+    * states: $hstates
+    * controls: $hcontrols
+    * exogenous: $exotype({red}$(join(exovars,",")){/red})"""
+
+    tprintln(Panel(txt; fit=true))
 end
 
 function Base.show(io::IO, m::ADModel) 

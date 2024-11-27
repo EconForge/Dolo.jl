@@ -13,7 +13,7 @@ equations:
         w[t] = exp(y[t]) + (w[t-1]-c[t-1])*r
 
     arbitrage: |
-        β*( c[t+1]/c[t] )^(-γ)*r - 1  | 0<=c[t]<=w[t]
+        β*( c[t+1]/c[t] )^(-γ)*r - 1 | 0<=c[t]<=w[t]
 
 
 calibration:
@@ -36,7 +36,7 @@ calibration:
     rew: 0.0
 
 domain:
-    w: [0.5, 20.0]
+    w: [0.5, 5.0]
 
 exogenous:
     y: !UNormal

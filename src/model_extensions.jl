@@ -169,10 +169,10 @@ function transition(model::YModel{<:VAR1}, s::NamedTuple, x::NamedTuple)
     
     m = get_exo(model, s)
     
-    M = rand(model.exogenous, m)
-    S_ = transition(model, s, x, M)
+    E = rand(model.exogenous, m)
+    S_ = transition(model, s, x, E)
 
-    S = merge(M, S_)
+    S = merge(E, S_)
 
     return S
 
