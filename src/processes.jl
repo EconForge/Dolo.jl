@@ -192,6 +192,10 @@ function convert_precision(T, var::Dolo.MvNormal{names,n,n2}) where n where n2 w
 end
 
 MvNormal(names, μ::SVector{n,T}, Σ::SMatrix{n,n, T,n2}) where n where n2 where T = MvNormal{names, n, n2,T}(μ,Σ) 
+
+#special one-dimensional case
+UNormal(names; μ=0.0, σ=1.0) = MvNormal(names, SVector(μ), SMatrix{1,1,typeof(μ),1}(σ^2))
+
 variables(mv::MvNormal{n}) where n = n
 
 MvNormal(names, Σ::SMatrix{n,n, T,n2}) where n where n2 where T = MvNormal{names,n,n2,T}(zero(SVector{n,T}),Σ)
@@ -204,6 +208,11 @@ function MvNormal(names, μ::Vector, Σ::Matrix)
 end
 
 function MvNormal(names, Σ::Matrix)
+    MvNormal(names, zeros(size(Σ, 1)), Σ)
+end
+
+
+function MvNormal(names; Σ::Matrix=zeros(len(vars),len(vars)))
     MvNormal(names, zeros(size(Σ, 1)), Σ)
 end
 
@@ -248,7 +257,17 @@ struct VAR1{names,V,B}
     Σ::B
 end
 
-VAR1(names, ρ, Σ) = VAR1{names, typeof(ρ), typeof(Σ)}(ρ, Σ)
+VAR1(names; ρ=0.0, Σ=one(SMatrix{length(names),length(names),Float64,length(names)^2})) = VAR1(names,ρ,Σ)
+
+function VAR1(names, ρ, Σ) 
+    Tf = typeof(ρ)
+    d = size(Σ,1)
+    
+    MT = SMatrix{d,d,Tf,d*d}
+
+    VAR1{names, Tf, MT}(ρ,convert(MT,Σ))
+end
+
 
 
 function rand(var::VAR1{N,V,B}, m::SVector{d,T}) where N where V where T where B<:SMatrix{1,1,Float64,1} where d
@@ -344,6 +363,10 @@ ndims(mc::MarkovChain{names}) where names = length(names)
 
 # MarkovChain(names, P, Q) = MarkovChain{names, typeof(P), typeof(Q)}(P,Q)
 
+function MarkovChain(names; transitions::Matrix, values::Matrix) 
+    MarkovChain(names, transitions, values)
+end
+
 function MarkovChain(names, P::Matrix, Q::Matrix) 
     Tf = eltype(P)
     d = size(P,1)
@@ -364,3 +387,36 @@ MarkovProduct(mc::MarkovChain) = mc
 
 discretize(mc::MarkovChain, args...; kwargs...) = mc
 
+# domains
+
+
+struct ConstantProcess{names,C}
+    μ::C
+end
+
+ConstantProcess(names; μ=zero(SVector{length(names),Float64})) = ConstantProcess{names,typeof(μ)}(SVector(μ...))
+
+variables(cp::ConstantProcess{vars}) where vars = vars
+
+function get_domain(cp::ConstantProcess)
+    d = length(cp.μ)
+    T = eltype(cp.μ)
+    min  = fill(-T(Inf), d) ### not absolutely clear this is the right default, certainly not!
+    max  = fill(T(Inf), d)
+    names = variables(cp)
+    return Dolo.CSpace(; (k=>(a,b) for (k,a,b) in zip(names,min,max))...)
+end
+
+function get_domain(iid::P) where P<:Union{VAR1,MvNormal}
+    d = size(iid.Σ,1)
+    T = eltype(iid.Σ)
+    min  = fill(-T(Inf), d) ### not absolutely clear this is the right default, certainly not!
+    max  = fill(T(Inf), d)
+    names = variables(iid)
+    return Dolo.CSpace(; (k=>(a,b) for (k,a,b) in zip(names,min,max))...)
+end
+
+
+function get_domain(mc::MarkovChain)
+    GridSpace(variables(mc),mc.Q)
+end

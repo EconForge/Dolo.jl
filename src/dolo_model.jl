@@ -92,14 +92,16 @@ function discretize(model::AModel{<:VAR1}, d=Dict())
     endo = get(d, :endo, Dict())
     dvar = discretize(model.exogenous, exo)
     d = size(model.exogenous.Σ,1)
+
+    # number of endogenous states
     n_s = length(Dolo.variables(model.states)) - d
     
     exo_grid = SGrid(dvar.Q)
     # TODO: simplify that call
     Tf = eltype(model)
     endo_space = CartesianSpace{n_s, Dolo.variables(model.states)[d+1:end],Tf}(
-        model.states.min[d+1:end],
-        model.states.max[d+1:end]
+        model.states.endo.min,
+        model.states.endo.max
     )
     # return endo_space
     endo_grid = discretize(endo_space, endo)

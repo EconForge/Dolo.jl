@@ -14,13 +14,13 @@ function adapt_structure(to, v::GVector{G,V}) where G where V
     )
 end
 
-function adapt_structure(to, v::GArray{G,V}) where G where V
-    data = adapt(to, v.data)
-    GArray(
-        v.grid,
-        data
-    )
-end
+# function adapt_structure(to, v::GArray{G,V}) where G where V
+#     data = adapt(to, v.data)
+#     GArray(
+#         v.grid,
+#         data
+#     )
+# end
 function adapt_structure(to, f::DFun{Dom, Gar, Itp, vars}) where Dom where Gar where Itp where vars
     itp = adapt(to, f.itp)
     values = adapt(to, f.values)

@@ -8,6 +8,8 @@ end
 
 const CSpace = CartesianSpace
 
+ndims(::CartesianSpace{d}) where d = d
+
 # CartesianSpace(a::NTuple{d,Tf}, b::NTuple{d, Tf}) where d where Tf = CartesianSpace{length(a), (:x,), Tf}(a,b)
 
 function CartesianSpace(kwargs::Pair{Symbol, Tuple{Tf, Tf}}...) where Tf
@@ -41,7 +43,7 @@ Base.in(e::SVector, cs) = all( ( (e[i]<=cs.max[i])&(e[i]>=cs.min[i]) for i=1:len
 # dims(dom::CartesianSpace{d,dims}) where d where dims = dims
 
 
-ndims(dom::CartesianSpace{d, dims}) where d where dims = d
+# ndims(dom::CartesianSpace{d, dims}) where d where dims = d
 variables(dom::CartesianSpace{d,t}) where d where t = t
 dims(dom::CartesianSpace) = variables(dom)
 
@@ -75,7 +77,17 @@ end
 
 ProductSpace(A,B) = ProductSpace((A,B))
 
+import Base
 
+function Base.getproperty(PS::ProductSpace,sym::Symbol)
+    if sym==:exo
+        return PS.spaces[1]
+    elseif sym==:endo
+        return PS.spaces[2]
+    else
+        getfield(PS, sym)
+    end
+end
 
 function draw(p::ProductSpace)
     a = rand(p.spaces[1])

@@ -1,4 +1,8 @@
 import Base: *
+using LinearMaps
+using BlockDiagonals
+using LinearAlgebra: UniformScaling
+
 
 struct LL{G,D_,F}
     grid::G
@@ -10,29 +14,13 @@ struct I_L{_L}
     L::_L
 end
 
-
-using LinearMaps
-using BlockDiagonals
-using LinearAlgebra: UniformScaling
-
 -(::UniformScaling, L::LL) = I_L(L)
 *(A::I_L, b) = b-A.L*b
 
-convert(::Type{LinearMap}, IL::I_L) = let
-    I - convert(LinearMap,IL.L)
-    # L = IL.L
-    # # elt = eltype(L.D[1][1].F_x)
-    # elt = typeof(L.D[1][1].F_x)
-    # p,q = size(elt)
-    # N = length(L.grid)
-    # typ = SVector{q, Float64}
-    # fun = u->u-(ravel(L*GArray(L.grid, reinterpret(typ, u))))
-    # LinearMap(
-    #     fun,
-    #     p*N,
-    #     q*N
-    # )
-end
+convert(::Type{LinearMap}, IL::I_L) = I - convert(LinearMap,IL.L)
+
+
+
 
 # function *(A::I_L, b::AbstractVector)
 #     x = GVector(
@@ -49,9 +37,8 @@ end
 
 const LF = LL
 
-import Base: ldiv!
 import Base: /,*
-import LinearAlgebra: mul!
+import LinearAlgebra: mul!, ldiv!
 
 # function mul!(L::LL, x::Number)
 
