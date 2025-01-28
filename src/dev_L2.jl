@@ -94,6 +94,7 @@ end
 function *(L::LL, x0)
 
     # BUG: with deepcopy, doesn' t work
+    # TODO: why do we even copy here?
     r = duplicate(x0) ###### BUG: this doesn't wokr on the GPU
     Tf = getprecision(x0)
     r.data .*= convert(Tf, 0.0)
@@ -102,7 +103,17 @@ function *(L::LL, x0)
     
 end
 
+function *(L::LL, v::AbstractArray{T}) where T<:Union{Float32, Float64}
 
+    # BUG: with deepcopy, doesn' t work
+    r_ = copy(v) ###### BUG: this doesn't wokr on the GPU
+    r_[:] .*= convert(T, 0.0)
+    r = unravel(L.grid, r_)
+    x = unravel(L.grid, v)
+    mul!(r, L, x)
+    r
+    
+end
 
 
 function ldiv!(J, L::Dolo.LL)
