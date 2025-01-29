@@ -19,12 +19,52 @@ module Dolo
     
 
     ⟂(a,b) = min(a,b)
-    function ⫫(u,v)
+
+    function ⫫(u0,v0)
+        BIG = 100000
+        u = min(max(u0,-BIG),BIG)
+        v = min(max(v0,-BIG),BIG)
         sq = sqrt(u^2+v^2)
-        p =   (v<Inf ? (u+v-sq)/2 : u)
+        p =   (u+v-sq)/2
         return p
     end
 
+    # function ⫫(u,v)
+    #     sq = sqrt(u^2+v^2)
+    #     p =   (v<Inf ? (u+v-sq)/2 : u)
+    #     return p
+    # end
+
+    using ChainRulesCore
+    using ForwardDiffChainRules
+
+ # define your frule for function f1 as usual
+function ChainRulesCore.frule((_, Δu, Δv), ::typeof(⫫), u::Real, v::Real)
+    BIG = 100000
+    u = min(max(u0,-BIG),BIG)
+    v = min(max(v0,-BIG),BIG)
+    sq = sqrt(u^2+v^2)
+    Omega = (u+v-sq)/2
+    if u==v==0.0
+        Omega, (Δu + Δv)*0
+    # elseif !(u<Inf)
+    #     return v, Δv
+    # elseif !(v<Inf)
+    #     return u, Δu
+    else
+        Δ1 = (0.5 - u/sq)*Δu
+        Δ2 = (0.5 - v/sq)*Δv
+        return Omega,  Δ1 + Δ2
+    end
+ end
+
+
+# @ForwardDiff_frule ⫫(u::ForwardDiff.Dual, v::ForwardDiff.Dual)
+# @ForwardDiff_frule ⫫(u::ForwardDiff.Dual, v)
+# @ForwardDiff_frule ⫫(u, v::ForwardDiff.Dual)
+
+
+# ⫫(u,v) = fun(u,v)
 
     #   #, SDiagonal(J_u), SDiagonal(J_v)
     #     # J_u = (v<Inf ? (1.0 - u[i]./sq[i])/2 : 1) for i=1:d )
