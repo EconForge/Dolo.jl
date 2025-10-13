@@ -60,12 +60,13 @@ function mul!(L::LL, x::Number)
         L.D,
         L.D
     )
-    # for n in 1:length(L.D)
-    #     L.D[n]  =tuple((
-    #         (;F_x=x*d.F_x, S=d.S) 
-    #         for d in L.D[n]
-    #     )...)
-    # end
+
+end
+
+function mul!(L::LL, x::Number, ::Nothing)
+
+    mul!(L, x)
+
 end
 
 function mul!(dr, L2::LF, x)
@@ -75,7 +76,7 @@ end
 
 
 function mul!(dr, L2::LL, x, ::Nothing)
- 
+
     D = L2.D
     dφ = L2.φ
 
@@ -95,6 +96,7 @@ function *(L::LL, x0)
 
     # BUG: with deepcopy, doesn' t work
     # TODO: why do we even copy here?
+    # println("did you call me?")
     r = duplicate(x0) ###### BUG: this doesn't wokr on the GPU
     Tf = getprecision(x0)
     r.data .*= convert(Tf, 0.0)
@@ -105,16 +107,47 @@ end
 
 function *(L::LL, v::AbstractArray{T}) where T<:Union{Float32, Float64}
 
-    # BUG: with deepcopy, doesn' t work
-    r_ = copy(v) ###### BUG: this doesn't wokr on the GPU
-    r_[:] .*= convert(T, 0.0)
-    r = unravel(L.grid, r_)
-    x = unravel(L.grid, v)
-    mul!(r, L, x)
-    r
+    # println("did you call me?")
+    r = copy(v) ###### BUG: this doesn't wokr on the GPU
+    mul!(r, L, v)
+    return r
     
 end
 
+function mul!(r_::AbstractArray{T}, L::LL, v_::AbstractArray{T}, ::Nothing) where T<:Union{Float32, Float64}
+
+    # single core, nonallocating version
+    elt = typeof(L.D[1][1].F_x)
+    Tf = eltype(elt)
+    p,q = size(elt)
+    N = length(L.grid)
+    typ = SVector{q, Tf}
+
+    r = GArray(L.grid, reinterpret(typ, r_))
+    x = GArray(L.grid, reinterpret(typ, v_))
+    mul!(r, L, x, nothing)
+
+    r_
+    
+end
+
+
+function mul!(r_::AbstractArray{T}, L::LL, v_::AbstractArray{T}) where T<:Union{Float32, Float64}
+
+    # default kernel
+    elt = typeof(L.D[1][1].F_x)
+    Tf = eltype(elt)
+    p,q = size(elt)
+    N = length(L.grid)
+    typ = SVector{q, Tf}
+
+    r = GArray(L.grid, reinterpret(typ, r_))
+    x = GArray(L.grid, reinterpret(typ, v_))
+    mul!(r, L, x)
+
+    r_
+    
+end
 
 function ldiv!(J, L::Dolo.LL)
     for n in 1:length(L.D)
@@ -125,6 +158,8 @@ function ldiv!(J, L::Dolo.LL)
         )...)
     end
 end
+
+ldiv!(J, L::Dolo.LL, ::Nothing) = ldiv!(J, L)
 
 # this takes 0.2 s !
 function \(J, L::Dolo.LL) 
@@ -199,9 +234,6 @@ function dF_2!(L, dmodel, xx::GArray, φ::DFun, ::Nothing)
 end
 
 
-
-
-
 function neumann(L2::LF, r0; K=1000, τ_η=1e-10, t_engine=nothing)
     
     # TODO
@@ -249,20 +281,31 @@ convert(::Type{BlockDiagonal}, ga::GArray{G, Vector{T}}) where T where G = Block
 
 convert(::Type{Matrix}, L::LF) = convert(Matrix, convert(LinearMap,L))
 
+# convert(::Type{LinearMap}, L::LF) = let
+#     elt = typeof(L.D[1][1].F_x)
+#     Tf = eltype(elt)
+#     p,q = size(elt)
+#     N = length(L.grid)
+#     typ = SVector{q, Tf}
+#     fun = u->(ravel(L*GArray(L.grid, reinterpret(typ, u))))
+#     LinearMap(
+#         fun,
+#         p*N,
+#         q*N
+#     )
+# end
+
 convert(::Type{LinearMap}, L::LF) = let
-    # elt = eltype(L.D[1][1].F_x)
     elt = typeof(L.D[1][1].F_x)
     Tf = eltype(elt)
     p,q = size(elt)
     N = length(L.grid)
     typ = SVector{q, Tf}
-    fun = u->(ravel(L*GArray(L.grid, reinterpret(typ, u))))
     LinearMap(
-        fun,
+        (v,u)-> mul!(v,L,u), # AWESOME
         p*N,
-        q*N
+        q*N;
+        ismutating=true
     )
 end
-
-
 

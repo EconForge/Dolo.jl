@@ -1,3 +1,6 @@
+## In theory this is brilliant !
+## In practice with Julia 1.12, Threads.@threds works equally well
+
 # This starts making a difference when grids have more than 200000 points...
 
 using KernelAbstractions
@@ -137,7 +140,7 @@ end
 
 # end
 
-function mul!(dr, L2::Dolo.LL, x, engine)
+function mul!(dr, L2::LL, x, engine)
  
     D = L2.D
     dφ = L2.φ
@@ -164,7 +167,6 @@ function mul!(dr, L2::Dolo.LL, x, engine)
     nothing
 
 end
-
 
 function \(J, L::Dolo.LL) 
 

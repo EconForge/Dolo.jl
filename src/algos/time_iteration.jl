@@ -161,10 +161,9 @@ function time_iteration_workspace(dmodel; interp_mode=:linear, improve=false, de
 end
 
 function newton_workspace(dmodel::ADModel; interp_mode=:linear)
-
     
     res = time_iteration_workspace(dmodel; interp_mode=interp_mode)
-    T =  Dolo.dF_2(dmodel, res.x0, res.φ)
+    T =  Dolo.dF_2(dmodel, res.x0, res.φ) # TODO : speed up (keep only the allocation, not the computation)
     res = merge(res, (;T=T,memn=(;du=deepcopy(res.x0), dv=deepcopy(res.x0))))
     return res
 end

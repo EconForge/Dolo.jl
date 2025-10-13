@@ -211,7 +211,6 @@ function MvNormal(names, Σ::Matrix)
     MvNormal(names, zeros(size(Σ, 1)), Σ)
 end
 
-
 function MvNormal(names; Σ::Matrix=zeros(len(vars),len(vars)))
     MvNormal(names, zeros(size(Σ, 1)), Σ)
 end

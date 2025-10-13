@@ -1,3 +1,5 @@
+### First Version of Prefilter
+
 @inline function solve_coefficients!(
             bands::AbstractMatrix{Float64},
             bb::AbstractVector{T},
@@ -48,6 +50,7 @@
     # Finish with first row
     coefs[1] = bb[1] - bands[1, 2] * coefs[2] - bands[1, 3] * coefs[3]
 
+    return nothing
 end
 
 @inline function fill_bands!(M::Int, bands::AbstractMatrix, bb::AbstractVector{T}, data::AbstractVector{T}) where T
@@ -70,22 +73,12 @@ end
     @inbounds bb[1] = zero(T)
     @inbounds bb[M+2] = zero(T)
 
+    return nothing
+
 end
 
 
 # TODO: there are certainly some cases where we don't want MVectors there
-
-function prefilter!(data::AbstractVector{T}) where T
-
-    N = length(data)
-
-    bands = zero(MMatrix{N, 3, Float64, N*3})
-    bb = zero(MVector{N, T})
-
-    fill_bands!(N-2, bands, bb, data)
-    solve_coefficients!(bands, bb, data)
-
-end
 
 function prefilter_1!(data::AbstractVector{T}) where T
 
@@ -99,6 +92,12 @@ function prefilter_1!(data::AbstractVector{T}) where T
 
 end
 
+###
+### Second Version of Prefilter
+###
+### in-place without memory allocation but
+
+
 const zq_0 = sqrt(3.0)-2.0
 const λ_0 = 6.0
 
@@ -107,6 +106,7 @@ getprecision(g::AbstractArray{T}) where T<:SVector = eltype(g).types[1].types[1]
 
 
 function prefilter_2!(c::AbstractVector{T}) where T
+# function prefilter!(c::AbstractVector{T}) where T
 
 
     prec = getprecision(c)
@@ -141,9 +141,15 @@ function prefilter_2!(c::AbstractVector{T}) where T
     end
     c[N] = 2*ff-c[N-2]
 
-    return c
+    return nothing
 
 end
+
+
+###
+### Choose one version:
+###
+prefilter!(c::AbstractVector{T}) where T = prefilter_2!(c::AbstractVector{T})
 
 
 function prefilter!(data::AbstractArray{T,2}, ::Val{:CPU}) where T

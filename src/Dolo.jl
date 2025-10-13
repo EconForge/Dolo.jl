@@ -120,7 +120,8 @@ function ChainRulesCore.frule((_, Δu, Δv), ::typeof(⫫), u::Real, v::Real)
     include("algos/simul.jl")
     include("algos/results.jl")
     include("algos/time_iteration.jl")
-    include("algos/time_iteration_accelerated.jl")
+    include("algos/time_iteration_multithreaded.jl")
+    # include("algos/time_iteration_accelerated.jl")
     include("algos/vfi.jl")
 
 
@@ -145,6 +146,8 @@ function ChainRulesCore.frule((_, Δu, Δv), ::typeof(⫫), u::Real, v::Real)
         export rouwenhorst
         export SMatrix, SVector
     end
+
+    get_backend(args...) = CPUS()
 
 
 end # module
