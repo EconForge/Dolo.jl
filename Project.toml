@@ -22,6 +22,7 @@ RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 ResumableFunctions = "c5292f4c-5179-55e1-98c5-05642aab7184"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Term = "22787eb5-b846-44ae-b979-8e399b8463ab"
+TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [weakdeps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
@@ -52,6 +53,7 @@ RecipesBase = "1"
 ResumableFunctions = "1"
 StaticArrays = "1"
 Term = "2"
+TimerOutputs = "0.5, 1"
 julia = "1.10"
 oneAPI = "2"
 

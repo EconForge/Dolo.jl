@@ -1,3 +1,5 @@
+using TimerOutputs: TimerOutput
+
 
 struct IterationLog
     header::Array{String, 1}
@@ -50,8 +52,7 @@ function show(log::IterationLog)
     show_end(log)
 end
 
-function show_start(log::IterationLog; message=nothing)
-
+function header(log::IterationLog)
     l = []
     for t in log.types
         if t<:Int
@@ -60,9 +61,12 @@ function show_start(log::IterationLog; message=nothing)
             push!(l, "{:>12}")
         end
     end
+    return format(join(l, " | "), log.header...)
+end
 
-    a = join(l, " | ")
-    s = format(a, log.header...)
+function show_start(log::IterationLog; message=nothing)
+
+    s = header(log)
 
     if message !== nothing
         println(repeat("-", length(s)))
@@ -74,7 +78,6 @@ function show_start(log::IterationLog; message=nothing)
     println(repeat("-", length(s)))
 end
 
-
 function show_entry(log::IterationLog, entry)
 
     vals = [entry[k] for k in log.keywords]
@@ -84,7 +87,7 @@ function show_entry(log::IterationLog, entry)
 end
 
 function show_end(log::IterationLog)
-    println(repeat("-", 66))
+    println(repeat("-", length(header(log))))
 end
 
 ###
@@ -100,20 +103,42 @@ length(t::IterationTrace) = length(t.data)
 struct TimeIterationResult
     dr
     iterations::Int
+    tol_ε::Float64
+    ε::Float64
     tol_η::Float64
     η::Float64
     log::Union{Nothing, IterationLog}
     trace::Union{Nothing,IterationTrace}
+    timer::Union{Nothing,TimerOutput}
 end
 
-converged(r::TimeIterationResult) = (r.η<r.tol_η)
+converged(r::TimeIterationResult) = (r.ε<r.tol_ε) || (r.η<r.tol_η)
 function Base.show(io::IO, r::TimeIterationResult)
     @printf io "Results of Time Iteration Algorithm\n"
-    # @printf io " * Complementarities: %s\n" string(r.complementarities)
     @printf io " * Decision Rule type: %s\n" string(typeof(r.dr))
     @printf io " * Number of iterations: %s\n" string(r.iterations)
     @printf io " * Convergence: %s\n" converged(r) ? "true" : RED_FG("false")
-    @printf io "   * |x - x'| < %.1e: %s\n" r.tol_η converged(r)
+    @printf io "   * |F(x,x)| < %.1e: %s (%.1e)\n" r.tol_ε (r.ε<r.tol_ε) r.ε
+    @printf io "   * |x - x'| < %.1e: %s (%.1e)\n" r.tol_η (r.η<r.tol_η) r.η
+end
+
+
+struct NewtonResult
+    dr
+    iterations::Int
+    tol_ε::Float64
+    ε::Float64
+    log::Union{Nothing, IterationLog}
+    timer::Union{Nothing,TimerOutput}
+end
+
+converged(r::NewtonResult) = (r.ε<r.tol_ε)
+function Base.show(io::IO, r::NewtonResult)
+    @printf io "Results of Newton Algorithm\n"
+    @printf io " * Decision Rule type: %s\n" string(typeof(r.dr))
+    @printf io " * Number of iterations: %s\n" string(r.iterations)
+    @printf io " * Convergence: %s\n" converged(r) ? "true" : RED_FG("false")
+    @printf io "   * |F(x,x)| < %.1e: %s (%.1e)\n" r.tol_ε converged(r) r.ε
 end
 
 

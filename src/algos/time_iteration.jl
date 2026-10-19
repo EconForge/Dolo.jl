@@ -110,14 +110,24 @@ function dF_2!(out::GArray, model::ADModel, controls::GArray, φ::GArray, dφ::G
 end   
 
 
+
+
 using LinearMaps
 using Adapt
+using TimerOutputs: TimerOutput, @timeit, disable_timer!
 
-function time_iteration_workspace(dmodel; interp_mode=:linear, improve=false, dest=Array)
+"""
+    time_iteration_workspace(dmodel; interp_mode=:linear, accelerate=false, linsolve=:neumann, krylov_dim=50, dest=Array)
 
-    T = eltype(dmodel)
+Preallocate the memory used by `time_iteration` and `newton`.
+The linear operator `L` (and Neumann buffers) are allocated when `accelerate=true`,
+the GMRES workspace (of dimension `krylov_dim`) when `linsolve=:gmres`.
+"""
+function time_iteration_workspace(dmodel; interp_mode=:linear, accelerate=false, linsolve=:neumann, krylov_dim=50, dest=Array)
 
     x0 = (Dolo.initial_guess(dmodel))
+    T = eltype(eltype(x0))
+
     x1 = deepcopy(x0)
     x2 = deepcopy(x0)
     r0 = deepcopy(x0)
@@ -131,50 +141,163 @@ function time_iteration_workspace(dmodel; interp_mode=:linear, improve=false, de
     vars = variables(dmodel.model.controls)
     φ = DFun(dmodel.model.states, x0, vars; interp_mode=interp_mode)
 
-    if improve
-        L = Dolo.dF_2(dmodel, x1, φ)
-        tt = (;x0, x1, x2, r0, dx, J, L, φ)
-    else
-        tt = (;x0, x1, x2, r0, dx, J, φ)
+    tt = (;x0, x1, x2, r0, dx, J, φ)
+
+    if accelerate
+        L = Dolo.dF_2(dmodel, x1, φ) # TODO : speed up (keep only the allocation, not the computation)
+        memn = (;du=deepcopy(x0), dv=deepcopy(x0))
+        tt = merge(tt, (;L, memn))
+    end
+
+    if linsolve == :gmres
+        gmres = gmres_workspace(T, N*n, krylov_dim)
+        tt = merge(tt, (;gmres))
     end
 
     return adapt(dest, tt)
 
 end
 
-function newton_workspace(dmodel::ADModel; interp_mode=:linear)
-    
-    res = time_iteration_workspace(dmodel; interp_mode=interp_mode)
-    T =  Dolo.dF_2(dmodel, res.x0, res.φ) # TODO : speed up (keep only the allocation, not the computation)
-    res = merge(res, (;T=T,memn=(;du=deepcopy(res.x0), dv=deepcopy(res.x0))))
-    return res
+newton_workspace(dmodel::ADModel; kwargs...) = time_iteration_workspace(dmodel; accelerate=true, kwargs...)
+
+
+function select_engine(engine, x0)
+    if engine in (:none, nothing)
+        return nothing
+    elseif engine in (:cpu, :cpus)
+        return CPUS()
+    elseif engine == :gpu
+        return get_backend(x0)
+    else
+        error("Unknown engine $engine. Use :none, :cpus or :gpu.")
+    end
 end
 
-function time_iteration(model::YModel; kwargs...)
-    discr_options = get(kwargs, :discretization, Dict())
-    interp_mode = get(kwargs, :interpolation, :cubic)
-    improve = get(kwargs, :improve, false)
-    dmodel = discretize(model, discr_options)
-    wksp = time_iteration_workspace(dmodel; interp_mode=interp_mode, improve=improve)
-    kwargs2 = pairs(NamedTuple( k=>v for (k,v) in kwargs if !(k in (:discretization, :interpolation))))
-    time_iteration(dmodel, wksp; kwargs2...)
+function check_workspace(workspace, accelerate, linsolve)
+    linsolve in (:neumann, :gmres) || error("Unknown linear solver $linsolve. Use :neumann or :gmres.")
+    if accelerate && !haskey(workspace, :L)
+        error("Workspace must be created with `accelerate=true`.")
+    end
+    if accelerate && linsolve == :gmres && !haskey(workspace, :gmres)
+        error("Workspace must be created with `linsolve=:gmres`.")
+    end
 end
 
-function time_iteration(model::DYModel,
-    workspace=time_iteration_workspace(model);
+is_domain_error(e) = e isa DomainError
+is_domain_error(e::TaskFailedException) = is_domain_error(e.task.exception)
+is_domain_error(e::CompositeException) = all(is_domain_error, e.exceptions)
+
+# fits φ on x then computes the residuals F(x,φ) in r0
+# returns their norm (Inf if the model can't be evaluated)
+function residual!(r0, model, x, φ, t_engine, tmr)
+    @timeit tmr "fit φ" fit!(φ, x)
+    try
+        @timeit tmr "eval F" F!(r0, model, x, φ, t_engine)
+    catch e
+        is_domain_error(e) || rethrow()
+        return convert(getprecision(x), Inf)
+    end
+    return norm(r0)
+end
+
+"""
+Solve `(I-L) dx = r` with a Neumann series or GMRES. Returns the number of iterations.
+"""
+function solve_I_minus_L!(dx, L, r, workspace, t_engine; linsolve=:neumann, K=1000, tol=1e-10, tmr=NO_TIMER)
+    if linsolve == :neumann
+        return neumann!(dx, L, r, t_engine; mem=workspace.memn, K=K, τ_η=tol, tmr=tmr)
+    else
+        x = ravel(dx)
+        b = ravel(r)
+        x .= b      # first order approximation
+        A! = (w,v) -> (mul!(w, L, v, t_engine); w .= v .- w)
+        k, _ = gmres!(x, A!, b, workspace.gmres; tol=tol, tmr=tmr)
+        return k
+    end
+end
+
+const DEPRECATED_KWARGS = (
+    improve = :accelerate,
+    improve_K = :accelerate_K,
+    improve_wait = :accelerate_wait,
+    mbsteps = :max_bsteps,
+)
+
+function rename_deprecated(kwargs)
+    kw = Dict{Symbol,Any}(kwargs)
+    for (old, new) in pairs(DEPRECATED_KWARGS)
+        if haskey(kw, old)
+            Base.depwarn("`$old` is deprecated, use `$new` instead.", :time_iteration)
+            kw[new] = pop!(kw, old)
+        end
+    end
+    return kw
+end
+
+
+"""
+    time_iteration(model; kwargs...)
+    time_iteration(dmodel, workspace=nothing; kwargs...)
+
+Solve the model by time iteration. With `accelerate=true`, after `accelerate_wait`
+iterations each time iteration step `x1=T(x0)` is followed by the approximate Newton step
+`x0 ← x0 + (I-T')^{-1}(x1-x0)`, where the linear system is solved by a Neumann series
+(`linsolve=:neumann`, at most `accelerate_K` terms) or GMRES (`linsolve=:gmres`, Krylov space of
+dimension `krylov_dim`). With `safeguarded=true`, the accelerated step is damped until the residual
+decreases and replaced by the time iteration step if it doesn't.
+
+Other options:
+- `T`: maximum number of iterations
+- `tol_ε`: tolerance on the residuals `|F(x,x)|`
+- `tol_η`: tolerance on successive time iteration steps `|x1-x0|`
+- `newton_steps`, `max_bsteps`: Newton and backtracking steps to compute `T(x0)`
+- `engine`: `:none`, `:cpus` (multithreaded) or `:gpu`
+- `timer`: record timings (returned in the result)
+- `trace`: keep all successive decision rules
+"""
+function time_iteration(model::YModel; discretization=Dict(), interpolation=:cubic, kwargs...)
+    kw = rename_deprecated(kwargs)
+    dmodel = discretize(model, discretization)
+    wksp = time_iteration_workspace(dmodel;
+        interp_mode=interpolation,
+        accelerate=get(kw, :accelerate, false),
+        linsolve=get(kw, :linsolve, :neumann),
+        krylov_dim=get(kw, :krylov_dim, 50)
+    )
+    time_iteration(dmodel, wksp; kw...)
+end
+
+function time_iteration(model::DYModel, workspace=nothing; kwargs...)
+    _time_iteration(model, workspace; rename_deprecated(kwargs)...)
+end
+
+function _time_iteration(model::DYModel, workspace;
     T=500,
-    improve_K=1000,
-    improve_wait=10,
     tol_ε=1e-8,
     tol_η=1e-6,
     newton_steps=10,
-    mbsteps = 5,
+    max_bsteps=5,
+    accelerate=false,
+    accelerate_K=1000,
+    accelerate_wait=10,
+    linsolve=:neumann,
+    linsolve_tol=1e-10,
+    krylov_dim=50,
+    safeguarded=false,
     verbose=true,
     trace=false,
-    improve=false,
-    engine=:none
+    engine=:none,
+    timer=false
 )
 
+    tmr = TimerOutput()
+    timer || disable_timer!(tmr)
+
+    if workspace === nothing
+        @timeit tmr "allocation" workspace = time_iteration_workspace(model;
+            accelerate=accelerate, linsolve=linsolve, krylov_dim=krylov_dim)
+    end
+    check_workspace(workspace, accelerate, linsolve)
 
     log = IterationLog(
             it = ("n", Int),
@@ -184,148 +307,140 @@ function time_iteration(model::DYModel,
             elapsed = ("Time", Float64),
             k_newton = ("Newton", Int64),
             k = ("Backsteps", Int64)
-        )    
+        )
     initialize(log, verbose=verbose; message="Time Iteration")
-
-    # mem = typeof(workspace) <: Nothing ? time_iteration_workspace(model) : workspace
 
     (;x0, x1, x2, r0, dx, J, φ) = workspace
 
-    
-    local η_0 = NaN
-    local η
-    convergence = false
-    iterations = T
-    
     Tf = eltype(eltype(x0))
-
     lam = convert(Tf, 0.5)
 
-    if engine in (:cpu, :gpu)
-        t_engine = get_backend(workspace.x0)
-    else
-        t_engine = nothing
-    end
+    t_engine = select_engine(engine, x0)
 
     ti_trace = trace ? IterationTrace(typeof(φ)[]) : nothing
 
-    if improve
-        J_2 = workspace.L
-    end
+    local η_0 = NaN
+    local η = NaN
     local k_newton_ = 0
     local k_ = 0
-    local ε
+    iterations = 0
+
+    ε = residual!(r0, model, x0, φ, t_engine, tmr)
 
     for t=1:T
-        
-        t1 = time_ns()
 
-        Dolo.fit!(φ, x0)
+        t1 = time_ns()
 
         trace && push!(ti_trace.data, deepcopy(φ))
 
-        F!(r0, model, x0, φ, t_engine)
-
-        # r0 = F(model, x0, φ)
-
-        ε = norm(r0)
-
         if ε<tol_ε
-            convergence = true
-            iterations = t
             break
         end
 
-        # solve u->F(u,x0) 
+        iterations = t
+
+        # solve u->F(u,φ)=0 where φ interpolates x0
         # result in x1
-        # J and r0 are modified
 
         x1.data .= x0.data
 
- 
-        for k_newton=1:newton_steps
-            
-            #newton steaps
+        @timeit tmr "time iteration step" for k_newton=1:newton_steps
 
-            F!(r0, model, x1,  φ, t_engine)
-
+            @timeit tmr "eval F" F!(r0, model, x1,  φ, t_engine)
             ε_n = norm(r0)
             if ε_n<tol_ε
-                iterations = t
                 break
             end
 
-            dF_1!(J, model, x1,  φ, t_engine)
-            
+            @timeit tmr "compute F_1" dF_1!(J, model, x1,  φ, t_engine)
+
             # TODO: fix regression or revert to Julia 1.10
             @inline dx.data .= J.data .\ r0.data
 
-
-            for k=0:mbsteps
-
+            for k=0:max_bsteps
                 # fails on GPU
                 x2.data .= x1.data .- dx.data .* convert(Tf,lam^k)
-                F!(r0, model, x2,  φ, t_engine)
+                @timeit tmr "eval F" F!(r0, model, x2,  φ, t_engine)
                 ε_b = norm(r0)
-                if ε_b<ε_n
-                    iterations = t
+                if ε_b<ε_n   # false if ε_b is NaN
                     k_newton_ = k_newton
                     k_ = k
                     break
                 end
-                
             end
 
             x1.data .= x2.data
 
         end
 
-
         η = distance(x0, x1)
         gain = η/η_0
+        η_0 = η
 
-        # verbose ? println("$t: $ε : $η: ") : nothing
+        if accelerate && t>accelerate_wait
+
+            # x = T(x)
+            # x1 = T(x0)
+            # x - x1 = T'(x) (x - x0)
+            # x = x0 + (I-T')^{-1} (x1 - x0)
+            # with T' = L = -F_1^{-1}F_2
+
+            (;L) = workspace
+
+            @timeit tmr "compute L=-F_1\\F_2" begin
+                dF_1!(J, model, x1, φ, t_engine)
+                dF_2!(L, model, x1, φ, t_engine)
+                mul!(L, convert(Tf,-1.0), t_engine)
+                ldiv!(J, L, t_engine)
+            end
+
+            r0.data .= x1.data .- x0.data
+
+            @timeit tmr "compute (I-L)^(-1).dr" solve_I_minus_L!(dx, L, r0, workspace, t_engine;
+                linsolve=linsolve, K=accelerate_K, tol=linsolve_tol, tmr=tmr)
+
+            if safeguarded
+
+                # Armijo-like condition
+                c_1 = 1e-4
+                α = convert(Tf, 0.5)
+                λ = sqrt(1-2*c_1*α)
+
+                accepted = false
+                @timeit tmr "safeguard" for i=0:max_bsteps
+                    x2.data .= x0.data .+ dx.data .* α^i
+                    ε1 = residual!(r0, model, x2, φ, t_engine, tmr)
+                    if ε1 < λ*ε
+                        x0.data .= x2.data
+                        ε = ε1
+                        accepted = true
+                        break
+                    end
+                end
+
+                if !accepted
+                    # fall back to the time iteration step
+                    x0.data .= x1.data
+                    ε = residual!(r0, model, x0, φ, t_engine, tmr)
+                end
+
+            else
+                x0.data .+= dx.data
+                ε = residual!(r0, model, x0, φ, t_engine, tmr)
+            end
+
+        else
+            x0.data .= x1.data
+            ε = residual!(r0, model, x0, φ, t_engine, tmr)
+        end
 
         elapsed = time_ns() - t1
         elapsed /= 1000000000
 
-        verbose ? append!(log; verbose=verbose, it=t-1, err=ε, sa=η_0, lam=gain, elapsed=elapsed, k_newton=k_newton_, k=k_) : nothing
+        verbose ? append!(log; verbose=verbose, it=t, err=ε, sa=η, lam=gain, elapsed=elapsed, k_newton=k_newton_, k=k_) : nothing
 
         if η < tol_η
-            iterations = t
             break
-        end
-        η_0 = η
-
-
-        if improve && t>improve_wait
-            # x = T(x)
-            # x1 = T(x0)
-            # x - x1 = -T'(x) (x - x0)
-            # x = x1 - T' (x - x0)
-            # x = (I-T')\(x1 - T' x0)
-
-            J_1 = J
-
-            Dolo.dF_1!(J_1, model, x1, φ, t_engine)
-
-            Dolo.dF_2!(J_2, model, x1, φ, t_engine)
-            # J_2 = Dolo.dF_2(model, x1, φ)
-            
-            mul!(J_2, convert(Tf,-1.0))
-            
-            # J_2.M_ij[:] *= -1.0
-            Tp = J_1 \ J_2
-            
-            d = (x1-x0)
-            
-            # return (J_1, J_2, d)
-            rhs =  neumann(Tp, d; K=improve_K, t_engine=t_engine)
-
-            x0.data .+= rhs.data
-
-        else
-            x0.data .= x1.data
         end
 
     end
@@ -335,127 +450,205 @@ function time_iteration(model::DYModel,
     TimeIterationResult(
         φ,
         iterations,
+        tol_ε,
+        ε,
         tol_η,
         η,
         log,
-        ti_trace
+        ti_trace,
+        timer ? tmr : nothing
     )
 end
 
 
-function newton(model::ADModel, workspace=newton_workspace(model);
-    K=20, tol_ε=1e-8, tol_η=1e-6, verbose=false, improve=false, interp_mode=:cubic,
-    engine=:none
+"""
+    newton(model; kwargs...)
+    newton(dmodel, workspace=nothing; kwargs...)
+
+Solve the model with a Newton-Krylov method on `x -> F(x, φ(x))`, where `φ` interpolates `x`.
+
+- `linsolve`: `:neumann` or `:gmres` (Krylov space of dimension `krylov_dim`)
+- `precondition`: precondition the linear system by `F_1^{-1}` so that it takes the form
+  `(I-L) dx = F_1^{-1} r`. Required by `:neumann`. Without preconditioning, GMRES
+  typically needs a much larger `krylov_dim`.
+- `K`: maximum number of terms in the Neumann series
+- `globalization`: `:none` (full Newton steps), `:backtracking` (halve the step until the residual
+  decreases, at most `max_bsteps` times) or `:linesearch` (golden section search on the step size,
+  `linesearch_maxiter` iterations)
+- `T`: maximum number of Newton iterations
+- `tol_ε`: tolerance on the residuals
+"""
+function newton(model::YModel; discretization=Dict(), interpolation=:cubic, kwargs...)
+    dmodel = discretize(model, discretization)
+    wksp = newton_workspace(dmodel;
+        interp_mode=interpolation,
+        linsolve=get(kwargs, :linsolve, :neumann),
+        krylov_dim=get(kwargs, :krylov_dim, 50)
     )
+    newton(dmodel, wksp; kwargs...)
+end
 
-    # mem = typeof(workspace) <: Nothing ? time_iteration_workspace(model) : workspace
+function newton(model::DYModel, workspace=nothing;
+    T=20,
+    K=1000,
+    tol_ε=1e-8,
+    linsolve=:neumann,
+    linsolve_tol=1e-10,
+    krylov_dim=50,
+    precondition=true,
+    globalization=:none,
+    max_bsteps=10,
+    linesearch_maxiter=5,
+    verbose=true,
+    engine=:none,
+    timer=false
+)
 
-    (;x0, x1, x2, dx, r0, J, φ, T, memn) = workspace
+    tmr = TimerOutput()
+    timer || disable_timer!(tmr)
 
-    if engine in (:cpu, :gpu)
-        t_engine = get_backend(workspace.x0)
-    else
-        t_engine = nothing
+    if !precondition && linsolve != :gmres
+        error("`precondition=false` requires `linsolve=:gmres`.")
     end
+    globalization in (:none, :backtracking, :linesearch) || error("Unknown globalization $globalization. Use :none, :backtracking or :linesearch.")
 
+    if workspace === nothing
+        @timeit tmr "allocation" workspace = newton_workspace(model; linsolve=linsolve, krylov_dim=krylov_dim)
+    end
+    check_workspace(workspace, true, linsolve)
 
-    for t=1:K
-        
-        Dolo.fit!(φ, x0)
+    log = IterationLog(
+        it = ("n", Int),
+        err =  ("ϵₙ=|F(xₙ,xₙ)|", Float64),
+        sa =  ("ηₙ=|xₙ-xₙ₋₁|", Float64),
+        elapsed = ("Time", Float64),
+        k_lin = ("Linear it.", Int64),
+        k = ("Backsteps", Int64)
+    )
+    initialize(log, verbose=verbose; message="Newton")
 
-        F!(r0, model, x0, φ, t_engine)
+    (;x0, x1, dx, r0, J, φ, L) = workspace
 
-        ε = norm(r0)
-        verbose ? println("$t: $ε") : nothing
+    Tf = eltype(eltype(x0))
+
+    t_engine = select_engine(engine, x0)
+
+    iterations = 0
+    ε = residual!(r0, model, x0, φ, t_engine, tmr)
+
+    for t=1:T
 
         if ε<tol_ε
-            return (;message="Solution found", solution=x0, n_iterations=t-1, dr=φ)
+            break
         end
 
+        iterations = t
+        t1 = time_ns()
+
         x1.data .= x0.data
 
+        @timeit tmr "compute Jacobian" begin
+            @timeit tmr "compute F_1" dF_1!(J, model, x0, φ, t_engine)
+            @timeit tmr "compute F_2" dF_2!(L, model, x0, φ, t_engine)
+        end
 
-        dF_1!(J, model, x0, φ, t_engine)
-        dF_2!(T, model, x0, φ, t_engine)
+        if precondition
+            # (F_1 + F_2) dx = r  <=>  (I - L) dx = F_1^{-1} r  with L = -F_1^{-1} F_2
+            @timeit tmr "compute L=-F_1\\F_2" begin
+                mul!(L, convert(Tf,-1.0), t_engine)
+                ldiv!(J, L, t_engine)
+            end
+            r0.data .= J.data .\ r0.data
+            k_lin = @timeit tmr "compute (I-L)^(-1).dr" solve_I_minus_L!(dx, L, r0, workspace, t_engine;
+                linsolve=linsolve, K=K, tol=linsolve_tol, tmr=tmr)
+        else
+            wk = workspace.gmres
+            x = ravel(dx)
+            x .= zero(Tf)
+            A! = (w,v) -> (mul!(w, J, v); mul!(wk.aux, L, v, t_engine); w .+= wk.aux)
+            k_lin, _ = @timeit tmr "solve (F_1+F_2).dx=r" gmres!(x, A!, ravel(r0), wk; tol=linsolve_tol, tmr=tmr)
+        end
 
-        mul!(T, -1.0)
+        k_ = 0
+        if globalization == :none
+            x0.data .= x1.data .- dx.data
+            ε = residual!(r0, model, x0, φ, t_engine, tmr)
+        elseif globalization == :backtracking
+            @timeit tmr "backtracking" for i=0:max_bsteps
+                k_ = i
+                x0.data .= x1.data .- dx.data .* convert(Tf, 0.5^i)
+                ε1 = residual!(r0, model, x0, φ, t_engine, tmr)
+                if ε1 < ε || i == max_bsteps
+                    ε = ε1
+                    break
+                end
+            end
+        else
+            ε = @timeit tmr "linesearch" golden_section!(x0, x1, dx, r0, model, φ, t_engine, tmr, ε; maxiter=linesearch_maxiter)
+        end
 
-        ldiv!(J, T)
-        
-        r0.data .= J.data .\ r0.data
-        # return (dx, T, r0)
-        neumann!(dx, T, r0, memn; K=K)
+        η = distance(x0, x1)
 
-        x0.data .= x1.data .- dx.data
-        x1.data .= x0.data
+        elapsed = (time_ns() - t1)/1000000000
 
-        # return x0
-
-        # end
-
+        verbose ? append!(log; verbose=verbose, it=t, err=ε, sa=η, elapsed=elapsed, k_lin=k_lin, k=k_) : nothing
 
     end
 
-    return (;solution=x0, message="No Convergence") # The only allocation when workspace is preallocated
+    verbose ?  finalize(log, verbose=verbose) : nothing
 
-end
-
-
-function newton_clinic(model::ADModel, workspace, tmr;
-    K=20, tol_ε=1e-8, tol_η=1e-6, verbose=false, improve=false, interp_mode=:cubic,
-    engine=:none
+    NewtonResult(
+        φ,
+        iterations,
+        tol_ε,
+        ε,
+        log,
+        timer ? tmr : nothing
     )
 
-    # mem = typeof(workspace) <: Nothing ? time_iteration_workspace(model) : workspace
-
-    (;x0, x1, x2, dx, r0, J, φ, T, memn) = workspace
-
-    if engine in (:cpu, :gpu)
-        t_engine = get_backend(workspace.x0)
-    else
-        t_engine = nothing
-    end
-
-
-    for t=1:K
-        
-        Dolo.fit!(φ, x0)
-
-        F!(r0, model, x0, φ, t_engine)
-
-        ε = norm(r0)
-        verbose ? println("$t: $ε") : nothing
-
-        if ε<tol_ε
-            return (;message="Solution found", solution=x0, n_iterations=t-1, dr=φ)
-        end
-
-        x1.data .= x0.data
-
-
-        dF_1!(J, model, x0, φ, t_engine)
-        dF_2!(T, model, x0, φ, t_engine)
-
-        mul!(T, -1.0)
-
-        ldiv!(J, T)
-        
-        r0.data .= J.data .\ r0.data
-        # return (dx, T, r0)
-        neumann!(dx, T, r0, memn; K=K)
-
-        x0.data .= x1.data .- dx.data
-        x1.data .= x0.data
-
-        # return x0
-
-        # end
-
-
-    end
-
-    return (;solution=x0, message="No Convergence") # The only allocation when workspace is preallocated
-
 end
 
+# Golden section search for the step size α∈[0,1] in x0 = x1 - α dx, minimizing the residual.
+# The full Newton step is used if it decreases the residual.
+# On exit x0 contains the best point and φ interpolates it. Returns the residual.
+function golden_section!(x0, x1, dx, r0, model, φ, t_engine, tmr, ε; maxiter=5)
 
+    Tf = eltype(eltype(x0))
+
+    f = α -> begin
+        x0.data .= x1.data .- dx.data .* convert(Tf, α)
+        residual!(r0, model, x0, φ, t_engine, tmr)
+    end
+
+    ε1 = f(1.0)
+    if ε1 < ε
+        return ε1
+    end
+
+    gr = (sqrt(5.0) - 1.0)/2.0
+    a, b = 0.0, 1.0
+    c = b - gr*(b-a)
+    d = a + gr*(b-a)
+    fc = f(c)
+    fd = f(d)
+    best_α, best_f = fc < fd ? (c, fc) : (d, fd)
+
+    for i=1:maxiter
+        if fc < fd
+            # minimum is in [a,d]
+            b, d, fd = d, c, fc
+            c = b - gr*(b-a)
+            fc = f(c)
+        else
+            # minimum is in [c,b]
+            a, c, fc = c, d, fd
+            d = a + gr*(b-a)
+            fd = f(d)
+        end
+        fc < best_f && ((best_α, best_f) = (c, fc))
+        fd < best_f && ((best_α, best_f) = (d, fd))
+    end
+
+    return f(best_α)
+
+end

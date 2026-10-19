@@ -6,6 +6,7 @@ using Test
     include("test_grids.jl")
     include("test_interpolation.jl")
     include("test_complementarities.jl")
+    include("test_linsolve.jl")
 end
 
 @testset verbose=true "Models" begin

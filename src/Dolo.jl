@@ -80,6 +80,7 @@ module Dolo
     include("funs.jl")
     include("conversion.jl")
 
+    include("algos/linsolve.jl")
     include("linear_operator.jl")
     include("algos/simul.jl")
     include("algos/results.jl")
@@ -91,7 +92,7 @@ module Dolo
     include("adapt.jl")
     include("utils.jl")
 
-    export time_iteration, tabulate, discount_factor
+    export time_iteration, newton, tabulate, discount_factor
 
     module Build
         using Dolo: transition, arbitrage, bounds, reward

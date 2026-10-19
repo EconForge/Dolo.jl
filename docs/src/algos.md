@@ -87,11 +87,38 @@ or by using the devoted function:
 time_iteration_direct
 ```
 
-## Improved Time iteration
+## Accelerated time iteration
+
+Write $x_{n+1} = T(x_n)$ for one time iteration step, where $x_n$ are the values of the controls on the grid. At the solution $x = T(x)$, so that, to first order:
+
+> $x - x_{n+1} \approx T'(x_n) (x - x_n)$
+
+and $x \approx x_n + (I-T')^{-1}(x_{n+1}-x_n)$. The Jacobian of the time iteration operator is $T' = L = -F_1^{-1} F_2$, where $F_1$ and $F_2$ are the derivatives of the residuals $F(x, \varphi)$ with respect to current controls and to the future decision rule. $F_1$ is block-diagonal and $L$ is a sparse operator which is never formed explicitly.
+
+With `accelerate=true`, after `accelerate_wait` iterations, each time iteration step is followed by this correction. The linear system can be solved:
+
+- with a Neumann series $\sum_k L^k (x_{n+1}-x_n)$ (`linsolve=:neumann`, at most `accelerate_K` terms), which converges since $L$ has spectral radius smaller than one when time iteration converges;
+- with GMRES (`linsolve=:gmres`) in a Krylov space of dimension `krylov_dim`.
+
+With `safeguarded=true` the correction is damped until the residuals decrease, and replaced by the plain time iteration step if they don't.
+
+```julia
+sol = time_iteration(model; accelerate=true, linsolve=:gmres)
+```
+
+## Newton-Krylov
+
+The same building blocks give a Newton method on $G(x) = F(x, \varphi(x))$ where $\varphi$ interpolates $x$. Each Newton step solves $(F_1+F_2) dx = F(x,\varphi(x))$. By default the system is preconditioned by $F_1^{-1}$, so that it takes the form $(I-L) dx = F_1^{-1} F$ and is solved by a Neumann series or GMRES. Steps can be globalized by backtracking or a golden-section line search.
+
+```julia
+sol = newton(model; linsolve=:gmres, globalization=:backtracking)
+```
 
 ```@docs
-improved_time_iteration
+newton
 ```
+
+All solvers accept `engine=:cpus` to use multithreaded kernels, and `timer=true` to record a profile of the different steps (in `sol.timer`).
 
 ## Perfect Foresight
 

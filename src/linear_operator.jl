@@ -217,7 +217,8 @@ function neumann(L2::LF, r0; K=1000, τ_η=1e-10, t_engine=nothing)
 
 end
 
-function neumann!(dx, L2::LF, r0, t_engine=nothing; mem=(;du=duplicate(r0), dv=duplicate(r0)), K=1000, τ_η=1e-10)
+# computes dx = (I-L)^(-1) r0 = Σ_k L^k r0, returns the number of terms
+function neumann!(dx, L2::LF, r0, t_engine=nothing; mem=(;du=duplicate(r0), dv=duplicate(r0)), K=1000, τ_η=1e-10, tmr=NO_TIMER)
     
     (; du, dv) = mem
     
@@ -225,8 +226,10 @@ function neumann!(dx, L2::LF, r0, t_engine=nothing; mem=(;du=duplicate(r0), dv=d
     du.data .= r0.data
     dv.data .= r0.data
 
-    for k=1:K
-        mul!(du, L2, dv, t_engine)
+    k = 0
+    while k < K
+        k += 1
+        @timeit tmr "eval L" mul!(du, L2, dv, t_engine)
         dx.data .+= du.data
         η = norm(du)
         if η<τ_η
@@ -235,7 +238,7 @@ function neumann!(dx, L2::LF, r0, t_engine=nothing; mem=(;du=duplicate(r0), dv=d
         du,dv=dv,du
     end
     
-    nothing
+    return k
 
 end
 
