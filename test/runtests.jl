@@ -7,8 +7,10 @@ using Test
     include("test_interpolation.jl")
     include("test_complementarities.jl")
     include("test_linsolve.jl")
+    include("test_engines.jl")
 end
 
 @testset verbose=true "Models" begin
     include("time_iteration.jl")
 end
+

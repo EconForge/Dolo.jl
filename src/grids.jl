@@ -156,6 +156,9 @@ end
     Dolo.QP(ind, val)
 end
 
+"The `n`-th point of grid `g` (linear index), as a `QP` holding its location and value."
+@inline point(g, n::Int) = g[n+im]
+
 iterate(s::SGrid) = (s.points[1], 2)
 iterate(s::SGrid, state) = state<=length(s) ? (s.points[state], state+1) : nothing
 

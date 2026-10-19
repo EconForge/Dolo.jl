@@ -118,7 +118,9 @@ sol = newton(model; linsolve=:gmres, globalization=:backtracking)
 newton
 ```
 
-All solvers accept `engine=:cpus` to use multithreaded kernels, and `timer=true` to record a profile of the different steps (in `sol.timer`).
+All solvers accept `timer=true` to record a profile of the different steps (in `sol.timer`), and an `engine` option deciding how operations are run on the grid: `:serial`, `:threads` (multithreaded) or `:ka` (KernelAbstractions.jl, on the backend where the data lives, e.g. a GPU).
+
+Internally, each operation on the grid (residuals, their derivatives, the linear operator) is written once as a pointwise function of one grid point, and applied to all grid points by `pointwise!(f, out, engine, args...)`. Engines only differ in how this loop is run.
 
 ## Perfect Foresight
 

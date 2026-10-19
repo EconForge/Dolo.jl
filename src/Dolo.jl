@@ -80,12 +80,13 @@ module Dolo
     include("funs.jl")
     include("conversion.jl")
 
+    include("engines.jl")
     include("algos/linsolve.jl")
     include("linear_operator.jl")
+    include("algos/residuals.jl")
     include("algos/simul.jl")
     include("algos/results.jl")
     include("algos/time_iteration.jl")
-    include("algos/time_iteration_multithreaded.jl")
     include("algos/vfi.jl")
 
 
@@ -107,7 +108,6 @@ module Dolo
         export SMatrix, SVector
     end
 
-    get_backend(args...) = CPUS()
 
 
 end # module

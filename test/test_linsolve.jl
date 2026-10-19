@@ -43,10 +43,10 @@ eye(n) = [i==j ? 1.0 : 0.0 for i=1:n, j=1:n]
         dm = Dolo.discretize(model)
         wk = Dolo.time_iteration_workspace(dm; accelerate=true, linsolve=:gmres, krylov_dim=100)
         (;x0, r0, J, L, φ) = wk
-        Dolo.dF_1!(J, dm, x0, φ, nothing)
-        Dolo.dF_2!(L, dm, x0, φ, nothing)
-        Dolo.mul!(L, -1.0, nothing)
-        Dolo.ldiv!(J, L, nothing)
+        Dolo.dF_1!(J, dm, x0, φ)
+        Dolo.dF_2!(L, dm, x0, φ)
+        Dolo.mul!(L, -1.0)
+        Dolo.ldiv!(J, L)
 
         M = convert(Matrix, L)
         r0.data .= x0.data
@@ -55,16 +55,10 @@ eye(n) = [i==j ? 1.0 : 0.0 for i=1:n, j=1:n]
 
         for linsolve in (:neumann, :gmres)
             dx = Dolo.duplicate(x0)
-            k = Dolo.solve_I_minus_L!(dx, L, r0, wk, nothing; linsolve=linsolve, tol=1e-12)
+            k = Dolo.solve_I_minus_L!(dx, L, r0, wk, Dolo.Serial(); linsolve=linsolve, tol=1e-12)
             @test k > 0
             @test Dolo.ravel(dx) ≈ sol rtol=1e-8
         end
-
-        # threaded engine gives the same operator
-        w0 = Dolo.duplicate(x0); w1 = Dolo.duplicate(x0)
-        Dolo.mul!(w0, L, x0, nothing)
-        Dolo.mul!(w1, L, x0, Dolo.CPUS())
-        @test Dolo.distance(w0, w1) < 1e-12
 
     end
 

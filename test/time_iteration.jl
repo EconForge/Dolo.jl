@@ -50,12 +50,13 @@ end
         ("accelerate (neumann)", m->Dolo.time_iteration(m; verbose=false, accelerate=true)),
         ("accelerate (gmres)", m->Dolo.time_iteration(m; verbose=false, accelerate=true, linsolve=:gmres)),
         ("accelerate (safeguarded)", m->Dolo.time_iteration(m; verbose=false, accelerate=true, accelerate_wait=0, safeguarded=true)),
-        ("accelerate (threaded)", m->Dolo.time_iteration(m; verbose=false, accelerate=true, engine=:cpus)),
+        ("accelerate (threaded)", m->Dolo.time_iteration(m; verbose=false, accelerate=true, engine=:threads)),
         ("newton (neumann)", m->Dolo.newton(m; verbose=false)),
         ("newton (gmres)", m->Dolo.newton(m; verbose=false, linsolve=:gmres)),
         ("newton (gmres, no preconditioning)", m->Dolo.newton(m; verbose=false, linsolve=:gmres, precondition=false, krylov_dim=300)),
-        ("newton (backtracking, threaded)", m->Dolo.newton(m; verbose=false, globalization=:backtracking, engine=:cpus)),
+        ("newton (backtracking, threaded)", m->Dolo.newton(m; verbose=false, globalization=:backtracking, engine=:threads)),
         ("newton (linesearch)", m->Dolo.newton(m; verbose=false, globalization=:linesearch)),
+        ("accelerate (KernelAbstractions)", m->Dolo.time_iteration(m; verbose=false, accelerate=true, engine=:ka)),
     ]
 
     for fn in ["rbc_mc", "rbc_ar1", "consumption_savings_iid"]
@@ -102,3 +103,4 @@ end
     end
 
 end
+

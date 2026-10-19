@@ -1,117 +1,3 @@
-
-
-
-function F(dmodel::ADModel, s::QP, x::SVector{d,T}, φ::Union{Policy, GArray, DFun}) where d where T
-
-    r = zero(SVector{d,T})
-
-    for (w,S) in τ(dmodel, s, x)
-        # return w,S
-        r += w*arbitrage(dmodel,s,x,S,φ(S)) 
-    end
-
-    # TODO: why does the following allocate ?
-    # strange: if reloaded it doesn't allocate anymore
-    # r += sum(
-    #      w*arbitrage(model,s,x,S,φ(S)) 
-    #      for (w,S) in τ(model, s, x)
-    # )
-
-    r::SVector{d,T}
-    r = complementarities(dmodel.model, s,x,r)
-    r
-end
-
-
-F(model::ADModel, controls::GArray, φ::Union{GArray, DFun}) =
-    GArray(
-        model.grid,
-        [
-            F(model,s,x,φ)
-            for (s,x) in zip(enum(model.grid), controls)
-        ],
-    )
-
-function F!(out, model::ADModel, controls::XT, φ::Union{GArray, DFun}) where XT<:GArray{PG, Vector{SVector{d,T}}} where PG where d where T
-    
-    for s in enum(model.grid)
-        x = controls[s.loc...]
-        out[s.loc...] = F(model,s,x,φ)
-    end
-
-    return nothing
-end
-
-
-function F!(out, model::ADModel, controls::XT, φ::Union{GArray, DFun}, ::Nothing) where XT<:GArray{PG, Vector{SVector{d,T}}} where PG where d where T
-    
-    for s in enum(model.grid)
-        x = controls[s.loc...]
-        out[s.loc...] = F(model,s,x,φ)
-    end
-
-    return nothing
-end
-
-
-## no alloc
-dF_1(model::ADModel, s, x::SVector, φ) = ForwardDiff.jacobian(u->F(model, s, u, φ), x)
-
-dF_1(model::ADModel, controls::GArray, φ::Union{GArray, DFun}) =
-    GArray(    # this shouldn't be needed
-        model.grid,
-        [
-            dF_1(model, s, x, φ)
-            for (s,x) in zip(enum(model.grid), controls) 
-        ]
-    )
-
-
-## no alloc
-
-function dF_1!(out, model::ADModel, controls::GArray, φ::Union{GArray, DFun}, ::Nothing)
-    dF_1!(out, model, controls::GArray, φ::Union{GArray, DFun})
-end
-
-function dF_1!(out, model::ADModel, controls::GArray, φ::Union{GArray, DFun})
-
-    i = 0
-    for s in enum(model.grid)
-        i+=1
-        x = controls[i]
-        # x = controls[s.loc...]
-        # out[s.loc...] = dF_1(model, s, x, φ)
-        out.data[i] = dF_1(model, s, x, φ)
-    end
-    return nothing
-end    #### no alloc
-    
-
-
-# warning: the versions of dF_2 don't have complementarities
-
-dF_2(model::ADModel, s, x::SVector, φ::GArray, dφ::GArray) = 
-    sum(
-            w*ForwardDiff.jacobian(u->arbitrage(model,s,x,S,u), φ(S))* dφ(S)
-            for (w, S) in τ(model, s, x)
-    )   ### no alloc
-
-
-dF_2(model::ADModel, controls::GArray, φ::GArray, dφ::GArray) =
-    GArray(
-        model.grid,
-        [(dF_2(model,s,x,φ,dφ)) for (s,x) in zip(enum(model.grid), controls) ],
-    )
-
-function dF_2!(out::GArray, model::ADModel, controls::GArray, φ::GArray, dφ::GArray)
-    for (n, (s,x)) in enumerate(zip(enum(model.grid), controls))
-        out[n] = dF_2(model, s, x, φ, dφ)
-    end
-end   
-
-
-
-
 using LinearMaps
 using Adapt
 using TimerOutputs: TimerOutput, @timeit, disable_timer!
@@ -160,18 +46,6 @@ end
 
 newton_workspace(dmodel::ADModel; kwargs...) = time_iteration_workspace(dmodel; accelerate=true, kwargs...)
 
-
-function select_engine(engine, x0)
-    if engine in (:none, nothing)
-        return nothing
-    elseif engine in (:cpu, :cpus)
-        return CPUS()
-    elseif engine == :gpu
-        return get_backend(x0)
-    else
-        error("Unknown engine $engine. Use :none, :cpus or :gpu.")
-    end
-end
 
 function check_workspace(workspace, accelerate, linsolve)
     linsolve in (:neumann, :gmres) || error("Unknown linear solver $linsolve. Use :neumann or :gmres.")
@@ -251,7 +125,7 @@ Other options:
 - `tol_ε`: tolerance on the residuals `|F(x,x)|`
 - `tol_η`: tolerance on successive time iteration steps `|x1-x0|`
 - `newton_steps`, `max_bsteps`: Newton and backtracking steps to compute `T(x0)`
-- `engine`: `:none`, `:cpus` (multithreaded) or `:gpu`
+- `engine`: `:serial`, `:threads` or `:ka` (KernelAbstractions, e.g. on GPU), or an `Engine`
 - `timer`: record timings (returned in the result)
 - `trace`: keep all successive decision rules
 """
@@ -286,7 +160,7 @@ function _time_iteration(model::DYModel, workspace;
     safeguarded=false,
     verbose=true,
     trace=false,
-    engine=:none,
+    engine=:serial,
     timer=false
 )
 
@@ -476,6 +350,7 @@ Solve the model with a Newton-Krylov method on `x -> F(x, φ(x))`, where `φ` in
   decreases, at most `max_bsteps` times) or `:linesearch` (golden section search on the step size,
   `linesearch_maxiter` iterations)
 - `T`: maximum number of Newton iterations
+- `engine`: `:serial`, `:threads` or `:ka` (KernelAbstractions, e.g. on GPU), or an `Engine`
 - `tol_ε`: tolerance on the residuals
 """
 function newton(model::YModel; discretization=Dict(), interpolation=:cubic, kwargs...)
@@ -500,7 +375,7 @@ function newton(model::DYModel, workspace=nothing;
     max_bsteps=10,
     linesearch_maxiter=5,
     verbose=true,
-    engine=:none,
+    engine=:serial,
     timer=false
 )
 
