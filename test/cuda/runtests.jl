@@ -97,9 +97,11 @@ using Test
                         "time iteration" => wk->Dolo.time_iteration(dm, wk; verbose=false, engine=:ka, tol_η=1e-10),
                         "accelerated (neumann)" => wk->Dolo.time_iteration(dm, wk; verbose=false, engine=:ka, accelerate=true),
                         "newton (backtracking)" => wk->Dolo.newton(dm, wk; verbose=false, engine=:ka, globalization=:backtracking),
+                        "accelerated (gmres)" => wk->Dolo.time_iteration(dm, wk; verbose=false, engine=:ka, accelerate=true, linsolve=:gmres),
+                        "newton (gmres)" => wk->Dolo.newton(dm, wk; verbose=false, engine=:ka, globalization=:backtracking, linsolve=:gmres),
                     ]
                     @testset "$name" for (name, solve) in variants
-                        sol = solve(Dolo.newton_workspace(dm; interp_mode=interp, dest=CuArray))
+                        sol = solve(Dolo.newton_workspace(dm; interp_mode=interp, dest=CuArray, linsolve=:gmres))
                         @test Dolo.converged(sol)
                         @test sol.dr.values.data isa CuArray
                         x = on_grid(Dolo.adapt(Array, sol.dr))
@@ -109,6 +111,40 @@ using Test
                 end
 
             end
+
+        end
+
+        @testset "integration_B" begin
+
+            # 8 controls, 9 exogenous nodes, 3 endogenous states
+            model = include("$(pkgdir(Dolo))/examples/ymodels/integration_B.jl")
+            dm = Dolo.discretize(model, Dict(:endo => [5, 5, 5]))
+            cpu = Dolo.newton_workspace(dm; interp_mode=:cubic)
+            cpu.x0.data .= [x .* (1 .+ 0.01*sin.((1:8) .* n)) for (n,x) in enumerate(cpu.x0.data)]
+            gpu = Dolo.adapt(CuArray, cpu)
+            @test gpu.L.D isa Dolo.BlockVector
+            engine = Dolo.select_engine(:ka, gpu.x0)
+            for wk in (cpu, gpu)
+                Dolo.fit!(wk.φ, wk.x0)
+            end
+            @test maxdiff(Dolo.F!(cpu.r0, dm, cpu.x0, cpu.φ).data, Dolo.F!(gpu.r0, dm, gpu.x0, gpu.φ, engine).data) < 1e-12
+            @test maxdiff(Dolo.dF_1!(cpu.J, dm, cpu.x0, cpu.φ).data, Dolo.dF_1!(gpu.J, dm, gpu.x0, gpu.φ, engine).data) < 1e-10
+            Dolo.dF_2!(cpu.L, dm, cpu.x0, cpu.φ)
+            Dolo.dF_2!(gpu.L, dm, gpu.x0, gpu.φ, engine)
+            @test maxdiff(cpu.L, gpu.L) < 1e-10
+            @test maxdiff(Dolo.mul!(cpu.r0, cpu.L, cpu.x0).data, Dolo.mul!(gpu.r0, gpu.L, gpu.x0, engine).data) < 1e-10
+            @test maxdiff(Dolo.ldiv!(cpu.J, cpu.L), Dolo.ldiv!(gpu.J, gpu.L, engine)) < 1e-10
+
+            # a few time iteration steps, then Newton: same solution as on the CPU
+            function solve(dest, engine)
+                wk = Dolo.newton_workspace(dm; interp_mode=:cubic, dest=dest, linsolve=:gmres)
+                Dolo.time_iteration(dm, wk; T=25, verbose=false, engine=engine)
+                Dolo.newton(dm, wk; verbose=false, engine=engine, linsolve=:gmres)
+            end
+            ref = solve(Array, :threads)
+            sol = solve(CuArray, :ka)
+            @test Dolo.converged(sol)
+            @test maxdiff(sol.dr.values.data, ref.dr.values.data) < 1e-8
 
         end
 

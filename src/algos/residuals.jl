@@ -26,9 +26,38 @@ end
 F(dmodel::ADModel, s::QP, x::SVector, φ) =
     complementarities(dmodel.model, s, x, expected_arbitrage(dmodel, s, x, φ))
 
+"""
+Decision rule `φ` replaced by its first order expansion at the point where it is evaluated:
+`φ(S₀) + φ'(S₀)(S-S₀)`, where S₀ is the value of S. When S is a vector of dual numbers,
+it has the same value and the same derivative as φ(S), but φ is only differentiated w.r.t.
+the endogenous states (with as many partials), not through the dual numbers of S.
+"""
+struct Linearized{F}
+    φ::F
+end
+
+struct LinearizedTag end
+
+function (l::Linearized)(S::QP)
+    i, z = S.loc
+    z0 = ForwardDiff.value.(z)
+    T = eltype(z0)
+    d = length(z0)
+    Tag = ForwardDiff.Tag{LinearizedTag, T}
+    zd = SVector(ntuple(k -> ForwardDiff.Dual{Tag}(z0[k], ntuple(j -> T(j == k), Val(d))), Val(d)))
+    r = l.φ(i, zd)
+    X0 = ForwardDiff.value.(r)
+    G = SMatrix{length(r), d}(ntuple(n -> ForwardDiff.partials(r[(n-1) % length(r) + 1], (n-1) ÷ length(r) + 1), Val(length(r)*d)))
+    return X0 + G*(z - z0)
+end
+
 "Jacobian of the residuals at grid point `s` w.r.t. the controls `x`."
 dF_1(dmodel::ADModel, s::QP, x::SVector, φ) =
     ForwardDiff.jacobian(u->F(dmodel, s, u, φ), x)
+
+# with exogenous Markov states, φ is a spline in the endogenous states: it is linearized
+dF_1(dmodel::ADModel, s::QP, x::SVector, φ::DFun{<:Any, <:GArray{<:PGrid{<:SGrid, <:CGrid}}}) =
+    ForwardDiff.jacobian(u->F(dmodel, s, u, Linearized(φ)), x)
 
 """
 Derivative of the residuals at grid point `s` w.r.t. the decision rule `φ`:
@@ -67,6 +96,23 @@ dF_1!(J::GArray, dmodel::ADModel, x::GArray, φ, engine=Serial()) =
 "`L ← ∂F/∂φ (x, φ)`"
 dF_2!(L::LL, dmodel::ADModel, x::GArray, φ, engine=Serial()) =
     (pointwise!(dF_2_kernel, L.D, engine, dmodel, x, φ); L)
+
+# with a BlockVector, each block is written as soon as it is computed
+function dF_2_blocks!(n, D, dmodel, x, φ)
+    s = point(dmodel.grid, n)
+    xn = x[n]
+    r_F = ForwardDiff.jacobian(
+        r->complementarities(dmodel.model, s, xn, r),
+        expected_arbitrage(dmodel, s, xn, φ)
+    )
+    for (k, (w,S)) in enumerate(τ(dmodel, s, xn))
+        F_x = w*r_F*ForwardDiff.jacobian(u->arbitrage(dmodel, s, xn, S, u), φ(S))
+        setblock!(D, (; F_x, S), n, k)
+    end
+end
+
+dF_2!(L::LL{<:Any,<:BlockVector}, dmodel::ADModel, x::GArray, φ, engine=Serial()) =
+    (foreach_point!(dF_2_blocks!, length(L.D), engine, L.D, dmodel, x, φ); L)
 
 
 ## Vectorized, allocating

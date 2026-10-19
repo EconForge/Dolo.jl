@@ -103,6 +103,13 @@ function fit!(φ::DFun, x::GVector{G}) where G<:PGrid{<:SGrid, <:CGrid}
     n_m = length(x.grid.grids[1])
     sz = tuple(n_m, (e[3] for e in x.grid.grids[2].ranges)...)    
     xx = reshape( view(x.data, :), sz...)
+
+    # on a GPU, all splines are fitted at once
+    if !(splines.get_backend(xx) isa splines.CPU)
+        splines.fit_batched!(map(itp -> itp.θ, φ.itp), xx, spline_order(φ.itp[1]))
+        return φ
+    end
+
     rr = tuple( (Colon() for i=1:(Base.ndims(xx)-1))... )
     for i=1:length( φ.itp)
         vv = view( xx, i, rr...)
@@ -110,6 +117,8 @@ function fit!(φ::DFun, x::GVector{G}) where G<:PGrid{<:SGrid, <:CGrid}
     end
 
 end
+
+spline_order(::SplineInterpolator{G,C,k}) where {G,C,k} = k
 
 function fit!(φ::DFun, x::GVector{G}) where G<:CGrid
 

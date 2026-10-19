@@ -275,3 +275,73 @@ function prefilter_chunked!(θ::AbstractArray, buffer::AbstractArray)
     synchronize(backend)
     return θ
 end
+
+
+## Several splines at once
+#
+# The decision rule has one spline per exogenous node, all on the same grid. On a GPU they are
+# fitted together, by kernels indexed by the node (the last index), instead of one series of
+# small kernels per node. The arrays are seen as arrays of scalars, with the components of the
+# values (e.g. the controls) as first dimension: each component of each line is filtered by its
+# own thread, and neighbouring threads read neighbouring addresses.
+
+# element i of a tuple, by a chain of branches on static indices: indexing a tuple of arrays with
+# a dynamic index would copy the whole tuple in (slow) local memory, in every thread
+@inline select(t::Tuple{Any}, i) = t[1]
+@inline select(t::Tuple, i) = i == 1 ? t[1] : select(Base.tail(t), i - 1)
+
+# scalar view, with the components as first dimension
+scalars(A::AbstractArray{<:SVector}) = reinterpret(reshape, eltype(eltype(A)), A)
+scalars(A::AbstractArray{<:Number}) = reshape(A, 1, size(A)...)
+
+# θs[i][c, J] ← X[c, i, J - o], with `o` points of (zero) padding on each side
+@kernel function pad_kernel!(θs, X, ::Val{o}) where o
+    c = Tuple(@index(Global, Cartesian))
+    i = c[end]
+    J = Base.front(c)               # (component, indices...)
+    θ = select(θs, i)
+    inside = all(ntuple(k -> o < J[k+1] <= size(θ, k+1) - o, Val(length(J)-1)))
+    @inbounds θ[J...] = inside ? X[J[1], i, (Base.tail(J) .- o)...] : zero(eltype(θ))
+end
+
+# index of the line, and number of the chunk, from the thread index (other dims..., chunk, node)
+@inline function line_index(c)
+    i = c[end]
+    b = c[end-1]
+    I = CartesianIndex(Base.front(Base.front(c)))
+    return I, b, i
+end
+
+@kernel function causal_batched_kernel!(Ys, Xs, dim)
+    I, b, i = line_index(Tuple(@index(Global, Cartesian)))
+    causal_chunk!(line(select(Ys, i), dim, I), line(select(Xs, i), dim, I), b)
+end
+
+@kernel function anticausal_batched_kernel!(Cs, Ys, dim)
+    I, b, i = line_index(Tuple(@index(Global, Cartesian)))
+    anticausal_chunk!(line(select(Cs, i), dim, I), line(select(Ys, i), dim, I), b)
+end
+
+"""
+    fit_batched!(θs, X, k)
+
+Coefficients `θs[i]` of the splines of order `k` (1 or 3) interpolating `X[i, …]`,
+for all `i`. All `θs[i]` have the same size. For arrays on a GPU.
+"""
+function fit_batched!(θs::NTuple{K,<:AbstractArray}, X::AbstractArray, k) where K
+    backend = get_backend(X)
+    θr = map(scalars, θs)
+    θ1 = first(θr)
+    o = k == 3 ? 1 : 0
+    pad_kernel!(backend)(θr, scalars(X), Val(o); ndrange=(size(θ1)..., K))
+    if k == 3
+        buffers = map(similar, θr)
+        for dim in 2:ndims(θ1)      # not along the components
+            ndrange = (other_size(θ1, dim)..., cld(size(θ1, dim) - 2, CHUNK), K)
+            causal_batched_kernel!(backend)(buffers, θr, Val(dim); ndrange)
+            anticausal_batched_kernel!(backend)(θr, buffers, Val(dim); ndrange)
+        end
+    end
+    synchronize(backend)
+    return θs
+end

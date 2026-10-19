@@ -59,6 +59,37 @@ end
 
 
 """
+    foreach_point!(f, N, engine, args...)
+
+Call `f(n, args...)` for every grid point `n` in `1:N`, for its side effects
+(e.g. operations done in place, one part of the data at a time).
+"""
+function foreach_point! end
+
+function foreach_point!(f::F, N, ::Serial, args::Vararg{Any,M}) where {F,M}
+    for n in 1:N
+        f(n, args...)
+    end
+end
+
+function foreach_point!(f::F, N, ::Threaded, args::Vararg{Any,M}) where {F,M}
+    Threads.@threads for n in 1:N
+        f(n, args...)
+    end
+end
+
+@kernel function foreach_kernel!(f, args)
+    n = @index(Global, Linear)
+    f(n, args...)
+end
+
+function foreach_point!(f::F, N, engine::KA, args::Vararg{Any,M}) where {F,M}
+    foreach_kernel!(engine.backend)(f, args; ndrange=N)
+    KernelAbstractions.synchronize(engine.backend)
+end
+
+
+"""
     select_engine(engine, x)
 
 Engine from a user option: an `Engine`, or one of `:serial`, `:threads`, `:ka`

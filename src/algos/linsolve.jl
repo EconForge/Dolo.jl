@@ -7,17 +7,25 @@ const NO_TIMER = let t = TimerOutput(); disable_timer!(t); t end
 # Linear solvers used by accelerated time iteration and Newton.
 # Operators are passed as in-place functions A!(w, v) acting on flat vectors.
 
+# Vectors of the size of the problem (r, w, aux, V) are stored where the data is (e.g. a GPU);
+# the small quantities of the Krylov space (H, y, cs, sn, g) on the CPU.
 struct GMRESWorkspace{Tf, TV<:AbstractVector{Tf}, TM<:AbstractMatrix{Tf}}
     r::TV
     w::TV
     aux::TV     # scratch vector for operators
     V::TM       # Krylov basis
-    H::TM       # Hessenberg matrix (triangularized in place)
-    y::TV
-    cs::TV      # Givens cosines
-    sn::TV      # Givens sines
-    g::TV       # rotated right-hand side
+    H::Matrix{Tf}   # Hessenberg matrix (triangularized in place)
+    y::Vector{Tf}
+    cs::Vector{Tf}  # Givens cosines
+    sn::Vector{Tf}  # Givens sines
+    g::Vector{Tf}   # rotated right-hand side
 end
+
+import Adapt
+Adapt.adapt_structure(to, wk::GMRESWorkspace) = GMRESWorkspace(
+    Adapt.adapt(to, wk.r), Adapt.adapt(to, wk.w), Adapt.adapt(to, wk.aux), Adapt.adapt(to, wk.V),
+    wk.H, wk.y, wk.cs, wk.sn, wk.g
+)
 
 function gmres_workspace(Tf, n, m)
     GMRESWorkspace(
@@ -111,7 +119,10 @@ function gmres!(x::AbstractVector{Tf}, A!, b::AbstractVector{Tf}, wk::GMRESWorks
         y[i] /= H[i,i]
     end
 
-    @views mul!(x, V[:, 1:k], y[1:k], one(Tf), one(Tf))
+    # y is on the CPU, V where the data is
+    yk = similar(x, k)
+    copyto!(yk, y[1:k])
+    @views mul!(x, V[:, 1:k], yk, one(Tf), one(Tf))
 
     return k, abs(g[k+1]) < tol
 

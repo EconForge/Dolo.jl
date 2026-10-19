@@ -45,6 +45,39 @@ const KernelAbstractions = Dolo.KernelAbstractions
         end
     end
 
+    @testset "dF_1 with a linearized decision rule" begin
+        # same jacobian as with dual numbers through the decision rule
+        for (fn, disc) in [("rbc_mc", Dict()), ("integration_B", Dict(:endo => [4, 4, 4]))]
+            model = include("$(pkgdir(Dolo))/examples/ymodels/$fn.jl")
+            dm = Dolo.discretize(model, disc)
+            (; x0, φ) = Dolo.time_iteration_workspace(dm; interp_mode=:cubic)
+            x0.data .= [x .* (1 .+ 0.05*sin.((1:length(x)) .* n)) for (n,x) in enumerate(x0.data)]
+            Dolo.fit!(φ, x0)
+            d = maximum(
+                maximum(abs.(Dolo.dF_1(dm, s, x, φ) - Dolo.ForwardDiff.jacobian(u -> Dolo.F(dm, s, u, φ), x)))
+                for (s, x) in zip(Dolo.enum(dm.grid), x0.data)
+            )
+            @test d < 1e-12
+        end
+    end
+
+    @testset "Blocks stored by component (BlockVector)" begin
+        # same operations as with a vector of tuples of blocks
+        model = include("$(pkgdir(Dolo))/examples/ymodels/rbc_mc.jl")
+        dm = Dolo.discretize(model)
+        (; x0, J, L, φ) = Dolo.newton_workspace(dm; interp_mode=:cubic)
+        x0.data .= [x .* (1 + 0.1*sin(n)) for (n,x) in enumerate(x0.data)]
+        Dolo.fit!(φ, x0)
+        Dolo.dF_1!(J, dm, x0, φ)
+        Dolo.dF_2!(L, dm, x0, φ)
+        B = Dolo.LL(L.grid, Dolo.BlockVector(L.D), deepcopy(L.φ))
+        @test collect(B.D) == L.D
+        @test Dolo.dF_2!(deepcopy(B), dm, x0, φ).D == L.D
+        @test maxdiff(Dolo.mul!(Dolo.duplicate(x0), B, x0).data, Dolo.mul!(Dolo.duplicate(x0), L, x0).data) == 0
+        @test collect(Dolo.mul!(deepcopy(B), -2.0).D) == Dolo.mul!(deepcopy(L), -2.0).D
+        @test maxdiff(Dolo.ldiv!(J, deepcopy(B)), Dolo.ldiv!(J, deepcopy(L))) < 1e-14
+    end
+
     @testset "fit! updates the values of the decision rule" begin
         model = include("$(pkgdir(Dolo))/examples/ymodels/rbc_mc.jl")
         dm = Dolo.discretize(model)

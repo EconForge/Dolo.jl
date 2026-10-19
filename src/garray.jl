@@ -47,7 +47,7 @@ eltype(g::GArray{G,T}) where G where T = eltype(T)
 
 # warning: these functions don't copy any data
 function ravel(g::GArray) 
-    Tf = eltype(g.data[1])
+    Tf = eltype(eltype(g.data))
     reinterpret(Tf, g.data)
 end
 unravel(g::GArray, x) = GArray(

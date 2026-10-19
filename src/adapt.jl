@@ -25,7 +25,17 @@ function adapt_structure(to, f::DFun{Dom, Gar, Itp, vars}) where Dom where Gar w
 end
 
 function adapt_structure(to, L::LL{G,D,F}) where G where D where F
-    LL(L.grid, adapt(to, L.D), adapt(to, L.φ))
+    LL(L.grid, adapt_blocks(to, L.D), adapt(to, L.φ))
 end
+
+# blocks moved off the CPU are stored component by component (see `BlockVector`)
+function adapt_blocks(to, D::Vector{<:BlockTuple})
+    on_cpu = adapt(to, zeros(Int32, 1)) isa Array
+    return on_cpu ? adapt(to, D) : adapt(to, BlockVector(D))
+end
+adapt_blocks(to, D) = adapt(to, D)
+
+adapt_structure(to, B::BlockVector{Tf,p,q,pq,d,ds,K}) where {Tf,p,q,pq,d,ds,K} =
+    BlockVector{Tf,p,q,d,ds,K}(adapt(to, B.F), adapt(to, B.I), adapt(to, B.X), adapt(to, B.V))
 
 maxabs(u::Number, v::Number) = abs(max(u,v))
