@@ -45,10 +45,10 @@ function dF_2!(L, dmodel, controls::GArray, φ::DFun, engine::CPUS)
 
         s = dmodel.grid[n+im]
         xx = x[n]
-        r0 = F(dmodel, s, xx, φ)
+        # jacobian of the complementarity conditions w.r.t. the (expected) residuals
         r_F = ForwardDiff.jacobian(
             r->complementarities(dmodel.model, s,xx,r),
-            r0
+            sum( w*arbitrage(dmodel,s,xx,S,φ(S)) for (w,S) in τ(dmodel, s, xx) ),
         )
         tt = tuple(
             (

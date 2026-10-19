@@ -1,6 +1,6 @@
 
 using StaticArrays
-import Dolo: transition, arbitrage, intermediate, hypeof
+import Dolo: transition, arbitrage, hypeof
 
 model = let 
 
