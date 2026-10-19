@@ -16,23 +16,14 @@ end
 
     for fn in model_files
 
-        @testset "$fn" verbose=true begin
+        @testset "$fn" begin
 
-            @testset "Julia" verbose=true begin
-
-                model = include("$(root_dir)/examples/ymodels/$fn.jl")
-                @test isbits(model)
-                sol = Dolo.time_iteration(model; verbose=false)
-                @test Dolo.converged(sol)
-                dmodel = Dolo.discretize(model)
-                @test max_residual(dmodel, sol.dr) < 1e-5
-
-            end
-
-            @testset "YAML" verbose=true begin
-                # YAML import is disabled until DoloYAML produces YModel objects
-                @test_broken false
-            end
+            model = include("$(root_dir)/examples/ymodels/$fn.jl")
+            @test isbits(model)
+            sol = Dolo.time_iteration(model; verbose=false)
+            @test Dolo.converged(sol)
+            dmodel = Dolo.discretize(model)
+            @test max_residual(dmodel, sol.dr) < 1e-5
 
         end
 

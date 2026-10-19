@@ -20,3 +20,25 @@ jobs:
           version: ${{ matrix.julia-version }}
       - uses: julia-actions/julia-buildpkg@latest
       - uses: julia-actions/julia-runtest@latest
+
+  # Downstream check: does DoloYAML still work with this version of Dolo?
+  # Non-blocking until DoloYAML's own test suite passes.
+  doloyaml:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: EconForge/DoloYAML.jl
+          path: DoloYAML.jl
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.12'
+      - name: Test DoloYAML against this Dolo
+        run: |
+          julia --project=DoloYAML.jl -e '
+            using Pkg
+            Pkg.add(url="https://github.com/EconForge/Dolang.jl")
+            Pkg.develop(path=".")
+            Pkg.test()'

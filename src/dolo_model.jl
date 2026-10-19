@@ -82,6 +82,10 @@ function discretize(model::AModel{<:MvNormal}, d=Dict())
     return DYModel(model, grid, dist)
 end
 
+# bounds of the endogenous states, when the first d states are exogenous
+endo_bounds(states::CartesianSpace, d) = (states.min[d+1:end], states.max[d+1:end])
+endo_bounds(states::ProductSpace, d) = (states.endo.min, states.endo.max)
+
 function discretize(model::AModel{<:VAR1}, d=Dict())
 
     exo = get(d, :exo, Dict())
@@ -96,8 +100,7 @@ function discretize(model::AModel{<:VAR1}, d=Dict())
     # TODO: simplify that call
     Tf = eltype(model)
     endo_space = CartesianSpace{n_s, Dolo.variables(model.states)[d+1:end],Tf}(
-        model.states.min[d+1:end],
-        model.states.max[d+1:end]
+        endo_bounds(model.states, d)...
     )
     # return endo_space
     endo_grid = discretize(endo_space, endo)

@@ -1,6 +1,9 @@
 The dolo language
 =================
 
+!!! note
+    YAML model files are imported by [DoloYAML.jl](https://github.com/EconForge/DoloYAML.jl), which produces models compatible with Dolo.jl. Dolo.jl itself works with models written in Julia (see `examples/ymodels`).
+
 The easiest way to code a model in dolo consists in using specialized
 Yaml files also referred to as dolo model files.
 
