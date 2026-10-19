@@ -31,6 +31,57 @@ end
 
 end
 
+@testset "Improved time iteration models" verbose=true begin
+
+    # models from the improved time iteration paper, on small grids
+    cases = [
+        ("rbc", Dict()),
+        ("consumption_savings_fb", Dict()),
+        ("consumption_savings_ar1", Dict()),
+        ("nk_dsge", Dict()),
+        ("integration_A", Dict(:endo => [10, 10])),
+    ]
+
+    for (fn, discretization) in cases
+
+        @testset "$fn" begin
+
+            model = include("$(root_dir)/examples/ymodels/$fn.jl")
+            @test isbits(model)
+            dmodel = Dolo.discretize(model, discretization)
+            sol = Dolo.time_iteration(dmodel; verbose=false)
+            @test Dolo.converged(sol)
+            @test max_residual(dmodel, sol.dr) < 1e-5
+
+        end
+
+    end
+
+    @testset "integration_B" begin
+
+        # as in the paper: a few time iteration steps, then Newton
+        model = include("$(root_dir)/examples/ymodels/integration_B.jl")
+        @test isbits(model)
+
+        # default grid: 9 exogenous nodes × 20³
+        @test length(Dolo.discretize(model).grid) == 9*20^3
+
+        dmodel = Dolo.discretize(model, Dict(:endo => [5, 5, 5]))
+
+        # the solvers start from the model's initial guess: new bond position = current one
+        x0 = Dolo.newton_workspace(dmodel).x0
+        @test all(x[1] == s.val[5] for (x, s) in zip(x0.data, Dolo.enum(dmodel.grid)))
+
+        wk = Dolo.newton_workspace(dmodel; interp_mode=:cubic)
+        Dolo.time_iteration(dmodel, wk; T=25, verbose=false)
+        sol = Dolo.newton(dmodel, wk; verbose=false)
+        @test Dolo.converged(sol)
+        @test max_residual(dmodel, sol.dr) < 1e-8
+
+    end
+
+end
+
 @testset "Steady state (rbc_iid)" begin
 
     model = include("$(root_dir)/examples/ymodels/rbc_iid.jl")
