@@ -68,7 +68,7 @@ function interp(ranges::NTuple{d, Tuple{Tf, Tf, Int64}}, values::AbstractArray{T
 
     δ = (b.-a)./(n.-convert(Tf,1))
 
-    i = div.( (x.-a), δ)
+    i = cell_index.( (x.-a), δ)
 
     i = max.(min.(i, n.-2), 0)
     i = ifelse.(isnan.(i), zero.(i), i)   # NaN point: valid index (the result is NaN)

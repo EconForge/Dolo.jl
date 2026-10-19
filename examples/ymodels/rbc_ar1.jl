@@ -7,8 +7,8 @@ model = let
 
     # calibrate some parameters
     β = 0.99
-    σ = 5
-    η = 1
+    σ = 5.0
+    η = 1.0
     δ = 0.025
     α = 0.33
     ρ = 0.8
@@ -50,9 +50,9 @@ model = let
 end
 
 
-import Dolo: transition
+import Dolo: transition, hypeof
 
-function transition(model::typeof(model), s::NamedTuple, x::NamedTuple, M::NamedTuple)
+function transition(model::hypeof(model), s::NamedTuple, x::NamedTuple, M::NamedTuple)
     
     (;δ, ρ) = model.calibration
     
@@ -63,7 +63,7 @@ function transition(model::typeof(model), s::NamedTuple, x::NamedTuple, M::Named
 
 end
 
-function intermediate(model::typeof(model),s::NamedTuple, x::NamedTuple)
+function intermediate(model::hypeof(model),s::NamedTuple, x::NamedTuple)
     
     p = model.calibration
 
@@ -76,7 +76,7 @@ function intermediate(model::typeof(model),s::NamedTuple, x::NamedTuple)
 end
 
 
-function arbitrage(model::typeof(model),s::NamedTuple, x::NamedTuple, S::NamedTuple, X::NamedTuple)
+function arbitrage(model::hypeof(model),s::NamedTuple, x::NamedTuple, S::NamedTuple, X::NamedTuple)
 
     p = model.calibration
 

@@ -43,7 +43,8 @@ Distributions = "0.25"
 Format = "1"
 ForwardDiff = "0.10"
 ForwardDiffChainRules = "0.2"
-KernelAbstractions = "0.9"
+JLArrays = "0.3"
+KernelAbstractions = "0.9.45"
 Kronecker = "0.5"
 LinearAlgebra = "1"
 LinearMaps = "3"
@@ -58,7 +59,8 @@ julia = "1.10"
 oneAPI = "2"
 
 [extras]
+JLArrays = "27aeb0d3-9eb9-45fb-866b-73c2ecf80fcb"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test"]
+test = ["JLArrays", "Test"]

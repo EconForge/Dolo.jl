@@ -4,6 +4,12 @@ export filter_coeffs, interpolant_cspline, filter_coeffs
 export eval_UC_spline, eval_UC_spline!
 export prefilter!
 
+# index of the cell containing u = x-a, on a grid of step δ. For Float32 (and Float16),
+# `div` would compute in Float64 (to be exact), which many GPUs do not support: the quotient
+# is truncated instead, which can only put a point at the boundary of two cells in the other one.
+@inline cell_index(u, δ) = div(u, δ)
+@inline cell_index(u::T, δ::T) where T<:Union{Float32,Float16} = trunc(u/δ)
+
 include("csplines.jl")
 include("splines_filter.jl")
 include("cubic_prefilter.jl")

@@ -12,6 +12,8 @@ module Dolo
 
     include("splines/splines.jl")
     using .splines: interp
+    # the cell of a dual number is the cell of its value
+    splines.cell_index(u::ForwardDiff.Dual, δ) = splines.cell_index(ForwardDiff.value(u), δ)
     
 
     ⟂(a,b) = min(a,b)

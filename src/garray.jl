@@ -20,7 +20,11 @@ distance(u::SVector, v::SVector) = maximum(abs, u-v)
 
 # distance(u::GArray, v::GArray) = maximum( (u,v)->distance(u,v), zip(u.data, v.data))
 
-distance(u::GVector, v::GVector) = maximum( t->distance(t[1],t[2]), zip(u.data, v.data))
+# on a GPU, iterating with `zip` would require scalar indexing: a reduction is used instead
+distance(u::GVector, v::GVector) =
+    KernelAbstractions.get_backend(u.data) isa KernelAbstractions.CPU ?
+        maximum( t->distance(t[1],t[2]), zip(u.data, v.data)) :
+        mapreduce(distance, max, u.data, v.data)
 
 import Base: size
 size(a::GArray{PGrid{G1, G2, d}, T}) where G1 where G2 where d where T = (length(a.grid.grids[1]), length(a.grid.grids[2]))

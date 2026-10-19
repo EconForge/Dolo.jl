@@ -67,41 +67,41 @@ end
 @assert isbits(model)
 
 
-function transition(mod::typeof(model), s::NamedTuple, x::NamedTuple, M::NamedTuple)
+function transition(mod::hypeof(model), s::NamedTuple, x::NamedTuple, M::NamedTuple)
     p = mod.calibration
     w = exp(M.y) + (s.w-x.c)*(p.r)
     return ( (;w) )
 end
 
 
-function arbitrage(mod::typeof(model), s::NamedTuple, x::NamedTuple, S::NamedTuple, X::NamedTuple)
+function arbitrage(mod::hypeof(model), s::NamedTuple, x::NamedTuple, S::NamedTuple, X::NamedTuple)
     p = mod.calibration
     eq = p.β*( X.c/x.c )^(-p.γ)*(p.r) - 1 # - x.λ
     (eq,)
 end
 
-function complementarities(mod::typeof(model), s::NamedTuple, x::NamedTuple, Fv::SVector)
+function complementarities(mod::hypeof(model), s::NamedTuple, x::NamedTuple, Fv::SVector)
     eq = Fv[1] ⫫ x.c
     eq = -eq ⫫ s.w-x.c
     eq = -eq
     (eq,)
 end
 
-function initial_guess(mod::typeof(model), s::NamedTuple)
+function initial_guess(mod::hypeof(model), s::NamedTuple)
     p = mod.calibration
     # c = p.c
-    c = s.w*0.95
+    c = s.w*typeof(s.w)(0.95)   # in the precision of the model
     # c = min(s.w, 1.0 + (s.w-1.0)*0.02)
     return (;c)
 end
 
-function reward(mod::typeof(model), s::NamedTuple, x::NamedTuple)
+function reward(mod::hypeof(model), s::NamedTuple, x::NamedTuple)
     p = mod.calibration
     c = x.c
     return c^(1-p.γ) / (1-p.γ)
 end
 
-# function X(mod::typeof(model), s::NamedTuple)
+# function X(mod::hypeof(model), s::NamedTuple)
 
 #     p = mod.calibration.p
 #     y = s.y

@@ -193,7 +193,7 @@ function eval_spline( ranges, C::AbstractArray{T,d}, x::SVector{d,U}) where d wh
     Tf = eltype(a)
 
     δ = (b.-a)./(n.-convert(Tf,1))
-    i = div.( (x.-a), δ)
+    i = cell_index.( (x.-a), δ)
     i = max.(min.(i, n.-2), 0)
     i = ifelse.(isnan.(i), zero.(i), i)   # NaN point: valid index (the result is NaN)
     λ = (x.-(a .+ δ.*i))./δ

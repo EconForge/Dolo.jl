@@ -186,6 +186,7 @@ end
 
 function convert_precision(T, var::Dolo.MvNormal{names,n,n2}) where n where n2 where names
     MvNormal(
+        names,
         SVector{n, T}(var.μ),
         SMatrix{n,n,T,n2}(var.Σ)
     )
