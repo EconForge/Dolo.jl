@@ -6,8 +6,3 @@ function calibrated_steady_state(model::AModel)
     return (;s,x)
 
 end
-
-# function steady_state_residuals(model::AModel, s::NamedTuple, x::NamedTuple)
-#     S = transition(model, s, x)
-
-# end

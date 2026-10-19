@@ -17,43 +17,6 @@ function filter_coeffs(a::Vector{Float64}, b::Vector{Float64}, orders::Vector{In
 end
 
 
-
-# function find_coeffs_1d_old(delta_inv, M, data)
-#
-#     # args: double, int, double[:], double[:
-#
-#     N = M + 2
-#
-#     data = data[:]
-#
-#     if length(data) == N
-#         rhs = data
-#     else
-#         rhs = [0; data; 0]
-#     end
-#
-#     basis = [1.0/6.0, 2.0/3.0, 1.0/6.0]
-#
-#     vals = repeat( basis, outer=[M])
-#     co_x = repeat( collect(2:M+1), inner=[3])
-#     co_y = repeat( collect(1:3) , outer=[M]) + co_x .- 2
-#
-#     db = 4
-#     initial = [1.0,-2.0,1.0,0.0]*delta_inv*delta_inv
-#     final = [0.0,1.0,-2.0,1.0]*delta_inv*delta_inv
-#
-#     vals = [initial; vals; final]
-#     co_x = [ones(Int,db); co_x; ones(Int,db)*(M+2)]
-#     co_y = [1:db; co_y; M+3-db:M+2]
-#
-#     spmat = sparse(co_x, co_y, vals)
-#
-#     sol = spmat \ rhs
-#
-#     return sol
-#
-# end
-
 function solve_deriv_interp_1d!(bands::Matrix{Float64}, coefs::Vector{Float64})
 
     M = size(coefs,1) - 2

@@ -38,7 +38,6 @@ function transition(model::YModel, s::QP, x::SVector)
 end
 
 
-
 function complementarities(model::YModel, s::NamedTuple, x::NamedTuple, Fv::SVector)
     return Fv
 end
@@ -149,7 +148,6 @@ end
 #####
 
 
-
 # extracts name of exogenous states
 
 function get_exo(model, s::NamedTuple)
@@ -207,7 +205,6 @@ function reward(model::YModel, s::QP, x::SVector)
 end
 
 
-
 function reward(model::YModel, s_::SVector, x_::SVector)
             
     ss = NamedTuple{variables(model.states)}(s_)
@@ -226,9 +223,3 @@ end
 discount_factor(model::YModel) = model.calibration.β
 discount_factor(model::DYModel) = discount_factor(model.model)
 
-
-# function reward(model, s, x::SVector)
-
-#     return reward(model, SVector(s[2]), x)
-
-# end

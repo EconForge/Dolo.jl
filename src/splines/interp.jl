@@ -21,9 +21,6 @@ end
            M[2,1]*v1[2]*v2[1] + 
            M[2,2]*v1[2]*v2[2]
 
-    # vv = tuple( (SVector(1-e, e) for e in λ)...) 
-    # xx = SVector( (prod(e) for e in Iterators.product(vv...))...)
-    # return sum( xx .* v[:])
 end
 
 @inline function reduce_tensors(λ::SVector{3,U}, M::SArray{T,V,3,W})  where T where U where V where W
@@ -39,9 +36,6 @@ end
            M[1,2,2]*v1[1]*v2[2]*v3[2] +
            M[2,2,2]*v1[2]*v2[2]*v3[2]
     return res
-    # vv = tuple( (SVector(1-e, e) for e in λ)...) 
-    # xx = SVector( (prod(e) for e in Iterators.product(vv...))...)
-    # return sum( xx .* v[:])
 end
 
 matextract(v::AbstractArray{T,3}, i,j,k) where T = SArray{Tuple{2, 2, 2}, T, 3, 8}(

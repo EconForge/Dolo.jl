@@ -20,35 +20,11 @@ end
 convert(::Type{LinearMap}, IL::I_L) = I - convert(LinearMap,IL.L)
 
 
-
-
-# function *(A::I_L, b::AbstractVector)
-#     x = GVector(
-#         A.L.grid,
-#         reinterpret(
-#             eltype(A.L.φ.values),
-#             b
-#         )
-#     )
-#     y = A*x
-#     return ravel(y)
-# end
-
-
 const LF = LL
 
 import Base: /,*
 import LinearAlgebra: mul!, ldiv!
 
-# function mul!(L::LL, x::Number)
-
-#     for n in 1:length(L.D)
-#         L.D[n]  =tuple((
-#             (;F_x=x*d.F_x, S=d.S) 
-#             for d in L.D[n]
-#         )...)
-#     end
-# end
 
 function mul!(L::LL, x::Number)
 
@@ -139,23 +115,6 @@ function mul!(r_::AbstractArray{T}, L::LL, v_::AbstractArray{T}, t_engine) where
 end
 
 
-# function mul!(r_::AbstractArray{T}, L::LL, v_::AbstractArray{T}) where T<:Union{Float32, Float64}
-
-#     # default kernel
-#     elt = typeof(L.D[1][1].F_x)
-#     Tf = eltype(elt)
-#     p,q = size(elt)
-#     N = length(L.grid)
-#     typ = SVector{q, Tf}
-
-#     r = GArray(L.grid, reinterpret(typ, r_))
-#     x = GArray(L.grid, reinterpret(typ, v_))
-#     mul!(r, L, x)
-
-#     r_
-    
-# end
-
 function ldiv!(J, L::Dolo.LL)
     for n in 1:length(L.D)
         E = L.D[n]
@@ -226,9 +185,6 @@ function dF_2!(L, dmodel, xx::GArray, φ::DFun, ::Nothing)
                 (
                     (;
                         F_x=w*r_F*ForwardDiff.jacobian(u->Dolo.arbitrage(dmodel,s,x,S,u), φ(S)),
-                        # F_x=w*ForwardDiff.jacobian(
-                        #     u->Dolo.arbitrage(dmodel,s,x,S,u), φ(S)
-                        #     ),
                         S=S
                     )
                 for (w,S) in Dolo.τ(dmodel, s, x)
@@ -288,19 +244,6 @@ convert(::Type{BlockDiagonal}, ga::GArray{G, Vector{T}}) where T where G = Block
 
 convert(::Type{Matrix}, L::LF) = convert(Matrix, convert(LinearMap,L))
 
-# convert(::Type{LinearMap}, L::LF) = let
-#     elt = typeof(L.D[1][1].F_x)
-#     Tf = eltype(elt)
-#     p,q = size(elt)
-#     N = length(L.grid)
-#     typ = SVector{q, Tf}
-#     fun = u->(ravel(L*GArray(L.grid, reinterpret(typ, u))))
-#     LinearMap(
-#         fun,
-#         p*N,
-#         q*N
-#     )
-# end
 
 convert(::Type{LinearMap}, L::LF, engine=nothing) = let
     elt = typeof(L.D[1][1].F_x)

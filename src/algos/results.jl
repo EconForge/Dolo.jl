@@ -51,9 +51,6 @@ function show(log::IterationLog)
 end
 
 function show_start(log::IterationLog; message=nothing)
-    # println(repeat("-", 66))
-    # @printf "%-6s%-16s%-16s%-16s%-16s%-5s\n" "It" "ϵₙ" "ηₙ=|xₙ-xₙ₋₁|" "λₙ=ηₙ/ηₙ₋₁" "Time" "Newton steps"
-    # println(repeat("-", 66))
 
     l = []
     for t in log.types
@@ -118,7 +115,6 @@ function Base.show(io::IO, r::TimeIterationResult)
     @printf io " * Convergence: %s\n" converged(r) ? "true" : RED_FG("false")
     @printf io "   * |x - x'| < %.1e: %s\n" r.tol_η converged(r)
 end
-
 
 
 ######

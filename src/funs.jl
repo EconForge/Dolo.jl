@@ -12,7 +12,6 @@ using .splines
 using .splines: Linear, Cubic, MLinear, MCubic, CubicInterpolator, SplineInterpolator
 
 
-
 struct DFun{Dom, Gar, Itp, vars}
     domain::Dom
     values::Gar
@@ -157,21 +156,8 @@ function (f::DFun{A,B,I,vars})(x::SVector)  where A where B<:GArray{G,V} where V
     return f.itp(x)
 end
 
-# function (f::DFun{A,B,I,vars})(x::Tuple)  where A where B<:GArray{G,V} where V where I where G<:CGrid where vars
-#     return f.itp(x)
-# end
-
-
-# Compatibility calls
-
-# (f::DFun)(x::Real) = f(SVector(x))
-# (f::DFun)(x::Real, y::Real) = f(SVector(x,y))
-# (f::DFun)(x::Vector{SVector{d,<:Real}}) where d = [f(e) for e in x]
-
 
 ndims(df::DFun) = ndims(df.domain)
-
-
 
 
 ##

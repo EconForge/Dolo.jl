@@ -268,7 +268,6 @@ function VAR1(names, ρ, Σ)
 end
 
 
-
 function rand(var::VAR1{N,V,B}, m::SVector{d,T}) where N where V where T where B<:SMatrix{1,1,Float64,1} where d
     
     return SVector( m[1]*var.ρ + randn()*sqrt(var.Σ[1,1]) )
@@ -300,9 +299,6 @@ function discretize(var::VAR1, n::Int=3)
     # which has a scalar autoregressive term
     ρ = var.ρ
     d = size(var.Σ, 1)
-    # d = size(ρ, 1)
-    # ρ = ρ[1, 1]
-    # @assert maximum(abs, ρ.-Matrix(ρ*I,d,d))<1e-16
 
     T = typeof(ρ)
 
@@ -332,10 +328,6 @@ function discretize(var::VAR1, n::Int=3)
     # mc_prod = MarkovProduct(mc_components...)
 
     P = kronecker( (mc.P for mc in components)... )
-    # V = cat( (mc.V' for mc in components)...; dims=1)
-
-    # return V, C, components
-    # return P, V
     n = size(P,1)
 
     # TODO: rewrite

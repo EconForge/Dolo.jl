@@ -79,9 +79,6 @@ function (xa::GArray{PGrid{G1, G2, d}, T})(i::Int64, p::SVector{d2, U}) where G1
     g1 = xa.grid.grids[1]
     g2 = xa.grid.grids[2]
     dims = tuple(length(g1), (e[3] for e in g2.ranges)... )
-    # ranges = tuple( (range(e...) for e in g2.ranges)... )
-    # v = view(reshape(xa.data, dims),i,:)
-    # v = view(reshape(xa.data, dims),i,:)
     v = reshape(view(xa.data, :), dims) ### Weird but should not allocate
     # v = view(xa.data, :) #1d only
     res = interp(g2.ranges, view(v,i,:), p...)
@@ -100,7 +97,6 @@ function (xa::GArray{PGrid{G1, G2, d}, T})(S::Tuple{Tuple{Int64}, U}) where G1 w
     s = SVector((V[i] for i=n-n_x+1:n)...)
     xa(S[1][1],s)
 end
-
 
 
 # enum(g::GArray) = enumerate(g)
@@ -163,7 +159,6 @@ function Base.convert(::Type{Matrix}, A::GArray{G,Vector{T}}) where G where T <:
     end
     return M
 end
-
 
 
 ### TODO

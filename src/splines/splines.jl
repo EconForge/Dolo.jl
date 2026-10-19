@@ -43,8 +43,6 @@ struct SplineInterpolator{G,C,k}
 end
 
 
-
-
     function prefilter(ranges::NTuple{d,Tuple{Tf,Tf,i}}, V::AbstractArray{T, d}, ::Val{3}) where d where i<:Int where T where Tf
         θ = zeros(eltype(V), ((e[3]+2) for e in ranges)...)
         ind = tuple( (2:(e[3]+1) for e in ranges )...)
@@ -67,22 +65,6 @@ end
     function prefilter!(θ::AbstractArray{T, d}, grid::NTuple{d,Tuple{Tf,Tf,i}}, V::AbstractArray{T, d}, ::Val{1}) where d where i<:Int where T where Tf
         θ .= V
     end
-
-    # function CubicInterpolator(grid; values=nothing)
-
-    #     println("Hejo")
-
-    #     n = [e[3] for e in grid.ranges]
-    #     θ = zeros(eltype(values), (i+2 for i in n)...)
-    #     ci = CubicInterpolator{typeof(grid), typeof(θ)}(grid, θ)
-    #     if !isnothing(values)
-    #         ind = tuple( (2:(e[3]+1) for e in grid.ranges )...)
-    #         ci.θ[ind...] .= values
-    #         splines.prefilter!(ci.θ)
-    #     end
-    #     return ci
-    
-    # end
 
 
     function fit!(spl::SplineInterpolator{G,C,k}, values) where G where C where k
@@ -138,10 +120,6 @@ end
 
 
     function (spl::SplineInterpolator{G,C,1})(x) where G where C
-        # ranges = spl.grid.ranges
-        # data = spl.θ
-        # dims = tuple( (e[3] for e in ranges)... )
-        # v = reshape(view(data, :), dims) 
         interp(spl.grid, spl.θ, x...)
     end
 

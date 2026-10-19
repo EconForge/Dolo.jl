@@ -8,3 +8,7 @@ docs/site/
 julia*
 .ipynb_checkpoints/
 Manifest.toml
+# local scratch / development files
+scratch/
+dev.jl
+*.log

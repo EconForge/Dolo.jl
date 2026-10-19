@@ -1,12 +1,8 @@
 ## In theory this is brilliant !
-## In practice with Julia 1.12, Threads.@threds works equally well
+## In practice with Julia 1.12, Threads.@threads works equally well
 
 # This starts making a difference when grids have more than 200000 points...
 
-# using KernelAbstractions
-# import KernelAbstractions.Extras: @unroll
-# import KernelAbstractions: get_backend
-# get_backend(g::GArray) = get_backend(g.data)
 
 import Base: Threads
 
@@ -25,7 +21,6 @@ function F!(r, dm, x, φ, engine::CPUS)
     end
 
 end
-
 
 
 function dF_1!(out, dmodel, controls::GArray, φ::Union{GArray, DFun}, engine::CPUS)
@@ -91,21 +86,6 @@ function mul!(dr::GVector, L2::LL, x::GVector, engine::CPUS)
 
 end
 
-# function \(J, L::Dolo.LL) 
-
-#     Threads.@threads for n=1:length(D)
-
-#         elt = L.D[n]
-#         M = J.data[n]
-#         tt = tuple((
-#             (;F_x=M\d.F_x, S=d.S) 
-#             for d in elt
-#         )...)
-#         L.D[n] = tt
-        
-#     end
-
-# end
 
 function ldiv!(J, L::Dolo.LL, engine::CPUS)
     Threads.@threads for n in 1:length(L.D)
