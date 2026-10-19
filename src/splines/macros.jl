@@ -190,6 +190,7 @@ function create_local_parameters(d; vectorize=true, Tf=Float64)
                 δ_ = (b_.-a_)./(n_.-convert($Tf,1.0))
                 i_ = div.( (x_.-a_), δ_)
                 i_ = max.(min.(i_, n_.-2), 0)
+                i_ = ifelse.(isnan.(i_), zero.(i_), i_)   # NaN point: valid index (the result is NaN)
                 λ_ = (x_.-(a_ .+ δ_.*i_))./δ_
                 ii_ = unsafe_trunc.(Int,i_)
             end

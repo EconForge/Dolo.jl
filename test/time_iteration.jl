@@ -104,3 +104,24 @@ end
 
 end
 
+@testset "Robustness" begin
+
+    # interpolation at NaN gives NaN (and does not read out of bounds)
+    model = include("$(root_dir)/examples/ymodels/consumption_savings_iid.jl")
+    dm = Dolo.discretize(model)
+    for interp_mode in (:linear, :cubic)
+        (; x0, φ) = Dolo.time_iteration_workspace(dm; interp_mode)
+        Dolo.fit!(φ, x0)
+        @test all(isnan, φ(Dolo.SVector(NaN)))
+    end
+
+    # a diverging Newton stops at its last point, without error
+    dm = Dolo.discretize(model, Dict(:endo => [10000]))
+    sol = Dolo.newton(dm, Dolo.newton_workspace(dm; interp_mode=:cubic); verbose=false, globalization=:backtracking)
+    @test !Dolo.converged(sol)
+    @test isfinite(sol.ε)
+
+    # `in` is only extended for Dolo's spaces
+    @test which(in, Tuple{Dolo.SVector{1,Float64}, Vector{Any}}).module === Base
+
+end

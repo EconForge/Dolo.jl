@@ -61,9 +61,12 @@ is_domain_error(e) = e isa DomainError
 is_domain_error(e::TaskFailedException) = is_domain_error(e.task.exception)
 is_domain_error(e::CompositeException) = all(is_domain_error, e.exceptions)
 
+isfinite_controls(x::GArray) = all(u -> all(isfinite, u), x.data)
+
 # fits φ on x then computes the residuals F(x,φ) in r0
-# returns their norm (Inf if the model can't be evaluated)
+# returns their norm (Inf if the model can't be evaluated, e.g. after a diverging step)
 function residual!(r0, model, x, φ, t_engine, tmr)
+    isfinite_controls(x) || return convert(getprecision(x), Inf)
     @timeit tmr "fit φ" fit!(φ, x)
     try
         @timeit tmr "eval F" F!(r0, model, x, φ, t_engine)
@@ -207,7 +210,7 @@ function _time_iteration(model::DYModel, workspace;
 
         trace && push!(ti_trace.data, deepcopy(φ))
 
-        if ε<tol_ε
+        if ε<tol_ε || !isfinite(ε)   # converged, or diverged
             break
         end
 
@@ -413,7 +416,7 @@ function newton(model::DYModel, workspace=nothing;
 
     for t=1:T
 
-        if ε<tol_ε
+        if ε<tol_ε || !isfinite(ε)   # converged, or diverged
             break
         end
 
@@ -448,18 +451,28 @@ function newton(model::DYModel, workspace=nothing;
         if globalization == :none
             x0.data .= x1.data .- dx.data
             ε = residual!(r0, model, x0, φ, t_engine, tmr)
-        elseif globalization == :backtracking
-            @timeit tmr "backtracking" for i=0:max_bsteps
-                k_ = i
-                x0.data .= x1.data .- dx.data .* convert(Tf, 0.5^i)
-                ε1 = residual!(r0, model, x0, φ, t_engine, tmr)
-                if ε1 < ε || i == max_bsteps
-                    ε = ε1
-                    break
-                end
-            end
         else
-            ε = @timeit tmr "linesearch" golden_section!(x0, x1, dx, r0, model, φ, t_engine, tmr, ε; maxiter=linesearch_maxiter)
+            ε_prev = ε
+            if globalization == :backtracking
+                @timeit tmr "backtracking" for i=0:max_bsteps
+                    k_ = i
+                    x0.data .= x1.data .- dx.data .* convert(Tf, 0.5^i)
+                    ε1 = residual!(r0, model, x0, φ, t_engine, tmr)
+                    if ε1 < ε
+                        ε = ε1
+                        break
+                    end
+                end
+            else
+                ε = @timeit tmr "linesearch" golden_section!(x0, x1, dx, r0, model, φ, t_engine, tmr, ε; maxiter=linesearch_maxiter)
+            end
+            if !(ε < ε_prev)
+                # no step decreases the residual: back to the previous point, and stop
+                x0.data .= x1.data
+                ε = residual!(r0, model, x0, φ, t_engine, tmr)
+                verbose && println("No step decreases the residual: stopping.")
+                break
+            end
         end
 
         η = distance(x0, x1)

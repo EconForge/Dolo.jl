@@ -37,7 +37,7 @@ function draw(cs::CartesianSpace)
     # (;loc, val)
 end
 
-Base.in(e::SVector, cs) = all( ( (e[i]<=cs.max[i])&(e[i]>=cs.min[i]) for i=1:length(cs.min) ) )
+Base.in(e::SVector, cs::CartesianSpace) = all( ( (e[i]<=cs.max[i])&(e[i]>=cs.min[i]) for i=1:length(cs.min) ) )
 
 # TODO: why is this not working?
 # dims(dom::CartesianSpace{d,dims}) where d where dims = dims
