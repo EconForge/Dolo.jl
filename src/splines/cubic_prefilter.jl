@@ -130,12 +130,12 @@ function prefilter_2!(c::AbstractVector{T}) where T
     c[2] = t1
     c[1] = (c[2]-λ*f1)/zq
 
-    for k in 3:N
+    @inbounds for k in 3:N
         c[k] = λ*c[k] + zq*c[k-1]
     end
 
     c[N-1] = ff
-    for kk in 1:(N-2)
+    @inbounds for kk in 1:(N-2)
         k = N-1-kk
         c[k] = zq*(c[k+1] - c[k])
     end
@@ -147,248 +147,131 @@ end
 
 
 ###
-### Choose one version:
+### Multidimensional arrays
 ###
-prefilter!(c::AbstractVector{T}) where T = prefilter_2!(c::AbstractVector{T})
+### θ holds the values to interpolate, with one point of padding on each side in each
+### dimension. The 1D filter is applied along each dimension, on every line of θ.
 
+using KernelAbstractions: @kernel, @index, get_backend, synchronize, CPU
 
-function prefilter!(data::AbstractArray{T,2}, ::Val{:CPU}) where T
+"""
+    prefilter!(θ)
 
-    I,J = size(data)
+Replace the values in `θ` by the coefficients of the cubic spline interpolating them.
+The sequential algorithm (`prefilter_2!`) is used on CPU, the chunked one elsewhere (e.g. GPU).
+"""
+prefilter!(θ::AbstractArray) =
+    get_backend(θ) isa CPU ? prefilter_sequential!(θ) : prefilter_chunked!(θ, similar(θ))
 
-    M = J-2
-    for i=1:I
-        dat = view(data, i, :)
-        prefilter!(dat)
-    end
+# the line of A along dimension `dim`, at index I of the other dimensions
+@inline line(A, ::Val{dim}, I::CartesianIndex) where dim =
+    view(A, ntuple(i -> i < dim ? I[i] : i == dim ? Colon() : I[i-1], Val(ndims(A)))...)
 
-    M = I-2
-    for j=1:J
-        dat = view(data, :, j)
-        prefilter!(dat)
-    end
-end
+# size of A without dimension `dim`
+other_size(A, dim) = (size(A)[1:dim-1]..., size(A)[dim+1:end]...)
 
-function prefilter!(data::AbstractArray{T,2}, ::Val{:Threads}) where T
-
-    I,J = size(data)
-
-    M = J-2
-    Threads.@threads for i=1:I
-        dat = view(data, i, :)
-        prefilter!(dat)
-    end
-
-    M = I-2
-    Threads.@threads for j=1:J
-        dat = view(data, :, j)
-        prefilter!(dat)
-    end
-end
-
-function prefilter!(data::AbstractArray{T,3}) where T
-
-    I,J,K = size(data)
-
-    M = K-2
-    Threads.@threads for i=1:I
-    # for i=1:I
-        for j=1:J
-            dat = view(data, i,j, :)
-            prefilter!(dat)
-        end
-    end
-    M = J-2
-    Threads.@threads for i=1:I
-    # for i=1:I
-        for k=1:K
-            dat = view(data, i,:, k)
-            prefilter!(dat)
-        end
-    end
-    M = I-2
-    Threads.@threads for j=1:J
-    # for j=1:J
-        for k=1:K
-            dat = view(data, : ,j, k)
-            prefilter!(dat)
-        end
-    end
-end
-
-
-function prefilter!(data::AbstractArray{T,4}) where T
-    I,J,K,L = size(data)
-
-    M = L-2
-
-    for i=1:I
-        for j=1:J
-            for k=1:K
-                dat = view(data,i,j,k,:)
-                prefilter!(dat)
+# sequential algorithm along each line; independent lines are processed by different threads
+function prefilter_sequential!(θ::AbstractArray)
+    for dim in 1:ndims(θ)
+        lines = CartesianIndices(other_size(θ, dim))
+        if length(lines) == 1
+            prefilter_2!(line(θ, Val(dim), first(lines)))
+        else
+            Threads.@threads for I in lines
+                prefilter_2!(line(θ, Val(dim), I))
             end
         end
     end
-    M = K-2
-    for i=1:I
-        for j=1:J
-            for l=1:L
-                dat = view(data,i,j,:,l)
-                prefilter!(dat)
-            end
+    return θ
+end
+
+
+## Chunked version
+#
+# Each sweep of prefilter_2! is a linear recurrence with pole zq ≈ -0.268: the influence of
+# its initial condition decays like |zq|^k, below machine precision after WARMUP=32 steps.
+# A line can therefore be cut in chunks of CHUNK points, each filtered independently (by its own
+# thread) after a warm-up on the WARMUP preceding points. Same result as prefilter_2!, to machine
+# precision, but with one thread per chunk instead of one per line.
+#
+# It works out of place: the causal sweep writes in a buffer, the anticausal one back in θ.
+
+const CHUNK = 128
+const WARMUP = 32
+
+# Causal sweep on chunk b of a line: y[k] = λ x[k] + zq y[k-1] for k ≥ 3, from the
+# initial condition of prefilter_2!.
+@inline function causal_chunk!(y, x, b)
+    N = length(x)
+    Tp = eltype(eltype(x))
+    λ = convert(Tp, λ_0)
+    zq = convert(Tp, zq_0)
+    s = 3 + (b-1)*CHUNK                 # chunk: s:e
+    e = min(N, s + CHUNK - 1)
+    p = max(3, s - WARMUP)              # start of the warm-up
+    acc = zero(eltype(x))
+    if p == 3                           # the warm-up reaches the start of the line: exact initial value
+        f1 = x[2]
+        zn = one(Tp)
+        for n in 0:min(20, N-2)
+            acc += λ*(2*f1 - x[2+n])*zn
+            zn *= zq
+        end
+        if b == 1
+            y[2] = acc
+            y[1] = (acc - λ*f1)/zq
         end
     end
-    M = J-2
-    for i=1:I
-        for k=1:K
-            for l=1:L
-                dat = view(data, i,:, k,l)
-                prefilter!(dat)
-            end
-        end
+    for k in p:e
+        acc = λ*x[k] + zq*acc
+        k >= s && (y[k] = acc)
     end
-    M = I-2
-    for j=1:J
-        for k=1:K
-            for l=1:L
-                dat = view(data, :, j,k,l)
-                prefilter!(dat)
-            end
-        end
-    end
+    e >= N-1 && (y[N-1] = x[N-1])       # last value, used by the anticausal sweep
+    return nothing
 end
 
-#### 
-
-function prefilter!(data::AbstractArray{T,1}, ::Val{:CPU}) where T
-
-    prefilter!(data)
-
+# Anticausal sweep on chunk b of a line: c[k] = zq (c[k+1] - y[k]) for k = N-2 … 1,
+# from c[N-1] = y[N-1]; then c[N] = 2c[N-1] - c[N-2].
+@inline function anticausal_chunk!(c, y, b)
+    N = length(y)
+    zq = convert(eltype(eltype(y)), zq_0)
+    e = N - 2 - (b-1)*CHUNK             # chunk: e down to s
+    s = max(1, e - CHUNK + 1)
+    p = min(N - 2, e + WARMUP)          # start of the warm-up
+    ff = y[N-1]
+    acc = p == N - 2 ? ff : zero(eltype(y))
+    for k in p:-1:s
+        acc = zq*(acc - y[k])
+        k <= e && (c[k] = acc)
+    end
+    if b == 1
+        c[N-1] = ff
+        c[N] = 2*ff - c[N-2]
+    end
+    return nothing
 end
 
-using KernelAbstractions: @kernel
-
-
-function prefilter!(data::AbstractArray{T,1}, ::Val{:KA}) where T
-
-    @kernel function ker(m)
-
-        prefilter!(m)
-
-    end
-
-    backend = get_backend(data)
-
-    fun = ker(backend)
-
-    fun(data, ndrange=(1,))
-
+# one thread per (chunk, line)
+@kernel function causal_kernel!(Y, X, dim)
+    c = @index(Global, Cartesian)
+    I = CartesianIndex(Base.tail(Tuple(c)))
+    causal_chunk!(line(Y, dim, I), line(X, dim, I), c[1])
 end
 
-using KernelAbstractions
-
-
-using KernelAbstractions: CPU
-
-
-function prefilter!(data::AbstractArray{T,2}, ::Val{:KA}) where T
-
-
-    @kernel function ker_1(m)
-
-        i = @index(Global, Linear)
-
-        dat = view(m, i, :)
-        prefilter!(dat)
-
-    end
-
-    @kernel function ker_2(m)
-
-        j = @index(Global, Linear)
-        
-        dat = view(m, :, j)
-        prefilter!(dat)
-
-    end
-
-
-    backend = get_backend(data)
-
-    if backend==CPU()
-        # Not clear how to set number of threads here
-        fun_1 = ker_1(backend, 8)
-        fun_2 = ker_2(backend, 8)
-    else
-        fun_1 = ker_1(backend)
-        fun_2 = ker_2(backend)
-    end
-    
-    I,J = size(data)
-
-    fun_1(data, ndrange=(I,))
-    fun_2(data, ndrange=(J,))
-
+@kernel function anticausal_kernel!(C, Y, dim)
+    c = @index(Global, Cartesian)
+    I = CartesianIndex(Base.tail(Tuple(c)))
+    anticausal_chunk!(line(C, dim, I), line(Y, dim, I), c[1])
 end
 
-
-function prefilter!(data::AbstractArray{T,3}, ::Val{:KA}) where T
-
-
-    @kernel function ker_1(m)
-
-        c = @index(Global, Cartesian)
-        i = c.I[1]
-        j = c.I[2]
-
-        dat = view(m, i, j, :)
-        prefilter!(dat)
-
+"Chunked prefilter, using `buffer` (same size as θ)."
+function prefilter_chunked!(θ::AbstractArray, buffer::AbstractArray)
+    backend = get_backend(θ)
+    for dim in 1:ndims(θ)
+        ndrange = (cld(size(θ, dim) - 2, CHUNK), other_size(θ, dim)...)
+        causal_kernel!(backend)(buffer, θ, Val(dim); ndrange)
+        anticausal_kernel!(backend)(θ, buffer, Val(dim); ndrange)
     end
-
-    @kernel function ker_2(m)
-
-        c = @index(Global, Cartesian)
-        j = c.I[1]
-        k = c.I[2]
-        
-        dat = view(m, :, j, k)
-        prefilter!(dat)
-
-    end
-
-    @kernel function ker_3(m)
-
-
-        c = @index(Global, Cartesian)
-        i = c.I[1]
-        k = c.I[2]
-        
-        dat = view(m, i, :, k)
-        prefilter!(dat)
-
-    end
-
-
-    backend = get_backend(data)
-
-    if backend==CPU()
-        # Not clear how to set number of threads here
-        fun_1 = ker_1(backend, 8)
-        fun_2 = ker_2(backend, 8)
-        fun_3 = ker_3(backend, 8)
-    else
-        fun_1 = ker_1(backend)
-        fun_2 = ker_2(backend)
-        fun_3 = ker_3(backend)
-    end
-    
-    I,J,K = size(data)
-
-    fun_1(data, ndrange=(I,J))
-    fun_2(data, ndrange=(J,K))
-    fun_3(data, ndrange=(I,K))
-
+    synchronize(backend)
+    return θ
 end
-

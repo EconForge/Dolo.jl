@@ -26,6 +26,14 @@ using Test
             maximum(abs.(u.F_x-v.F_x)) for (A,B) in zip(Array(a.D), Array(b.D)) for (u,v) in zip(A,B)
         )
 
+        @testset "Spline prefilter: size $n" for n in ((10,), (10_000,), (300, 200), (40, 30, 50))
+            θ = zeros(Dolo.SVector{2,Float64}, (k+2 for k in n)...)
+            θ[(2:k+1 for k in n)...] .= rand(Dolo.SVector{2,Float64}, n...)
+            cpu = Dolo.splines.prefilter!(copy(θ))           # sequential
+            gpu = Array(Dolo.splines.prefilter!(CuArray(θ))) # chunked
+            @test maximum(maximum(abs.(u-v)) for (u,v) in zip(cpu, gpu)) < 1e-13
+        end
+
         for fn in ["rbc_mc", "rbc_ar1", "consumption_savings_iid"]
 
             @testset "$fn" verbose=true begin

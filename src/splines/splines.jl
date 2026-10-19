@@ -77,7 +77,7 @@ end
             fill!(spl.θ, zero(eltype(spl.θ)))
             ind = tuple( (2:(e[3]+1) for e in spl.grid )...)
             spl.θ[ind...] .= rhs
-            prefilter!(spl.θ, Val(:KA))
+            prefilter!(spl.θ)
         elseif k==1
             spl.θ .= rhs
         end
