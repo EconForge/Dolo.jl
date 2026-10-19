@@ -12,3 +12,6 @@ Manifest.toml
 scratch/
 dev.jl
 *.log
+
+# benchmark results (machine-specific)
+benchmark/results/
