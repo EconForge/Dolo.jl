@@ -75,7 +75,7 @@ function mul!(dr, L2::LF, x)
 end
 
 
-function mul!(dr, L2::LL, x, ::Nothing)
+function mul!(dr, L2::LL, x::GVector, ::Nothing)
 
     D = L2.D
     dφ = L2.φ
@@ -114,27 +114,15 @@ function *(L::LL, v::AbstractArray{T}) where T<:Union{Float32, Float64}
     
 end
 
-function mul!(r_::AbstractArray{T}, L::LL, v_::AbstractArray{T}, ::Nothing) where T<:Union{Float32, Float64}
-
-    # single core, nonallocating version
-    elt = typeof(L.D[1][1].F_x)
-    Tf = eltype(elt)
-    p,q = size(elt)
-    N = length(L.grid)
-    typ = SVector{q, Tf}
-
-    r = GArray(L.grid, reinterpret(typ, r_))
-    x = GArray(L.grid, reinterpret(typ, v_))
-    mul!(r, L, x, nothing)
-
-    r_
-    
-end
-
 
 function mul!(r_::AbstractArray{T}, L::LL, v_::AbstractArray{T}) where T<:Union{Float32, Float64}
 
-    # default kernel
+    mul!(r_, L, v_, nothing)
+
+end
+
+function mul!(r_::AbstractArray{T}, L::LL, v_::AbstractArray{T}, t_engine) where T<:Union{Float32, Float64}
+
     elt = typeof(L.D[1][1].F_x)
     Tf = eltype(elt)
     p,q = size(elt)
@@ -143,11 +131,30 @@ function mul!(r_::AbstractArray{T}, L::LL, v_::AbstractArray{T}) where T<:Union{
 
     r = GArray(L.grid, reinterpret(typ, r_))
     x = GArray(L.grid, reinterpret(typ, v_))
-    mul!(r, L, x)
+
+    mul!(r, L, x, t_engine)
 
     r_
     
 end
+
+
+# function mul!(r_::AbstractArray{T}, L::LL, v_::AbstractArray{T}) where T<:Union{Float32, Float64}
+
+#     # default kernel
+#     elt = typeof(L.D[1][1].F_x)
+#     Tf = eltype(elt)
+#     p,q = size(elt)
+#     N = length(L.grid)
+#     typ = SVector{q, Tf}
+
+#     r = GArray(L.grid, reinterpret(typ, r_))
+#     x = GArray(L.grid, reinterpret(typ, v_))
+#     mul!(r, L, x)
+
+#     r_
+    
+# end
 
 function ldiv!(J, L::Dolo.LL)
     for n in 1:length(L.D)
@@ -199,7 +206,7 @@ function dF_2(dmodel, xx, φ)
 end
 
 function dF_2!(L, dmodel, xx::GArray, φ::DFun)
-    dF_2!(L, dmodel, xx, φ, CPU())
+    dF_2!(L, dmodel, xx, φ, CPUS())
 end
 
 function dF_2!(L, dmodel, xx::GArray, φ::DFun, ::Nothing)
@@ -295,14 +302,14 @@ convert(::Type{Matrix}, L::LF) = convert(Matrix, convert(LinearMap,L))
 #     )
 # end
 
-convert(::Type{LinearMap}, L::LF) = let
+convert(::Type{LinearMap}, L::LF, engine=nothing) = let
     elt = typeof(L.D[1][1].F_x)
     Tf = eltype(elt)
     p,q = size(elt)
     N = length(L.grid)
     typ = SVector{q, Tf}
     LinearMap(
-        (v,u)-> mul!(v,L,u), # AWESOME
+        (v,u)-> mul!(v,L,u, engine), # AWESOME
         p*N,
         q*N;
         ismutating=true

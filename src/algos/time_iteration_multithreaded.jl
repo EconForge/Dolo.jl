@@ -70,8 +70,9 @@ function dF_2!(L, dmodel, controls::GArray, φ::DFun, engine::CPUS)
 end
 
 
-function mul!(dr, L2::LL, x, engine::CPUS)
+function mul!(dr::GVector, L2::LL, x::GVector, engine::CPUS)
  
+
     D = L2.D
     dφ = L2.φ
 

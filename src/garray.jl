@@ -5,6 +5,7 @@ struct GArray{G,U}
     data::U
 end
 
+
 const GVector{G,T} = GArray{G,T}
 const GDist{G,Tf} = GArray{G, Vector{Tf}}
 
@@ -119,7 +120,7 @@ import Base: *, \, +, -, /
 *(A::GArray{G,Vector{T}}, x::SVector{q, Tf}) where G where T <:SMatrix{p, q, Tf, n}  where p where q where n where Tf = GArray(A.grid, [M*x for M in A.data])
 
 
-*(A::GArray{G,T}, B::AbstractArray{Tf}) where G where T <:SMatrix{p, q, Tf, n}  where p where q where n where Tf = 
+*(A::GArray{G,T}, B::AbstractArray{Tf}) where G where T <:AbstractVector{<:SMatrix{p, q, Tf, n}}  where p where q where n where Tf  = 
     ravel(
         GArray(
             A.grid,
@@ -127,6 +128,26 @@ import Base: *, \, +, -, /
         )
     )
 
+import LinearAlgebra: mul!, ldiv!
+
+function mul!(Out::AbstractArray{Tf}, A::GArray{G,T}, B::AbstractArray{Tf}) where G where T <:AbstractVector{<:SMatrix{p, q, Tf, n}}  where p where q where n where Tf 
+    out = reinterpret(SVector{q, Tf}, Out)
+    a = A.data
+    b = reinterpret(SVector{q, Tf}, B)
+    out .= A.data .* reinterpret(SVector{q, Tf}, B)
+    nothing
+end
+    
+
+# mulscal(A::GArray{G,T}, B::AbstractArray{Tf}) where G where T <:AbstractVector{SMatrix{p, q, Tf, n}}  where p where q where n where Tf  = 
+#     ravel(
+#         GArray(
+#             A.grid,
+#             A.data .* reinterpret(SVector{q, Tf}, B)
+#         )
+#     )
+
+    
 
 import Base: convert
 
