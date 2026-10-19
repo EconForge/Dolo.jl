@@ -120,6 +120,15 @@ newton
 
 All solvers accept `timer=true` to record a profile of the different steps (in `sol.timer`), and an `engine` option deciding how operations are run on the grid: `:serial`, `:threads` (multithreaded) or `:ka` (KernelAbstractions.jl, on the backend where the data lives, e.g. a GPU).
 
+To run on a GPU, load the corresponding package (e.g. `using CUDA`, which activates Dolo's CUDA extension), allocate the workspace on the device and use the KernelAbstractions engine:
+
+```julia
+using CUDA, Dolo
+dmodel = Dolo.discretize(model)
+wk = Dolo.newton_workspace(dmodel; dest=CuArray, interp_mode=:cubic)
+sol = time_iteration(dmodel, wk; accelerate=true, engine=:ka)
+```
+
 Internally, each operation on the grid (residuals, their derivatives, the linear operator) is written once as a pointwise function of one grid point, and applied to all grid points by `pointwise!(f, out, engine, args...)`. Engines only differ in how this loop is run.
 
 ## Perfect Foresight

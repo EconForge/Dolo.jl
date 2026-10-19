@@ -1,0 +1,8 @@
+[deps]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+Dolo = "9d24351c-2990-5e1b-a277-04c4b809c898"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[sources]
+Dolo = {path = "../.."}

@@ -45,6 +45,17 @@ const KernelAbstractions = Dolo.KernelAbstractions
         end
     end
 
+    @testset "fit! updates the values of the decision rule" begin
+        model = include("$(pkgdir(Dolo))/examples/ymodels/rbc_mc.jl")
+        dm = Dolo.discretize(model)
+        (; x0, φ) = Dolo.time_iteration_workspace(dm)
+        ψ = deepcopy(φ)      # does not share its values with x0
+        x0.data .= [x .* (1 + 0.1*sin(n)) for (n,x) in enumerate(x0.data)]
+        Dolo.fit!(ψ, x0)
+        @test ψ.values.data == x0.data
+        @test all(ψ(s) == x for (s,x) in zip(Dolo.enum(dm.grid), x0.data))
+    end
+
     @test Dolo.select_engine(:serial, nothing) isa Dolo.Serial
     @test Dolo.select_engine(:threads, nothing) isa Dolo.Threaded
     @test Dolo.select_engine(Dolo.Threaded(), nothing) isa Dolo.Threaded

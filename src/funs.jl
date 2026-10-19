@@ -90,7 +90,13 @@ function DFun(states, values::GVector{G,V}, vars=nothing; interp_mode=:linear) w
 
 end
 
+# After `fit!(φ, x)`, φ represents x: its values on the grid are those of x.
+# (They are usually the same array, but not always, e.g. after `adapt` to a GPU.)
+set_values!(φ::DFun, x::GVector) = (φ.values.data === x.data || copyto!(φ.values.data, x.data); φ)
+
 function fit!(φ::DFun, x::GVector{G}) where G<:PGrid{<:SGrid, <:CGrid}
+
+    set_values!(φ, x)
 
     # This is only for SGrid x CGrid
 
@@ -107,6 +113,7 @@ end
 
 function fit!(φ::DFun, x::GVector{G}) where G<:CGrid
 
+    set_values!(φ, x)
     splines.fit!(φ.itp, x.data)
 
 end
