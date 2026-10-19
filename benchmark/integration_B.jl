@@ -3,10 +3,13 @@
 #
 #     julia -t auto --project=benchmark benchmark/integration_B.jl [--sizes=10,20,30] [--precisions=Float64,Float32]
 #                                                                   [--engines=serial,threads,gpu]
+# On Intel GPUs:
+#     julia -t auto --project=benchmark/oneapi benchmark/integration_B.jl --backend=oneapi
 
 using Dolo
-using CUDA
 using Printf
+
+include("gpu_backend.jl")
 
 option(name, default) = let a = findfirst(startswith("--$name="), ARGS)
     a === nothing ? default : split(split(ARGS[a], "=")[2], ",")
@@ -14,11 +17,12 @@ end
 
 const SIZES = parse.(Int, option("sizes", ["10", "20", "30", "40"]))
 const PRECISIONS = [Dict("Float64" => Float64, "Float32" => Float32)[p] for p in option("precisions", ["Float64", "Float32"])]
+gpu_ok(T) = GPU.functional && (T == Float32 || GPU.float64)   # can the GPU run in precision T?
 const SERIAL_MAX = 20    # the serial engine is only timed up to this size
 
 const ENGINES = let
     all = ["serial" => (Dolo.Serial(), Array), "threads" => (Dolo.Threaded(), Array)]
-    CUDA.functional() && push!(all, "gpu" => (Dolo.KA(CUDABackend()), CuArray))
+    GPU.functional && push!(all, "gpu" => (Dolo.KA(GPU.backend), GPU.AT))
     filter(e -> e[1] in option("engines", first.(all)), all)
 end
 
@@ -33,7 +37,7 @@ const KERNELS = [
 
 model64 = include(joinpath(pkgdir(Dolo), "examples", "ymodels", "integration_B.jl"))
 
-sync(dest) = dest === CuArray && CUDA.synchronize()
+sync(dest) = dest === GPU.AT && GPU.sync()
 
 "Minimum time of `f()` over repeated runs (about one second in total, at least 3 runs)."
 function timeit(f, dest)
@@ -63,17 +67,17 @@ host(x) = Array(x)
 "Largest difference between the results of each kernel on the GPU and on the CPU (threads)."
 function check_gpu(dm)
     wc = workspace(dm, Dolo.Threaded(), Array)
-    wg = workspace(dm, Dolo.KA(CUDABackend()), CuArray)
+    wg = workspace(dm, Dolo.KA(GPU.backend), GPU.AT)
     d = Dict{String,Float64}()
-    d["F!"] = maxdiff(host(Dolo.F!(wg.r0, dm, wg.x0, wg.φ, Dolo.KA(CUDABackend())).data), Dolo.F!(wc.r0, dm, wc.x0, wc.φ, Dolo.Threaded()).data)
+    d["F!"] = maxdiff(host(Dolo.F!(wg.r0, dm, wg.x0, wg.φ, Dolo.KA(GPU.backend)).data), Dolo.F!(wc.r0, dm, wc.x0, wc.φ, Dolo.Threaded()).data)
     d["dF_1!"] = maxdiff(host(wg.J.data), wc.J.data)
     d["dF_2!"] = maximum(maxdiff(map(b -> b.F_x, u), map(b -> b.F_x, v)) for (u, v) in zip(host(wg.L.D), wc.L.D))
-    d["L.v"] = maxdiff(host(Dolo.mul!(wg.r0, wg.L, wg.x0, Dolo.KA(CUDABackend())).data), Dolo.mul!(wc.r0, wc.L, wc.x0, Dolo.Threaded()).data)
+    d["L.v"] = maxdiff(host(Dolo.mul!(wg.r0, wg.L, wg.x0, Dolo.KA(GPU.backend)).data), Dolo.mul!(wc.r0, wc.L, wc.x0, Dolo.Threaded()).data)
     return d
 end
 
 println("Julia ", VERSION, ", ", Threads.nthreads(), " threads, ", Sys.cpu_info()[1].model)
-CUDA.functional() && println("GPU: ", CUDA.name(CUDA.device()), ", ", round(CUDA.totalmem(CUDA.device())/2^30, digits=1), " GiB")
+GPU.functional && println("GPU ($(GPU.name)): ", GPU.description)
 println("Engines: ", join(first.(ENGINES), ", "))
 
 rows = []
@@ -86,13 +90,14 @@ for T in PRECISIONS
         wk = Dolo.newton_workspace(Dolo.discretize(model, Dict(:endo => [2, 2, 2])))
         bytes_L = sizeof(eltype(wk.L.D))*N
         @printf("\n%s, %d³ endogenous points × 9 = %d points (L: %.2f GiB)\n", T, n, N, bytes_L/2^30)
-        if CUDA.functional() && n == first(SIZES)
+        if gpu_ok(T) && n == first(SIZES)
             for (k, v) in sort(collect(check_gpu(dm)))
                 @printf("  gpu vs cpu: %-6s max diff %.2e\n", k, v)
             end
         end
         for (ename, (engine, dest)) in ENGINES
             ename == "serial" && n > SERIAL_MAX && continue
+            ename == "gpu" && !gpu_ok(T) && continue
             local wk
             try
                 wk = workspace(dm, engine, dest)
@@ -119,7 +124,7 @@ for T in PRECISIONS
                 push!(rows, (; T, n, N, engine=ename, kernel=kname, t))
                 @printf("  %-8s %-6s %10.3f ms  %8.1f ns/point\n", ename, kname, t*1e3, t/N*1e9)
             end
-            wk = nothing; GC.gc(true); CUDA.functional() && CUDA.reclaim()
+            wk = nothing; GC.gc(true); GPU.functional && GPU.reclaim()
         end
     end
 end
