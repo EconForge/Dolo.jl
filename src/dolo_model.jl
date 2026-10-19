@@ -29,10 +29,6 @@ end
 
 get_states(model::YModel) = variables(model.states)
 get_controls(model::YModel) = variables(model.controls)
-# get_endo_states(model::Dolo)
-# get_exo_states(model::Dolo)
-
-# discretize(cc::CartesianSpace; n=10) = CGrid( tuple(( (cc.min[i],cc.max[i], n) for i=1:length(cc.min))...) )
 
 
 import Term: Panel, tprint, tprintln
@@ -100,8 +96,8 @@ function discretize(model::AModel{<:VAR1}, d=Dict())
     # TODO: simplify that call
     Tf = eltype(model)
     endo_space = CartesianSpace{n_s, Dolo.variables(model.states)[d+1:end],Tf}(
-        model.states.endo.min,
-        model.states.endo.max
+        model.states.min[d+1:end],
+        model.states.max[d+1:end]
     )
     # return endo_space
     endo_grid = discretize(endo_space, endo)
