@@ -23,8 +23,11 @@ On the laptop:
 ```bash
 git checkout integration-gpu
 julia --project=test/oneapi -e 'using Pkg; Pkg.instantiate(); using oneAPI; oneAPI.versioninfo()'
+# resources, and what integration_B needs (memory, Float64 support, kernel arguments)
+julia --project=benchmark/oneapi -e 'using Pkg; Pkg.instantiate(); using oneAPI, Dolo;
+    model = include(joinpath(pkgdir(Dolo), "examples/ymodels/integration_B.jl"));
+    display(Dolo.diagnose(model))'
 julia --project=test/oneapi test/oneapi/runtests.jl
-julia --project=benchmark/oneapi -e 'using Pkg; Pkg.instantiate()'
 julia -t auto --project=benchmark/oneapi benchmark/integration_B.jl --backend=oneapi --sizes=10,20 --engines=threads,gpu
 julia -t auto --project=benchmark/oneapi benchmark/integration_B_solve.jl --backend=oneapi --sizes=20
 ```

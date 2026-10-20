@@ -1,5 +1,5 @@
 using StaticArrays
-import Dolo: transition, arbitrage, complementarities
+import Dolo: transition, arbitrage, complementarities, hypeof
 import Dolo: ⫫
 
 # New Keynesian model with Calvo pricing and price dispersion (Delta),
@@ -58,7 +58,7 @@ model = let
 end
 
 
-function intermediate(model::typeof(model), s::NamedTuple, x::NamedTuple)
+function intermediate(model::hypeof(model), s::NamedTuple, x::NamedTuple)
     p = model.calibration
     r = (1/p.β)*x.π^p.ϕ
     rw = p.χ*x.n^p.ψ*x.c
@@ -68,13 +68,13 @@ function intermediate(model::typeof(model), s::NamedTuple, x::NamedTuple)
 end
 
 
-function transition(model::typeof(model), s::NamedTuple, x::NamedTuple, M::NamedTuple)
+function transition(model::hypeof(model), s::NamedTuple, x::NamedTuple, M::NamedTuple)
     y = intermediate(model, s, x)
     (;Delta__L = y.Delta)  ## only the endogenous state
 end
 
 
-function arbitrage(model::typeof(model), s::NamedTuple, x::NamedTuple, S::NamedTuple, X::NamedTuple)
+function arbitrage(model::hypeof(model), s::NamedTuple, x::NamedTuple, S::NamedTuple, X::NamedTuple)
     (;β, ε, θ) = model.calibration
     y = intermediate(model, s, x)
     res_1 = 1/x.c - β*y.r/(X.c*X.π)
@@ -87,9 +87,10 @@ end
 
 
 # 1-1e-6 <= π <= 2
-function complementarities(model::typeof(model), s::NamedTuple, x::NamedTuple, Fv::SVector)
-    eq = Fv[5] ⫫ (x.π - (1-0.000001))
-    eq = -eq ⫫ (2.0 - x.π)
+function complementarities(model::hypeof(model), s::NamedTuple, x::NamedTuple, Fv::SVector)
+    T = typeof(x.π)   # precision of the model
+    eq = Fv[5] ⫫ (x.π - (1 - T(0.000001)))
+    eq = -eq ⫫ (2 - x.π)
     eq = -eq
     (Fv[1], Fv[2], Fv[3], Fv[4], eq)
 end

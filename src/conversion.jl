@@ -71,3 +71,20 @@ end
 
 getprecision(model::Dolo.YModel) = typeof(model.calibration[1])
 getprecision(dmodel::Dolo.DYModel) = getprecision(dmodel.model)
+
+
+## Discretized models
+
+convert_precision(T, g::CGrid{d}) where d = CGrid{d,T}(map(r -> (T(r[1]), T(r[2]), r[3]), g.ranges))
+convert_precision(T, g::SGrid{n,d}) where n where d = SGrid{n,d,T}(SVector{n}(map(p -> SVector{d,T}(p), g.points)))
+convert_precision(T, g::PGrid) = PGrid(convert_precision(T, g.grids[1]), convert_precision(T, g.grids[2]))
+
+# discretized iid shocks: nodes and weights
+convert_precision(T, d::NamedTuple{(:x,:w)}) = (; x = map(e -> T.(e), d.x), w = T.(d.w))
+
+"Copy of the discretized model `dmodel` in precision `T` (e.g. Float32)."
+convert_precision(T, dmodel::DYModel) = DYModel(
+    convert_precision(T, dmodel.model),
+    convert_precision(T, dmodel.grid),
+    convert_precision(T, dmodel.dproc)
+)

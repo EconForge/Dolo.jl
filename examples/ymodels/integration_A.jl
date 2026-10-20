@@ -1,5 +1,5 @@
 using StaticArrays
-import Dolo: transition, arbitrage, complementarities
+import Dolo: transition, arbitrage, complementarities, hypeof
 import Dolo: ⫫
 
 # Financial autarky (Coeurdacier et al., 2020): two countries, no asset trade.
@@ -67,7 +67,7 @@ model = let
 end
 
 
-function intermediate(model::typeof(model), s::NamedTuple, x::NamedTuple)
+function intermediate(model::hypeof(model), s::NamedTuple, x::NamedTuple)
 
     p = model.calibration
 
@@ -85,7 +85,7 @@ function intermediate(model::typeof(model), s::NamedTuple, x::NamedTuple)
 end
 
 
-function transition(model::typeof(model), s::NamedTuple, x::NamedTuple, M::NamedTuple)
+function transition(model::hypeof(model), s::NamedTuple, x::NamedTuple, M::NamedTuple)
 
     p = model.calibration
     y = intermediate(model, s, x)
@@ -98,7 +98,7 @@ function transition(model::typeof(model), s::NamedTuple, x::NamedTuple, M::Named
 end
 
 
-function arbitrage(model::typeof(model), s::NamedTuple, x::NamedTuple, S::NamedTuple, X::NamedTuple)
+function arbitrage(model::hypeof(model), s::NamedTuple, x::NamedTuple, S::NamedTuple, X::NamedTuple)
 
     p = model.calibration
     (;β, γ, ψ, δ, θ) = p
@@ -127,7 +127,7 @@ end
 
 
 # investment is nonnegative: 0 <= i_1, 0 <= i_2
-function complementarities(model::typeof(model), s::NamedTuple, x::NamedTuple, Fv::SVector)
+function complementarities(model::hypeof(model), s::NamedTuple, x::NamedTuple, Fv::SVector)
     return (Fv[1] ⫫ x.i_1, Fv[2] ⫫ x.i_2, Fv[3], Fv[4], Fv[5], Fv[6])
 end
 

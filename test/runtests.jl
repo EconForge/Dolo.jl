@@ -10,6 +10,7 @@ using Test
     include("test_linsolve.jl")
     include("test_engines.jl")
     include("test_jlarrays.jl")
+    include("test_diagnose.jl")
 end
 
 @testset verbose=true "Models" begin

@@ -1,5 +1,5 @@
 using StaticArrays
-import Dolo: transition, arbitrage
+import Dolo: transition, arbitrage, hypeof
 
 # RBC model with AR1 productivity driven by an iid normal shock.
 # Consumption, wage and return on capital are treated as controls, defined by equations.
@@ -50,7 +50,7 @@ model = let
 end
 
 
-function transition(model::typeof(model), s::NamedTuple, x::NamedTuple, e::NamedTuple)
+function transition(model::hypeof(model), s::NamedTuple, x::NamedTuple, e::NamedTuple)
 
     (;δ, ρ) = model.calibration
 
@@ -62,7 +62,7 @@ function transition(model::typeof(model), s::NamedTuple, x::NamedTuple, e::Named
 end
 
 
-function arbitrage(model::typeof(model), s::NamedTuple, x::NamedTuple, S::NamedTuple, X::NamedTuple)
+function arbitrage(model::hypeof(model), s::NamedTuple, x::NamedTuple, S::NamedTuple, X::NamedTuple)
 
     (;β, σ, η, χ, δ, α) = model.calibration
 

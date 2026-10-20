@@ -1,5 +1,5 @@
 using StaticArrays
-import Dolo: transition, arbitrage, complementarities
+import Dolo: transition, arbitrage, complementarities, hypeof
 import Dolo: ⫫
 
 # Consumption-savings with AR1 income and a borrowing constraint 0 <= c <= w
@@ -38,14 +38,14 @@ model = let
 end
 
 
-function transition(model::typeof(model), s::NamedTuple, x::NamedTuple, M::NamedTuple)
+function transition(model::hypeof(model), s::NamedTuple, x::NamedTuple, M::NamedTuple)
     (;r) = model.calibration
     w = exp(M.y) + (s.w - x.c)*r
     (;w)  ## only the endogenous state
 end
 
 
-function arbitrage(model::typeof(model), s::NamedTuple, x::NamedTuple, S::NamedTuple, X::NamedTuple)
+function arbitrage(model::hypeof(model), s::NamedTuple, x::NamedTuple, S::NamedTuple, X::NamedTuple)
     (;β, γ, r) = model.calibration
     eq = β*( X.c/x.c )^(-γ)*r - 1
     (eq,)
@@ -53,7 +53,7 @@ end
 
 
 # 0 <= c <= w
-function complementarities(model::typeof(model), s::NamedTuple, x::NamedTuple, Fv::SVector)
+function complementarities(model::hypeof(model), s::NamedTuple, x::NamedTuple, Fv::SVector)
     eq = Fv[1] ⫫ x.c
     eq = -eq ⫫ (s.w - x.c)
     eq = -eq

@@ -94,6 +94,7 @@ module Dolo
 
     include("adapt.jl")
     include("utils.jl")
+    include("diagnose.jl")
 
     export time_iteration, newton, tabulate, discount_factor
 

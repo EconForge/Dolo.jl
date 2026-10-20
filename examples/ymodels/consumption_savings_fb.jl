@@ -1,5 +1,5 @@
 using StaticArrays
-import Dolo: transition, arbitrage, initial_guess
+import Dolo: transition, arbitrage, initial_guess, hypeof
 import Dolo: ⫫
 
 # Consumption-savings with AR1 income and a borrowing constraint 0 <= c <= w.
@@ -42,14 +42,14 @@ model = let
 end
 
 
-function transition(model::typeof(model), s::NamedTuple, x::NamedTuple, M::NamedTuple)
+function transition(model::hypeof(model), s::NamedTuple, x::NamedTuple, M::NamedTuple)
     (;r) = model.calibration
     w = exp(M.y) + (s.w - x.c)*r
     (;w)  ## only the endogenous state
 end
 
 
-function arbitrage(model::typeof(model), s::NamedTuple, x::NamedTuple, S::NamedTuple, X::NamedTuple)
+function arbitrage(model::hypeof(model), s::NamedTuple, x::NamedTuple, S::NamedTuple, X::NamedTuple)
     (;β, γ, r) = model.calibration
     res_1 = x.h ⫫ (s.w - x.c)
     res_2 = β*( X.c/x.c )^(-γ)*r - 1 + x.h
@@ -57,9 +57,10 @@ function arbitrage(model::typeof(model), s::NamedTuple, x::NamedTuple, S::NamedT
 end
 
 
-function initial_guess(model::typeof(model), s::NamedTuple)
-    c = min(s.w*0.95, 1.0 + 0.04*(s.w - 1.0))
-    h = 0.05
+function initial_guess(model::hypeof(model), s::NamedTuple)
+    T = typeof(s.w)   # precision of the model
+    c = min(s.w*T(0.95), 1 + T(0.04)*(s.w - 1))
+    h = T(0.05)
     (;c, h)
 end
 
