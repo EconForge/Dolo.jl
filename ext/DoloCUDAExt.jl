@@ -4,7 +4,7 @@ module DoloCUDAExt
 # Data is moved to the GPU with `adapt`, e.g. `time_iteration_workspace(dmodel; dest=CuArray)`,
 # and solvers run on it with the KernelAbstractions engine (`engine=:ka`).
 # The GPU code is written for any KernelAbstractions backend: this only describes the device
-# for `Dolo.diagnose`.
+# for `Dolo.resources`.
 
 using CUDA
 import Dolo

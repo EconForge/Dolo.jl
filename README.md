@@ -11,16 +11,16 @@ Models are written directly in Julia (see [examples/ymodels](examples/ymodels)).
 
 Dolo understand several types of nonlinear models with occasionally binding constraints (with or without exogenous discrete shocks), as well as local pertubations models.
 
-## Diagnostics
+## Computing resources
 
-`Dolo.diagnose()` reports the computing resources available to Dolo: threads, memory, and GPUs
+`Dolo.resources()` reports the computing resources available to Dolo: threads, memory, and GPUs
 (when their package is loaded: `using CUDA` or `using oneAPI`). Given a model, or a discretized
 model, it also reports what solving it needs, and whether it fits:
 
 ```julia
 using Dolo, CUDA
 model = include("examples/ymodels/integration_B.jl")
-Dolo.diagnose(model; discretization=Dict(:endo => [50, 50, 50]))
+Dolo.resources(model; discretization=Dict(:endo => [50, 50, 50]))
 ```
 
 - size of the grid, memory of each solver (time iteration, Newton with Neumann or GMRES) in the

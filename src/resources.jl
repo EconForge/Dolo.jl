@@ -1,10 +1,10 @@
-# Diagnostic of the computing resources (CPU, memory, GPUs), and of what a model needs from them:
+# Report on the computing resources (CPU, memory, GPUs), and on what a model needs from them:
 # size of the grid, memory used by the solvers in each precision, size of the kernel arguments,
 # compatibility with GPUs and with Float32.
 #
-#     Dolo.diagnose()                                                  # this machine
-#     Dolo.diagnose(model; discretization=Dict(:endo => [20, 20, 20])) # and a model
-#     Dolo.diagnose(dmodel)                                            # and a discretized model
+#     Dolo.resources()                                                  # this machine
+#     Dolo.resources(model; discretization=Dict(:endo => [20, 20, 20])) # and a model
+#     Dolo.resources(dmodel)                                            # and a discretized model
 
 import Adapt
 import Printf: @sprintf
@@ -153,7 +153,7 @@ end
 
 ## Report
 
-struct Diagnosis
+struct ResourceReport
     system
     gpus
     model         # nothing, or a description of the discretized model
@@ -162,9 +162,9 @@ struct Diagnosis
 end
 
 """
-    diagnose()
-    diagnose(model; discretization=Dict(), interp_mode=:cubic, krylov_dim=50)
-    diagnose(dmodel; interp_mode=:cubic, krylov_dim=50)
+    resources()
+    resources(model; discretization=Dict(), interp_mode=:cubic, krylov_dim=50)
+    resources(dmodel; interp_mode=:cubic, krylov_dim=50)
 
 Report on the computing resources available to Dolo (threads, memory, GPUs) and, given a
 model or a discretized model, on what solving it needs: grid size, memory of each solver
@@ -173,14 +173,14 @@ GPUs and Float32, with recommendations.
 
 GPUs are described when their package is loaded (`using CUDA`, `using oneAPI`).
 """
-function diagnose()
+function resources()
     sys, gpus = system_info(), gpu_infos()
-    return Diagnosis(sys, gpus, nothing, [], nothing_to_report(general_advice(sys, gpus)))
+    return ResourceReport(sys, gpus, nothing, [], nothing_to_report(general_advice(sys, gpus)))
 end
 
-diagnose(model::YModel; discretization=Dict(), kwargs...) = diagnose(discretize(model, discretization); kwargs...)
+resources(model::YModel; discretization=Dict(), kwargs...) = resources(discretize(model, discretization); kwargs...)
 
-function diagnose(dmodel::DYModel; interp_mode=:cubic, krylov_dim=50)
+function resources(dmodel::DYModel; interp_mode=:cubic, krylov_dim=50)
     sys = system_info()
     gpus = gpu_infos()
     eg = endo_grid(dmodel)
@@ -209,7 +209,7 @@ function diagnose(dmodel::DYModel; interp_mode=:cubic, krylov_dim=50)
         push!(precisions, (Float32, m32))
     end
     advice = nothing_to_report(vcat(general_advice(sys, gpus), model_advice(sys, gpus, model, precisions)))
-    return Diagnosis(sys, gpus, model, precisions, advice)
+    return ResourceReport(sys, gpus, model, precisions, advice)
 end
 
 system_info() = (;
@@ -361,7 +361,7 @@ end
 
 entry(io, key, value) = (printstyled(io, "  ", rpad(key, 20); bold=true); println(io, value))
 
-function Base.show(io::IO, ::MIME"text/plain", d::Diagnosis)
+function Base.show(io::IO, ::MIME"text/plain", d::ResourceReport)
 
     s = d.system
     header(io, "System")
@@ -463,4 +463,4 @@ function Base.show(io::IO, ::MIME"text/plain", d::Diagnosis)
     end
 end
 
-Base.show(io::IO, d::Diagnosis) = print(io, "Dolo.Diagnosis (display it for the report)")
+Base.show(io::IO, d::ResourceReport) = print(io, "Dolo.ResourceReport (display it for the report)")

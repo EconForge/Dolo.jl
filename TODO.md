@@ -26,7 +26,7 @@ julia --project=test/oneapi -e 'using Pkg; Pkg.instantiate(); using oneAPI; oneA
 # resources, and what integration_B needs (memory, Float64 support, kernel arguments)
 julia --project=benchmark/oneapi -e 'using Pkg; Pkg.instantiate(); using oneAPI, Dolo;
     model = include(joinpath(pkgdir(Dolo), "examples/ymodels/integration_B.jl"));
-    display(Dolo.diagnose(model))'
+    display(Dolo.resources(model))'
 julia --project=test/oneapi test/oneapi/runtests.jl
 julia -t auto --project=benchmark/oneapi benchmark/integration_B.jl --backend=oneapi --sizes=10,20 --engines=threads,gpu
 julia -t auto --project=benchmark/oneapi benchmark/integration_B_solve.jl --backend=oneapi --sizes=20
