@@ -5,11 +5,14 @@
 #                                                                   [--engines=serial,threads,gpu]
 # On Intel GPUs:
 #     julia -t auto --project=benchmark/oneapi benchmark/integration_B.jl --backend=oneapi
+#
+# Results are saved in benchmark/history/ with the platform, the software and the commit (see record.jl).
 
 using Dolo
 using Printf
 
 include("gpu_backend.jl")
+include("record.jl")
 
 option(name, default) = let a = findfirst(startswith("--$name="), ARGS)
     a === nothing ? default : split(split(ARGS[a], "=")[2], ",")
@@ -20,10 +23,12 @@ const PRECISIONS = [Dict("Float64" => Float64, "Float32" => Float32)[p] for p in
 gpu_ok(T) = GPU.functional && (T == Float32 || GPU.float64)   # can the GPU run in precision T?
 const SERIAL_MAX = 20    # the serial engine is only timed up to this size
 
+# engine name (as recorded) => (engine, array type where the data lives)
 const ENGINES = let
     all = ["serial" => (Dolo.Serial(), Array), "threads" => (Dolo.Threaded(), Array)]
-    GPU.functional && push!(all, "gpu" => (Dolo.KA(GPU.backend), GPU.AT))
-    filter(e -> e[1] in option("engines", first.(all)), all)
+    GPU.functional && push!(all, GPU.name => (Dolo.KA(GPU.backend), GPU.AT))
+    selected = replace(option("engines", ["serial", "threads", "gpu"]), "gpu" => GPU.name)
+    filter(e -> e[1] in selected, all)
 end
 
 const KERNELS = [
@@ -49,38 +54,46 @@ function timeit(f, dest)
     return minimum(ts)
 end
 
-"Workspace on the device of `dest`, with φ fitted, J and L computed (from a slightly perturbed guess)."
-function workspace(dm, engine, dest)
+"""
+Workspace with φ fitted, J and L computed on the CPU (from a slightly perturbed guess), then moved
+to the device of `dest`: a kernel that fails on the GPU does not prevent the others from being timed.
+"""
+function workspace(dm, dest)
     wk = Dolo.newton_workspace(dm; interp_mode=:cubic)
     T = eltype(eltype(wk.x0))
     wk.x0.data .= [x .* (1 .+ T(0.01)*sin.(T.(1:length(x)) .* n)) for (n, x) in enumerate(wk.x0.data)]
-    wk = Dolo.adapt(dest, wk)
     Dolo.fit!(wk.φ, wk.x0)
-    Dolo.dF_1!(wk.J, dm, wk.x0, wk.φ, engine)
-    Dolo.dF_2!(wk.L, dm, wk.x0, wk.φ, engine)
-    return wk
+    Dolo.dF_1!(wk.J, dm, wk.x0, wk.φ, Dolo.Threaded())
+    Dolo.dF_2!(wk.L, dm, wk.x0, wk.φ, Dolo.Threaded())
+    return Dolo.adapt(dest, wk)
 end
 
 maxdiff(a, b) = maximum(maximum(abs.(u - v)) for (u, v) in zip(a, b))
 host(x) = Array(x)
 
-"Largest difference between the results of each kernel on the GPU and on the CPU (threads)."
+"Largest difference between the results of each kernel on the GPU and on the CPU (threads); NaN if it fails."
 function check_gpu(dm)
-    wc = workspace(dm, Dolo.Threaded(), Array)
-    wg = workspace(dm, Dolo.KA(GPU.backend), GPU.AT)
-    d = Dict{String,Float64}()
-    d["F!"] = maxdiff(host(Dolo.F!(wg.r0, dm, wg.x0, wg.φ, Dolo.KA(GPU.backend)).data), Dolo.F!(wc.r0, dm, wc.x0, wc.φ, Dolo.Threaded()).data)
-    d["dF_1!"] = maxdiff(host(wg.J.data), wc.J.data)
-    d["dF_2!"] = maximum(maxdiff(map(b -> b.F_x, u), map(b -> b.F_x, v)) for (u, v) in zip(host(wg.L.D), wc.L.D))
-    d["L.v"] = maxdiff(host(Dolo.mul!(wg.r0, wg.L, wg.x0, Dolo.KA(GPU.backend)).data), Dolo.mul!(wc.r0, wc.L, wc.x0, Dolo.Threaded()).data)
-    return d
+    e = Dolo.KA(GPU.backend)
+    wc = workspace(dm, Array)
+    wg = workspace(dm, GPU.AT)
+    checks = [
+        "F!" => () -> maxdiff(host(Dolo.F!(wg.r0, dm, wg.x0, wg.φ, e).data), Dolo.F!(wc.r0, dm, wc.x0, wc.φ, Dolo.Threaded()).data),
+        "dF_1!" => () -> (Dolo.dF_1!(wg.J, dm, wg.x0, wg.φ, e); maxdiff(host(wg.J.data), wc.J.data)),
+        "dF_2!" => () -> (Dolo.dF_2!(wg.L, dm, wg.x0, wg.φ, e);
+            maximum(maxdiff(map(b -> b.F_x, u), map(b -> b.F_x, v)) for (u, v) in zip(host(wg.L.D), wc.L.D))),
+        "L.v" => () -> maxdiff(host(Dolo.mul!(wg.r0, wg.L, wg.x0, e).data), Dolo.mul!(wc.r0, wc.L, wc.x0, Dolo.Threaded()).data),
+    ]
+    return Dict(k => (try f() catch; NaN end) for (k, f) in checks)
 end
+
+this_run = run_metadata("integration_B"; gpu=GPU, options=Dict{String,Any}("args" => join(ARGS, " ")))
 
 println("Julia ", VERSION, ", ", Threads.nthreads(), " threads, ", Sys.cpu_info()[1].model)
 GPU.functional && println("GPU ($(GPU.name)): ", GPU.description)
 println("Engines: ", join(first.(ENGINES), ", "))
+println("Results: ", relpath(this_run.path))
 
-rows = []
+rows = NamedTuple[]
 
 for T in PRECISIONS
     local model = T == Float64 ? model64 : Dolo.convert_precision(T, model64)
@@ -90,24 +103,30 @@ for T in PRECISIONS
         wk = Dolo.newton_workspace(Dolo.discretize(model, Dict(:endo => [2, 2, 2])))
         bytes_L = sizeof(eltype(wk.L.D))*N
         @printf("\n%s, %d³ endogenous points × 9 = %d points (L: %.2f GiB)\n", T, n, N, bytes_L/2^30)
-        if gpu_ok(T) && n == first(SIZES)
-            for (k, v) in sort(collect(check_gpu(dm)))
-                @printf("  gpu vs cpu: %-6s max diff %.2e\n", k, v)
+        diffs = Dict{String,Float64}()
+        if gpu_ok(T) && n == first(SIZES) && any(e -> e[1] == GPU.name, ENGINES)
+            diffs = check_gpu(dm)
+            for (k, v) in sort(collect(diffs))
+                @printf("  %s vs cpu: %-6s max diff %.2e\n", GPU.name, k, v)
             end
         end
         for (ename, (engine, dest)) in ENGINES
             ename == "serial" && n > SERIAL_MAX && continue
-            ename == "gpu" && !gpu_ok(T) && continue
+            ename == GPU.name && !gpu_ok(T) && continue
             local wk
             try
-                wk = workspace(dm, engine, dest)
+                wk = workspace(dm, dest)
             catch e
-                println("  ", ename, ": workspace failed: ", sprint(showerror, e)[1:min(end, 200)])
+                println("  ", ename, ": workspace failed: ", short_error(e))
+                for (kname, _) in KERNELS
+                    push!(rows, (; benchmark="kernels", model="integration_B", precision=string(T), N, grid="$(n)³×9",
+                        engine=ename, operation=kname, time=NaN, status="error", error=short_error(e)))
+                end
                 continue
             end
             for (kname, f) in KERNELS
-                t = try
-                    if kname == "J\\L"
+                t, status, err = try
+                    t = if kname == "J\\L"
                         # J\L modifies L: start from the same L each time (the copy is not timed)
                         L0 = deepcopy(wk.L)
                         minimum(begin
@@ -117,24 +136,23 @@ for T in PRECISIONS
                     else
                         timeit(() -> f(dm, wk, engine), dest)
                     end
+                    t, "ok", nothing
                 catch e
-                    println("  ", ename, " ", kname, " failed: ", sprint(showerror, e)[1:min(end, 200)])
-                    NaN
+                    NaN, "error", short_error(e)
                 end
-                push!(rows, (; T, n, N, engine=ename, kernel=kname, t))
-                @printf("  %-8s %-6s %10.3f ms  %8.1f ns/point\n", ename, kname, t*1e3, t/N*1e9)
+                maxdiff_ = ename == GPU.name ? get(diffs, kname, nothing) : nothing
+                push!(rows, (; benchmark="kernels", model="integration_B", precision=string(T), N, grid="$(n)³×9",
+                    engine=ename, operation=kname, time=t, status, error=err, maxdiff=maxdiff_))
+                status == "ok" ?
+                    @printf("  %-8s %-6s %10.3f ms  %8.1f ns/point\n", ename, kname, t*1e3, t/N*1e9) :
+                    @printf("  %-8s %-6s failed: %s\n", ename, kname, err)
             end
             wk = nothing; GC.gc(true); GPU.functional && GPU.reclaim()
         end
+        save(this_run, rows)
     end
 end
 
-# summary: speed-ups of the GPU relative to threads
-println("\n| precision | points | operation | ", join(first.(ENGINES), " | "), " | gpu/threads |")
-println("|---|---|---|", repeat("---|", length(ENGINES) + 1))
-for key in unique((r.T, r.N, r.kernel) for r in rows)
-    rs = Dict(r.engine => r.t for r in rows if (r.T, r.N, r.kernel) == key)
-    ts = [haskey(rs, e) ? @sprintf("%.3f ms", rs[e]*1e3) : "" for e in first.(ENGINES)]
-    su = haskey(rs, "gpu") && haskey(rs, "threads") ? @sprintf("%.1f×", rs["threads"]/rs["gpu"]) : ""
-    println("| ", key[1], " | ", key[2], " | ", key[3], " | ", join(ts, " | "), " | ", su, " |")
-end
+println()
+print_table(as_history(this_run, rows))
+println("\nSaved in ", relpath(this_run.path))

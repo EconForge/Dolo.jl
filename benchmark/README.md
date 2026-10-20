@@ -35,7 +35,8 @@ states), which is large enough for the GPU to pay off:
 ```bash
 # one call of each operation, on CPU (serial, threads) and GPU, in Float64 and Float32
 julia -t auto --project=benchmark benchmark/integration_B.jl --sizes=10,20,30,40
-# complete solution: 5 time iteration steps, then Newton (GMRES), on threads and GPU
+# complete solution from the initial guess, on threads and GPU, with time iteration,
+# accelerated time iteration and Newton (with backtracking)
 julia -t auto --project=benchmark benchmark/integration_B_solve.jl --sizes=20
 ```
 
@@ -44,8 +45,32 @@ run in the `benchmark/oneapi` environment:
 
 ```bash
 julia --project=benchmark/oneapi -e 'using Pkg; Pkg.instantiate()'
-julia -t auto --project=benchmark/oneapi benchmark/integration_B_solve.jl --backend=oneapi
+julia -t auto --project=benchmark/oneapi benchmark/integration_B_solve.jl --backend=oneapi --engines=gpu
 ```
 
-On GPUs without Float64 (many Intel GPUs), the GPU runs in Float32 only.
+On GPUs without Float64 (many Intel GPUs), the GPU runs in Float32 only. A kernel or an
+algorithm that fails (out of memory, kernel arguments too large...) is recorded as an error,
+and the others still run.
 
+## History of the results
+
+The integration_B scripts save their results in `benchmark/history/` (tracked by git), one
+TOML file per run, `<date>_<host>_<script>_<backend>.toml`, with:
+
+- `[platform]`: host, OS, CPU, threads, memory, GPU (name, memory, Float64 support)
+- `[software]`: Julia, Dolo commit (hash, branch, modified or not), versions of the GPU
+  packages, GPU driver and runtime
+- `[results]`: one line per measurement (`benchmark`, `precision`, `grid`, `engine`,
+  `operation`, `time` in seconds, `status`; `iterations`, `residual` and the times of the
+  sections of the solvers for `solve`; `maxdiff` from the CPU for the GPU kernels; `error`)
+
+To compare runs (machines, commits), in one table:
+
+```bash
+julia --project=benchmark benchmark/compare.jl                       # latest result of each machine and engine
+julia --project=benchmark benchmark/compare.jl --benchmark=solve --precision=Float32
+julia --project=benchmark benchmark/compare.jl --by=commit --hosts=parker   # over time
+```
+
+Commit before running the benchmarks, so that the results refer to a commit
+(`modified` otherwise).
