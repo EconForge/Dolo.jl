@@ -1,0 +1,50 @@
+[platform]
+cpu = "Intel(R) Core(TM) i5-14400"
+cpu_threads = 16
+host = "parker"
+julia_threads = 16
+memory_GiB = 14.6
+os = "Linux 7.0.0-38-generic x86_64-linux-gnu"
+
+    [platform.gpu]
+    float64 = false
+    memory_GiB = 13.3
+    name = "Intel(R) UHD Graphics 730"
+
+[run]
+date = "2026-10-20T14:31:47.886"
+script = "integration_B_solve"
+
+    [run.options]
+    args = "--backend=oneapi --sizes=20 --engines=gpu"
+    linsolve = "gmres"
+
+[software]
+julia = "1.13.2"
+
+    [software.dolo]
+    branch = "benchmark-history"
+    commit = "ae1bd6183727e7ddbfed1035323f4f1460627d5c"
+    date = "2026-10-20T12:16:48"
+    dirty = false
+    subject = "Benchmarks: history of the results, with platform, software and commit; three solvers."
+
+    [software.gpu]
+    backend = "oneapi"
+    driver = "1.3.38308"
+
+    [software.packages]
+    Dolo = "0.5.0-alpha"
+    GPUArrays = "11.5.16"
+    GPUCompiler = "2.10.0"
+    KernelAbstractions = "0.9.45"
+    LLVM = "9.13.2"
+    StaticArrays = "1.9.23"
+    oneAPI = "2.9.2"
+
+[results]
+rows = [
+    {benchmark = "solve", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "oneapi", operation = "time iteration", time = 70.227616957, status = "ok", iterations = 149, residual = 9.545475768391043e-5, sections = {"eval F" = 7.941843039, "time iteration step" = 58.900528039, "time iteration step / eval F" = 27.612529464, "fit φ" = 1.547052837, "time iteration step / compute F_1" = 29.435052833}},
+    {benchmark = "solve", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "oneapi", operation = "accelerated TI", time = nan, status = "error", error = "kernel compilation failed"},
+    {benchmark = "solve", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "oneapi", operation = "newton", time = nan, status = "error", error = "kernel compilation failed"},
+]

@@ -2,8 +2,16 @@
 
 ## oneAPI (Intel GPU, on the laptop)
 
-Prepared on the `integration-gpu` branch, but not run on an Intel GPU yet: the desktop's
-UHD 630 (Gen9) is not supported by the Intel driver that oneAPI.jl ships (NEO 26.x).
+Prepared on the `integration-gpu` branch. The desktop's UHD 630 (Gen9) is not supported by the
+Intel driver that oneAPI.jl ships (NEO 26.x).
+
+Run on parker (UHD Graphics 730, NEO 26.18, 2026-10-20, results in benchmark/history/):
+- `fit!`, `F!`, `dF_1!`, `L.v` and `J\L` work and agree with the CPU (Float32, max diff ≤ 4e-4);
+  time iteration converges (149 iterations at 20³, as on CUDA).
+- `dF_2!` does not compile: "Total size of kernel arguments exceeds limit! Total arguments
+  size: 2184, limit: 2048". Accelerated time iteration and Newton fail for this reason.
+  Passing the Markov transition matrix (81 values, 324 B) in a device array would be enough.
+- The UHD 730 is slower than the 16 CPU threads on every kernel.
 
 Ready:
 - The GPU code is written for any KernelAbstractions backend; `ext/DolooneAPIExt.jl` loads,

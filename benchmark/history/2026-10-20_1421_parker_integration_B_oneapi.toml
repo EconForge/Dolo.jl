@@ -1,0 +1,70 @@
+[platform]
+cpu = "Intel(R) Core(TM) i5-14400"
+cpu_threads = 16
+host = "parker"
+julia_threads = 16
+memory_GiB = 14.6
+os = "Linux 7.0.0-38-generic x86_64-linux-gnu"
+
+    [platform.gpu]
+    float64 = false
+    memory_GiB = 13.3
+    name = "Intel(R) UHD Graphics 730"
+
+[run]
+date = "2026-10-20T14:21:50.702"
+script = "integration_B"
+
+    [run.options]
+    args = "--backend=oneapi --sizes=10,20,30,40 --engines=gpu"
+
+[software]
+julia = "1.13.2"
+
+    [software.dolo]
+    branch = "benchmark-history"
+    commit = "ae1bd6183727e7ddbfed1035323f4f1460627d5c"
+    date = "2026-10-20T12:16:48"
+    dirty = false
+    subject = "Benchmarks: history of the results, with platform, software and commit; three solvers."
+
+    [software.gpu]
+    backend = "oneapi"
+    driver = "1.3.38308"
+
+    [software.packages]
+    Dolo = "0.5.0-alpha"
+    GPUArrays = "11.5.16"
+    GPUCompiler = "2.10.0"
+    KernelAbstractions = "0.9.45"
+    LLVM = "9.13.2"
+    StaticArrays = "1.9.23"
+    oneAPI = "2.9.2"
+
+[results]
+rows = [
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "oneapi", operation = "fit!", time = 0.002022781, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "oneapi", operation = "F!", time = 0.007050221, status = "ok", maxdiff = 1.481175422668457e-5},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "oneapi", operation = "dF_1!", time = 0.020541228, status = "ok", maxdiff = 0.000370025634765625},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "oneapi", operation = "dF_2!", time = nan, status = "error", error = "kernel compilation failed", maxdiff = nan},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "oneapi", operation = "L.v", time = 0.010730897, status = "ok", maxdiff = 1.52587890625e-5},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "oneapi", operation = "J\\L", time = 0.00697875, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "oneapi", operation = "fit!", time = 0.004302776, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "oneapi", operation = "F!", time = 0.051002685, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "oneapi", operation = "dF_1!", time = 0.16098332, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "oneapi", operation = "dF_2!", time = nan, status = "error", error = "kernel compilation failed"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "oneapi", operation = "L.v", time = 0.07373343, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "oneapi", operation = "J\\L", time = 0.048635079, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 243000, grid = "30³×9", engine = "oneapi", operation = "fit!", time = 0.012200009, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 243000, grid = "30³×9", engine = "oneapi", operation = "F!", time = 0.171478198, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 243000, grid = "30³×9", engine = "oneapi", operation = "dF_1!", time = 0.541383341, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 243000, grid = "30³×9", engine = "oneapi", operation = "dF_2!", time = nan, status = "error", error = "kernel compilation failed"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 243000, grid = "30³×9", engine = "oneapi", operation = "L.v", time = 0.250711009, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 243000, grid = "30³×9", engine = "oneapi", operation = "J\\L", time = 0.159772372, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 576000, grid = "40³×9", engine = "oneapi", operation = "fit!", time = 0.025691567, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 576000, grid = "40³×9", engine = "oneapi", operation = "F!", time = 0.405575514, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 576000, grid = "40³×9", engine = "oneapi", operation = "dF_1!", time = 1.279289202, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 576000, grid = "40³×9", engine = "oneapi", operation = "dF_2!", time = nan, status = "error", error = "kernel compilation failed"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 576000, grid = "40³×9", engine = "oneapi", operation = "L.v", time = 0.599513125, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 576000, grid = "40³×9", engine = "oneapi", operation = "J\\L", time = 0.380995451, status = "ok"},
+]

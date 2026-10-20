@@ -109,6 +109,8 @@ function short_error(e)
     m = match(r"Total arguments size: (\d+), limit: (\d+)", msg)
     m !== nothing && return "kernel arguments $(m[1]) B > $(m[2]) B"
     occursin("Out of GPU memory", msg) && return "out of GPU memory"
+    # oneAPI: the cause (e.g. kernel arguments too large) is in the build log, printed before
+    occursin("ZE_RESULT_ERROR_MODULE_BUILD_FAILURE", msg) && return "kernel compilation failed"
     return first(replace(msg, r"\s+" => " "), 200)
 end
 
@@ -146,6 +148,7 @@ end
 format_time(t) = !isfinite(t) ? "" : t < 1e-3 ? @sprintf("%.0f μs", t*1e6) : t < 1 ? @sprintf("%.1f ms", t*1e3) : @sprintf("%.2f s", t)
 
 const ENGINE_ORDER = ["serial", "threads", "cuda", "oneapi"]
+const PRECISION_ORDER = ["Float64", "Float32"]
 const OPERATION_ORDER = ["fit!", "F!", "dF_1!", "dF_2!", "L.v", "J\\L", "time iteration", "accelerated TI", "newton"]
 
 function cell(r)
@@ -166,7 +169,8 @@ function print_table(io::IO, rows; column=r -> "$(r["host"]) $(r["engine"])")
     rows = sort(rows; by=r -> r["date"])
     cols = sort(unique(column.(rows)); by=c -> (split(c)[1], something(findfirst(==(split(c)[end]), ENGINE_ORDER), 99), c))
     rowkey(r) = (r["benchmark"], r["precision"], r["N"], r["operation"])
-    keys_ = sort(unique(rowkey.(rows)); by=k -> (k[1], k[2], k[3], something(findfirst(==(k[4]), OPERATION_ORDER), 99)))
+    keys_ = sort(unique(rowkey.(rows)); by=k -> (k[1], something(findfirst(==(k[2]), PRECISION_ORDER), 99), k[2], k[3],
+        something(findfirst(==(k[4]), OPERATION_ORDER), 99)))
     cells = Dict((rowkey(r), column(r)) => cell(r) for r in rows)
     grids = Dict(r["N"] => r["grid"] for r in rows)
     println(io, "| benchmark | precision | grid | operation | ", join(cols, " | "), " |")

@@ -1,0 +1,62 @@
+[platform]
+cpu = "Intel(R) Core(TM) i7-9700 CPU @ 3.00GHz"
+cpu_threads = 8
+host = "takeshi"
+julia_threads = 8
+memory_GiB = 61.5
+os = "Linux 7.0.0-38-generic x86_64-linux-gnu"
+
+    [platform.gpu]
+    capability = "7.5.0"
+    float64 = true
+    memory_GiB = 7.6
+    name = "NVIDIA GeForce RTX 2080"
+
+[run]
+date = "2026-10-20T14:22:22.729"
+script = "integration_B_solve"
+
+    [run.options]
+    args = "--sizes=20"
+    linsolve = "gmres"
+
+[software]
+julia = "1.13.2"
+
+    [software.dolo]
+    branch = "benchmark-history"
+    commit = "ae1bd6183727e7ddbfed1035323f4f1460627d5c"
+    date = "2026-10-20T12:16:48"
+    dirty = false
+    subject = "Benchmarks: history of the results, with platform, software and commit; three solvers."
+
+    [software.gpu]
+    backend = "cuda"
+    driver = "13.3.0"
+    runtime = "13.4.0"
+
+    [software.packages]
+    CUDA = "6.4.2"
+    Dolo = "0.5.0-alpha"
+    GPUArrays = "11.5.16"
+    GPUCompiler = "2.15.1"
+    KernelAbstractions = "0.9.45"
+    LLVM = "10.2.1"
+    StaticArrays = "1.9.23"
+    cuBLAS = "6.4.2"
+
+[results]
+rows = [
+    {benchmark = "solve", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "threads", operation = "time iteration", time = 220.527276198, status = "ok", iterations = 243, residual = 1.7869457156844946e-6, sections = {"eval F" = 20.617610747, "time iteration step" = 197.76132901, "time iteration step / eval F" = 87.233626312, "fit φ" = 0.723969623, "time iteration step / compute F_1" = 98.61168652}},
+    {benchmark = "solve", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "cuda", operation = "time iteration", time = 53.769214481, status = "ok", iterations = 243, residual = 1.7869457233698012e-6, sections = {"eval F" = 4.718490228, "time iteration step" = 48.840586879, "time iteration step / eval F" = 21.503250779, "fit φ" = 0.120112364, "time iteration step / compute F_1" = 27.170883215}},
+    {benchmark = "solve", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "threads", operation = "accelerated TI", time = 41.08924158, status = "ok", iterations = 15, residual = 1.691579168405788e-11, sections = {"eval F" = 1.463121252, "time iteration step" = 18.935077422, "compute L=-F_1\\F_2" = 2.782826888, "compute (I-L)^(-1).dr / compute A.v" = 14.08777916, "time iteration step / eval F" = 7.894605875, "compute (I-L)^(-1).dr" = 17.772681079, "fit φ" = 0.045896471, "time iteration step / compute F_1" = 9.824807801}},
+    {benchmark = "solve", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "cuda", operation = "accelerated TI", time = 8.095977075, status = "ok", iterations = 15, residual = 1.4273077393717108e-11, sections = {"eval F" = 0.316763242, "time iteration step" = 5.023435075, "compute L=-F_1\\F_2" = 0.698473745, "compute (I-L)^(-1).dr / compute A.v" = 1.462690014, "time iteration step / eval F" = 2.092783785, "compute (I-L)^(-1).dr" = 2.040023628, "fit φ" = 0.007856676, "time iteration step / compute F_1" = 2.914822968}},
+    {benchmark = "solve", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "threads", operation = "newton", time = 25.129349408, status = "ok", iterations = 6, residual = 3.276535986973529e-10, sections = {"backtracking / eval F" = 0.678270184, "compute Jacobian / compute F_2" = 1.111943709, "compute L=-F_1\\F_2" = 0.429772545, "compute (I-L)^(-1).dr / compute A.v" = 16.656775157, "eval F" = 0.074757237, "compute (I-L)^(-1).dr" = 21.301418673, "compute Jacobian" = 2.447396558, "fit φ" = 0.002188603, "backtracking / fit φ" = 0.027078174, "backtracking" = 0.724254617, "compute Jacobian / compute F_1" = 1.335412495}},
+    {benchmark = "solve", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "cuda", operation = "newton", time = 3.619279744, status = "ok", iterations = 6, residual = 3.2765403580920374e-10, sections = {"backtracking / eval F" = 0.136615968, "compute Jacobian / compute F_2" = 0.326784834, "compute L=-F_1\\F_2" = 0.106102371, "compute (I-L)^(-1).dr / compute A.v" = 1.851472582, "eval F" = 0.019418777, "compute (I-L)^(-1).dr" = 2.615305633, "compute Jacobian" = 0.730662456, "fit φ" = 0.000557848, "backtracking / fit φ" = 0.003381206, "backtracking" = 0.145745879, "compute Jacobian / compute F_1" = 0.403842141}},
+    {benchmark = "solve", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "threads", operation = "time iteration", time = 96.302639065, status = "ok", iterations = 155, residual = 9.077601134777069e-5, sections = {"eval F" = 11.300903918, "time iteration step" = 84.271867386, "time iteration step / eval F" = 37.684137384, "fit φ" = 0.400225749, "time iteration step / compute F_1" = 42.599583205}},
+    {benchmark = "solve", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "cuda", operation = "time iteration", time = 6.360291653, status = "ok", iterations = 149, residual = 9.944456542143598e-5, sections = {"eval F" = 0.369817923, "time iteration step" = 5.911267019, "time iteration step / eval F" = 1.57713449, "fit φ" = 0.041819012, "time iteration step / compute F_1" = 4.266474775}},
+    {benchmark = "solve", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "threads", operation = "accelerated TI", time = 19.917816257, status = "ok", iterations = 13, residual = 3.038346767425537e-5, sections = {"eval F" = 1.07177119, "time iteration step" = 12.624370346, "compute L=-F_1\\F_2" = 1.40585856, "compute (I-L)^(-1).dr / compute A.v" = 3.624549355, "time iteration step / eval F" = 5.202311417, "compute (I-L)^(-1).dr" = 4.758639956, "fit φ" = 0.028209953, "time iteration step / compute F_1" = 6.794318168}},
+    {benchmark = "solve", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "cuda", operation = "accelerated TI", time = 1.73576053, status = "ok", iterations = 13, residual = 3.171637581544928e-5, sections = {"eval F" = 0.033565103, "time iteration step" = 0.972868762, "compute L=-F_1\\F_2" = 0.125695181, "compute (I-L)^(-1).dr / compute A.v" = 0.390036058, "time iteration step / eval F" = 0.23517103, "compute (I-L)^(-1).dr" = 0.595625532, "fit φ" = 0.003841645, "time iteration step / compute F_1" = 0.729531111}},
+    {benchmark = "solve", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "threads", operation = "newton", time = 10.472698345, status = "ok", iterations = 5, residual = 3.4444499760866165e-5, sections = {"backtracking / eval F" = 0.464579801, "compute Jacobian / compute F_2" = 0.768409572, "compute L=-F_1\\F_2" = 0.244691295, "compute (I-L)^(-1).dr / compute A.v" = 5.905278299, "eval F" = 0.05631657, "compute (I-L)^(-1).dr" = 7.797280376, "compute Jacobian" = 1.793541702, "fit φ" = 0.001499832, "backtracking / fit φ" = 0.01241085, "backtracking" = 0.486084305, "compute Jacobian / compute F_1" = 1.025100685}},
+    {benchmark = "solve", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "cuda", operation = "newton", time = 1.197771845, status = "ok", iterations = 5, residual = 3.309572639409453e-5, sections = {"backtracking / eval F" = 0.014402713, "compute Jacobian / compute F_2" = 0.054854377, "compute L=-F_1\\F_2" = 0.045028821, "compute (I-L)^(-1).dr / compute A.v" = 0.629150878, "eval F" = 0.002434285, "compute (I-L)^(-1).dr" = 0.959908483, "compute Jacobian" = 0.170741415, "fit φ" = 0.000296933, "backtracking / fit φ" = 0.001516982, "backtracking" = 0.018407737, "compute Jacobian / compute F_1" = 0.115857165}},
+]

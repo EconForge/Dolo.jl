@@ -1,0 +1,169 @@
+[platform]
+cpu = "Intel(R) Core(TM) i5-14400"
+cpu_threads = 16
+host = "parker"
+julia_threads = 16
+memory_GiB = 14.6
+os = "Linux 7.0.0-38-generic x86_64-linux-gnu"
+
+    [platform.gpu]
+    capability = "7.5.0"
+    float64 = true
+    memory_GiB = 5.6
+    name = "NVIDIA GeForce GTX 1660 Ti"
+
+[run]
+date = "2026-10-20T14:17:17.085"
+script = "integration_B"
+
+    [run.options]
+    args = "--sizes=10,20,30,40"
+
+[software]
+julia = "1.13.2"
+
+    [software.dolo]
+    branch = "benchmark-history"
+    commit = "ae1bd6183727e7ddbfed1035323f4f1460627d5c"
+    date = "2026-10-20T12:16:48"
+    dirty = false
+    subject = "Benchmarks: history of the results, with platform, software and commit; three solvers."
+
+    [software.gpu]
+    backend = "cuda"
+    driver = "13.3.0"
+    runtime = "13.4.0"
+
+    [software.packages]
+    CUDA = "6.4.2"
+    Dolo = "0.5.0-alpha"
+    GPUArrays = "11.5.16"
+    GPUCompiler = "2.15.1"
+    KernelAbstractions = "0.9.45"
+    LLVM = "10.2.1"
+    StaticArrays = "1.9.23"
+    cuBLAS = "6.4.2"
+
+[results]
+rows = [
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 9000, grid = "10³×9", engine = "serial", operation = "fit!", time = 0.000401208, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 9000, grid = "10³×9", engine = "serial", operation = "F!", time = 0.045360264, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 9000, grid = "10³×9", engine = "serial", operation = "dF_1!", time = 0.150134301, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 9000, grid = "10³×9", engine = "serial", operation = "dF_2!", time = 0.11108878, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 9000, grid = "10³×9", engine = "serial", operation = "L.v", time = 0.016790798, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 9000, grid = "10³×9", engine = "serial", operation = "J\\L", time = 0.025905173, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 9000, grid = "10³×9", engine = "threads", operation = "fit!", time = 0.000401166, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 9000, grid = "10³×9", engine = "threads", operation = "F!", time = 0.005753121, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 9000, grid = "10³×9", engine = "threads", operation = "dF_1!", time = 0.016179243, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 9000, grid = "10³×9", engine = "threads", operation = "dF_2!", time = 0.013091977, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 9000, grid = "10³×9", engine = "threads", operation = "L.v", time = 0.002934003, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 9000, grid = "10³×9", engine = "threads", operation = "J\\L", time = 0.003883521, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 9000, grid = "10³×9", engine = "cuda", operation = "fit!", time = 0.000201816, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 9000, grid = "10³×9", engine = "cuda", operation = "F!", time = 0.005126214, status = "ok", maxdiff = 2.195466031196247e-14},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 9000, grid = "10³×9", engine = "cuda", operation = "dF_1!", time = 0.018417111, status = "ok", maxdiff = 4.849454171562684e-13},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 9000, grid = "10³×9", engine = "cuda", operation = "dF_2!", time = 0.014341849, status = "ok", maxdiff = 5.666578317686799e-13},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 9000, grid = "10³×9", engine = "cuda", operation = "L.v", time = 0.00167885, status = "ok", maxdiff = 1.1795009413617663e-12},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 9000, grid = "10³×9", engine = "cuda", operation = "J\\L", time = 0.004659057, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "serial", operation = "fit!", time = 0.00117859, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "serial", operation = "F!", time = 0.364706409, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "serial", operation = "dF_1!", time = 1.205505202, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "serial", operation = "dF_2!", time = 0.893235508, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "serial", operation = "L.v", time = 0.134086769, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "serial", operation = "J\\L", time = 0.207628257, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "threads", operation = "fit!", time = 0.001165961, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "threads", operation = "F!", time = 0.041148463, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "threads", operation = "dF_1!", time = 0.126670212, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "threads", operation = "dF_2!", time = 0.104091966, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "threads", operation = "L.v", time = 0.022469898, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "threads", operation = "J\\L", time = 0.030984354, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "cuda", operation = "fit!", time = 0.000751294, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "cuda", operation = "F!", time = 0.031462202, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "cuda", operation = "dF_1!", time = 0.11271616, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "cuda", operation = "dF_2!", time = 0.089394443, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "cuda", operation = "L.v", time = 0.00926494, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "cuda", operation = "J\\L", time = 0.021947779, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 243000, grid = "30³×9", engine = "threads", operation = "fit!", time = 0.004991492, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 243000, grid = "30³×9", engine = "threads", operation = "F!", time = 0.142083795, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 243000, grid = "30³×9", engine = "threads", operation = "dF_1!", time = 0.43959667, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 243000, grid = "30³×9", engine = "threads", operation = "dF_2!", time = 0.354559513, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 243000, grid = "30³×9", engine = "threads", operation = "L.v", time = 0.083984926, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 243000, grid = "30³×9", engine = "threads", operation = "J\\L", time = 0.103753575, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 243000, grid = "30³×9", engine = "cuda", operation = "fit!", time = 0.001976921, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 243000, grid = "30³×9", engine = "cuda", operation = "F!", time = 0.105882534, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 243000, grid = "30³×9", engine = "cuda", operation = "dF_1!", time = 0.3770185, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 243000, grid = "30³×9", engine = "cuda", operation = "dF_2!", time = 0.299659818, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 243000, grid = "30³×9", engine = "cuda", operation = "L.v", time = 0.031184893, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 243000, grid = "30³×9", engine = "cuda", operation = "J\\L", time = 0.073173033, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 576000, grid = "40³×9", engine = "threads", operation = "fit!", time = 0.012238004, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 576000, grid = "40³×9", engine = "threads", operation = "F!", time = 0.33532773, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 576000, grid = "40³×9", engine = "threads", operation = "dF_1!", time = 1.207611115, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 576000, grid = "40³×9", engine = "threads", operation = "dF_2!", time = 0.954721847, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 576000, grid = "40³×9", engine = "threads", operation = "L.v", time = 0.20004696, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 576000, grid = "40³×9", engine = "threads", operation = "J\\L", time = 0.244737729, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 576000, grid = "40³×9", engine = "cuda", operation = "fit!", time = 0.004596198, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 576000, grid = "40³×9", engine = "cuda", operation = "F!", time = 0.245026387, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 576000, grid = "40³×9", engine = "cuda", operation = "dF_1!", time = 0.89304003, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 576000, grid = "40³×9", engine = "cuda", operation = "dF_2!", time = 0.69749259, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 576000, grid = "40³×9", engine = "cuda", operation = "L.v", time = 0.074724662, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 576000, grid = "40³×9", engine = "cuda", operation = "J\\L", time = nan, status = "error", error = "out of GPU memory"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "serial", operation = "fit!", time = 0.000471558, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "serial", operation = "F!", time = 0.035451303, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "serial", operation = "dF_1!", time = 0.131516105, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "serial", operation = "dF_2!", time = 0.084351084, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "serial", operation = "L.v", time = 0.012466478, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "serial", operation = "J\\L", time = 0.02103788, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "threads", operation = "fit!", time = 0.000382738, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "threads", operation = "F!", time = 0.004216733, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "threads", operation = "dF_1!", time = 0.013706468, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "threads", operation = "dF_2!", time = 0.010163895, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "threads", operation = "L.v", time = 0.001886603, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "threads", operation = "J\\L", time = 0.002492776, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "cuda", operation = "fit!", time = 9.452e-5, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "cuda", operation = "F!", time = 0.000616914, status = "ok", maxdiff = 1.2353062629699707e-5},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "cuda", operation = "dF_1!", time = 0.005451211, status = "ok", maxdiff = 0.0003185272216796875},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "cuda", operation = "dF_2!", time = 0.002462802, status = "ok", maxdiff = 0.00040435791015625},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "cuda", operation = "L.v", time = 0.000606866, status = "ok", maxdiff = 0.000728607177734375},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 9000, grid = "10³×9", engine = "cuda", operation = "J\\L", time = 0.001459832, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "serial", operation = "fit!", time = 0.00082923, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "serial", operation = "F!", time = 0.285277969, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "serial", operation = "dF_1!", time = 1.05545634, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "serial", operation = "dF_2!", time = 0.679208865, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "serial", operation = "L.v", time = 0.09847603, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "serial", operation = "J\\L", time = 0.168667519, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "threads", operation = "fit!", time = 0.00084159, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "threads", operation = "F!", time = 0.032523028, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "threads", operation = "dF_1!", time = 0.110072095, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "threads", operation = "dF_2!", time = 0.078630332, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "threads", operation = "L.v", time = 0.012849478, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "threads", operation = "J\\L", time = 0.019400006, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "cuda", operation = "fit!", time = 0.000450745, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "cuda", operation = "F!", time = 0.004275128, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "cuda", operation = "dF_1!", time = 0.042205174, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "cuda", operation = "dF_2!", time = 0.01977533, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "cuda", operation = "L.v", time = 0.003849367, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 72000, grid = "20³×9", engine = "cuda", operation = "J\\L", time = 0.008947608, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 243000, grid = "30³×9", engine = "threads", operation = "fit!", time = 0.002453684, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 243000, grid = "30³×9", engine = "threads", operation = "F!", time = 0.110552459, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 243000, grid = "30³×9", engine = "threads", operation = "dF_1!", time = 0.369209302, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 243000, grid = "30³×9", engine = "threads", operation = "dF_2!", time = 0.30338976, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 243000, grid = "30³×9", engine = "threads", operation = "L.v", time = 0.047126763, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 243000, grid = "30³×9", engine = "threads", operation = "J\\L", time = 0.065959983, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 243000, grid = "30³×9", engine = "cuda", operation = "fit!", time = 0.001160882, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 243000, grid = "30³×9", engine = "cuda", operation = "F!", time = 0.01221339, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 243000, grid = "30³×9", engine = "cuda", operation = "dF_1!", time = 0.143602902, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 243000, grid = "30³×9", engine = "cuda", operation = "dF_2!", time = 0.058574986, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 243000, grid = "30³×9", engine = "cuda", operation = "L.v", time = 0.013186889, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 243000, grid = "30³×9", engine = "cuda", operation = "J\\L", time = 0.031782532, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 576000, grid = "40³×9", engine = "threads", operation = "fit!", time = 0.007612132, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 576000, grid = "40³×9", engine = "threads", operation = "F!", time = 0.259899805, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 576000, grid = "40³×9", engine = "threads", operation = "dF_1!", time = 1.020132985, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 576000, grid = "40³×9", engine = "threads", operation = "dF_2!", time = 0.730723644, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 576000, grid = "40³×9", engine = "threads", operation = "L.v", time = 0.11213641, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 576000, grid = "40³×9", engine = "threads", operation = "J\\L", time = 0.153878908, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 576000, grid = "40³×9", engine = "cuda", operation = "fit!", time = 0.002466997, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 576000, grid = "40³×9", engine = "cuda", operation = "F!", time = 0.029661964, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 576000, grid = "40³×9", engine = "cuda", operation = "dF_1!", time = 0.340896913, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 576000, grid = "40³×9", engine = "cuda", operation = "dF_2!", time = 0.14283915, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 576000, grid = "40³×9", engine = "cuda", operation = "L.v", time = 0.031812599, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float32", N = 576000, grid = "40³×9", engine = "cuda", operation = "J\\L", time = 0.069830947, status = "ok"},
+]
