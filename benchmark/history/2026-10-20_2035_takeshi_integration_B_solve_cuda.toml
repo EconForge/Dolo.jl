@@ -1,0 +1,51 @@
+[platform]
+cpu = "Intel(R) Core(TM) i7-9700 CPU @ 3.00GHz"
+cpu_threads = 8
+host = "takeshi"
+julia_threads = 8
+memory_GiB = 61.5
+os = "Linux 7.0.0-38-generic x86_64-linux-gnu"
+
+    [platform.gpu]
+    capability = "7.5.0"
+    float64 = true
+    memory_GiB = 7.6
+    name = "NVIDIA GeForce RTX 2080"
+
+[run]
+date = "2026-10-20T20:35:14.260"
+script = "integration_B_solve"
+
+    [run.options]
+    args = "--sizes=20 --precisions=Float64 --engines=threads --algos=accelerated"
+    linsolve = "gmres"
+
+[software]
+julia = "1.13.2"
+
+    [software.dolo]
+    branch = "benchmark-history"
+    commit = "2ed596937ab37bfd73e2943119acee53c72944bc"
+    date = "2026-10-20T12:34:51"
+    dirty = false
+    subject = "Benchmark results of integration_B on takeshi and parker (CPU, CUDA, oneAPI)."
+
+    [software.gpu]
+    backend = "cuda"
+    driver = "13.3.0"
+    runtime = "13.4.0"
+
+    [software.packages]
+    CUDA = "6.4.2"
+    Dolo = "0.5.0-alpha"
+    GPUArrays = "11.5.16"
+    GPUCompiler = "2.15.1"
+    KernelAbstractions = "0.9.45"
+    LLVM = "10.2.1"
+    StaticArrays = "1.9.23"
+    cuBLAS = "6.4.2"
+
+[results]
+rows = [
+    {benchmark = "solve", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "threads", operation = "accelerated TI", time = 40.008356968, status = "ok", iterations = 15, residual = 1.691579168405788e-11, sections = {"eval F" = 1.42640582, "time iteration step" = 18.215779936, "compute L=-F_1\\F_2" = 2.673652688, "compute (I-L)^(-1).dr / compute A.v" = 13.842876944, "time iteration step / eval F" = 7.656710047, "compute (I-L)^(-1).dr" = 17.563533311, "fit φ" = 0.040155487, "time iteration step / compute F_1" = 9.345380741}},
+]
