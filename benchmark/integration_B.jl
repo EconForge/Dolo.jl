@@ -32,12 +32,13 @@ const ENGINES = let
 end
 
 const KERNELS = [
-    "fit!"  => (dm, wk, e) -> Dolo.fit!(wk.φ, wk.x0),
-    "F!"    => (dm, wk, e) -> Dolo.F!(wk.r0, dm, wk.x0, wk.φ, e),
-    "dF_1!" => (dm, wk, e) -> Dolo.dF_1!(wk.J, dm, wk.x0, wk.φ, e),
-    "dF_2!" => (dm, wk, e) -> Dolo.dF_2!(wk.L, dm, wk.x0, wk.φ, e),
-    "L.v"   => (dm, wk, e) -> Dolo.mul!(wk.r0, wk.L, wk.x0, e),
-    "J\\L"  => (dm, wk, e) -> Dolo.ldiv!(wk.J, wk.L, e),
+    "fit!"     => (dm, wk, e) -> Dolo.fit!(wk.φ, wk.x0),
+    "F!"       => (dm, wk, e) -> Dolo.F!(wk.r0, dm, wk.x0, wk.φ, e),
+    "dF_1!"    => (dm, wk, e) -> Dolo.dF_1!(wk.J, dm, wk.x0, wk.φ, e),
+    "F+dF_1!"  => (dm, wk, e) -> Dolo.F_and_dF_1!(wk.r0, wk.J, dm, wk.x0, wk.φ, e),
+    "dF_2!"    => (dm, wk, e) -> Dolo.dF_2!(wk.L, dm, wk.x0, wk.φ, e),
+    "L.v"      => (dm, wk, e) -> Dolo.mul!(wk.r0, wk.L, wk.x0, e),
+    "J\\L"     => (dm, wk, e) -> Dolo.ldiv!(wk.J, wk.L, e),
 ]
 
 model64 = include(joinpath(pkgdir(Dolo), "examples", "ymodels", "integration_B.jl"))
@@ -79,6 +80,7 @@ function check_gpu(dm)
     checks = [
         "F!" => () -> maxdiff(host(Dolo.F!(wg.r0, dm, wg.x0, wg.φ, e).data), Dolo.F!(wc.r0, dm, wc.x0, wc.φ, Dolo.Threaded()).data),
         "dF_1!" => () -> (Dolo.dF_1!(wg.J, dm, wg.x0, wg.φ, e); maxdiff(host(wg.J.data), wc.J.data)),
+        "F+dF_1!" => () -> (Dolo.F_and_dF_1!(wg.r0, wg.J, dm, wg.x0, wg.φ, e); max(maxdiff(host(wg.r0.data), wc.r0.data), maxdiff(host(wg.J.data), wc.J.data))),
         "dF_2!" => () -> (Dolo.dF_2!(wg.L, dm, wg.x0, wg.φ, e);
             maximum(maxdiff(map(b -> b.F_x, u), map(b -> b.F_x, v)) for (u, v) in zip(host(wg.L.D), wc.L.D))),
         "L.v" => () -> maxdiff(host(Dolo.mul!(wg.r0, wg.L, wg.x0, e).data), Dolo.mul!(wc.r0, wc.L, wc.x0, Dolo.Threaded()).data),

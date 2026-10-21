@@ -1,0 +1,55 @@
+[platform]
+cpu = "Intel(R) Core(TM) i7-9700 CPU @ 3.00GHz"
+cpu_threads = 8
+host = "takeshi"
+julia_threads = 8
+memory_GiB = 61.5
+os = "Linux 7.0.0-38-generic x86_64-linux-gnu"
+
+    [platform.gpu]
+    capability = "7.5.0"
+    float64 = true
+    memory_GiB = 7.6
+    name = "NVIDIA GeForce RTX 2080"
+
+[run]
+date = "2026-10-21T20:22:13.463"
+script = "integration_B"
+
+    [run.options]
+    args = "--sizes=20 --precisions=Float64 --engines=cuda"
+
+[software]
+julia = "1.13.2"
+
+    [software.dolo]
+    branch = "main"
+    commit = "04cfd3c15d8cc10333cb929407f17c10c09ac5cc"
+    date = "2026-10-21T18:04:14"
+    dirty = false
+    subject = "Add benchmark result for accelerated TI on takeshi (CUDA, Float64)."
+
+    [software.gpu]
+    backend = "cuda"
+    driver = "13.3.0"
+    runtime = "13.4.0"
+
+    [software.packages]
+    CUDA = "6.4.2"
+    Dolo = "0.5.0-alpha"
+    GPUArrays = "11.5.16"
+    GPUCompiler = "2.15.1"
+    KernelAbstractions = "0.9.45"
+    LLVM = "10.2.1"
+    StaticArrays = "1.9.23"
+    cuBLAS = "6.4.2"
+
+[results]
+rows = [
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "cuda", operation = "fit!", time = 0.000487635, status = "ok"},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "cuda", operation = "F!", time = 0.018521835, status = "ok", maxdiff = 2.681188604469753e-14},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "cuda", operation = "dF_1!", time = 0.064172821, status = "ok", maxdiff = 8.597567102697212e-13},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "cuda", operation = "dF_2!", time = 0.051876766, status = "ok", maxdiff = 1.0871303857129533e-12},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "cuda", operation = "L.v", time = 0.005766232, status = "ok", maxdiff = 2.0889956431346945e-12},
+    {benchmark = "kernels", model = "integration_B", precision = "Float64", N = 72000, grid = "20³×9", engine = "cuda", operation = "J\\L", time = 0.015575327, status = "ok"},
+]

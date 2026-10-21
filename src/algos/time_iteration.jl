@@ -220,30 +220,36 @@ function _time_iteration(model::DYModel, workspace;
         # result in x1
 
         x1.data .= x0.data
+        ε_n = ε
 
         @timeit tmr "time iteration step" for k_newton=1:newton_steps
 
-            @timeit tmr "eval F" F!(r0, model, x1,  φ, t_engine)
-            ε_n = norm(r0)
-            if ε_n<tol_ε
+            if ε_n < tol_ε
                 break
             end
 
-            @timeit tmr "compute F_1" dF_1!(J, model, x1,  φ, t_engine)
+            @timeit tmr "compute F_1" dF_1!(J, model, x1, φ, t_engine)
 
             # TODO: fix regression or revert to Julia 1.10
             @inline dx.data .= J.data .\ r0.data
 
+            step_accepted = false
             for k=0:max_bsteps
                 # fails on GPU
                 x2.data .= x1.data .- dx.data .* convert(Tf,lam^k)
-                @timeit tmr "eval F" F!(r0, model, x2,  φ, t_engine)
+                @timeit tmr "eval F" F!(r0, model, x2, φ, t_engine)
                 ε_b = norm(r0)
-                if ε_b<ε_n   # false if ε_b is NaN
+                if ε_b < ε_n   # false if ε_b is NaN
                     k_newton_ = k_newton
                     k_ = k
+                    ε_n = ε_b
+                    step_accepted = true
                     break
                 end
+            end
+
+            if !step_accepted
+                break
             end
 
             x1.data .= x2.data
@@ -267,8 +273,7 @@ function _time_iteration(model::DYModel, workspace;
             @timeit tmr "compute L=-F_1\\F_2" begin
                 dF_1!(J, model, x1, φ, t_engine)
                 dF_2!(L, model, x1, φ, t_engine)
-                mul!(L, convert(Tf,-1.0), t_engine)
-                ldiv!(J, L, t_engine)
+                ldiv!(J, L, t_engine; α=convert(Tf,-1.0))
             end
 
             r0.data .= x1.data .- x0.data
@@ -433,8 +438,7 @@ function newton(model::DYModel, workspace=nothing;
         if precondition
             # (F_1 + F_2) dx = r  <=>  (I - L) dx = F_1^{-1} r  with L = -F_1^{-1} F_2
             @timeit tmr "compute L=-F_1\\F_2" begin
-                mul!(L, convert(Tf,-1.0), t_engine)
-                ldiv!(J, L, t_engine)
+                ldiv!(J, L, t_engine; α=convert(Tf,-1.0))
             end
             r0.data .= J.data .\ r0.data
             k_lin = @timeit tmr "compute (I-L)^(-1).dr" solve_I_minus_L!(dx, L, r0, workspace, t_engine;

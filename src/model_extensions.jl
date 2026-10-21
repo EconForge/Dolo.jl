@@ -51,6 +51,13 @@ function complementarities(model::YModel, s::QP, x::SVector, Fv::SVector)
 
 end
 
+has_complementarities(::AModel) = false
+function has_complementarities(model::YModel)
+    hasmethod(complementarities, Tuple{typeof(model), NamedTuple, NamedTuple, SVector}) &&
+        which(complementarities, Tuple{typeof(model), NamedTuple, NamedTuple, SVector}).module !== Dolo
+end
+has_complementarities(dmodel::ADModel) = has_complementarities(dmodel.model)
+
 #####
 ##### IID shocks
 #####

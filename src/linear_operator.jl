@@ -140,11 +140,11 @@ end
 "Blocks of `α L` at grid point `n`."
 scale_kernel(n, D, α) = map(b -> (; F_x = α*b.F_x, S = b.S), D[n])
 
-"Blocks of `J⁻¹ L` at grid point `n`, for a block-diagonal `J`."
-# J[n] is factorized once for all blocks
-function ldiv_kernel(n, D, J)
-    F = lu(J[n])
-    map(b -> (; F_x = F\b.F_x, S = b.S), D[n])
+"Blocks of `α J⁻¹ L` at grid point `n`, for a block-diagonal `J`."
+# J[n] is inverted once for all blocks (faster than repeated solves)
+function ldiv_kernel(n, D, J, α=1)
+    J_inv = α * inv(J[n])
+    map(b -> (; F_x = J_inv * b.F_x, S = b.S), D[n])
 end
 
 
@@ -155,10 +155,10 @@ function scale_blocks!(n, D, α)
     end
 end
 
-function ldiv_blocks!(n, D, J)
-    F = lu(J[n])
+function ldiv_blocks!(n, D, J, α=1)
+    J_inv = α * inv(J[n])
     for k in 1:nblocks(D)
-        setF!(D, F\getblock(D, n, k).F_x, n, k)
+        setF!(D, J_inv * getblock(D, n, k).F_x, n, k)
     end
 end
 
@@ -169,9 +169,9 @@ end
 mul!(L::LL, α::Number, engine=Serial()) = (pointwise!(scale_kernel, L.D, engine, L.D, α); L)
 mul!(L::LL{<:Any,<:BlockVector}, α::Number, engine=Serial()) = (foreach_point!(scale_blocks!, length(L.D), engine, L.D, α); L)
 
-"`L ← J⁻¹ L`, where `J` is block diagonal"
-ldiv!(J::GArray, L::LL, engine=Serial()) = (pointwise!(ldiv_kernel, L.D, engine, L.D, J.data); L)
-ldiv!(J::GArray, L::LL{<:Any,<:BlockVector}, engine=Serial()) = (foreach_point!(ldiv_blocks!, length(L.D), engine, L.D, J.data); L)
+"`L ← α J⁻¹ L`, where `J` is block diagonal"
+ldiv!(J::GArray, L::LL, engine=Serial(); α=1) = (pointwise!(ldiv_kernel, L.D, engine, L.D, J.data, α); L)
+ldiv!(J::GArray, L::LL{<:Any,<:BlockVector}, engine=Serial(); α=1) = (foreach_point!(ldiv_blocks!, length(L.D), engine, L.D, J.data, α); L)
 
 "`r ← L.v`"
 function mul!(r::GArray, L::LL, v::GArray, engine=Serial())

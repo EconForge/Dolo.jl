@@ -63,8 +63,7 @@ dF_1(dmodel::ADModel, s::QP, x::SVector, φ::DFun{<:Any, <:GArray{<:PGrid{<:SGri
 Derivative of the residuals at grid point `s` w.r.t. the decision rule `φ`:
 a tuple of blocks `(;F_x, S)`, one for each future state `S`, such that `dF = Σ F_x dφ(S)`.
 """
-function dF_2(dmodel::ADModel, s::QP, x::SVector, φ)
-    # complementarities are applied to the expectation, not to each term
+function dF_2(dmodel::ADModel, s::QP, x::SVector, φ, ::Val{true})
     r_F = ForwardDiff.jacobian(
         r->complementarities(dmodel.model, s, x, r),
         expected_arbitrage(dmodel, s, x, φ)
@@ -75,12 +74,22 @@ function dF_2(dmodel::ADModel, s::QP, x::SVector, φ)
     )...)
 end
 
+function dF_2(dmodel::ADModel, s::QP, x::SVector, φ, ::Val{false})
+    return tuple((
+        (; F_x = w*ForwardDiff.jacobian(u->arbitrage(dmodel, s, x, S, u), φ(S)), S = S)
+        for (w,S) in τ(dmodel, s, x)
+    )...)
+end
+
+dF_2(dmodel::ADModel, s::QP, x::SVector, φ) = dF_2(dmodel, s, x, φ, Val(has_complementarities(dmodel.model)))
+
 
 ## Kernels (at grid point n)
 
 F_kernel(n, dmodel, x, φ) = F(dmodel, point(dmodel.grid, n), x[n], φ)
 dF_1_kernel(n, dmodel, x, φ) = dF_1(dmodel, point(dmodel.grid, n), x[n], φ)
-dF_2_kernel(n, dmodel, x, φ) = dF_2(dmodel, point(dmodel.grid, n), x[n], φ)
+dF_2_kernel(n, dmodel, x, φ, v::Val) = dF_2(dmodel, point(dmodel.grid, n), x[n], φ, v)
+dF_2_kernel(n, dmodel, x, φ) = dF_2_kernel(n, dmodel, x, φ, Val(has_complementarities(dmodel.model)))
 
 
 ## Vectorized, in place
@@ -93,12 +102,41 @@ F!(r::GArray, dmodel::ADModel, x::GArray, φ, engine=Serial()) =
 dF_1!(J::GArray, dmodel::ADModel, x::GArray, φ, engine=Serial()) =
     (pointwise!(dF_1_kernel, J.data, engine, dmodel, x, φ); J)
 
+"`(r, J) ← F(x, φ)` and `∂F/∂x (x, φ)` simultaneously in a single pass"
+struct FdF1Tag end
+
+function F_and_dF_1_pointwise(dmodel::ADModel, s::QP, xn::SVector{d, T}, φ) where {d, T}
+    Tag = ForwardDiff.Tag{FdF1Tag, T}
+    xd = SVector(ntuple(k -> ForwardDiff.Dual{Tag}(xn[k], ntuple(j -> T(j == k), Val(d))), Val(d)))
+    lin_φ = Linearized(φ)
+    res_dual = F(dmodel, s, xd, lin_φ)
+    r = SVector(ntuple(i -> ForwardDiff.value(res_dual[i]), Val(d)))
+    J = SMatrix{d, d, T, d*d}(ntuple(idx -> begin
+        row = (idx - 1) % d + 1
+        col = (idx - 1) ÷ d + 1
+        ForwardDiff.partials(res_dual[row], col)
+    end, Val(d*d)))
+    return r, J
+end
+
+function F_and_dF_1_kernel!(n, r, J, dmodel, x, φ)
+    s = point(dmodel.grid, n)
+    rn, Jn = F_and_dF_1_pointwise(dmodel, s, x[n], φ)
+    r[n] = rn
+    J[n] = Jn
+end
+
+function F_and_dF_1!(r::GArray, J::GArray, dmodel::ADModel, x::GArray, φ, engine=Serial())
+    foreach_point!(F_and_dF_1_kernel!, length(x), engine, r.data, J.data, dmodel, x, φ)
+    return r, J
+end
+
 "`L ← ∂F/∂φ (x, φ)`"
 dF_2!(L::LL, dmodel::ADModel, x::GArray, φ, engine=Serial()) =
-    (pointwise!(dF_2_kernel, L.D, engine, dmodel, x, φ); L)
+    (pointwise!(dF_2_kernel, L.D, engine, dmodel, x, φ, Val(has_complementarities(dmodel.model))); L)
 
 # with a BlockVector, each block is written as soon as it is computed
-function dF_2_blocks!(n, D, dmodel, x, φ)
+function dF_2_blocks!(n, D, dmodel, x, φ, ::Val{true})
     s = point(dmodel.grid, n)
     xn = x[n]
     r_F = ForwardDiff.jacobian(
@@ -111,8 +149,19 @@ function dF_2_blocks!(n, D, dmodel, x, φ)
     end
 end
 
+function dF_2_blocks!(n, D, dmodel, x, φ, ::Val{false})
+    s = point(dmodel.grid, n)
+    xn = x[n]
+    for (k, (w,S)) in enumerate(τ(dmodel, s, xn))
+        F_x = w*ForwardDiff.jacobian(u->arbitrage(dmodel, s, xn, S, u), φ(S))
+        setblock!(D, (; F_x, S), n, k)
+    end
+end
+
+dF_2_blocks!(n, D, dmodel, x, φ) = dF_2_blocks!(n, D, dmodel, x, φ, Val(has_complementarities(dmodel.model)))
+
 dF_2!(L::LL{<:Any,<:BlockVector}, dmodel::ADModel, x::GArray, φ, engine=Serial()) =
-    (foreach_point!(dF_2_blocks!, length(L.D), engine, L.D, dmodel, x, φ); L)
+    (foreach_point!(dF_2_blocks!, length(L.D), engine, L.D, dmodel, x, φ, Val(has_complementarities(dmodel.model))); L)
 
 
 ## Vectorized, allocating
